@@ -7,21 +7,24 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <header class="header">
-        <div class="container">
-          <div class="title-subtitle">
-            <h1 class="title">Families for Education</h1>
-          </div>
-          <nav>
-            <ul>
-                <li><a href="#update">Update</a></li>
-                <li><a href="#events">Events</a></li>
-                <li><a href="#ideals">Ideals</a></li>
-                <li><a href="#mission">Mission</a></li>
-            </ul>
-          </nav>
-        </div>
-      </header>
+<header class="header">
+  <div class="container">
+      <div class="title-subtitle">
+          <h1 class="title">Families for Education</h1>
+      </div>
+      <button class="hamburger" aria-label="Toggle navigation">
+          ☰
+      </button>
+      <nav class="nav-menu">
+          <ul>
+              <li><a href="#update">Update</a></li>
+              <li><a href="#events">Events</a></li>
+              <li><a href="#ideals">Ideals</a></li>
+              <li><a href="#mission">Mission</a></li>
+          </ul>
+      </nav>
+  </div>
+</header>
 
 
 
@@ -161,5 +164,14 @@
       }
     });
   </script>
+
+<script>
+  const hamburger = document.querySelector('.hamburger');
+  const navMenu = document.querySelector('.nav-menu');
+
+  hamburger.addEventListener('click', () => {
+      navMenu.classList.toggle('active');
+  });
+</script>
 
   

@@ -1,3 +1,56 @@
+/* Default styles */
+.hamburger {
+  display: none;
+  font-size: 24px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: white;
+}
+
+.nav-menu {
+  display: flex;
+}
+
+@media (max-width: 768px) {
+  .hamburger {
+      display: block;
+  }
+
+  .nav-menu {
+    display: none;
+    flex-direction: column;
+    background-color: #fff;
+    position: absolute;
+    top: 60px;
+    right: 0;
+    width: 200px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    z-index: 1000; /* Ensure it appears above other elements */
+}
+
+  .nav-menu.active {
+      display: flex;
+  }
+
+  .nav-menu ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+  }
+
+  .nav-menu li {
+      margin: 10px 0;
+  }
+
+  .nav-menu a {
+      text-decoration: none;
+      color: #333;
+      padding: 10px;
+      display: block;
+  }
+}
+
 .main-content {
     display: flex;
     flex-wrap: wrap; /* Allow boxes to wrap to the next line */
