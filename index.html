@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Families for Education Bulletin</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+          <div class="title-subtitle">
+            <h1 class="title">Families for Education</h1>
+          </div>
+          <nav>
+            <ul>
+                <li><a href="#update">Update</a></li>
+                <li><a href="#events">Events</a></li>
+                <li><a href="#ideals">Ideals</a></li>
+                <li><a href="#mission">Mission</a></li>
+            </ul>
+          </nav>
+        </div>
+      </header>
+
+
+
+  <main>
+    <section class="hero">
+      <h1>Independent School West</h1>
+      <p>Holistic education rooted in faith and guided by parents.</p>
+      <a href="#" class="cta">Learn More</a>
+    </section>
+  </main>
+
+<div class="main-content">
+    <div id="update" class="section alt2 one-third">
+        <div class="container">
+            <h2 class="highlight-box" style="color: white;" >School Project Update: A Strong Start to 2025</h2>
+            <h3>A Vision Takes Root</h3>
+            <p>If you are receiving this newsletter, it is likely because you’ve expressed interest in a new independent Catholic school planned for Melbourne’s outer-West, with a target opening date of 2027. We are excited to share that 2025 has already been a year of strong progress!</p>
+        </div>
+    </div>
+
+    <div id="update" class="section one-third">
+        <div class="container">
+            <h2>Organisational Milestones</h2>
+            <ul>
+                <li>The company structure is in the process of being set up.</li>
+                <li>Initial financial modelling for the school’s operations has been largely completed.</li>
+                <li>We have notified the Victorian Registration and Qualifications Authority (VRQA) of our intention to establish a school.</li>
+                <li>We have also started the official school registration paperwork.</li>
+                <li>We have started the development of the website.</li>
+              </ul>
+        </div>
+    </div>
+
+    <div id="events" class="section alt one-third">
+        <div class="container">
+            <h2>Our Team Is Growing</h2>
+            <p>Our steering committee has expanded to twelve dedicated members with expertise in:</p>
+            <ul>
+                <li>School leadership & education</li>
+                <li>Finance & law</li>
+                <li>Business & project management</li>
+                <li>Fundraising</li>
+                <li>Marriage & family formation</li>
+            </ul>
+            <p>Their combined experience is helping shape the foundations of the school.</p>
+
+        </div>
+    </div>
+
+    <div id="events" class="section alt half-width">
+        <div class="container">
+            <h2>Upcoming Events</h2>
+            <h3>Family Picnic - Meet, Greet, and Eat!</h3>
+            <p><strong>Date:</strong> 18th May 2025<br><strong>Time:</strong> 12:30 PM<br><strong>Location:</strong> Hannah Watts Park</p>
+            <p>Join us for a picnic to meet other families and enjoy the outdoors!</p>
+
+            <h3>Ideals in Teaching - 13th of June</h3>
+            <p><strong>Location:</strong> The Club, Caroline Springs<br><strong>Speaker:</strong> Baltazar Kurowski</p>
+            <p>Creating Joyful Christian Homes and Classrooms</p>
+        </div>
+    </div>
+
+    <div id="mission" class="section half-width">
+        <div class="container">
+          <h2>Parents as Primary Educators</h2>
+          <h3>Why Start a New School in 2027?</h3>
+          <p>There are already 1375 schools in Melbourne, but our mission is different: holistic education guided by parents and rooted in faith.</p>
+  
+          <h3>Our Educational Philosophy</h3>
+          <p>Inspired by Catholic teaching, focused on the formation of the whole person. Parents are the primary educators. We aim to support, not replace, that role.</p>
+  
+          <h3>Our Inspiration: The Pared Model</h3>
+          <ul>
+            <li>School as an extension of the home</li>
+            <li>High-quality academics</li>
+            <li>Mentoring systems</li>
+            <li>Support for effective parenting</li>
+            <li>Virtue & character curriculum</li>
+            <li>Faithful, positive staff</li>
+          </ul>
+          <p><a href="#" class="cta">Join the mailing list</a></p>
+        </div>
+    </div>
+
+    <div class="one-third">One Third Box</div>
+    <div class="two-thirds">Two Thirds Box</div>
+</div>
+
+
+    
+
+    <section id="ideals" class="section">
+      <div class="container">
+        <h2>'Ideals in Teaching' Returns</h2>
+        <p>Now for both parents and teachers. These sessions unite faith, character, and learning. They will also include in-person updates on school progress.</p>
+      </div>
+    </section>
+
+    
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>Contact: <a href="mailto:independentschoolwest@gmail.com">independentschoolwest@gmail.com</a> | +61 4 3463 6719</p>
+    </div>
+  </footer>
+</body>
+</html>
+
+<script>
+    document.querySelectorAll('nav a').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const targetId = this.getAttribute('href').substring(1);
+        const targetElement = document.getElementById(targetId);
+        const navBarHeight = document.querySelector('nav').offsetHeight; // Get the height of the navigation bar
+        if (targetElement) {
+          const targetPosition = targetElement.offsetTop - navBarHeight; // Adjust for the nav bar height
+          window.scrollTo({
+            top: targetPosition,
+            behavior: 'smooth'
+          });
+        }
+      });
+    });
+  </script>
+
+<script>
+    const header = document.querySelector('header');
+    const hero = document.querySelector('header'); // Replace '.hero' with the class or ID of your hero image section
+  
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > hero.offsetHeight/2) {
+        header.classList.add('scrolled'); // Add the 'scrolled' class when past the hero
+      } else {
+        header.classList.remove('scrolled'); // Remove the 'scrolled' class when above the hero
+      }
+    });
+  </script>
+
+  

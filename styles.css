@@ -1,0 +1,391 @@
+.main-content {
+    display: flex;
+    flex-wrap: wrap; /* Allow boxes to wrap to the next line */
+    gap: 1rem; /* Add spacing between boxes */
+    padding: 1rem;
+    max-width: 1200px; /* Set a comfortable max width */
+    margin: 0 auto; /* Center the content horizontally */
+    align-items: stretch; /* Make all boxes at the same level the same height */
+}
+
+.section {
+    flex: 1 1 calc(50% - 1rem); /* Adjust width as needed */
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+
+.full-width {
+    flex: 0 0 100%; /* Takes the full horizontal space */
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.half-width {
+    flex: 1 1 calc(50% - 1rem); /* Take half the width minus the gap */
+    min-width: 300px; /* Minimum width before wrapping */
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.one-third {
+    flex: 0 0 calc(33.33% - 1rem); /* Takes 1/3 of the horizontal space */
+    min-width: 300px; /* Minimum width before wrapping */
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.two-thirds {
+    flex: 0 0 calc(66.67% - 1rem); /* Takes 2/3 of the horizontal space */
+    min-width: 300px; /* Minimum width before wrapping */
+
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+
+
+html {
+    scroll-behavior: smooth; /* Enables smooth scrolling for modern browsers */
+}
+
+.header .container {
+    display: flex;
+    justify-content: space-between; /* Space between title-subtitle and nav */
+    align-items: center; /* Align items vertically in the center */
+  }
+  
+  .header nav {
+    margin-left: auto; /* Push the nav to the right */
+  }
+  
+  .header nav ul {
+    list-style: none;
+    display: flex;
+    gap: 1.5rem; /* Add spacing between menu items */
+    margin: 0;
+    padding: 0;
+  }
+  
+  .header nav ul li a {
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+    transition: color 0.3s;
+  }
+  
+  .header nav ul li a:hover {
+    color: #d3d3d3; /* Accent color */
+  }
+
+.hero {
+    position: relative;
+    background: url('img/hero.png') no-repeat center center/cover; /* Replace with your image */
+    height: 100vh;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding-top: 0;
+    background-attachment: fixed; /* Enables the parallax effect */
+    background-size: cover;
+    background-position: center;
+}
+
+@media (max-width: 768px) {
+    .hero {
+        background-attachment: scroll; /* Disable parallax on smaller screens for better performance */
+    }
+}
+
+  
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5); /* Dark overlay */
+    z-index: 1;
+  }
+  
+  .hero h1 {
+    position: relative;
+    z-index: 2;
+    font-size: 3rem;
+    margin-bottom: 1rem;
+  }
+  
+  .hero p {
+    position: relative;
+    z-index: 2;
+    font-size: 1.2rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .hero .cta {
+    position: relative;
+    z-index: 2;
+    padding: 0.8rem 1.5rem;
+    background: #8b0000; /* Accent color */
+    color: white;
+    border-radius: 5px;
+    text-decoration: none;
+    transition: background 0.3s;
+  }
+  
+  .hero .cta:hover {
+    background: #b22222;
+  }
+  
+  /* Responsive Hero */
+  @media (max-width: 768px) {
+    .hero h1 {
+      font-size: 2.5rem;
+    }
+  
+    .hero p {
+      font-size: 1rem;
+    }
+  }
+
+/* Base Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  body {
+    font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
+    background-color: #f4f4f4;
+    color: #333;
+    line-height: 1.6;
+  }
+  
+  /* Container */
+  .container {
+    width: 90%;
+    max-width: 1100px;
+    margin: auto;
+    padding: 1rem 0;
+  }
+  
+  /* Header/Menu */
+  header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background-color:transparent; /* Match your design */
+    color: white;
+    padding: 1rem;
+    z-index: 10; /* Ensure it stays above other elements */
+  }
+
+  header.scrolled {
+    background-color: #00234B; /* Change to blue when scrolled */
+  }
+  
+  header nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  header nav ul {
+    list-style: none;
+    display: flex;
+    gap: 1.5rem;
+    margin: 0;
+    padding: 0;
+  }
+  
+  header nav ul li a {
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+    transition: color 0.3s;
+  }
+  
+  header nav ul li a:hover {
+    color: #8b0000; /* Accent color */
+  }
+  
+
+  .header .issue-date {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    background-color: #001f4d;
+    color: white;
+    padding: 0.5rem;
+    font-weight: bold;
+    text-align: center;
+    border-radius: 0.3rem;
+    line-height: 1.2rem;
+  }
+  
+  .header .title {
+    font-size: 2rem;
+    margin-bottom: 0.2rem;
+  }
+  
+  .header .subtitle {
+    font-size: 1rem;
+    font-weight: 300;
+    color: #add8e6;
+  }
+  
+  /* Navigation */
+  .nav {
+    background-color: #005eb8;
+  }
+  
+  .nav ul {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    list-style: none;
+  }
+  
+  .nav ul li {
+    margin: 0.5rem;
+  }
+  
+  .nav ul li a {
+    color: white;
+    padding: 0.5rem 1rem;
+    background-color: #0074d9;
+    border-radius: 5px;
+    text-decoration: none;
+    transition: background 0.3s;
+  }
+  
+  .nav ul li a:hover {
+    background-color: #003366;
+  }
+  
+  /* Sections */
+  .section {
+    padding: 2rem 0;
+    background-color: white;
+  }
+  
+  .section.alt {
+    background-color: #e9f0f8;
+  }
+
+  .section.alt2 {
+    background-color: #00234B;
+    color: white;
+  }
+  .section.alt2 h3{
+    color: white;
+  }
+  .section.alt2 h2{
+    color: #00234B;
+    margin-bottom: 1rem;
+    font-size: 1.75rem;
+  }
+  
+  .section h2 {
+    color: #00234B;
+    margin-bottom: 1rem;
+    font-size: 1.75rem;
+    margin-left: 1rem;
+  }
+  .section.white h2 {
+    color: white;
+  }
+  
+  .section h3 {
+    color: #00234B;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .section p, .section ul {
+    margin-bottom: 1rem;
+  }
+  
+  .section ul {
+    list-style: disc;
+    padding-left: 1.5rem;
+  }
+  
+  .highlight-box {
+    background-color: #FF001C; /* Lighter red for better contrast */
+    color: white; /* White text for readability */
+    padding: 1rem 1.5rem;
+    font-weight: bold;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border: 1px solid #FF001C; /* Darker border for definition */
+}
+
+.cta {
+    display: inline-block;
+    margin-top: 1rem;
+    padding: 0.6rem 1rem;
+    background: #004080; /* Darker blue for better contrast */
+    color: white;
+    border-radius: 5px;
+    text-decoration: none;
+}
+  
+  .cta:hover {
+    background: #003366;
+  }
+  
+  /* Footer */
+  .footer {
+    background-color: #003366;
+    color: white;
+    text-align: center;
+    padding: 1rem;
+    font-size: 0.9rem;
+  }
+  
+  .footer a {
+    color: #add8e6;
+    text-decoration: underline;
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .nav ul {
+      flex-direction: column;
+      align-items: center;
+    }
+  
+    .header .title {
+      font-size: 1.5rem;
+    }
+  
+    .section h2 {
+      font-size: 1.5rem;
+    }
+  
+    .section h3 {
+      font-size: 1.2rem;
+    }
+  }
