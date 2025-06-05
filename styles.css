@@ -1,12 +1,23 @@
 .title-subtitle {
-  display: flex; /* Use flexbox to align items horizontally */
+  display: flex; /* Align items horizontally */
   align-items: center; /* Vertically center the logo and text */
   gap: 10px; /* Add spacing between the logo and the text */
 }
 
 .logo {
-  width: 100px; /* Adjust the size of the logo */
-  height: auto; /* Maintain the aspect ratio */
+  width: 80px; /* Default size for larger screens */
+  height: auto; /* Maintain aspect ratio */
+  max-width: 20vw; /* Ensure it scales responsively */
+}
+
+@media (max-width: 768px) {
+  .logo {
+    width: 50px; /* Smaller size for mobile devices */
+  }
+
+  .title-subtitle {
+    gap: 5px; /* Reduce spacing on smaller screens */
+  }
 }
 /* Default styles */
 .hamburger {
