@@ -1,3 +1,13 @@
+.title-subtitle {
+  display: flex; /* Use flexbox to align items horizontally */
+  align-items: center; /* Vertically center the logo and text */
+  gap: 10px; /* Add spacing between the logo and the text */
+}
+
+.logo {
+  width: 100px; /* Adjust the size of the logo */
+  height: auto; /* Maintain the aspect ratio */
+}
 /* Default styles */
 .hamburger {
   display: none;
@@ -13,41 +23,20 @@
 }
 
 @media (max-width: 768px) {
-  .hamburger {
-      display: block;
+  .nav-menu {
+    display: none; /* Hide the links by default */
   }
 
-  .nav-menu {
-    display: none;
-    flex-direction: column;
+  .nav-menu.active {
+    display: flex; /* Show the links when the menu is active */
+    flex-direction: column; /* Stack links vertically */
     background-color: #fff;
     position: absolute;
     top: 60px;
     right: 0;
     width: 200px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    z-index: 1000; /* Ensure it appears above other elements */
-}
-
-  .nav-menu.active {
-      display: flex;
-  }
-
-  .nav-menu ul {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-  }
-
-  .nav-menu li {
-      margin: 10px 0;
-  }
-
-  .nav-menu a {
-      text-decoration: none;
-      color: #333;
-      padding: 10px;
-      display: block;
+    z-index: 1000;
   }
 }
 
