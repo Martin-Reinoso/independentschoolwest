@@ -22,6 +22,27 @@ html, body {
   border-radius: 8px;
 }
 
+/* Checkmark list ONLY in the Progress section */
+#progress ul {
+  list-style: none;        /* remove default bullets */
+  padding-left: 0;         /* remove indentation */
+}
+
+#progress ul li {
+  position: relative;
+  padding-left: 2rem;      /* space for checkmark */
+  margin-bottom: 0.5rem;
+}
+
+#progress ul li::before {
+  content: "✔";            /* checkmark character */
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: #008000;          /* green checkmark */
+  font-weight: bold;
+}
+
 
 .box {
   width: 48%; /* Each box takes half the width */
