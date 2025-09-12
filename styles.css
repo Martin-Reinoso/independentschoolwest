@@ -16,7 +16,7 @@ html, body {
 /* Center the donations image and keep it responsive */
 .donation-img {
   display: block;
-  width: min(100%, 480px);   /* cap width so it doesn't span edge-to-edge on phones */
+  width: 100%;   /* cap width so it doesn't span edge-to-edge on phones */
   height: auto;
   margin: 0 auto 1rem;       /* centers it */
   border-radius: 8px;
