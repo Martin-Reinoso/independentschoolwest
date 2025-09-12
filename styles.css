@@ -16,11 +16,10 @@ html, body {
 /* Center the donations image and keep it responsive */
 .donation-img {
   display: block;
-  margin: 1rem auto;      /* centers horizontally */
-  max-width: 600px;       /* optional cap */
-  width: 100%;            /* responsive */
+  width: min(100%, 480px);   /* cap width so it doesn't span edge-to-edge on phones */
   height: auto;
-  border-radius: 8px;     /* optional nicety */
+  margin: 0 auto 1rem;       /* centers it */
+  border-radius: 8px;
 }
 
 
