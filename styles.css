@@ -1,112 +1,67 @@
-/* Base Reset */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
 
 html, body {
-    overflow-x: hidden; /* Prevent white bar on mobile */
+  overflow-x: hidden; /* Hide horizontal overflow */
 }
 
-body {
-    font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
-    background-color: #f4f4f4;
-    color: #333;
-    line-height: 1.6;
+
+
+.containerbox {
+  display: flex; /* Enable Flexbox */
+  flex-wrap: wrap; /* Allow items to wrap to the next line */
+  gap: 10px; /* Add spacing between items */
+  justify-content: space-between; /* Distribute items evenly */
+  align-items: stretch; /* Make all items the same height */
 }
 
-/* Container */
-.container {
-    width: 90%;
-    max-width: 1100px;
-    margin: auto;
-    padding: 0.5rem 0;
+/* Center the donations image and keep it responsive */
+.donation-img {
+  display: block;
+  margin: 1rem auto;      /* centers horizontally */
+  max-width: 600px;       /* optional cap */
+  width: 100%;            /* responsive */
+  height: auto;
+  border-radius: 8px;     /* optional nicety */
 }
 
-/* Header/Menu */
-header {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    background-color: transparent;
-    color: white;
-    padding: 0.5rem 1rem; /* Balanced default padding */
-    z-index: 10;
+
+.box {
+  width: 48%; /* Each box takes half the width */
+  height: 200px; /* Example height */
+  background-color: lightblue; /* Example background color */
+  display: flex;
+  justify-content: center; /* Center content horizontally inside the box */
+  align-items: center; /* Center content vertically inside the box */
+  text-align: center;
 }
 
-header.scrolled {
-    background-color: #00234B;
+@media (max-width: 768px) {
+  .box {
+      width: 90%; /* Make boxes full-width on smaller screens */
+  }
 }
 
-.header .container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+.title-subtitle {
+  display: flex; /* Align items horizontally */
+  align-items: center; /* Vertically center the logo and text */
+  gap: 10px; /* Add spacing between the logo and the text */
 }
 
 .logo {
-    width: 60px;
-    height: auto;
+  width: 80px; /* Default size for larger screens */
+  height: auto; /* Maintain aspect ratio */
+  max-width: 20vw; /* Ensure it scales responsively */
 }
 
-.header .title {
-    font-size: 1.3rem; /* smaller by default */
-    margin-bottom: 0;
-}
-
-/* Compact header for landscape / small height */
-@media (max-height: 500px) {
-  header {
-    padding: 0.2rem 0.5rem;
-  }
+@media (max-width: 768px) {
   .logo {
-    width: 36px;
+    width: 50px; /* Smaller size for mobile devices */
   }
-  .header .title {
-    font-size: 1.1rem;
-  }
-}
 
-/* Make header slightly larger on very wide desktops */
-@media (min-width: 1400px) and (min-height: 800px) {
-  .logo {
-    width: 80px;
-  }
-  .header .title {
-    font-size: 1.6rem;
-  }
-  header {
-    padding: 0.8rem 2rem;
+  .title-subtitle {
+    gap: 5px; /* Reduce spacing on smaller screens */
   }
 }
-
-/* Navigation */
-.header nav {
-    margin-left: auto;
-}
-
-.header nav ul {
-    list-style: none;
-    display: flex;
-    gap: 1.5rem;
-    margin: 0;
-    padding: 0;
-}
-
-.header nav ul li a {
-    color: white;
-    text-decoration: none;
-    font-weight: bold;
-    transition: color 0.3s;
-}
-
-.header nav ul li a:hover {
-    color: #d3d3d3;
-}
-
-/* Hamburger */
+/* Default styles */
 .hamburger {
   display: none;
   font-size: 24px;
@@ -122,11 +77,12 @@ header.scrolled {
 
 @media (max-width: 768px) {
   .nav-menu {
-    display: none;
+    display: none; /* Hide the links by default */
   }
+
   .nav-menu.active {
-    display: flex;
-    flex-direction: column;
+    display: flex; /* Show the links when the menu is active */
+    flex-direction: column; /* Stack links vertically */
     background-color: #fff;
     position: absolute;
     top: 60px;
@@ -137,19 +93,18 @@ header.scrolled {
   }
 }
 
-/* Layout Boxes */
 .main-content {
     display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
+    flex-wrap: wrap; /* Allow boxes to wrap to the next line */
+    gap: 1rem; /* Add spacing between boxes */
     padding: 1rem;
-    max-width: 1200px;
-    margin: 0 auto;
-    align-items: stretch;
+    max-width: 1200px; /* Set a comfortable max width */
+    margin: 0 auto; /* Center the content horizontally */
+    align-items: stretch; /* Make all boxes at the same level the same height */
 }
 
 .section {
-    flex: 1 1 calc(50% - 1rem);
+    flex: 1 1 calc(50% - 1rem); /* Adjust width as needed */
     background-color: #f5f5f5;
     border: 1px solid #ddd;
     border-radius: 8px;
@@ -157,8 +112,9 @@ header.scrolled {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
+
 .full-width {
-    flex: 0 0 100%;
+    flex: 0 0 100%; /* Takes the full horizontal space */
     background-color: #f5f5f5;
     border: 1px solid #ddd;
     border-radius: 8px;
@@ -167,8 +123,8 @@ header.scrolled {
 }
 
 .half-width {
-    flex: 1 1 calc(50% - 1rem);
-    min-width: 400px;
+    flex: 1 1 calc(50% - 1rem); /* Take half the width minus the gap */
+    min-width: 400px; /* Minimum width before wrapping */
     background-color: #f5f5f5;
     border: 1px solid #ddd;
     border-radius: 8px;
@@ -177,8 +133,8 @@ header.scrolled {
 }
 
 .one-third {
-    flex: 0 0 calc(33.33% - 1rem);
-    min-width: 340px;
+    flex: 0 0 calc(33.33% - 1rem); /* Takes 1/3 of the horizontal space */
+    min-width: 340px; /* Minimum width before wrapping */
     background-color: #f5f5f5;
     border: 1px solid #ddd;
     border-radius: 8px;
@@ -188,8 +144,9 @@ header.scrolled {
 }
 
 .two-thirds {
-    flex: 0 0 calc(66.67% - 1rem);
-    min-width: 400px;
+    flex: 0 0 calc(66.67% - 1rem); /* Takes 2/3 of the horizontal space */
+    min-width: 400px; /* Minimum width before wrapping */
+
     background-color: #f5f5f5;
     border: 1px solid #ddd;
     border-radius: 8px;
@@ -197,21 +154,44 @@ header.scrolled {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-/* Make layout shrink better on very small screens */
-@media (max-width: 480px) {
-  .half-width, .one-third, .two-thirds {
-    min-width: auto;
-    flex: 1 1 100%;
-  }
-  iframe {
-    max-width: 100%;
-  }
+
+
+html {
+    scroll-behavior: smooth; /* Enables smooth scrolling for modern browsers */
 }
 
-/* Hero */
+.header .container {
+    display: flex;
+    justify-content: space-between; /* Space between title-subtitle and nav */
+    align-items: center; /* Align items vertically in the center */
+  }
+  
+  .header nav {
+    margin-left: auto; /* Push the nav to the right */
+  }
+  
+  .header nav ul {
+    list-style: none;
+    display: flex;
+    gap: 1.5rem; /* Add spacing between menu items */
+    margin: 0;
+    padding: 0;
+  }
+  
+  .header nav ul li a {
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+    transition: color 0.3s;
+  }
+  
+  .header nav ul li a:hover {
+    color: #d3d3d3; /* Accent color */
+  }
+
 .hero {
     position: relative;
-    background: url('img/hero.png') no-repeat center center/cover;
+    background: url('img/hero.png') no-repeat center center/cover; /* Replace with your image */
     height: 100vh;
     color: white;
     display: flex;
@@ -220,135 +200,299 @@ header.scrolled {
     align-items: center;
     text-align: center;
     padding-top: 0;
-    background-attachment: fixed;
+    background-attachment: fixed; /* Enables the parallax effect */
     background-size: cover;
     background-position: center;
 }
 
 @media (max-width: 768px) {
     .hero {
-        background-attachment: scroll;
+        background-attachment: scroll; /* Disable parallax on smaller screens for better performance */
     }
 }
 
-.hero::before {
+  
+  .hero::before {
     content: '';
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: rgba(0, 0, 0, 0.5); /* Dark overlay */
     z-index: 1;
-}
-
-.hero h1 {
+  }
+  
+  .hero h1 {
     position: relative;
     z-index: 2;
     font-size: 3rem;
     margin-bottom: 1rem;
-}
-
-.hero p {
+  }
+  
+  .hero p {
     position: relative;
     z-index: 2;
     font-size: 1.2rem;
     margin-bottom: 1.5rem;
-}
-
-.hero .cta {
+  }
+  
+  .hero .cta {
     position: relative;
     z-index: 2;
     padding: 0.8rem 1.5rem;
-    background: #8b0000;
+    background: #8b0000; /* Accent color */
     color: white;
     border-radius: 5px;
     text-decoration: none;
     transition: background 0.3s;
-}
-
-.hero .cta:hover {
+  }
+  
+  .hero .cta:hover {
     background: #b22222;
-}
-
-@media (max-width: 768px) {
-  .hero h1 {
-    font-size: 2.5rem;
   }
-  .hero p {
+  
+  /* Responsive Hero */
+  @media (max-width: 768px) {
+    .hero h1 {
+      font-size: 2.5rem;
+    }
+  
+    .hero p {
+      font-size: 1rem;
+    }
+  }
+
+/* Base Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  body {
+    font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
+    background-color: #f4f4f4;
+    color: #333;
+    line-height: 1.6;
+  }
+  
+  /* Container */
+  .container {
+    width: 90%;
+    max-width: 1100px;
+    margin: auto;
+    padding: 1rem 0;
+  }
+  
+  /* Header/Menu */
+  header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background-color:transparent; /* Match your design */
+    color: white;
+    padding: 1rem;
+    z-index: 10; /* Ensure it stays above other elements */
+  }
+
+  header.scrolled {
+    background-color: #00234B; /* Change to blue when scrolled */
+  }
+  
+  header nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  header nav ul {
+    list-style: none;
+    display: flex;
+    gap: 1.5rem;
+    margin: 0;
+    padding: 0;
+  }
+  
+  header nav ul li a {
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+    transition: color 0.3s;
+  }
+  
+  header nav ul li a:hover {
+    color: #8b0000; /* Accent color */
+  }
+  
+
+  .header .issue-date {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    background-color: #001f4d;
+    color: white;
+    padding: 0.5rem;
+    font-weight: bold;
+    text-align: center;
+    border-radius: 0.3rem;
+    line-height: 1.2rem;
+  }
+  
+  .header .title {
+    font-size: 2rem;
+    margin-bottom: 0.2rem;
+  }
+  
+  .header .subtitle {
     font-size: 1rem;
+    font-weight: 300;
+    color: #add8e6;
   }
-}
-
-/* Sections */
-.section.alt {
+  
+  /* Navigation */
+  .nav {
+    background-color: #005eb8;
+  }
+  
+  .nav ul {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    list-style: none;
+  }
+  
+  .nav ul li {
+    margin: 0.5rem;
+  }
+  
+  .nav ul li a {
+    color: white;
+    padding: 0.5rem 1rem;
+    background-color: #0074d9;
+    border-radius: 5px;
+    text-decoration: none;
+    transition: background 0.3s;
+  }
+  
+  .nav ul li a:hover {
+    background-color: #003366;
+  }
+  
+  /* Sections */
+  .section {
+    padding: 2rem 2rem;
+    background-color: white;
+  }
+  
+  .section.alt {
     background-color: #e9f0f8;
-}
+  }
 
-.section.alt2 {
+  .section.alt2 {
     background-color: #00234B;
     color: white;
-}
-.section.alt2 h3 {
+  }
+  .section.alt2 h3{
     color: white;
-}
-.section.alt2 h2 {
+  }
+  .section.alt2 h2{
     color: #00234B;
     margin-bottom: 1rem;
     font-size: 1.75rem;
-}
-
-.section h2 {
+  }
+  
+  .section h2 {
     color: #00234B;
     margin-bottom: 1rem;
     font-size: 1.75rem;
     margin-left: 1rem;
-}
-
-.section h3 {
+  }
+  .section.white h2 {
+    color: white;
+  }
+  
+  .section h3 {
     color: #00234B;
     margin-top: 1.5rem;
     margin-bottom: 0.5rem;
-}
-
-.section p, .section ul {
+  }
+  
+  .section p, .section ul {
     margin-bottom: 1rem;
-}
-
-.highlight-box {
-    background-color: #FF001C;
-    color: white;
+  }
+  
+  .section ul {
+    list-style: disc;
+    padding-left: 1.5rem;
+  }
+  
+  .highlight-box {
+    background-color: #FF001C; /* Lighter red for better contrast */
+    color: white; /* White text for readability */
     padding: 1rem 1.5rem;
     font-weight: bold;
     margin-bottom: 1.5rem;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    border: 1px solid #FF001C;
+    border: 1px solid #FF001C; /* Darker border for definition */
 }
 
 .cta {
     display: inline-block;
     margin-top: 1rem;
     padding: 0.6rem 1rem;
-    background: #004080;
+    background: #004080; /* Darker blue for better contrast */
     color: white;
     border-radius: 5px;
     text-decoration: none;
 }
-
-.cta:hover {
+  
+  .cta:hover {
     background: #003366;
-}
-
-/* Footer */
-.footer {
+  }
+  
+  /* Footer */
+  .footer {
     background-color: #003366;
     color: white;
     text-align: center;
     padding: 1rem;
     font-size: 0.9rem;
-}
-
-.footer a {
+  }
+  
+  .footer a {
     color: #add8e6;
     text-decoration: underline;
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .nav ul {
+      flex-direction: column;
+      align-items: center;
+    }
+  
+    .header .title {
+      font-size: 1.5rem;
+    }
+  
+    .section h2 {
+      font-size: 1.5rem;
+    }
+  
+    .section h3 {
+      font-size: 1.2rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+  .half-width, .one-third, .two-thirds {
+    min-width: auto;   /* Allow shrinking */
+    flex: 1 1 100%;    /* Force full width */
+  }
+
+  iframe {
+    max-width: 100%;   /* Prevent overshoot */
+  }
 }
