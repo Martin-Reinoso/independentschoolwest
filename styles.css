@@ -1,3 +1,10 @@
+
+html, body {
+  overflow-x: hidden; /* Hide horizontal overflow */
+}
+
+
+
 .containerbox {
   display: flex; /* Enable Flexbox */
   flex-wrap: wrap; /* Allow items to wrap to the next line */
@@ -470,3 +477,14 @@ html {
       font-size: 1.2rem;
     }
   }
+
+  @media (max-width: 480px) {
+  .half-width, .one-third, .two-thirds {
+    min-width: auto;   /* Allow shrinking */
+    flex: 1 1 100%;    /* Force full width */
+  }
+
+  iframe {
+    max-width: 100%;   /* Prevent overshoot */
+  }
+}
