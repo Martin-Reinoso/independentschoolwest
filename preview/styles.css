@@ -262,7 +262,7 @@ h1, h2, h3, h4 {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.55);
-  z-index: 140;
+  z-index: 99; /* below header (100) so the nav menu always shows on top */
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.35s ease;
@@ -1002,7 +1002,7 @@ h1, h2, h3, h4 {
     height: 100vh;
     background: var(--navy);
     padding: 5rem 2rem 2rem;
-    z-index: 150;
+    z-index: 200;
     transition: right 0.35s ease;
     box-shadow: -10px 0 40px rgba(0, 0, 0, 0.3);
   }
