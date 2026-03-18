@@ -153,6 +153,19 @@ h1, h2, h3, h4 {
   font-size: 1rem;
 }
 
+.btn-gold {
+  background: var(--gold-light);
+  color: var(--navy-dark);
+  border-color: var(--gold-light);
+  font-weight: 700;
+}
+.btn-gold:hover {
+  background: var(--gold);
+  border-color: var(--gold);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(232, 160, 32, 0.4);
+}
+
 /* ====================================================
    HEADER
    ==================================================== */
@@ -269,7 +282,7 @@ h1, h2, h3, h4 {
 .hero-bg {
   position: absolute;
   inset: 0;
-  background: url('../img/hero.png') center center / cover no-repeat;
+  background: url('img/hero.png') center center / cover no-repeat;
   background-attachment: fixed;
   transform: scale(1.04);
 }
@@ -320,7 +333,7 @@ h1, h2, h3, h4 {
 }
 
 .hero-accent {
-  color: #ff8fa0;
+  color: #e8a020;
   font-style: italic;
 }
 
@@ -435,7 +448,8 @@ h1, h2, h3, h4 {
   border-bottom-color: var(--red);
 }
 
-.pillar-icon     { font-size: 2.4rem; margin-bottom: 1.25rem; }
+.pillar-icon     { margin-bottom: 1.25rem; width: 48px; height: 48px; color: var(--red); }
+.pillar-icon svg { width: 100%; height: 100%; }
 .pillar-card h3  { font-size: 1.25rem; color: var(--navy); margin-bottom: 0.75rem; }
 .pillar-card p   { color: var(--text-light); line-height: 1.75; font-size: 0.94rem; }
 
@@ -515,6 +529,12 @@ h1, h2, h3, h4 {
   font-size: 1.3rem;
   font-weight: 700;
   color: var(--gold-light);
+}
+.fund-exceeded {
+  color: #6ee86e;
+}
+.progress-bar-exceeded {
+  background: linear-gradient(90deg, #4caf50, #6ee86e) !important;
 }
 
 .progress-bar-track {
@@ -758,12 +778,14 @@ h1, h2, h3, h4 {
   transform: translateY(-5px);
 }
 
-.inv-icon              { font-size: 2.4rem; margin-bottom: 1rem; }
+.inv-icon              { margin-bottom: 1rem; width: 44px; height: 44px; color: var(--gold-light); margin-left: auto; margin-right: auto; }
+.inv-icon svg          { width: 100%; height: 100%; }
 .involvement-card h3   { font-size: 1.1rem; color: var(--white); margin-bottom: 0.5rem; }
 .involvement-card p    { font-size: 0.87rem; color: rgba(255, 255, 255, 0.62); line-height: 1.65; }
 
 .contact-block     { margin-top: 1rem; }
 .contact-block p   { color: rgba(255, 255, 255, 0.68); margin-bottom: 1.25rem; font-size: 1.05rem; }
+.contact-actions   { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; }
 
 /* ====================================================
    FOOTER
