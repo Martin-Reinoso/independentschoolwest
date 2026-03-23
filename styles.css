@@ -284,7 +284,7 @@ h1, h2, h3, h4 {
 .hero-bg {
   position: absolute;
   inset: 0;
-  background: url('img/hero.png') center center / cover no-repeat;
+  background: url('img/hero.jpg') center center / cover no-repeat;
   background-attachment: fixed;
   transform: scale(1.04);
 }

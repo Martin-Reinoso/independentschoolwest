@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://www.familiesforeducation.com/sitemap.xml
+Sitemap: https://www.ffe.org.au/sitemap.xml
