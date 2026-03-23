@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://www.ffe.org.au/sitemap.xml
+Sitemap: https://ffe.org.au/sitemap.xml
