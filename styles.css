@@ -326,6 +326,19 @@ h1, h2, h3, h4 {
   margin-bottom: 1.75rem;
 }
 
+.hero-location {
+  display: inline-block;
+  margin-bottom: 1.35rem;
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
 .hero-title {
   font-size: clamp(2.6rem, 7vw, 5rem);
   line-height: 1.1;
@@ -454,6 +467,7 @@ h1, h2, h3, h4 {
 .pillar-icon svg { width: 100%; height: 100%; }
 .pillar-card h3  { font-size: 1.25rem; color: var(--navy); margin-bottom: 0.75rem; }
 .pillar-card p   { color: var(--text-light); line-height: 1.75; font-size: 0.94rem; }
+.pillar-card p + p { margin-top: 0.85rem; }
 
 /* ====================================================
    STORY
@@ -471,34 +485,51 @@ h1, h2, h3, h4 {
 
 .story-text .section-title { margin-bottom: 1.5rem; }
 .story-text p               { color: var(--text-light); margin-bottom: 1.25rem; line-height: 1.8; }
-.story-text .btn            { margin-top: 0.5rem; }
+.story-subtitle {
+  font-size: 1.1rem;
+  color: var(--navy);
+  margin: 0.75rem 0 0.6rem;
+}
 
-.story-image-wrap { position: relative; }
+.story-media-card {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
 
 .story-img {
   width: 100%;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  aspect-ratio: 4 / 3;
-  object-fit: cover;
+  height: auto;
+  object-fit: contain;
 }
 
-.story-quote {
-  position: absolute;
-  bottom: -1.5rem;
-  left: -1.5rem;
-  background: var(--navy);
-  padding: 1.25rem 1.5rem;
-  border-radius: var(--radius);
-  max-width: 280px;
-  box-shadow: var(--shadow-lg);
+.story-caption {
+  padding: 1rem 1.25rem 1.2rem;
+  font-size: 0.93rem;
+  color: var(--text-light);
+  line-height: 1.7;
 }
-.story-quote blockquote {
-  font-family: var(--font-heading);
-  font-size: 0.88rem;
-  font-style: italic;
-  line-height: 1.55;
-  color: rgba(255, 255, 255, 0.9);
+
+/* ====================================================
+   FOUNDING PRINCIPAL
+   ==================================================== */
+.principal {
+  background: var(--off-white);
+}
+
+.principal-card {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  padding: 2.5rem;
+  box-shadow: var(--shadow);
+  border-left: 6px solid var(--red);
+}
+
+.principal-card p {
+  color: var(--text-light);
+  line-height: 1.85;
+  max-width: 900px;
 }
 
 /* ====================================================
@@ -562,11 +593,44 @@ h1, h2, h3, h4 {
   color: rgba(255, 255, 255, 0.55);
 }
 
+.fundraising-support {
+  margin-top: 1.25rem;
+}
+
+.fundraising-support p {
+  color: rgba(255, 255, 255, 0.82);
+  line-height: 1.7;
+  max-width: 860px;
+}
+
+.fundraising-support p + p {
+  margin-top: 0.55rem;
+}
+
+.fundraising-support .btn {
+  margin-top: 1.25rem;
+}
+
 /* Milestones */
 .milestones {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr;
   gap: 1.25rem;
+}
+
+.milestones-heading {
+  margin: 2.5rem 0 1.25rem;
+}
+
+.milestones-heading h3 {
+  font-size: 1.35rem;
+  color: var(--white);
+  margin-bottom: 0.4rem;
+}
+
+.milestones-heading p {
+  color: rgba(255, 255, 255, 0.62);
+  line-height: 1.7;
 }
 
 .milestone {
@@ -619,6 +683,15 @@ h1, h2, h3, h4 {
   font-size: 0.82rem;
   color: rgba(255, 255, 255, 0.5);
   line-height: 1.5;
+}
+
+.milestone-content a {
+  color: var(--gold-light);
+  font-weight: 600;
+}
+
+.milestone-content a:hover {
+  color: var(--white);
 }
 
 /* ====================================================
@@ -975,10 +1048,7 @@ h1, h2, h3, h4 {
   .pillar-grid { grid-template-columns: repeat(2, 1fr); }
 
   .story-grid  { grid-template-columns: 1fr; gap: 3.5rem; }
-  .story-image-wrap { max-width: 520px; margin: 0 auto; }
-  .story-quote { bottom: -1rem; left: 0; }
-
-  .milestones  { grid-template-columns: 1fr; }
+  .story-media-card { max-width: 520px; margin: 0 auto; }
 
   .updates-grid { grid-template-columns: repeat(2, 1fr); }
 
@@ -1034,6 +1104,12 @@ h1, h2, h3, h4 {
   .stat-divider { display: none; }
   .hero-actions { flex-direction: column; align-items: center; }
   .hero-actions .btn { width: 100%; max-width: 280px; justify-content: center; }
+  .hero-location {
+    display: block;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+  }
 
   /* Pillars */
   .pillar-grid { grid-template-columns: 1fr; }
@@ -1072,10 +1148,4 @@ h1, h2, h3, h4 {
   .stat-number, .stat-prefix, .stat-suffix { font-size: 2rem; }
 
   .brand-name { display: none; }
-
-  .story-quote {
-    position: static;
-    margin-top: 1rem;
-    max-width: 100%;
-  }
 }
