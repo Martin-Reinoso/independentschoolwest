@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Website Changes Tracker — Families for Education</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy: #1a2744;
+      --gold: #c8a96e;
+      --green: #2d7a4f;
+      --red: #c0392b;
+      --amber: #d68910;
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --border: #e2e6f0;
+      --text: #1e2d3d;
+      --muted: #6b7a99;
+      --small-bg: #eef6f1;
+      --substantial-bg: #fdf3e7;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 0;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .page-header {
+      background: var(--navy);
+      color: white;
+      padding: 36px 32px 28px;
+      border-bottom: 3px solid var(--gold);
+    }
+    .page-header h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.75rem;
+      color: white;
+      margin-bottom: 6px;
+    }
+    .page-header p {
+      font-size: 0.875rem;
+      color: rgba(255,255,255,0.65);
+    }
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--gold);
+      text-decoration: none;
+      margin-bottom: 16px;
+      opacity: 0.85;
+    }
+    .back-link:hover { opacity: 1; }
+
+    /* ── Summary bar ── */
+    .summary-bar {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding: 20px 32px;
+      background: white;
+      border-bottom: 1px solid var(--border);
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+    .badge-small   { background: var(--small-bg);       color: var(--green);  }
+    .badge-large   { background: var(--substantial-bg); color: var(--amber);  }
+    .badge-done    { background: #e8f8ef;               color: #1d6b3e;       }
+    .badge-pending { background: #fff4e4;               color: #b5580a;       }
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .dot-small   { background: var(--green); }
+    .dot-large   { background: var(--amber); }
+    .dot-done    { background: #1d6b3e; }
+    .dot-pending { background: #b5580a; }
+
+    /* ── Main layout ── */
+    .main { padding: 32px; max-width: 1300px; margin: 0 auto; }
+
+    /* ── Section titles ── */
+    .section-heading {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 40px 0 16px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--border);
+    }
+    .section-heading h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.2rem;
+      color: var(--navy);
+    }
+    .pill {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 999px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .pill-small       { background: var(--small-bg);       color: var(--green); }
+    .pill-substantial { background: var(--substantial-bg); color: var(--amber); }
+
+    /* ── Table ── */
+    .table-wrap { overflow-x: auto; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--card);
+      font-size: 0.845rem;
+    }
+    thead tr {
+      background: var(--navy);
+      color: white;
+    }
+    thead th {
+      padding: 13px 16px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid var(--border); }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #f8f9fd; }
+    td {
+      padding: 14px 16px;
+      vertical-align: top;
+      line-height: 1.55;
+    }
+    td.num {
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+      width: 36px;
+    }
+    td.section-col {
+      font-weight: 500;
+      color: var(--navy);
+      white-space: nowrap;
+      width: 160px;
+    }
+    td.change-col {
+      max-width: 600px;
+    }
+    td.change-col .from {
+      color: var(--muted);
+      font-size: 0.78rem;
+      margin-bottom: 6px;
+    }
+    td.change-col .from strong { color: var(--text); }
+    td.change-col .to {
+      font-size: 0.82rem;
+      color: var(--text);
+    }
+    td.change-col .note {
+      margin-top: 6px;
+      font-size: 0.77rem;
+      color: #8b4f00;
+      background: #fff8ee;
+      border-left: 3px solid var(--gold);
+      padding: 5px 8px;
+      border-radius: 0 4px 4px 0;
+    }
+
+    /* ── Comment cell ── */
+    td.comment-col { width: 220px; min-width: 160px; }
+    .comment-area {
+      width: 100%;
+      min-height: 64px;
+      resize: vertical;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 7px 9px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.78rem;
+      color: var(--text);
+      background: #fafbfd;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      line-height: 1.5;
+    }
+    .comment-area:focus {
+      outline: none;
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(200,169,110,0.15);
+      background: #fff;
+    }
+    .comment-area::placeholder { color: #b0bace; }
+    .comment-saved {
+      font-size: 0.68rem;
+      color: var(--green);
+      margin-top: 3px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      height: 14px;
+    }
+    .comment-saved.show { opacity: 1; }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .status-done    { background: #e8f8ef; color: #1d6b3e; }
+    .status-pending { background: #fff4e4; color: #b5580a; }
+
+    /* ── Legend ── */
+    .legend {
+      margin-top: 48px;
+      padding: 20px 24px;
+      background: white;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    .legend h3 { font-size: 0.85rem; color: var(--navy); margin-bottom: 10px; }
+    .legend ul { list-style: none; display: flex; flex-wrap: wrap; gap: 20px; }
+    .legend li { display: flex; align-items: center; gap: 8px; }
+
+    @media (max-width: 700px) {
+      .page-header, .summary-bar, .main { padding-left: 16px; padding-right: 16px; }
+      td.section-col { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-header">
+    <a href="/" class="back-link">← Back to ffe.org.au</a>
+    <h1>Website Changes Tracker</h1>
+    <p>Internal reference — all requested changes from Fergus, April 2026. Update the <strong>Status</strong> column as each change is implemented.</p>
+  </div>
+
+  <div class="summary-bar">
+    <span class="badge badge-small"><span class="dot dot-small"></span>Small changes: 17</span>
+    <span class="badge badge-large"><span class="dot dot-large"></span>Substantial changes: 8</span>
+    <span class="badge badge-done"><span class="dot dot-done"></span>Done: 0</span>
+    <span class="badge badge-pending"><span class="dot dot-pending"></span>Pending: 25</span>
+  </div>
+
+  <div class="main">
+
+    <!-- ════════════════════════════════
+         SMALL CHANGES
+    ════════════════════════════════ -->
+    <div class="section-heading">
+      <h2>Small Changes</h2>
+      <span class="pill pill-small">Text / Wording</span>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Section</th>
+            <th>Change</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+
+          <tr>
+            <td class="num">S1</td>
+            <td class="section-col">Pillars — Heading</td>
+            <td class="change-col">
+              <div class="from">From: <strong>"Our Foundation: Why Choose Families for Education?"</strong></div>
+              <div class="to">To: <em>"Our Foundation: What is Distinctive About Families for Education?"</em></div>
+            </td>
+            <td><span class="status-badge status-pending">Pending</span></td>
+          </tr>
+
+          <tr>
+            <td class="num">S2</td>
+            <td class="section-col">Pillars — Subtitle</td>
+            <td class="change-col">
+              <div class="from">From: <strong>"We believe the best education happens when school and home work as one. Our three pillars guide everything we do."</strong></div>
+              <div class="to">To: <em>"We believe the best education happens when children and young people receive the same message and example at home and school. The following three pillars guide everything we do:"</em></div>
+            </td>
+            <td><span class="status-badge status-pending">Pending</span></td>
+          </tr>
+
+          <tr>
+            <td class="num">S3</td>
+            <td class="section-col">Pillars — Faith &amp; Character</td>
+            <td class="change-col">
+              <div class="from">From: <strong>"Rooted in Catholic tradition, we form young people in virtue, purpose, and a deep relationship with God — preparing them for life, not just exams."</strong></div>
+              <div class="to">To: <em>"We offer an education rooted in the Catholic tradition, which forms children and young people in virtue, purpose, and a deep relationship with God — preparing them to flourish for life, not just exams."</em></div>
+            </td>
+            <td><span class="status-badge status-pending">Pending</span></td>
+          </tr>
+
+          <tr>
+            <td class="num">S4</td>
+            <td class="section-col">Pillars — Parent Partnership</td>
+            <td class="change-col">
+              <div class="from">From: <strong>"Parents are the first educators. Our school is an extension of the home — a true partnership where families and teachers walk the journey together."</strong></div>
+              <div class="to">To: <em>"Parents are the first educators of their children. As a result, the school should be an extension of the home.<br>Our approach to education is structured around partnering with, and supporting, parents to form their children to become people of strong character and faith."</em></div>
+            </td>
+            <td><span class="status-badge status-pending">Pending</span></td>
+          </tr>
+
+          <tr>
+            <td class="num">S5</td>
+            <td class="section-col">Progress — Section heading</td>
+            <td class="change-col">
+              <div class="from">From: <strong>"On the Road to 2027"</strong></div>
+              <div class="to">To: <em>"The Road to 2027"</em> (remove "On")</div>
+            </td>
+            <td><span class="status-badge status-pending">Pending</span></td>
+          </tr>
+
+          <tr>
+            <td class="num">S6</td>
+            <td class="section-col">Progress — Fundraising bar label</td>
+            <td class="change-col">
+              <div class="from">From: <strong>"$2M still needed"</strong></div>
+              <div class="to">To: <em>"Approx. $2M still needed"</em></div>
+            </td>
+            <td><span class="status-badge status-pending">Pending</span></td>
+          </tr>
+
+          <tr>
+            <td class="num">S7</td>
+            <td class="section-col">Progress — Fundraising footer</td>
+            <td class="change-col">
+              <div class="from">From: <strong>"Help us raise the final $2M"</strong></div>
+              <div class="to">To: <em>"We are in the final stage of fundraising - your support now helps turn plans into fully equipped classrooms ready for 2027."</em></div>
+            </td>
+            <td><span class="status-badge status-pending">Pending</span></td>
+          </tr>
+
+          <tr>
+            <td class="num">S8</td>
+            <td class="section-col">Progress — Fundraising footer</td>
+            <td class="change-col">
+              <div class="from">From: <strong>"Every contribution counts"</strong></div>
+              <div class="to">To: <em>"Every contribution - no matter how big or small - helps bring our school to life."</em></div>
+              <div class="note">Also: add a Donate button below this descriptor.</div>
+            </td>
+            <td><span class="status-badge status-pending">Pending</span></td>
+          </tr>
+
+          <tr>
+            <td class="num">S9</td>
+            <td class="section-col">Progress — Milestones</td>
+            <td class="change-col">
+              <div class="from">No heading currently on the milestones list</div>
+              <div class="to">Add heading: <em>"Goals Achieved"</em> above the completed milestones, to make it clear what is done vs pending.</div>
+            </td>
+            <td><span class="status-badge status-pending">Pending</span></td>
+          </tr>
+
+          <tr>
+            <td class="num">S10</td>
+            <td class="section-col">Progress — Board milestone</td>
+            <td class="change-col">
+              <div class="from">From: <strong>"Board Established &amp; ABN Issued / Governance structure in place. Not-for-profit registration complete."</strong></div>
+              <div class="to">To: <em>"Board Established, Company Registered, and Not-for-Profit Status Obtained / The governance structure for Families for Education is now in place. Not-for-profit status obtained."</em></div>
+            </td>
+            <td><span class="status-badge status-pending">Pending</span></td>
+          </tr>
+
+          <tr>
+            <td class="num">S11</td>
+            <td class="section-col">Progress — VRQA milestone</td>
+            <td class="change-col">
+              <div class="from">From: <strong>"VRQA Notified / Formal notification of intent to register lodged with the regulator."</strong></div>
+              <div class="to">To: <em>"Victorian Registration and Qualifications Authority (VRQA) Application / Formal notification of intent to register lodged with the Victorian school regulator. Preparation of our submission to have the school registered is well underway."</em></div>
+            </td>
+            <td><span class="status-badge status-pending">Pending</span></td>
+          </tr>
+
+          <tr>
+            <td class="num">S12</td>
+            <td class="section-col">Progress — Founding Principal milestone</td>
+            <td class="change-col">
+              <div class="from">From: <strong>"Dr Anne-Marie Irwin announced as our founding Principal — an accomplished educator with deep experience in Catholic schooling."</strong></div>
+              <div class="to">To: <em>"Dr Anne-Marie Irwin — an accomplished educator with deep experience in Catholic education - announced as our founding Principal"</em><br>(hyphen moved; link back to the Dr Irwin section)</div>
+            </td>
+            <td><span class="status-badge status-pending">Pending</span></td>
+          </tr>
+
+          <tr>
+            <td class="num">S13</td>
+            <td class="section-col">Progress — Master Planning milestone</td>
+            <td class="change-col">
+              <div class="from">From: <strong>"Master Planning Underway / Architects engaged, school design and construction planning in progress."</strong></div>
+              <div class="to">To: <em>"Planning for the Future - Ready from Day One / Our architects are developing a full master plan for the completed school, while also designing the classrooms and facilities needed for our first years of operation."</em></div>
+            </td>
+            <td><span class="status-badge status-pending">Pending</span></td>
+          </tr>
+
+          <tr>
+            <td class="num">S14</td>
+            <td class="section-col">Progress — "Final $2M" milestone</td>
+            <td class="change-col">
+              <div class="from">Current milestone: <strong>"Final $2M — Help Us Cross the Line / We're in the home stretch. Help us raise the final $2M and make this school a reality for Melbourne's West."</strong></div>
+              <div class="to">Remove entirely — superfluous given the fundraising bar above.</div>
+            </td>
+            <td><span class="status-badge status-pending">Pending</span></td>
+          </tr>
+
+          <tr>
+            <td class="num">S15</td>
+            <td class="section-col">Progress — Milestone ordering</td>
+            <td class="change-col">
+              <div class="from">Current order is unclear (not obviously chronological)</div>
+              <div class="to">Order milestones chronologically. Add a note that this is "some highlights" so it is clear the list is not exhaustive.</div>
+            </td>
+            <td><span class="status-badge status-pending">Pending</span></td>
+          </tr>
+
+          <tr>
+            <td class="num">S16</td>
+            <td class="section-col">Events — Family Picnic description</td>
+            <td class="change-col">
+              <div class="from">From: <strong>"Join us for a relaxed afternoon in the park — a wonderful chance for families to connect…"</strong></div>
+              <div class="to">To: <em>"Join us for a relaxed afternoon in the park, which will be a wonderful chance for families to connect, meet other founding families, and enjoy time together as a community. All are welcome."</em></div>
+            </td>
+            <td><span class="status-badge status-pending">Pending</span></td>
+          </tr>
+
+          <tr>
+            <td class="num">S17</td>
+            <td class="section-col">Story — Quotation source</td>
+            <td class="change-col">
+              <div class="from">Blockquote: <strong>"Parents are the first and most important educators of their children."</strong> — currently has no attribution</div>
+              <div class="to">Add a proper source/citation for this quotation.</div>
+            </td>
+            <td><span class="status-badge status-pending">Pending</span></td>
+          </tr>
+
+        </tbody>
+      </table>
+    </div>
+
+
+    <!-- ════════════════════════════════
+         SUBSTANTIAL CHANGES
+    ════════════════════════════════ -->
+    <div class="section-heading">
+      <h2>Substantial Changes</h2>
+      <span class="pill pill-substantial">New content / Layout / Assets</span>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Section</th>
+            <th>Change</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+
+          <tr>
+            <td class="num">L1</td>
+            <td class="section-col">Story — Full rewrite</td>
+            <td class="change-col">
+              <div class="from">Current "Inspired by a Proven Model" text uses opaque labels (Pared, SALT, Spalding) without explaining them</div>
+              <div class="to">Replace with the full approved text that explains each approach in plain language for parents. Includes a new "What this looks like in practice" subsection. See Fergus's message for the exact copy.</div>
+            </td>
+            <td><span class="status-badge status-pending">Pending</span></td>
+          </tr>
+
+          <tr>
+            <td class="num">L2</td>
+            <td class="section-col">Story — Dr Anne-Marie Irwin section</td>
+            <td class="change-col">
+              <div class="from">Currently the principal is mentioned in one sentence buried inside the story paragraph</div>
+              <div class="to">Create a standalone, visually distinct section for Dr Irwin with: her photo, the approved biographical text (Tangara, Spalding, SALT), and a link back to this section from the Founding Principal milestone in the progress section.</div>
+            </td>
+            <td><span class="status-badge status-pending">Pending</span></td>
+          </tr>
+
+          <tr>
+            <td class="num">L3</td>
+            <td class="section-col">Story / Site — School address</td>
+            <td class="change-col">
+              <div class="from">Address (178–202 Highett Road, Melton) is only found inside the principal description</div>
+              <div class="to">Move / surface the school address prominently near the top of the page so families can find it intuitively.</div>
+            </td>
+            <td><span class="status-badge status-pending">Pending</span></td>
+          </tr>
+
+          <tr>
+            <td class="num">L4</td>
+            <td class="section-col">Story — SALT approach photos</td>
+            <td class="change-col">
+              <div class="from">No images illustrating the SALT approach</div>
+              <div class="to">Add photo(s) of the SALT Approach in the story/Our Story section so parents can see what it looks like in practice.</div>
+              <div class="note">Photos to be sourced and provided.</div>
+            </td>
+            <td><span class="status-badge status-pending">Pending</span></td>
+          </tr>
+
+          <tr>
+            <td class="num">L5</td>
+            <td class="section-col">Nav / Hero — "Get in Touch" button</td>
+            <td class="change-col">
+              <div class="from">Contact CTA only appears at the bottom of the page</div>
+              <div class="to">Add a "Get in Touch" button at both the top (hero/nav area) and the bottom of the page.</div>
+            </td>
+            <td><span class="status-badge status-pending">Pending</span></td>
+          </tr>
+
+          <tr>
+            <td class="num">L6</td>
+            <td class="section-col">Community / Contact — Teacher EOI button</td>
+            <td class="change-col">
+              <div class="from">Only families have an Expression of Interest button</div>
+              <div class="to">Add a separate "Expression of Interest for Teachers" button in the community/contact section.</div>
+            </td>
+            <td><span class="status-badge status-pending">Pending</span></td>
+          </tr>
+
+          <tr>
+            <td class="num">L7</td>
+            <td class="section-col">Header / Banner — Image/branding</td>
+            <td class="change-col">
+              <div class="from">Current website header banner differs from the "Families for Education" banner used in the fortnightly email updates</div>
+              <div class="to">Replace the website banner with the banner from the fortnightly updates (Thomas and Fer's version). Asset to be provided.</div>
+              <div class="note">Asset to be provided — coordinate with Thomas.</div>
+            </td>
+            <td><span class="status-badge status-pending">Pending</span></td>
+          </tr>
+
+          <tr>
+            <td class="num">L8</td>
+            <td class="section-col">Events — "Join Us in Person" image</td>
+            <td class="change-col">
+              <div class="from">Current event image (<code>familyPicnic.jpg</code>) is half cut off in the layout</div>
+              <div class="to">Replace with a different, better-composed image that displays correctly. New image to be selected/provided.</div>
+              <div class="note">New image to be provided.</div>
+            </td>
+            <td><span class="status-badge status-pending">Pending</span></td>
+          </tr>
+
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ════════════════════════════════
+         LOWER PRIORITY / ONGOING
+    ════════════════════════════════ -->
+    <div class="section-heading">
+      <h2>Ongoing / Lower Priority</h2>
+      <span class="pill pill-substantial">Week-level timescale</span>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Section</th>
+            <th>Change</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+
+          <tr>
+            <td class="num">O1</td>
+            <td class="section-col">Bulletins / Emails</td>
+            <td class="change-col">
+              <div class="from">Bulletin templates contain references to $7.5M, and the "subject to VRQA registration" language is unclear</div>
+              <div class="to">Clean up all bulletin templates: remove $7.5M figures, make VRQA language clearer, ensure all figures and disclaimers align with the current website copy and regulatory requirements.</div>
+              <div class="note">Important for credibility with families and potential lenders, and to avoid regulatory issues.</div>
+            </td>
+            <td><span class="status-badge status-pending">Pending</span></td>
+          </tr>
+
+          <tr>
+            <td class="num">O2</td>
+            <td class="section-col">General — More images</td>
+            <td class="change-col">
+              <div class="from">Page is relatively image-light</div>
+              <div class="to">Add more images across the page in general to improve visual engagement. Images to be sourced/provided.</div>
+              <div class="note">Cyan blue colour scheme discussion to happen later in the week.</div>
+            </td>
+            <td><span class="status-badge status-pending">Pending</span></td>
+          </tr>
+
+        </tbody>
+      </table>
+    </div>
+
+    <div class="legend">
+      <h3>Legend</h3>
+      <ul>
+        <li><span class="dot dot-small"></span> <strong>Small</strong> — Text/wording update only, no structural change</li>
+        <li><span class="dot dot-large"></span> <strong>Substantial</strong> — New section, layout change, new asset, or significant content rewrite</li>
+        <li><span class="dot dot-done"></span> <strong>Done</strong> — Change implemented on the live site</li>
+        <li><span class="dot dot-pending"></span> <strong>Pending</strong> — Not yet implemented</li>
+      </ul>
+    </div>
+
+  </div><!-- /main -->
+
+</body>
+</html>
