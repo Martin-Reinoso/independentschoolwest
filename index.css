@@ -584,19 +584,19 @@ h1, h2, h3, h4 {
 
 .story-quote-box {
   position: absolute;
-  bottom: -2rem;
-  left: -2rem;
+  bottom: -1.5rem;
+  left: -1.5rem;
   background: var(--navy);
   border-radius: var(--radius);
-  padding: 1.5rem 1.75rem;
-  max-width: 62%;
+  padding: 1rem 1.25rem;
+  max-width: 50%;
   box-shadow: var(--shadow-lg);
 }
 
 .story-quote-text {
   font-family: var(--font-heading);
   font-style: italic;
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   font-weight: 700;
   color: var(--white);
   line-height: 1.4;
