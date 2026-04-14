@@ -512,6 +512,97 @@ h1, h2, h3, h4 {
 }
 
 /* ====================================================
+   APPROACH (SALT + SPALDING)
+   ==================================================== */
+.approach-section {
+  background: var(--navy);
+}
+
+.approach-header {
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.approach-section .section-label {
+  color: var(--gold, #c8a96e);
+}
+
+.approach-section .section-title {
+  color: var(--white);
+}
+
+.approach-section .section-title .accent {
+  color: var(--gold, #c8a96e);
+}
+
+.approach-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-top: 3rem;
+}
+
+.approach-card {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  padding: 2.5rem 2rem;
+  box-shadow: var(--shadow-lg);
+  border-top: 4px solid var(--red);
+}
+
+.approach-icon {
+  width: 48px;
+  height: 48px;
+  background: rgba(196, 30, 58, 0.08);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+}
+
+.approach-icon svg {
+  width: 24px;
+  height: 24px;
+  stroke: var(--red);
+}
+
+.approach-card h3 {
+  font-family: var(--font-head);
+  font-size: 1.2rem;
+  color: var(--navy);
+  margin-bottom: 0.75rem;
+  line-height: 1.3;
+}
+
+.approach-card > p {
+  color: var(--text-light);
+  line-height: 1.8;
+  font-size: 0.95rem;
+}
+
+.approach-practice {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border, #e2e6f0);
+}
+
+.approach-practice-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--red);
+  margin-bottom: 0.4rem;
+}
+
+.approach-practice p {
+  color: var(--text-light);
+  line-height: 1.8;
+  font-size: 0.92rem;
+}
+
+/* ====================================================
    FOUNDING PRINCIPAL
    ==================================================== */
 .principal {
@@ -1049,6 +1140,8 @@ h1, h2, h3, h4 {
 
   .story-grid  { grid-template-columns: 1fr; gap: 3.5rem; }
   .story-media-card { max-width: 520px; margin: 0 auto; }
+
+  .approach-grid { grid-template-columns: 1fr; }
 
   .updates-grid { grid-template-columns: repeat(2, 1fr); }
 
