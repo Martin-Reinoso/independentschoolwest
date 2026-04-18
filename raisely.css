@@ -1,0 +1,202 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --ffe-navy: #11284b;
+  --ffe-navy-dark: #0c1d36;
+  --ffe-gold: #c9a646;
+  --ffe-gold-dark: #b89234;
+  --ffe-cream: #f7f2e8;
+  --ffe-white: #ffffff;
+  --ffe-text: #24303f;
+  --ffe-muted: #6b7280;
+  --ffe-border: #d9e1ea;
+  --ffe-shadow: 0 18px 45px rgba(17, 40, 75, 0.12);
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  color: var(--ffe-text);
+  background: linear-gradient(180deg, #fbf8f2 0%, #f3eee3 100%);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.hero__title,
+.raisely-title {
+  font-family: 'Playfair Display', serif;
+  color: var(--ffe-navy);
+  letter-spacing: -0.02em;
+}
+
+p,
+li,
+span,
+label,
+input,
+textarea,
+select,
+button {
+  font-family: 'Inter', sans-serif;
+}
+
+a {
+  color: var(--ffe-navy);
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--ffe-gold);
+}
+
+.card,
+.panel,
+.section,
+.modal-content,
+form,
+.raisely-donate,
+.donation-form,
+.progress-widget,
+.tile {
+  background: var(--ffe-white);
+  box-shadow: var(--ffe-shadow);
+  border: 1px solid rgba(17, 40, 75, 0.06);
+}
+
+.hero,
+.campaign-hero,
+.page-header {
+  background:
+    linear-gradient(rgba(17, 40, 75, 0.55), rgba(17, 40, 75, 0.45)),
+    linear-gradient(135deg, #f1eadb 0%, #e7edf6 100%);
+  color: var(--ffe-white);
+}
+
+.hero h1,
+.hero h2,
+.campaign-hero h1,
+.page-header h1 {
+  color: var(--ffe-white);
+}
+
+.hero p,
+.campaign-hero p,
+.page-header p {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+button,
+.btn,
+.Button,
+[type='button'],
+[type='submit'] {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  background: var(--ffe-navy);
+  color: var(--ffe-white);
+  border: 0;
+  box-shadow: 0 10px 24px rgba(17, 40, 75, 0.18);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+}
+
+button:hover,
+.btn:hover,
+.Button:hover,
+[type='button']:hover,
+[type='submit']:hover {
+  background: var(--ffe-navy-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px rgba(17, 40, 75, 0.22);
+}
+
+.button--secondary,
+.btn-secondary,
+.Button--secondary {
+  background: var(--ffe-gold);
+  color: var(--ffe-navy);
+}
+
+.button--secondary:hover,
+.btn-secondary:hover,
+.Button--secondary:hover {
+  background: var(--ffe-gold-dark);
+  color: var(--ffe-navy);
+}
+
+.amount-picker button,
+.donation-amount button,
+.frequency-selector button,
+.select-donation-amount button {
+  background: var(--ffe-white);
+  color: var(--ffe-navy);
+  border: 1px solid var(--ffe-border);
+  box-shadow: none;
+}
+
+.amount-picker button:hover,
+.donation-amount button:hover,
+.frequency-selector button:hover,
+.select-donation-amount button:hover {
+  border-color: var(--ffe-gold);
+  color: var(--ffe-navy);
+  background: #fffdf8;
+}
+
+.amount-picker .active,
+.donation-amount .active,
+.frequency-selector .active,
+.select-donation-amount .active {
+  background: var(--ffe-gold);
+  color: var(--ffe-navy);
+  border-color: var(--ffe-gold);
+}
+
+input,
+textarea,
+select {
+  background: var(--ffe-white);
+  border: 1px solid var(--ffe-border);
+  color: var(--ffe-text);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--ffe-gold);
+  box-shadow: 0 0 0 3px rgba(201, 166, 70, 0.18);
+}
+
+.progress-bar,
+.progressBar,
+.goal-progress__bar,
+.progress-bar-fill {
+  background: var(--ffe-gold);
+}
+
+.progress-bar__background,
+.goal-progress__background {
+  background: #e8edf3;
+}
+
+label,
+small,
+.meta,
+.campaign-summary,
+.progress-label {
+  color: var(--ffe-muted);
+}
+
+header,
+.navbar,
+.site-header {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(17, 40, 75, 0.08);
+}
