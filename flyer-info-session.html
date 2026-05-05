@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Information Session — Families for Education</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: #00234B;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 32px 16px;
+    }
+
+    .flyer {
+      width: 100%;
+      max-width: 680px;
+      background: #ffffff;
+      border-radius: 4px;
+      overflow: hidden;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+    }
+
+    /* ── Logo ── */
+    .logo-block {
+      background: #ffffff;
+      padding: 28px 40px 22px;
+      border-bottom: 4px solid #C8102E;
+      text-align: center;
+    }
+    .logo-block img {
+      display: block;
+      margin: 0 auto;
+      width: 260px;
+      max-width: 100%;
+      height: auto;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      background: #00234B;
+      padding: 44px 48px 36px;
+      text-align: center;
+    }
+    .hero .eyebrow {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #e8a020;
+      margin-bottom: 18px;
+    }
+    .hero h1 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 38px;
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1.2;
+      margin-bottom: 10px;
+    }
+    .hero .subtitle {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 16px;
+      font-style: italic;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 28px;
+    }
+    .gold-rule {
+      width: 60px;
+      height: 3px;
+      background: #e8a020;
+      margin: 0 auto 28px;
+      border: none;
+    }
+
+    /* ── Event details box ── */
+    .details-box {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(232,160,32,0.35);
+      border-radius: 6px;
+      padding: 28px 32px;
+      display: inline-block;
+      width: 100%;
+    }
+    .details-box .detail-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #e8a020;
+      margin-bottom: 14px;
+    }
+    .details-box .detail-date {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 6px;
+    }
+    .details-box .detail-time {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 17px;
+      color: rgba(255,255,255,0.8);
+      margin-bottom: 18px;
+    }
+    .reveal-line {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 14px;
+      font-style: italic;
+      color: #e8a020;
+      letter-spacing: 0.02em;
+    }
+
+    /* ── Body copy ── */
+    .body-section {
+      background: #ffffff;
+      padding: 36px 48px 28px;
+    }
+    .body-section p {
+      font-size: 14px;
+      line-height: 1.85;
+      color: #2d3748;
+      margin-bottom: 16px;
+      text-align: justify;
+    }
+    .body-section p:last-child { margin-bottom: 0; }
+    .body-section strong { color: #00234B; }
+
+    /* ── Agenda ── */
+    .agenda-section {
+      background: #F8F6F1;
+      padding: 32px 48px 28px;
+    }
+    .agenda-section .eyebrow {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #C8102E;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    .agenda-section h2 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 20px;
+      font-weight: 600;
+      color: #00234B;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .agenda-list {
+      list-style: none;
+      width: 100%;
+    }
+    .agenda-list li {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      padding: 9px 0;
+      border-bottom: 1px solid rgba(0,35,75,0.1);
+      font-size: 13.5px;
+      color: #2d3748;
+    }
+    .agenda-list li:last-child { border-bottom: none; }
+    .agenda-topic {
+      flex: 1;
+      font-weight: 500;
+    }
+    .agenda-highlight {
+      color: #00234B;
+      font-weight: 700;
+    }
+    .agenda-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #e8a020;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .agenda-duration {
+      font-size: 11px;
+      color: #C8102E;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+
+    /* ── CTA buttons ── */
+    .cta-section {
+      background: #F8F6F1;
+      padding: 28px 48px 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      border-top: 4px solid #C8102E;
+    }
+    .btn-primary {
+      display: inline-block;
+      background-color: #C8102E;
+      color: #ffffff;
+      font-family: 'Inter', Arial, sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+      padding: 14px 36px;
+      border-radius: 6px;
+      letter-spacing: 0.05em;
+      text-align: center;
+      min-width: 260px;
+    }
+    .btn-secondary {
+      display: inline-block;
+      background-color: #F8F6F1;
+      color: #00234B;
+      border: 2px solid #00234B;
+      font-family: 'Inter', Arial, sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      text-decoration: none;
+      padding: 11px 28px;
+      border-radius: 5px;
+      letter-spacing: 0.05em;
+      text-align: center;
+      min-width: 260px;
+    }
+
+    /* ── Quote ── */
+    .quote-block {
+      background: #00234B;
+      padding: 32px 48px;
+      text-align: center;
+    }
+    .quote-text {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 20px;
+      color: #e8a020;
+      line-height: 1.55;
+      margin-bottom: 10px;
+    }
+    .quote-attr {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.5);
+    }
+
+    /* ── Footer ── */
+    .footer {
+      background: #001530;
+      padding: 20px 44px;
+      text-align: center;
+    }
+    .footer p {
+      font-size: 11px;
+      color: rgba(255,255,255,0.5);
+      line-height: 1.7;
+      margin-bottom: 4px;
+    }
+    .footer p:last-child { margin-bottom: 0; }
+    .footer a { color: rgba(255,255,255,0.5); text-decoration: none; }
+    .footer strong { color: rgba(255,255,255,0.75); }
+
+    @media print {
+      body { background: #ffffff; padding: 0; }
+      .flyer { box-shadow: none; max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="flyer">
+
+    <!-- Logo -->
+    <div class="logo-block">
+      <img src="https://ffe.org.au/img/LogoText.png" alt="Families for Education">
+    </div>
+
+    <!-- Hero -->
+    <div class="hero">
+      <p class="eyebrow">Online Information Session</p>
+      <h1>We're revealing our school name,<br>and we want you to join us!</h1>
+      <p class="subtitle">Be part of a milestone in the life of this project</p>
+      <hr class="gold-rule">
+      <div class="details-box">
+        <p class="detail-label">Event Details</p>
+        <p class="detail-date">Wednesday, 20<sup>th</sup> May 2026</p>
+        <p class="detail-time">8:30 – 9:30 p.m. &nbsp;&middot;&nbsp; Online via Google Meet</p>
+        <p class="reveal-line">&#9733; &nbsp; School name reveal on the night &nbsp; &#9733;</p>
+      </div>
+    </div>
+
+    <!-- Body copy -->
+    <div class="body-section">
+      <p>
+        This is a moment we have been working towards for some time. On <strong>Wednesday 20th May</strong> we will be hosting our second <strong>Online Information Session</strong>, and at this event we will be announcing the name of our school.
+      </p>
+      <p>
+        The evening will offer a chance to hear the latest updates on our progress, ask questions, and be part of a milestone in the life of this project. Whether you have been with us from the beginning or are only just discovering <strong>Families for Education</strong>, you are warmly welcome.
+      </p>
+      <p>
+        Please invite a friend, a neighbour, or anyone who might share this dream.
+      </p>
+    </div>
+
+    <!-- Agenda -->
+    <div class="agenda-section">
+      <p class="eyebrow">On the Night</p>
+      <h2>What to Expect</h2>
+      <ul class="agenda-list">
+        <li>
+          <span class="agenda-dot"></span>
+          <span class="agenda-topic">Welcome &amp; introduction</span>
+          <span class="agenda-duration">7 mins</span>
+        </li>
+        <li>
+          <span class="agenda-dot"></span>
+          <span class="agenda-topic agenda-highlight">School name announcement &#9733;</span>
+          <span class="agenda-duration">10 mins</span>
+        </li>
+        <li>
+          <span class="agenda-dot"></span>
+          <span class="agenda-topic">Location &amp; land development progress</span>
+          <span class="agenda-duration">10 mins</span>
+        </li>
+        <li>
+          <span class="agenda-dot"></span>
+          <span class="agenda-topic">School fees</span>
+          <span class="agenda-duration">10 mins</span>
+        </li>
+        <li>
+          <span class="agenda-dot"></span>
+          <span class="agenda-topic">Ideals in Teaching &amp; Spiritual Formation</span>
+          <span class="agenda-duration">5 mins</span>
+        </li>
+        <li>
+          <span class="agenda-dot"></span>
+          <span class="agenda-topic">New website &amp; expressions of interest</span>
+          <span class="agenda-duration">7 mins</span>
+        </li>
+        <li>
+          <span class="agenda-dot"></span>
+          <span class="agenda-topic">Q&amp;A — open to all</span>
+          <span class="agenda-duration">30 mins</span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- CTAs -->
+    <div class="cta-section">
+      <a href="https://meet.google.com/uoe-frau-buw" class="btn-primary">
+        Join via Google Meet &rarr;
+      </a>
+      <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=Information+Session+%E2%80%93+Families+for+Education&dates=20260520T103000Z%2F20260520T113000Z&details=Join+via+Google+Meet%3A+https%3A%2F%2Fmeet.google.com%2Fuoe-frau-buw&location=https%3A%2F%2Fmeet.google.com%2Fuoe-frau-buw" class="btn-secondary">
+        + Add to Google Calendar
+      </a>
+    </div>
+
+    <!-- Quote -->
+    <div class="quote-block">
+      <p class="quote-text">&ldquo;The future of humanity passes by way of the family.&rdquo;</p>
+      <p class="quote-attr">Pope St. John Paul II</p>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p>
+        Produced by the <strong>Families for Education Ltd</strong> team &nbsp;&middot;&nbsp;
+        <a href="mailto:info@ffe.org.au">info@ffe.org.au</a>
+      </p>
+      <p>
+        School opening is subject to regulatory approvals, including registration with the Victorian Registration and Qualifications Authority (VRQA).
+      </p>
+    </div>
+
+  </div>
+
+</body>
+</html>
