@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Information Session | Families for Education</title>
+  <meta name="description" content="Join Families for Education for an online information session on Wednesday 20 May 2026 as we share progress toward opening a new independent Catholic school in Melbourne's West and reveal the school's name.">
+  <meta name="author" content="Families for Education">
+  <meta property="og:title" content="Information Session | Families for Education">
+  <meta property="og:description" content="A new Catholic school is coming to Melbourne's West. Join our online information session on Wednesday 20 May 2026.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ffe.org.au/info-session/">
+  <meta property="og:image" content="https://ffe.org.au/img/flyer_information_session_may_2026.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Information Session | Families for Education">
+  <meta name="twitter:description" content="Join Families for Education online on Wednesday 20 May 2026.">
+  <link rel="icon" type="image/x-icon" href="../img/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy: #08284a;
+      --navy-deep: #04192f;
+      --red: #c8102e;
+      --gold: #dda437;
+      --cream: #f7f1e6;
+      --paper: #fffdf8;
+      --ink: #1f2937;
+      --muted: #5f6b7a;
+      --shadow: 0 22px 60px rgba(4, 25, 47, 0.22);
+      --radius: 28px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Inter", Arial, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(221, 164, 55, 0.15), transparent 28%),
+        linear-gradient(180deg, #f3ede1 0%, #f8f5ee 42%, #efe7d7 100%);
+    }
+
+    a { color: inherit; }
+
+    .page-shell {
+      width: min(1120px, calc(100% - 32px));
+      margin: 28px auto 36px;
+    }
+
+    .hero-card {
+      overflow: hidden;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      background: var(--navy);
+    }
+
+    .hero-top {
+      position: relative;
+      min-height: 430px;
+      padding: 32px;
+      display: grid;
+      align-items: end;
+      background:
+        linear-gradient(110deg, rgba(4, 25, 47, 0.24) 0%, rgba(4, 25, 47, 0.6) 42%, rgba(4, 25, 47, 0.9) 100%),
+        url("../img/Family-at-sunset.png") center 28% / cover no-repeat;
+    }
+
+    .hero-top::after {
+      content: "";
+      position: absolute;
+      inset: auto 32px 0;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    .brand-mark {
+      position: absolute;
+      top: 28px;
+      left: 32px;
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 16px;
+      border-radius: 999px;
+      background: rgba(4, 25, 47, 0.45);
+      backdrop-filter: blur(6px);
+    }
+
+    .brand-mark img {
+      width: 34px;
+      height: 34px;
+      object-fit: contain;
+    }
+
+    .brand-mark span {
+      color: #fff;
+      font-size: 0.92rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .hero-grid {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.8fr);
+      gap: 28px;
+      align-items: end;
+    }
+
+    .hero-copy {
+      color: #fff;
+      max-width: 660px;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 14px;
+      color: var(--gold);
+      font-size: 0.76rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0 0 16px;
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: clamp(2.35rem, 5vw, 4.2rem);
+      line-height: 1.02;
+      letter-spacing: -0.03em;
+    }
+
+    .hero-copy p {
+      margin: 0;
+      font-size: 1.02rem;
+      line-height: 1.7;
+      color: rgba(255, 255, 255, 0.86);
+      max-width: 58ch;
+    }
+
+    .highlight-line {
+      margin-top: 18px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      background: rgba(200, 16, 46, 0.9);
+      border-radius: 999px;
+      color: #fff;
+      font-size: 0.96rem;
+      font-weight: 700;
+    }
+
+    .event-panel {
+      background: rgba(255, 253, 248, 0.98);
+      color: var(--navy-deep);
+      border-radius: 24px;
+      padding: 24px 24px 22px;
+      box-shadow: 0 18px 50px rgba(4, 25, 47, 0.22);
+    }
+
+    .event-panel h2 {
+      margin: 0 0 14px;
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 1.55rem;
+      line-height: 1.15;
+    }
+
+    .event-meta {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 18px;
+      color: var(--ink);
+      font-size: 0.98rem;
+    }
+
+    .event-meta strong {
+      display: block;
+      margin-bottom: 2px;
+      color: var(--navy);
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .panel-note {
+      margin: 0 0 18px;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      color: var(--muted);
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 48px;
+      padding: 0 18px;
+      border-radius: 999px;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 0.95rem;
+      transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 24px rgba(4, 25, 47, 0.14);
+    }
+
+    .btn-primary {
+      background: var(--red);
+      color: #fff;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--navy);
+      border: 1.5px solid rgba(8, 40, 74, 0.22);
+    }
+
+    .content-card {
+      background: var(--paper);
+      border-radius: 0 0 var(--radius) var(--radius);
+      padding: 34px 32px 36px;
+    }
+
+    .intro-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
+      gap: 26px;
+      align-items: start;
+    }
+
+    .intro-copy p {
+      margin: 0 0 16px;
+      font-size: 1rem;
+      line-height: 1.78;
+      color: var(--ink);
+    }
+
+    .intro-copy p:last-child {
+      margin-bottom: 0;
+    }
+
+    .info-card {
+      padding: 22px;
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(8, 40, 74, 0.04), rgba(221, 164, 55, 0.1));
+      border: 1px solid rgba(8, 40, 74, 0.08);
+    }
+
+    .info-card h3,
+    .section-title {
+      margin: 0 0 14px;
+      font-family: "Playfair Display", Georgia, serif;
+      color: var(--navy);
+      font-size: 1.48rem;
+      line-height: 1.2;
+    }
+
+    .info-card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.65;
+      font-size: 0.95rem;
+    }
+
+    .section-block {
+      margin-top: 30px;
+      padding-top: 28px;
+      border-top: 1px solid rgba(8, 40, 74, 0.1);
+    }
+
+    .bullet-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .bullet-card {
+      display: flex;
+      gap: 12px;
+      padding: 18px;
+      border-radius: 18px;
+      background: #fff;
+      border: 1px solid rgba(8, 40, 74, 0.08);
+      box-shadow: 0 8px 18px rgba(8, 40, 74, 0.04);
+    }
+
+    .bullet-dot {
+      width: 10px;
+      height: 10px;
+      margin-top: 7px;
+      border-radius: 50%;
+      background: var(--gold);
+      flex: 0 0 10px;
+    }
+
+    .bullet-card p {
+      margin: 0;
+      font-size: 0.97rem;
+      line-height: 1.62;
+      color: var(--ink);
+    }
+
+    .cta-band {
+      margin-top: 30px;
+      padding: 24px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, var(--navy) 0%, #113b67 100%);
+      color: #fff;
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) auto;
+      gap: 18px;
+      align-items: center;
+    }
+
+    .cta-band h3 {
+      margin: 0 0 8px;
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 1.6rem;
+      line-height: 1.15;
+    }
+
+    .cta-band p {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.82);
+      line-height: 1.68;
+    }
+
+    .cta-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    .cta-actions .btn-secondary {
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.34);
+    }
+
+    .footer-note {
+      margin-top: 22px;
+      text-align: center;
+      font-size: 0.84rem;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    @media (max-width: 860px) {
+      .page-shell {
+        width: min(100% - 20px, 760px);
+        margin: 10px auto 24px;
+      }
+
+      .hero-top,
+      .content-card {
+        padding-left: 22px;
+        padding-right: 22px;
+      }
+
+      .hero-top {
+        min-height: unset;
+        padding-top: 88px;
+      }
+
+      .hero-grid,
+      .intro-grid,
+      .cta-band,
+      .bullet-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .cta-actions {
+        justify-content: flex-start;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .brand-mark {
+        right: 22px;
+        left: 22px;
+        justify-content: center;
+      }
+
+      .hero-copy p,
+      .intro-copy p,
+      .bullet-card p {
+        font-size: 0.96rem;
+      }
+
+      .event-panel {
+        padding: 20px;
+      }
+
+      .button-row,
+      .cta-actions {
+        flex-direction: column;
+      }
+
+      .btn {
+        width: 100%;
+      }
+
+      .highlight-line {
+        border-radius: 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page-shell">
+    <section class="hero-card">
+      <div class="hero-top">
+        <div class="brand-mark">
+          <img src="../img/famed_monogram_square.svg" alt="Families for Education logo">
+          <span>Families for Education</span>
+        </div>
+
+        <div class="hero-grid">
+          <div class="hero-copy">
+            <span class="eyebrow">Online Information Session</span>
+            <h1>A new Catholic school is coming to Melbourne's West.</h1>
+            <p>Families for Education is excited to provide an update on our progress towards opening the proposed school in 2027, and to introduce the unique vision behind our approach to education.</p>
+            <div class="highlight-line">Be there for the first public reveal of the school's name.</div>
+          </div>
+
+          <aside class="event-panel">
+            <h2>Join us online</h2>
+            <div class="event-meta">
+              <div>
+                <strong>Date</strong>
+                Wednesday 20 May 2026
+              </div>
+              <div>
+                <strong>Time</strong>
+                8:30-9:30 pm
+              </div>
+              <div>
+                <strong>Location</strong>
+                Free online via Google Meet
+              </div>
+            </div>
+            <p class="panel-note">No registration required. Come along, invite another family, and hear what is taking shape.</p>
+            <div class="button-row">
+              <a class="btn btn-primary" href="https://meet.google.com/uoe-frau-buw">Join via Google Meet</a>
+              <a class="btn btn-secondary" href="https://calendar.google.com/calendar/render?action=TEMPLATE&amp;text=Families+for+Education+Information+Session&amp;dates=20260520T103000Z%2F20260520T113000Z&amp;details=Join+via+Google+Meet%3A+https%3A%2F%2Fmeet.google.com%2Fuoe-frau-buw&amp;location=Online">Add to Calendar</a>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <div class="content-card">
+        <div class="intro-grid">
+          <div class="intro-copy">
+            <p>Families for Education is a group of Catholic families working to establish a new independent Catholic school in Melbourne's West. The project has been years in the making and is now moving into an exciting new stage.</p>
+            <p>This session is for Catholic parents who are hearing about the project for the first time, as well as families already following the journey.</p>
+          </div>
+
+          <div class="info-card">
+            <h3>At a glance</h3>
+            <p>Printed on bulletins, shared in parishes, or passed on to a friend, this session is a simple way to learn what the school could offer families in the West and where the project is heading next.</p>
+          </div>
+        </div>
+
+        <section class="section-block" aria-labelledby="night-heading">
+          <h2 class="section-title" id="night-heading">On the night</h2>
+          <div class="bullet-grid">
+            <div class="bullet-card">
+              <span class="bullet-dot" aria-hidden="true"></span>
+              <p>Meet the team and learn what this school hopes to offer Catholic families.</p>
+            </div>
+            <div class="bullet-card">
+              <span class="bullet-dot" aria-hidden="true"></span>
+              <p>See the early plans for the new school and what comes next now that land has been secured.</p>
+            </div>
+            <div class="bullet-card">
+              <span class="bullet-dot" aria-hidden="true"></span>
+              <p>Learn how to register your interest in enrolment or teaching at the school.</p>
+            </div>
+            <div class="bullet-card">
+              <span class="bullet-dot" aria-hidden="true"></span>
+              <p>Be there for the first public reveal of the school's name.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="cta-band">
+          <div>
+            <h3>Come, and bring a friend.</h3>
+            <p>Whether you are exploring future enrolment, discerning a teaching role, or simply curious about the vision, you are warmly invited.</p>
+          </div>
+          <div class="cta-actions">
+            <a class="btn btn-primary" href="https://meet.google.com/uoe-frau-buw">Open Google Meet</a>
+            <a class="btn btn-secondary" href="mailto:info@ffe.org.au">Email Families for Education</a>
+          </div>
+        </section>
+
+        <p class="footer-note">
+          Families for Education Ltd &middot; <a href="mailto:info@ffe.org.au">info@ffe.org.au</a> &middot; <a href="https://ffe.org.au/">ffe.org.au</a><br>
+          School opening remains subject to regulatory approvals, including registration with the Victorian Registration and Qualifications Authority (VRQA).
+        </p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
