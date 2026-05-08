@@ -122,6 +122,24 @@
         border: none; border-radius: 6px; padding: 0.85rem 1rem;
       }
     }
+    @keyframes info-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(232, 160, 32, 0.6); }
+      50% { box-shadow: 0 0 0 8px rgba(232, 160, 32, 0); }
+    }
+    .btn-info-session {
+      background: var(--navy-dark);
+      color: var(--gold-light);
+      border: 2px solid var(--gold);
+      font-weight: 700;
+      animation: info-pulse 2s ease-in-out infinite;
+    }
+    .btn-info-session:hover {
+      background: var(--navy);
+      border-color: var(--gold-light);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(232, 160, 32, 0.5);
+      animation: none;
+    }
   </style>
 </head>
 <body>
@@ -168,6 +186,7 @@
         <a href="#progress" class="btn btn-primary">See Our Progress</a>
         <a href="https://mailchi.mp/27a9eaa84180/mailing-list-signup" class="btn btn-outline" target="_blank" rel="noopener">Stay Updated</a>
         <a href="https://tinyurl.com/FamiliesEdEOI" class="btn btn-gold" target="_blank" rel="noopener">Register Your Child</a>
+        <a href="info-session.html" class="btn btn-info-session">Info Session — 20 May</a>
       </div>
       <div class="hero-stats animate-fade-up delay-4">
         <div class="stat">
