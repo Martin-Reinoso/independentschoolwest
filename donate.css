@@ -111,6 +111,10 @@
   border: none !important;
 }
 
+.donate-form-section .raisely-donate.is-complete iframe {
+  min-height: 360px !important;
+}
+
 .donate-assurance {
   background: var(--off-white);
 }
