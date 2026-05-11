@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Families for Education | Donate</title>
 
   <meta name="description" content="Support Families for Education as we take the next steps toward opening a new parent-partnered independent school in Melbourne's West.">
@@ -28,8 +31,21 @@
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="index.css?v=26">
-  <link rel="stylesheet" href="donate.css?v=5">
+  <link rel="stylesheet" href="donate.css?v=6">
   <script src="https://js.stripe.com/v3/"></script>
+  <script>
+    (() => {
+      const donateVersion = '20260511';
+      const currentUrl = new URL(window.location.href);
+
+      if (currentUrl.searchParams.get('v') === donateVersion) {
+        return;
+      }
+
+      currentUrl.searchParams.set('v', donateVersion);
+      window.location.replace(currentUrl.toString());
+    })();
+  </script>
 </head>
 <body>
   <header id="header" class="header-solid">
@@ -138,7 +154,7 @@
               <button type="button" class="donation-mode-btn" data-mode="monthly" aria-selected="false">Monthly</button>
             </div>
 
-            <p class="donation-encouragement" id="donation-encouragement">A one-time gift helps fund the next practical steps toward opening our doors.</p>
+            <p class="donation-encouragement" id="donation-encouragement">Giving monthly has a greater impact</p>
 
             <div class="donation-options" role="list" aria-label="Suggested donation amounts">
               <button type="button" class="donation-option" data-amount="20" role="listitem">A$20</button>
@@ -270,7 +286,7 @@
       return {
         publishableKey: 'pk_live_51TR5J2PJukgoPLm78iWJEqWcEoT3TDwU8leKzH4VLhoycp6DCez8wNktzTtQBu0t2FfG7bizq2hNgv4RfSNb5FG600fYRqdvDn',
         sessionEndpoint: 'https://yc7kml3pbslhxfhkqiluj2hth40zuzpr.lambda-url.ap-southeast-2.on.aws/create-checkout-session',
-        returnUrl: 'https://ffe.org.au/donate.html'
+        returnUrl: 'https://ffe.org.au/donate.html?v=20260511'
       };
     })();
   </script>
@@ -337,11 +353,13 @@
 
     function updateDonationUi() {
       if (donationState.mode === 'monthly') {
-        donationEncouragement.textContent = 'Monthly support helps us plan ahead, steward funds carefully, and serve more families with confidence.';
+        donationEncouragement.textContent = '';
+        donationEncouragement.hidden = true;
         donationDirectNote.textContent = '';
         donationCustomField.hidden = true;
       } else {
-        donationEncouragement.textContent = 'A one-time gift helps fund the next practical steps toward opening our doors.';
+        donationEncouragement.textContent = 'Giving monthly has a greater impact';
+        donationEncouragement.hidden = false;
         donationDirectNote.textContent = '';
         donationCustomField.hidden = false;
       }

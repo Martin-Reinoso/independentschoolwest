@@ -1,5 +1,5 @@
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
-const RETURN_URL = process.env.RETURN_URL || 'https://ffe.org.au/donate.html';
+const RETURN_URL = process.env.RETURN_URL || 'https://ffe.org.au/donate.html?v=20260511';
 const ALLOWED_ORIGINS = new Set(
   (process.env.ALLOWED_ORIGINS || 'https://ffe.org.au')
     .split(',')
@@ -9,6 +9,7 @@ const ALLOWED_ORIGINS = new Set(
 
 const PRICE_MAP = {
   oneTime: {
+    1: 'price_1TVqyZPJukgoPLm7JTFXKM1S',
     20: 'price_1TVXGcPJukgoPLm77XhWQ2ol',
     50: 'price_1TVVxxPJukgoPLm7fKxukt8F',
     100: 'price_1TVVxyPJukgoPLm7agy3WbnR',
