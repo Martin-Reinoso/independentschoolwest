@@ -28,7 +28,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="index.css?v=26">
-  <link rel="stylesheet" href="donate.css?v=2">
+  <link rel="stylesheet" href="donate.css?v=5">
+  <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
   <header id="header" class="header-solid">
@@ -116,18 +117,107 @@
         <div class="donate-form-copy">
           <div class="section-label">Make a Gift</div>
           <h2 class="section-title">Give Securely<br>Online</h2>
-          <p>Use the secure form to make a one-off or ongoing gift through Raisely. Thank you for helping us take the next steps toward opening this school.</p>
+          <p>Choose a one-time or monthly family gift and complete secure Stripe checkout without leaving the page. Families can move from selecting an amount to entering their details in one smooth flow.</p>
           <p>Donations are currently not tax deductible. We will update supporters if this status changes.</p>
           <p class="donate-bold">Every contribution brings us closer to 2027.</p>
         </div>
-        <div id="raisely-donate-embed" class="raisely-donate" data-campaign-path="families-for-education" data-profile="" data-width="100%">
-          <script src="https://cdn.raisely.com/v3/public/embed.js"></script>
-        </div>
+        <section class="donation-builder" aria-labelledby="donation-builder-title">
+          <div class="donation-selection-stage" id="donation-selection-stage">
+            <div class="donation-builder-top">
+              <div class="donation-progress" aria-hidden="true">
+                <span class="is-active"></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+
+            <h3 id="donation-builder-title" class="donation-builder-title">Choose the kind of support that fits your family.</h3>
+
+            <div class="donation-mode-toggle" role="tablist" aria-label="Donation type">
+              <button type="button" class="donation-mode-btn is-active" data-mode="oneTime" aria-selected="true">One-time</button>
+              <button type="button" class="donation-mode-btn" data-mode="monthly" aria-selected="false">Monthly</button>
+            </div>
+
+            <p class="donation-encouragement" id="donation-encouragement">A one-time gift helps fund the next practical steps toward opening our doors.</p>
+
+            <div class="donation-options" role="list" aria-label="Suggested donation amounts">
+              <button type="button" class="donation-option" data-amount="20" role="listitem">A$20</button>
+              <button type="button" class="donation-option" data-amount="50" role="listitem">A$50</button>
+              <button type="button" class="donation-option" data-amount="100" role="listitem">A$100</button>
+              <button type="button" class="donation-option" data-amount="250" role="listitem">A$250</button>
+              <button type="button" class="donation-option donation-option-wide" data-amount="500" role="listitem">A$500</button>
+            </div>
+
+            <div class="donation-custom-field" id="donation-custom-field">
+              <label class="donation-custom-label" for="donation-custom-input">Or choose your own one-time amount</label>
+              <div class="donation-custom-input-row">
+                <span class="donation-custom-currency">A$</span>
+                <input type="number" inputmode="numeric" min="1" step="1" class="donation-custom-input" id="donation-custom-input" placeholder="Enter whole dollars">
+                <button type="button" class="donation-custom-submit" id="donation-custom-submit">Continue</button>
+              </div>
+              <p class="donation-custom-help" id="donation-custom-help"></p>
+            </div>
+
+            <p class="donation-direct-note" id="donation-direct-note"></p>
+
+            <div class="donation-payment-logos" aria-label="Accepted payment methods">
+              <img src="img/donation%20page%20images/gpay.webp" alt="Google Pay" class="donation-payment-logo donation-payment-logo-gpay">
+              <img src="img/donation%20page%20images/visa.webp" alt="Visa" class="donation-payment-logo">
+              <img src="img/donation%20page%20images/mastercard.webp" alt="Mastercard" class="donation-payment-logo">
+              <img src="img/donation%20page%20images/americanexpress.webp" alt="American Express" class="donation-payment-logo">
+              <img src="img/donation%20page%20images/Apple_Pay_Mark_RGB_041619.svg" alt="Apple Pay" class="donation-payment-logo donation-payment-logo-apple">
+            </div>
+          </div>
+
+          <div class="donation-checkout-stage" id="donation-checkout-stage" hidden>
+            <div class="donation-builder-top donation-builder-top-checkout">
+              <button type="button" class="donation-back-btn" id="donation-back-btn">Back</button>
+              <div class="donation-progress" aria-hidden="true">
+                <span class="is-complete"></span>
+                <span class="is-active"></span>
+                <span></span>
+              </div>
+            </div>
+
+            <p class="donation-selected-pill" id="donation-selected-pill">Your donation</p>
+            <h3 class="donation-builder-title checkout-title">Complete your secure details</h3>
+            <p class="checkout-subcopy">Families can include first name, last name, and an optional message in checkout. Stripe keeps the payment step on this page.</p>
+
+            <div class="donation-checkout-status">
+              <p class="donation-checkout-message" id="donation-checkout-message">Preparing secure checkout…</p>
+            </div>
+
+            <div class="donation-embedded-shell">
+              <div id="embedded-checkout" class="embedded-checkout"></div>
+            </div>
+          </div>
+
+          <div class="donation-complete-panel" id="donation-complete-panel" hidden>
+            <div class="donation-builder-top donation-builder-top-complete">
+              <div class="donation-progress" aria-hidden="true">
+                <span class="is-complete"></span>
+                <span class="is-complete"></span>
+                <span class="is-active"></span>
+              </div>
+              <p class="donation-kicker">Thank you</p>
+            </div>
+            <p class="donation-complete-label">Donation received</p>
+            <h3 class="donation-builder-title donation-complete-title">Thank you for backing Families for Education.</h3>
+            <p class="donation-complete-copy" id="donation-complete-copy">Stripe will email your confirmation and payment record shortly.</p>
+            <p class="donation-complete-meta">If you would like to make another gift or support in another way, you can start again below or contact us directly.</p>
+            <div class="donation-complete-actions">
+              <button type="button" class="btn btn-primary donate-cta" id="donation-restart-btn">Make another gift</button>
+              <a href="mailto:info@ffe.org.au?subject=Giving%20Enquiry" class="btn btn-outline donate-outline-btn">Email us</a>
+            </div>
+          </div>
+
+          <p class="donation-step-footnote">Need to discuss a larger gift, a family pledge, or another form of support? <a href="#larger-gift-support">Get in touch</a>.</p>
+        </section>
       </div>
       </div>
     </section>
 
-    <section class="section-pad donate-assurance">
+    <section class="section-pad donate-assurance" id="larger-gift-support">
       <div class="container">
         <div class="assurance-panel">
           <div>
@@ -136,7 +226,7 @@
             <p>If you would prefer to speak with someone directly about giving, lending, or supporting the project in another way, we would love to hear from you.</p>
           </div>
           <div class="assurance-actions">
-            <a href="mailto:info@ffe.org.au?subject=Donation%20Enquiry" class="btn btn-primary">Email Us</a>
+            <a href="mailto:info@ffe.org.au?subject=Donation%20Enquiry" class="btn btn-primary">Email Us: info@ffe.org.au</a>
             <a href="tel:+61403100733" class="btn btn-outline donate-outline-btn">Call +61 403 100 733</a>
           </div>
         </div>
@@ -176,12 +266,45 @@
   </footer>
 
   <script>
+    window.FFE_STRIPE_CONFIG = (() => {
+      return {
+        publishableKey: 'pk_live_51TR5J2PJukgoPLm78iWJEqWcEoT3TDwU8leKzH4VLhoycp6DCez8wNktzTtQBu0t2FfG7bizq2hNgv4RfSNb5FG600fYRqdvDn',
+        sessionEndpoint: 'https://yc7kml3pbslhxfhkqiluj2hth40zuzpr.lambda-url.ap-southeast-2.on.aws/create-checkout-session',
+        returnUrl: 'https://ffe.org.au/donate.html'
+      };
+    })();
+  </script>
+
+  <script>
     const header = document.getElementById('header');
     const hamburger = document.getElementById('hamburger');
     const mainNav = document.getElementById('main-nav');
     const navOverlay = document.getElementById('nav-overlay');
-    const donateEmbed = document.getElementById('raisely-donate-embed');
-    const donateSection = document.getElementById('donate-form');
+    const donateModeButtons = document.querySelectorAll('.donation-mode-btn');
+    const donationOptions = document.querySelectorAll('.donation-option');
+    const donationSelectionStage = document.getElementById('donation-selection-stage');
+    const donationCheckoutStage = document.getElementById('donation-checkout-stage');
+    const donationCompletePanel = document.getElementById('donation-complete-panel');
+    const donationEncouragement = document.getElementById('donation-encouragement');
+    const donationDirectNote = document.getElementById('donation-direct-note');
+    const donationCustomField = document.getElementById('donation-custom-field');
+    const donationCustomInput = document.getElementById('donation-custom-input');
+    const donationCustomSubmit = document.getElementById('donation-custom-submit');
+    const donationCustomHelp = document.getElementById('donation-custom-help');
+    const donationBackButton = document.getElementById('donation-back-btn');
+    const donationSelectedPill = document.getElementById('donation-selected-pill');
+    const donationCheckoutMessage = document.getElementById('donation-checkout-message');
+    const donationCompleteCopy = document.getElementById('donation-complete-copy');
+    const donationRestartButton = document.getElementById('donation-restart-btn');
+    const embeddedCheckoutMount = document.getElementById('embedded-checkout');
+    const stripeConfig = window.FFE_STRIPE_CONFIG || {};
+
+    const donationState = {
+      mode: 'oneTime',
+      amount: null,
+      stripe: null,
+      checkout: null
+    };
 
     window.addEventListener('scroll', () => {
       header.classList.toggle('scrolled', window.scrollY > 40);
@@ -212,32 +335,185 @@
       });
     });
 
-    function isRaiselyOrigin(origin) {
+    function updateDonationUi() {
+      if (donationState.mode === 'monthly') {
+        donationEncouragement.textContent = 'Monthly support helps us plan ahead, steward funds carefully, and serve more families with confidence.';
+        donationDirectNote.textContent = '';
+        donationCustomField.hidden = true;
+      } else {
+        donationEncouragement.textContent = 'A one-time gift helps fund the next practical steps toward opening our doors.';
+        donationDirectNote.textContent = '';
+        donationCustomField.hidden = false;
+      }
+
+      donateModeButtons.forEach((button) => {
+        const active = button.dataset.mode === donationState.mode;
+        button.classList.toggle('is-active', active);
+        button.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+    }
+
+    function formatAmount(amount) {
+      return new Intl.NumberFormat('en-AU', {
+        style: 'currency',
+        currency: 'AUD',
+        maximumFractionDigits: 0
+      }).format(amount);
+    }
+
+    function destroyEmbeddedCheckout() {
+      if (donationState.checkout) {
+        donationState.checkout.destroy();
+        donationState.checkout = null;
+      }
+
+      embeddedCheckoutMount.replaceChildren();
+    }
+
+    function showSelectionStage() {
+      destroyEmbeddedCheckout();
+      donationCheckoutStage.hidden = true;
+      donationCompletePanel.hidden = true;
+      donationSelectionStage.hidden = false;
+      donationCheckoutMessage.classList.remove('donation-checkout-message-error');
+      donationCheckoutMessage.textContent = 'Preparing secure checkout…';
+    }
+
+    function showCheckoutStage(amount) {
+      const cadenceLabel = donationState.mode === 'monthly' ? 'monthly' : 'one-time';
+      donationState.amount = amount;
+      donationSelectionStage.hidden = true;
+      donationCompletePanel.hidden = true;
+      donationCheckoutStage.hidden = false;
+      donationSelectedPill.textContent = `${formatAmount(amount)} ${cadenceLabel}`;
+      donationCheckoutMessage.classList.remove('donation-checkout-message-error');
+      donationCheckoutMessage.textContent = 'Preparing secure embedded checkout…';
+      embeddedCheckoutMount.replaceChildren();
+      donationCheckoutStage.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function showCheckoutError(message) {
+      donationCheckoutMessage.textContent = message;
+      donationCheckoutMessage.classList.add('donation-checkout-message-error');
+      embeddedCheckoutMount.replaceChildren();
+    }
+
+    function showCompleteState() {
+      const cadenceCopy = donationState.mode === 'monthly'
+        ? 'Stripe will email your subscription confirmation, and future invoices will follow each monthly donation.'
+        : 'Stripe will email your confirmation and payment record shortly.';
+
+      destroyEmbeddedCheckout();
+      donationCheckoutStage.hidden = true;
+      donationSelectionStage.hidden = true;
+      donationCompletePanel.hidden = false;
+      donationCompleteCopy.textContent = cadenceCopy;
+      donationCompletePanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    async function createEmbeddedCheckout(amount) {
+      showCheckoutStage(amount);
+
+      if (!window.Stripe || !stripeConfig.publishableKey) {
+        showCheckoutError('Stripe checkout is not available because the publishable key is missing.');
+        return;
+      }
+
+      if (!stripeConfig.sessionEndpoint) {
+        showCheckoutError('Embedded checkout is ready in the page, but the session endpoint still needs to be configured before it can load here.');
+        return;
+      }
+
+      destroyEmbeddedCheckout();
+      donationState.stripe = donationState.stripe || window.Stripe(stripeConfig.publishableKey);
+
       try {
-        return /\.raisely\.(com|io)$/.test(new URL(origin).hostname);
+        let checkoutInstance = null;
+        checkoutInstance = await donationState.stripe.initEmbeddedCheckout({
+          fetchClientSecret: async () => {
+            const response = await fetch(stripeConfig.sessionEndpoint, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                mode: donationState.mode,
+                amount
+              })
+            });
+
+            const payload = await response.json();
+
+            if (!response.ok || !payload.clientSecret) {
+              throw new Error(payload.error || 'Unable to start checkout right now.');
+            }
+
+            return payload.clientSecret;
+          },
+          onComplete: () => {
+            if (checkoutInstance) {
+              checkoutInstance.destroy();
+            }
+
+            donationState.checkout = null;
+            showCompleteState();
+          }
+        });
+
+        donationState.checkout = checkoutInstance;
+        donationCheckoutMessage.textContent = 'Complete the secure details below to finish your donation.';
+        checkoutInstance.mount('#embedded-checkout');
       } catch (error) {
-        return false;
+        console.error(error);
+        showCheckoutError(error.message || 'Unable to load the secure checkout right now.');
       }
     }
 
-    function scrollDonateSectionIntoView() {
-      if (!donateSection) return;
+    function parseCustomAmount() {
+      const amount = Number.parseInt(donationCustomInput.value, 10);
 
-      const offset = header.offsetHeight + 24;
-      const top = donateSection.getBoundingClientRect().top + window.scrollY - offset;
-      window.scrollTo({ top: Math.max(top, 0), behavior: 'smooth' });
+      if (!Number.isInteger(amount) || amount < 1) {
+        donationCustomHelp.textContent = 'Please enter a whole-dollar amount of at least A$1.';
+        donationCustomHelp.classList.add('donation-checkout-message-error');
+        return null;
+      }
+
+      donationCustomHelp.textContent = '';
+      donationCustomHelp.classList.remove('donation-checkout-message-error');
+      return amount;
     }
 
-    window.addEventListener('message', (event) => {
-      if (!isRaiselyOrigin(event.origin) || !Array.isArray(event.data)) return;
-
-      const [eventName] = event.data;
-      if (eventName !== 'donation.success' && eventName !== 'subscription.success') return;
-
-      donateEmbed?.classList.add('is-complete');
-      window.setTimeout(scrollDonateSectionIntoView, 150);
-      window.setTimeout(scrollDonateSectionIntoView, 500);
+    donateModeButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        donationState.mode = button.dataset.mode;
+        updateDonationUi();
+      });
     });
+
+    donationOptions.forEach((button) => {
+      button.addEventListener('click', () => {
+        createEmbeddedCheckout(Number.parseInt(button.dataset.amount, 10));
+      });
+    });
+
+    donationCustomSubmit.addEventListener('click', () => {
+      const amount = parseCustomAmount();
+      if (amount !== null) {
+        createEmbeddedCheckout(amount);
+      }
+    });
+
+    donationCustomInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        donationCustomSubmit.click();
+      }
+    });
+
+    donationBackButton.addEventListener('click', showSelectionStage);
+    donationRestartButton.addEventListener('click', showSelectionStage);
+
+    updateDonationUi();
   </script>
 </body>
 </html>

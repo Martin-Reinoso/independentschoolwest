@@ -4,7 +4,7 @@ import { promisify } from 'node:util';
 
 const PORT = Number(process.env.PORT || 8787);
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_RESTRICTED_KEY || '';
-const RETURN_URL = process.env.RETURN_URL || 'https://ffe.org.au/donate_stripe.html';
+const RETURN_URL = process.env.RETURN_URL || 'https://ffe.org.au/donate.html';
 const ALLOWED_ORIGINS = new Set(
   (process.env.ALLOWED_ORIGINS || 'null,http://localhost,http://127.0.0.1,https://ffe.org.au')
     .split(',')
@@ -141,6 +141,7 @@ function buildSessionParams({ mode, amount }) {
 
   params.set('customer_creation', 'always');
   params.set('invoice_creation[enabled]', 'true');
+  params.set('invoice_creation[invoice_data][footer]', 'Thank you for supporting Families for Education.');
   params.set('payment_intent_data[metadata][donation_mode]', mode);
   params.set('payment_intent_data[metadata][donation_amount_aud]', String(amount));
   params.set('payment_intent_data[description]', `Families for Education ${amount} AUD one-time donation`);
@@ -150,7 +151,7 @@ function buildSessionParams({ mode, amount }) {
   } else {
     params.set('line_items[0][price_data][currency]', 'aud');
     params.set('line_items[0][price_data][product_data][name]', 'Families for Education One-time Gift');
-    params.set('line_items[0][price_data][product_data][description]', 'Custom family gift toward opening in 2027.');
+    params.set('line_items[0][price_data][product_data][description]', 'Custom family gift supporting Families for Education.');
     params.set('line_items[0][price_data][unit_amount]', String(amount * 100));
   }
 
