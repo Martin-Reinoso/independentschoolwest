@@ -1,5 +1,5 @@
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
-const RETURN_URL = process.env.RETURN_URL || 'https://ffe.org.au/donate.html?v=20260511';
+const RETURN_URL = process.env.RETURN_URL || 'https://ffe.org.au/donate.html?v=20260511-3';
 const ALLOWED_ORIGINS = new Set(
   (process.env.ALLOWED_ORIGINS || 'https://ffe.org.au')
     .split(',')
@@ -86,7 +86,15 @@ function buildSessionParams({ mode, amount }) {
   appendCustomFields(params);
 
   if (isMonthly) {
-    params.set('line_items[0][price]', PRICE_MAP.monthly[amount]);
+    if (PRICE_MAP.monthly[amount]) {
+      params.set('line_items[0][price]', PRICE_MAP.monthly[amount]);
+    } else {
+      params.set('line_items[0][price_data][currency]', 'aud');
+      params.set('line_items[0][price_data][product_data][name]', 'Families for Education Monthly Gift');
+      params.set('line_items[0][price_data][product_data][description]', 'Custom monthly family gift supporting Families for Education.');
+      params.set('line_items[0][price_data][recurring][interval]', 'month');
+      params.set('line_items[0][price_data][unit_amount]', String(amount * 100));
+    }
     params.set('line_items[0][quantity]', '1');
     params.set('subscription_data[metadata][donation_mode]', mode);
     params.set('subscription_data[metadata][donation_amount_aud]', String(amount));
@@ -128,10 +136,6 @@ async function createCheckoutSession(payload) {
 
   if (!Number.isInteger(normalizedAmount) || normalizedAmount < 1) {
     throw new Error('Donation amount must be a whole-dollar value of at least A$1.');
-  }
-
-  if (normalizedMode === 'monthly' && !PRICE_MAP.monthly[normalizedAmount]) {
-    throw new Error('Monthly donations currently support A$20, A$50, A$100, A$250, or A$500.');
   }
 
   const sessionParams = buildSessionParams({

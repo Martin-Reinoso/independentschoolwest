@@ -91,7 +91,7 @@ Current environment variables in AWS:
 Current configured values:
 
 - `ALLOWED_ORIGINS=https://ffe.org.au,https://www.ffe.org.au,http://127.0.0.1,http://localhost`
-- `RETURN_URL=https://ffe.org.au/donate.html?v=20260511`
+- `RETURN_URL=https://ffe.org.au/donate.html?v=20260511-3`
 
 Do **not** commit the live secret key into the repo.
 

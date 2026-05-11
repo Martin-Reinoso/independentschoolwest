@@ -11,11 +11,11 @@
   <meta name="description" content="Support Families for Education as we take the next steps toward opening a new parent-partnered independent school in Melbourne's West.">
   <meta name="author" content="Families for Education">
   <link rel="canonical" href="https://ffe.org.au/donate.html">
-  <link rel="icon" href="img/favicon.ico" type="image/x-icon">
+  <link rel="icon" href="img/favicon.ico?v=20260511-3" type="image/x-icon">
 
   <meta property="og:title" content="Families for Education | Donate">
   <meta property="og:description" content="Help bring Families for Education to life in Melbourne's West with a gift that supports the next stage of the project.">
-  <meta property="og:image" content="https://ffe.org.au/img/Family-at-sunset.png">
+  <meta property="og:image" content="https://ffe.org.au/img/Family-at-sunset.png?v=20260511-3">
   <meta property="og:url" content="https://ffe.org.au/donate.html">
   <meta property="og:type" content="website">
   <meta property="og:locale" content="en_AU">
@@ -24,18 +24,18 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Families for Education | Donate">
   <meta name="twitter:description" content="Support the next stage of Families for Education and help build a new independent school for families in Melbourne's West.">
-  <meta name="twitter:image" content="https://ffe.org.au/img/Family-at-sunset.png">
+  <meta name="twitter:image" content="https://ffe.org.au/img/Family-at-sunset.png?v=20260511-3">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="index.css?v=26">
-  <link rel="stylesheet" href="donate.css?v=6">
+  <link rel="stylesheet" href="donate.css?v=7">
   <script src="https://js.stripe.com/v3/"></script>
   <script>
     (() => {
-      const donateVersion = '20260511';
+      const donateVersion = '20260511-3';
       const currentUrl = new URL(window.location.href);
 
       if (currentUrl.searchParams.get('v') === donateVersion) {
@@ -177,11 +177,11 @@
             <p class="donation-direct-note" id="donation-direct-note"></p>
 
             <div class="donation-payment-logos" aria-label="Accepted payment methods">
-              <img src="img/donation%20page%20images/gpay.webp" alt="Google Pay" class="donation-payment-logo donation-payment-logo-gpay">
-              <img src="img/donation%20page%20images/visa.webp" alt="Visa" class="donation-payment-logo">
-              <img src="img/donation%20page%20images/mastercard.webp" alt="Mastercard" class="donation-payment-logo">
-              <img src="img/donation%20page%20images/americanexpress.webp" alt="American Express" class="donation-payment-logo">
-              <img src="img/donation%20page%20images/Apple_Pay_Mark_RGB_041619.svg" alt="Apple Pay" class="donation-payment-logo donation-payment-logo-apple">
+              <img src="img/donation%20page%20images/gpay.webp?v=20260511-3" alt="Google Pay" class="donation-payment-logo donation-payment-logo-gpay">
+              <img src="img/donation%20page%20images/visa.webp?v=20260511-3" alt="Visa" class="donation-payment-logo">
+              <img src="img/donation%20page%20images/mastercard.webp?v=20260511-3" alt="Mastercard" class="donation-payment-logo">
+              <img src="img/donation%20page%20images/americanexpress.webp?v=20260511-3" alt="American Express" class="donation-payment-logo">
+              <img src="img/donation%20page%20images/Apple_Pay_Mark_RGB_041619.svg?v=20260511-3" alt="Apple Pay" class="donation-payment-logo donation-payment-logo-apple">
             </div>
           </div>
 
@@ -254,7 +254,7 @@
     <div class="footer-inner">
       <div class="footer-top">
         <div class="footer-brand">
-          <img src="img/LogoFamilyEducation.png" alt="Logo" class="footer-logo">
+          <img src="img/LogoFamilyEducation.png?v=20260511-3" alt="Logo" class="footer-logo">
           <span>Families for Education</span>
         </div>
         <nav class="footer-links">
@@ -286,7 +286,7 @@
       return {
         publishableKey: 'pk_live_51TR5J2PJukgoPLm78iWJEqWcEoT3TDwU8leKzH4VLhoycp6DCez8wNktzTtQBu0t2FfG7bizq2hNgv4RfSNb5FG600fYRqdvDn',
         sessionEndpoint: 'https://yc7kml3pbslhxfhkqiluj2hth40zuzpr.lambda-url.ap-southeast-2.on.aws/create-checkout-session',
-        returnUrl: 'https://ffe.org.au/donate.html?v=20260511'
+        returnUrl: 'https://ffe.org.au/donate.html?v=20260511-3'
       };
     })();
   </script>
@@ -307,6 +307,7 @@
     const donationCustomInput = document.getElementById('donation-custom-input');
     const donationCustomSubmit = document.getElementById('donation-custom-submit');
     const donationCustomHelp = document.getElementById('donation-custom-help');
+    const donationCustomLabel = document.querySelector('.donation-custom-label');
     const donationBackButton = document.getElementById('donation-back-btn');
     const donationSelectedPill = document.getElementById('donation-selected-pill');
     const donationCheckoutMessage = document.getElementById('donation-checkout-message');
@@ -356,12 +357,16 @@
         donationEncouragement.textContent = '';
         donationEncouragement.hidden = true;
         donationDirectNote.textContent = '';
-        donationCustomField.hidden = true;
+        donationCustomField.hidden = false;
+        donationCustomLabel.textContent = 'Or choose your own monthly amount';
+        donationCustomInput.placeholder = 'Enter whole dollars per month';
       } else {
         donationEncouragement.textContent = 'Giving monthly has a greater impact';
         donationEncouragement.hidden = false;
         donationDirectNote.textContent = '';
         donationCustomField.hidden = false;
+        donationCustomLabel.textContent = 'Or choose your own one-time amount';
+        donationCustomInput.placeholder = 'Enter whole dollars';
       }
 
       donateModeButtons.forEach((button) => {
@@ -491,7 +496,9 @@
       const amount = Number.parseInt(donationCustomInput.value, 10);
 
       if (!Number.isInteger(amount) || amount < 1) {
-        donationCustomHelp.textContent = 'Please enter a whole-dollar amount of at least A$1.';
+        donationCustomHelp.textContent = donationState.mode === 'monthly'
+          ? 'Please enter a whole-dollar monthly amount of at least A$1.'
+          : 'Please enter a whole-dollar amount of at least A$1.';
         donationCustomHelp.classList.add('donation-checkout-message-error');
         return null;
       }
