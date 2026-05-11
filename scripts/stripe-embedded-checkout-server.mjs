@@ -4,6 +4,7 @@ import { promisify } from 'node:util';
 
 const PORT = Number(process.env.PORT || 8787);
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_RESTRICTED_KEY || '';
+const RETURN_URL = process.env.RETURN_URL || 'https://ffe.org.au/donate_stripe.html';
 const ALLOWED_ORIGINS = new Set(
   (process.env.ALLOWED_ORIGINS || 'null,http://localhost,http://127.0.0.1,https://ffe.org.au')
     .split(',')
@@ -122,7 +123,8 @@ function buildSessionParams({ mode, amount }) {
 
   params.set('mode', isMonthly ? 'subscription' : 'payment');
   params.set('ui_mode', 'embedded_page');
-  params.set('redirect_on_completion', 'never');
+  params.set('return_url', RETURN_URL);
+  params.set('redirect_on_completion', 'if_required');
   params.set('payment_method_types[0]', 'card');
   params.set('billing_address_collection', 'auto');
   params.set('metadata[donation_mode]', mode);

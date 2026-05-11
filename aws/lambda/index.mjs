@@ -1,4 +1,5 @@
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
+const RETURN_URL = process.env.RETURN_URL || 'https://ffe.org.au/donate_stripe.html';
 const ALLOWED_ORIGINS = new Set(
   (process.env.ALLOWED_ORIGINS || 'https://ffe.org.au')
     .split(',')
@@ -39,12 +40,8 @@ function response(statusCode, payload, origin, contentType = 'application/json; 
   return {
     statusCode,
     headers: {
-      'Access-Control-Allow-Headers': 'Content-Type',
-      'Access-Control-Allow-Methods': 'GET,OPTIONS,POST',
-      'Access-Control-Allow-Origin': origin,
       'Cache-Control': 'no-store',
-      'Content-Type': contentType,
-      Vary: 'Origin'
+      'Content-Type': contentType
     },
     body: typeof payload === 'string' ? payload : JSON.stringify(payload)
   };
@@ -79,7 +76,8 @@ function buildSessionParams({ mode, amount }) {
 
   params.set('mode', isMonthly ? 'subscription' : 'payment');
   params.set('ui_mode', 'embedded_page');
-  params.set('redirect_on_completion', 'never');
+  params.set('return_url', RETURN_URL);
+  params.set('redirect_on_completion', 'if_required');
   params.set('payment_method_types[0]', 'card');
   params.set('billing_address_collection', 'auto');
   params.set('metadata[donation_mode]', mode);
