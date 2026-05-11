@@ -167,8 +167,8 @@ async function createCheckoutSession(payload) {
     throw new Error('Donation mode must be oneTime or monthly.');
   }
 
-  if (!Number.isInteger(normalizedAmount) || normalizedAmount < 5) {
-    throw new Error('Donation amount must be a whole-dollar value of at least A$5.');
+  if (!Number.isInteger(normalizedAmount) || normalizedAmount < 1) {
+    throw new Error('Donation amount must be a whole-dollar value of at least A$1.');
   }
 
   if (normalizedMode === 'monthly' && !PRICE_MAP.monthly[normalizedAmount]) {
