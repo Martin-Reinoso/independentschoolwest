@@ -97,25 +97,6 @@
   margin-bottom: 1rem;
 }
 
-.donation-copy-points {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin: 1.5rem 0;
-}
-
-.donation-copy-point {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.7rem 1rem;
-  border-radius: 999px;
-  background: rgba(0, 35, 75, 0.08);
-  color: var(--navy);
-  font-size: 0.95rem;
-  font-weight: 600;
-}
-
 .donate-form-copy .donate-bold {
   font-weight: 700;
   color: var(--text);
@@ -591,21 +572,87 @@
     flex-direction: column;
   }
 
+  .donation-builder {
+    padding: 1.1rem;
+    border-radius: 24px;
+  }
+
+  .donation-kicker {
+    font-size: 0.75rem;
+  }
+
+  .donation-builder-title {
+    font-size: 1.05rem;
+    line-height: 1.25;
+    margin-bottom: 0.85rem;
+  }
+
+  .donation-mode-btn {
+    font-size: 0.88rem;
+    padding: 0.72rem 0.85rem;
+  }
+
+  .donation-encouragement {
+    margin: 0.8rem 0 1rem;
+    padding: 0.78rem 0.9rem;
+    font-size: 0.88rem;
+    line-height: 1.45;
+  }
+
+  .donation-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+  }
+
+  .donation-option {
+    padding: 0.95rem 0.65rem;
+    font-size: 0.95rem;
+    border-radius: 18px;
+  }
+
+  .donation-option-wide {
+    grid-column: 1 / -1;
+  }
+
+  .donation-custom-label {
+    font-size: 0.92rem;
+    margin-bottom: 0.55rem;
+  }
+
   .donation-custom-input-row {
     grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.6rem;
+    padding: 0.8rem 0.85rem;
+    border-radius: 18px;
   }
 
   .donation-custom-submit {
     grid-column: 1 / -1;
     width: 100%;
+    padding: 0.78rem 1rem;
+    font-size: 0.9rem;
   }
 
-  .donation-options {
-    grid-template-columns: 1fr;
+  .donation-custom-input {
+    font-size: 1rem;
   }
 
-  .donation-option-wide {
-    grid-column: auto;
+  .donation-custom-currency {
+    font-size: 1rem;
+  }
+
+  .donation-payment-logos {
+    gap: 0.8rem;
+    justify-content: center;
+  }
+
+  .donation-payment-logo {
+    height: 22px;
+  }
+
+  .donation-payment-logo-gpay,
+  .donation-payment-logo-apple {
+    height: 18px;
   }
 
   .donation-selected-pill {
