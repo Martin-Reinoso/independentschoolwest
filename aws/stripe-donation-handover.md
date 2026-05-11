@@ -216,7 +216,7 @@ Custom fields:
 One-time donations:
 
 - use `customer_creation=always`
-- use `invoice_creation[enabled]=true`
+- rely on Stripe payment receipts rather than paid invoice emails
 - support custom amounts from `A$1`
 
 Monthly donations:

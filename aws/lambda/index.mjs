@@ -65,7 +65,7 @@ function appendCustomFields(params) {
 
   params.set('custom_fields[2][key]', 'message');
   params.set('custom_fields[2][label][type]', 'custom');
-  params.set('custom_fields[2][label][custom]', 'Message');
+  params.set('custom_fields[2][label][custom]', 'Private note for our team');
   params.set('custom_fields[2][type]', 'text');
   params.set('custom_fields[2][optional]', 'true');
   params.set('custom_fields[2][text][maximum_length]', '255');
@@ -102,8 +102,6 @@ function buildSessionParams({ mode, amount }) {
   }
 
   params.set('customer_creation', 'always');
-  params.set('invoice_creation[enabled]', 'true');
-  params.set('invoice_creation[invoice_data][footer]', 'Thank you for supporting Families for Education.');
   params.set('payment_intent_data[metadata][donation_mode]', mode);
   params.set('payment_intent_data[metadata][donation_amount_aud]', String(amount));
   params.set('payment_intent_data[description]', `Families for Education ${amount} AUD one-time donation`);

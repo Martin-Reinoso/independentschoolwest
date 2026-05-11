@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Families for Education | Donation Success Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="index.css?v=26">
+  <link rel="stylesheet" href="donate.css?v=1">
+  <style>
+    body {
+      background: #f4f4f4;
+    }
+
+    .preview-shell {
+      max-width: 720px;
+      margin: 4rem auto;
+      padding: 0 1rem 4rem;
+    }
+
+    .preview-note {
+      margin: 0 0 1rem;
+      color: var(--text-light);
+      text-align: center;
+    }
+
+    .donation-complete-panel {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <main class="preview-shell">
+    <p class="preview-note">Preview of the updated donation confirmation state</p>
+
+    <div class="donation-complete-panel">
+      <div class="donation-builder-top donation-builder-top-complete">
+        <div class="donation-progress" aria-hidden="true">
+          <span class="is-complete"></span>
+          <span class="is-complete"></span>
+          <span class="is-success"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.8 13.9 4.6 10.7l-1.4 1.4 4.6 4.6L16.8 7.7l-1.4-1.4z"/></svg></span>
+        </div>
+        <p class="donation-kicker">Complete</p>
+      </div>
+      <p class="donation-complete-label">Payment successful</p>
+      <h3 class="donation-builder-title donation-complete-title">Thank you — your gift has been received.</h3>
+      <p class="donation-complete-copy">A confirmation and receipt will arrive in your email shortly.</p>
+      <p class="donation-complete-meta">Your support helps strengthen and grow Families for Education. If you would like to give again or support the project in another way, you can start again below or contact us directly.</p>
+      <div class="donation-complete-actions">
+        <button type="button" class="btn btn-primary donate-cta">Make another gift</button>
+        <a href="mailto:info@ffe.org.au?subject=Giving%20Enquiry" class="btn btn-outline donate-outline-btn">Email us</a>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

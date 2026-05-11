@@ -133,9 +133,9 @@
         <div class="donate-form-copy">
           <div class="section-label">Make a Gift</div>
           <h2 class="section-title">Give Securely<br>Online</h2>
-          <p>Choose a one-time or monthly family gift and complete secure Stripe checkout without leaving the page. Families can move from selecting an amount to entering their details in one smooth flow.</p>
-          <p>Donations are currently not tax deductible. We will update supporters if this status changes.</p>
-          <p class="donate-bold">Every contribution brings us closer to 2027.</p>
+          <p>Support families with a one-time or monthly gift through our secure Stripe checkout. The donation process is quick, secure, and completed entirely within our website.</p>
+          <p>Donations are not currently tax deductible. Supporters will be notified when this status changes.</p>
+          <p class="donate-bold">Thank you for helping build and strengthen our school community.</p>
         </div>
         <section class="donation-builder" aria-labelledby="donation-builder-title">
           <div class="donation-selection-stage" id="donation-selection-stage">
@@ -213,14 +213,14 @@
               <div class="donation-progress" aria-hidden="true">
                 <span class="is-complete"></span>
                 <span class="is-complete"></span>
-                <span class="is-active"></span>
+                <span class="is-success"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.8 13.9 4.6 10.7l-1.4 1.4 4.6 4.6L16.8 7.7l-1.4-1.4z"/></svg></span>
               </div>
-              <p class="donation-kicker">Thank you</p>
+              <p class="donation-kicker">Complete</p>
             </div>
-            <p class="donation-complete-label">Donation received</p>
-            <h3 class="donation-builder-title donation-complete-title">Thank you for backing Families for Education.</h3>
+            <p class="donation-complete-label">Payment successful</p>
+            <h3 class="donation-builder-title donation-complete-title">Thank you — your gift has been received.</h3>
             <p class="donation-complete-copy" id="donation-complete-copy">Stripe will email your confirmation and payment record shortly.</p>
-            <p class="donation-complete-meta">If you would like to make another gift or support in another way, you can start again below or contact us directly.</p>
+            <p class="donation-complete-meta" id="donation-complete-meta">Your support helps strengthen and grow Families for Education. If you would like to give again or support the project in another way, you can start again below or contact us directly.</p>
             <div class="donation-complete-actions">
               <button type="button" class="btn btn-primary donate-cta" id="donation-restart-btn">Make another gift</button>
               <a href="mailto:info@ffe.org.au?subject=Giving%20Enquiry" class="btn btn-outline donate-outline-btn">Email us</a>
@@ -312,6 +312,7 @@
     const donationSelectedPill = document.getElementById('donation-selected-pill');
     const donationCheckoutMessage = document.getElementById('donation-checkout-message');
     const donationCompleteCopy = document.getElementById('donation-complete-copy');
+    const donationCompleteMeta = document.getElementById('donation-complete-meta');
     const donationRestartButton = document.getElementById('donation-restart-btn');
     const embeddedCheckoutMount = document.getElementById('embedded-checkout');
     const stripeConfig = window.FFE_STRIPE_CONFIG || {};
@@ -423,14 +424,18 @@
 
     function showCompleteState() {
       const cadenceCopy = donationState.mode === 'monthly'
-        ? 'Stripe will email your subscription confirmation, and future invoices will follow each monthly donation.'
-        : 'Stripe will email your confirmation and payment record shortly.';
+        ? 'Your monthly support is now set up, and a confirmation email is on its way.'
+        : 'A confirmation and receipt will arrive in your email shortly.';
+      const metaCopy = donationState.mode === 'monthly'
+        ? 'Your ongoing support helps strengthen and grow Families for Education. If you would like to make another gift or support the project in another way, you can start again below or contact us directly.'
+        : 'Your support helps strengthen and grow Families for Education. If you would like to give again or support the project in another way, you can start again below or contact us directly.';
 
       destroyEmbeddedCheckout();
       donationCheckoutStage.hidden = true;
       donationSelectionStage.hidden = true;
       donationCompletePanel.hidden = false;
       donationCompleteCopy.textContent = cadenceCopy;
+      donationCompleteMeta.textContent = metaCopy;
       donationCompletePanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 

@@ -164,6 +164,24 @@
   border-color: var(--navy);
 }
 
+.donation-progress .is-success {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(120deg, var(--red) 0%, #ff5b64 100%);
+  border: none;
+  box-shadow: 0 0 0 5px rgba(200, 16, 46, 0.12);
+}
+
+.donation-progress .is-success svg {
+  width: 14px;
+  height: 14px;
+  fill: var(--white);
+}
+
 .donation-kicker {
   margin: 0;
   color: var(--navy);
@@ -464,16 +482,19 @@
 }
 
 .donation-complete-label {
-  margin: 0 0 0.35rem;
+  margin: 0 0 0.5rem;
   color: var(--red);
-  font-size: 0.85rem;
+  font-size: 1rem;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  text-align: center;
 }
 
 .donation-complete-title {
-  margin-bottom: 0.8rem;
+  margin-bottom: 0.95rem;
+  font-size: clamp(1.9rem, 3vw, 2.4rem);
+  text-align: center;
 }
 
 .donation-complete-copy,
@@ -481,10 +502,11 @@
   margin: 0;
   color: var(--text-light);
   line-height: 1.7;
+  text-align: center;
 }
 
 .donation-complete-meta {
-  margin-top: 0.8rem;
+  margin-top: 1.1rem;
 }
 
 .donation-complete-actions {
