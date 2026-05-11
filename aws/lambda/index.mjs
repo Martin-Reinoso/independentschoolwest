@@ -1,5 +1,5 @@
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
-const RETURN_URL = process.env.RETURN_URL || 'https://ffe.org.au/donate.html?v=1';
+const RETURN_URL = process.env.RETURN_URL || 'https://ffe.org.au/donate.html?v=2';
 const ALLOWED_ORIGINS = new Set(
   (process.env.ALLOWED_ORIGINS || 'https://ffe.org.au')
     .split(',')
