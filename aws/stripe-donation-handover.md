@@ -170,12 +170,12 @@ And, where eligible on the donor’s device/browser:
 One-time product:
 
 - product id: `prod_UUUxDVM8bDhgFh`
-- name: `Families for Education One-time Gift`
+- name: `Families for Education Ltd One-time Gift`
 
 Monthly product:
 
 - product id: `prod_UUUxROpTAk7mfZ`
-- name: `Families for Education Monthly Gift`
+- name: `Families for Education Ltd Monthly Gift`
 
 ### Stripe Price Map
 

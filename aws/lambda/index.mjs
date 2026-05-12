@@ -90,8 +90,8 @@ function buildSessionParams({ mode, amount }) {
       params.set('line_items[0][price]', PRICE_MAP.monthly[amount]);
     } else {
       params.set('line_items[0][price_data][currency]', 'aud');
-      params.set('line_items[0][price_data][product_data][name]', 'Families for Education Monthly Gift');
-      params.set('line_items[0][price_data][product_data][description]', 'Custom monthly family gift supporting Families for Education.');
+      params.set('line_items[0][price_data][product_data][name]', 'Families for Education Ltd Monthly Gift');
+      params.set('line_items[0][price_data][product_data][description]', 'Custom monthly family gift supporting Families for Education Ltd.');
       params.set('line_items[0][price_data][recurring][interval]', 'month');
       params.set('line_items[0][price_data][unit_amount]', String(amount * 100));
     }
@@ -104,14 +104,14 @@ function buildSessionParams({ mode, amount }) {
   params.set('customer_creation', 'always');
   params.set('payment_intent_data[metadata][donation_mode]', mode);
   params.set('payment_intent_data[metadata][donation_amount_aud]', String(amount));
-  params.set('payment_intent_data[description]', `Families for Education ${amount} AUD one-time donation`);
+  params.set('payment_intent_data[description]', 'Donation to Families for Education Ltd — non-tax-deductible');
 
   if (PRICE_MAP.oneTime[amount]) {
     params.set('line_items[0][price]', PRICE_MAP.oneTime[amount]);
   } else {
     params.set('line_items[0][price_data][currency]', 'aud');
-    params.set('line_items[0][price_data][product_data][name]', 'Families for Education One-time Gift');
-    params.set('line_items[0][price_data][product_data][description]', 'Custom family gift supporting Families for Education.');
+    params.set('line_items[0][price_data][product_data][name]', 'Families for Education Ltd One-time Gift');
+    params.set('line_items[0][price_data][product_data][description]', 'Custom family gift supporting Families for Education Ltd.');
     params.set('line_items[0][price_data][unit_amount]', String(amount * 100));
   }
 
