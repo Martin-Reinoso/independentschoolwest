@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rosewood College — Motto Survey Results</title>
+  <style>
+    :root {
+      --navy: #1b2a4a;
+      --navy-light: #243558;
+      --gold: #c8a951;
+      --gold-light: #e8c96a;
+      --bg: #f4f2ee;
+      --white: #ffffff;
+      --text: #1b2a4a;
+      --muted: #6b7280;
+      --border: #ddd8d0;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Georgia', serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      background: var(--navy);
+      color: white;
+      padding: 60px 40px 50px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .header::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 40px,
+        rgba(255,255,255,0.015) 40px,
+        rgba(255,255,255,0.015) 80px
+      );
+    }
+    .header-eyebrow {
+      font-family: 'Arial', sans-serif;
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 16px;
+      position: relative;
+    }
+    .header h1 {
+      font-size: clamp(26px, 4vw, 42px);
+      font-weight: normal;
+      letter-spacing: 0.5px;
+      line-height: 1.2;
+      position: relative;
+      margin-bottom: 14px;
+    }
+    .header-sub {
+      font-family: 'Arial', sans-serif;
+      font-size: 14px;
+      color: rgba(255,255,255,0.6);
+      position: relative;
+    }
+
+    /* ── LAYOUT ── */
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 50px 24px 80px;
+    }
+
+    .section-label {
+      font-family: 'Arial', sans-serif;
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-size: 22px;
+      font-weight: normal;
+      color: var(--navy);
+      margin-bottom: 28px;
+    }
+
+    /* ── SUMMARY BAR ── */
+    .summary-bar {
+      background: var(--navy);
+      border-radius: 14px;
+      padding: 36px 40px;
+      color: white;
+      display: flex;
+      gap: 48px;
+      align-items: center;
+      margin-bottom: 40px;
+      flex-wrap: wrap;
+    }
+    .summary-stat {
+      text-align: center;
+    }
+    .summary-num {
+      font-size: 48px;
+      font-weight: bold;
+      color: var(--gold);
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+    .summary-desc {
+      font-family: 'Arial', sans-serif;
+      font-size: 12px;
+      color: rgba(255,255,255,0.6);
+      line-height: 1.4;
+    }
+    .summary-divider {
+      width: 1px;
+      height: 60px;
+      background: rgba(255,255,255,0.1);
+    }
+    .summary-note {
+      flex: 1;
+      font-family: 'Arial', sans-serif;
+      font-size: 13px;
+      color: rgba(255,255,255,0.75);
+      line-height: 1.6;
+      min-width: 200px;
+    }
+    .summary-note strong {
+      color: var(--gold-light);
+    }
+
+    /* ── MOTTO CARD ── */
+    .motto-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+    .motto-card.double {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 1px rgba(200,169,81,0.3);
+    }
+
+    .motto-header {
+      padding: 28px 36px 22px;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+    }
+    .motto-badge {
+      font-family: 'Arial', sans-serif;
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .double-tag {
+      background: var(--gold);
+      color: var(--navy);
+      font-weight: bold;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 9px;
+      letter-spacing: 1.5px;
+    }
+    .motto-latin {
+      font-size: clamp(22px, 3vw, 30px);
+      color: var(--navy);
+      font-style: italic;
+      margin-bottom: 8px;
+      line-height: 1.2;
+    }
+    .motto-translation {
+      font-family: 'Arial', sans-serif;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .motto-translation span {
+      color: var(--navy);
+      font-weight: 600;
+    }
+
+    .motto-body {
+      padding: 28px 36px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+    }
+    @media(max-width:600px) {
+      .motto-body { grid-template-columns: 1fr; }
+      .motto-header, .motto-body { padding: 22px 22px; }
+    }
+    .motto-body.full {
+      grid-template-columns: 1fr;
+    }
+
+    .motto-section-label {
+      font-family: 'Arial', sans-serif;
+      font-size: 9px;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 10px;
+    }
+    .motto-text {
+      font-size: 14px;
+      line-height: 1.75;
+      color: #2d3748;
+    }
+    .motto-text p + p {
+      margin-top: 10px;
+    }
+    .motto-text ul {
+      margin: 10px 0 0 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .motto-text ul li {
+      font-size: 13px;
+      line-height: 1.6;
+      color: #2d3748;
+    }
+    .motto-text em {
+      font-style: italic;
+      color: var(--navy);
+    }
+
+    .motto-sentiment {
+      background: #f8f6f2;
+      border-radius: 10px;
+      padding: 18px 20px;
+    }
+
+    /* ── DIVIDER ── */
+    .section-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 44px 0;
+    }
+
+    /* ── CALLOUT ── */
+    .callout {
+      background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+      border-radius: 14px;
+      padding: 36px 40px;
+      color: white;
+    }
+    .callout-label {
+      font-family: 'Arial', sans-serif;
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 10px;
+    }
+    .callout p {
+      font-family: 'Arial', sans-serif;
+      font-size: 14px;
+      color: rgba(255,255,255,0.8);
+      line-height: 1.7;
+    }
+
+    /* ── FOOTER ── */
+    .footer {
+      text-align: center;
+      font-family: 'Arial', sans-serif;
+      font-size: 11px;
+      color: var(--muted);
+      padding-top: 40px;
+      border-top: 1px solid var(--border);
+      margin-top: 60px;
+      letter-spacing: 1px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-eyebrow">Rosewood College · Branding Process</div>
+    <h1>School Motto — Survey Results</h1>
+    <div class="header-sub">7 responses · 6 mottos proposed · May 2026 · Confidential</div>
+  </div>
+
+  <div class="container">
+
+    <!-- SUMMARY -->
+    <div class="summary-bar">
+      <div class="summary-stat">
+        <div class="summary-num">7</div>
+        <div class="summary-desc">board<br>responses</div>
+      </div>
+      <div class="summary-divider"></div>
+      <div class="summary-stat">
+        <div class="summary-num">6</div>
+        <div class="summary-desc">mottos<br>proposed</div>
+      </div>
+      <div class="summary-divider"></div>
+      <div class="summary-note">
+        Six mottos were proposed across seven responses. Each is presented in full below, with the respondent's argument for why it reflects Rosewood College. The motto will be decided by vote at the board meeting.
+      </div>
+    </div>
+
+    <!-- MOTTO LIST -->
+    <div class="section-label">Proposed Mottos</div>
+    <div class="section-title">Six mottos, in full</div>
+
+    <div style="background:white; border:1px solid var(--border); border-radius:14px; padding:28px 36px; margin-bottom:32px;">
+      <table style="width:100%; border-collapse:collapse;">
+        <thead>
+          <tr>
+            <td style="font-family:'Arial',sans-serif; font-size:9px; letter-spacing:2.5px; text-transform:uppercase; color:var(--gold); padding-bottom:14px; border-bottom:1px solid var(--border);">Motto</td>
+            <td style="font-family:'Arial',sans-serif; font-size:9px; letter-spacing:2.5px; text-transform:uppercase; color:var(--gold); padding-bottom:14px; border-bottom:1px solid var(--border);">Translation</td>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding:12px 0 12px; border-bottom:1px solid var(--border); font-style:italic; font-size:15px; color:var(--navy); padding-right:24px;">In Sapientia et Virtute</td>
+            <td style="padding:12px 0 12px; border-bottom:1px solid var(--border); font-family:'Arial',sans-serif; font-size:13px; color:var(--muted);">In wisdom and virtue</td>
+          </tr>
+          <tr>
+            <td style="padding:12px 0 12px; border-bottom:1px solid var(--border); font-style:italic; font-size:15px; color:var(--navy); padding-right:24px;">Dignitas, Caritas, Veritas</td>
+            <td style="padding:12px 0 12px; border-bottom:1px solid var(--border); font-family:'Arial',sans-serif; font-size:13px; color:var(--muted);">Dignity, Love, Truth</td>
+          </tr>
+          <tr>
+            <td style="padding:12px 0 12px; border-bottom:1px solid var(--border); font-style:italic; font-size:15px; color:var(--navy); padding-right:24px;">Veritatem Facientes in Caritate</td>
+            <td style="padding:12px 0 12px; border-bottom:1px solid var(--border); font-family:'Arial',sans-serif; font-size:13px; color:var(--muted);">Speaking truth in love</td>
+          </tr>
+          <tr>
+            <td style="padding:12px 0 12px; border-bottom:1px solid var(--border); font-style:italic; font-size:15px; color:var(--navy); padding-right:24px;">Fons Vitae Caritas</td>
+            <td style="padding:12px 0 12px; border-bottom:1px solid var(--border); font-family:'Arial',sans-serif; font-size:13px; color:var(--muted);">Love is the fountain of life</td>
+          </tr>
+          <tr>
+            <td style="padding:12px 0 12px; border-bottom:1px solid var(--border); font-style:italic; font-size:15px; color:var(--navy); padding-right:24px;">Virtute et Sapientia Crescimus</td>
+            <td style="padding:12px 0 12px; border-bottom:1px solid var(--border); font-family:'Arial',sans-serif; font-size:13px; color:var(--muted);">We grow by virtue and wisdom</td>
+          </tr>
+          <tr>
+            <td style="padding:12px 0 0; font-style:italic; font-size:15px; color:var(--navy); padding-right:24px;">Pulchritās, Caritās, Vēritās</td>
+            <td style="padding:12px 0 0; font-family:'Arial',sans-serif; font-size:13px; color:var(--muted);">Beauty, Love, Truth</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- MOTTO 1 — In Sapientia et Virtute -->
+    <div class="motto-card">
+      <div class="motto-header">
+        <div class="motto-badge">Proposed by one respondent</div>
+        <div class="motto-latin">In Sapientia et Virtute</div>
+        <div class="motto-translation">Translation: <span>"In wisdom and virtue"</span></div>
+      </div>
+      <div class="motto-body">
+        <div>
+          <div class="motto-section-label">Why it reflects Rosewood</div>
+          <div class="motto-text">
+            <p>It embodies Rosewood's major themes: intellectual formation, character, faith, and growth. It is also short enough to work well around a crest.</p>
+          </div>
+        </div>
+        <div>
+          <div class="motto-section-label">What should be reflected</div>
+          <div class="motto-sentiment">
+            <div class="motto-text">Entrusted formation. Rosewood College is unlike any other school — we form children in partnership with their families, who entrust their children to us.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MOTTO 2 — Dignitas, Caritas, Veritas -->
+    <div class="motto-card">
+      <div class="motto-header">
+        <div class="motto-badge">Proposed by one respondent</div>
+        <div class="motto-latin">Dignitas, Caritas, Veritas</div>
+        <div class="motto-translation">Translation: <span>"Dignity, Love, Truth"</span></div>
+      </div>
+      <div class="motto-body">
+        <div>
+          <div class="motto-section-label">Why it reflects Rosewood</div>
+          <div class="motto-text">
+            <p>This motto offers a deeply Catholic vision of education and human formation. Rooted in the Gospel and the intellectual tradition of the Church, it expresses the essential values that shape both the individual person and the wider school community.</p>
+            <ul>
+              <li><em>Dignitas</em> reminds students who they are.</li>
+              <li><em>Caritas</em> teaches them how they are called to live.</li>
+              <li><em>Veritas</em> guides them toward what they are called to seek.</li>
+            </ul>
+            <p style="margin-top:12px;">It is both timeless and aspirational — intellectually strong, spiritually rich, and clearly Catholic without being inaccessible. The Latin phrasing gives the motto a sense of tradition, permanence, and academic distinction consistent with the heritage of Catholic education.</p>
+          </div>
+        </div>
+        <div>
+          <div class="motto-section-label">What should be reflected</div>
+          <div class="motto-sentiment">
+            <div class="motto-text">A community grounded in human dignity, animated by Christian love, and dedicated to truth. The formation of the whole person.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MOTTO 3 — Veritatem Facientes in Caritate -->
+    <div class="motto-card">
+      <div class="motto-header">
+        <div class="motto-badge">Proposed by one respondent</div>
+        <div class="motto-latin">Veritatem Facientes in Caritate</div>
+        <div class="motto-translation">Translation: <span>"Speaking truth in love"</span></div>
+      </div>
+      <div class="motto-body">
+        <div>
+          <div class="motto-section-label">Why it reflects Rosewood</div>
+          <div class="motto-text">
+            <p>It reflects the mottos used for many PARED girls' schools globally, connecting Rosewood to a broader network of schools sharing the same formation philosophy and educational mission.</p>
+          </div>
+        </div>
+        <div>
+          <div class="motto-section-label">What should be reflected</div>
+          <div class="motto-sentiment">
+            <div class="motto-text">No additional sentiment provided.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MOTTO 4 — Fons Vitae Caritas (two respondents) -->
+    <div class="motto-card double">
+      <div class="motto-header">
+        <div class="motto-badge">
+          Proposed by two respondents independently
+          <span class="double-tag">2 proposals</span>
+        </div>
+        <div class="motto-latin">Fons Vitae Caritas</div>
+        <div class="motto-translation">Translation: <span>"Love is the fountain of life"</span></div>
+      </div>
+
+      <!-- Respondent A -->
+      <div class="motto-body">
+        <div>
+          <div class="motto-section-label">Why it reflects Rosewood — Respondent A</div>
+          <div class="motto-text">
+            <p>Fons Vitae Caritas translates directly to "Love is the fountain of life" or "Charity is the source of life." It is a reminder that love is the highest virtue that leads us to our heavenly destination.</p>
+            <p>It can be understood by non-Catholics and Catholics alike — because humanly and earthly speaking, love is the purpose and source of life here on earth too.</p>
+          </div>
+        </div>
+        <div>
+          <div class="motto-section-label">What should be reflected</div>
+          <div class="motto-sentiment">
+            <div class="motto-text">The importance of human virtues, which are the basis of the supernatural virtues. Our purpose in life.</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="border-top: 1px solid var(--border); margin: 0 36px;"></div>
+
+      <!-- Respondent B -->
+      <div class="motto-body">
+        <div>
+          <div class="motto-section-label">Why it reflects Rosewood — Respondent B</div>
+          <div class="motto-text">
+            <p>Fons Vitae Caritas is a fitting motto for a Catholic school shaped by the vision of the Second Vatican Council, and the teachings of Saint John Paul the Great and Saint Josemaría.</p>
+            <p>This motto expresses the school's conviction that education is not simply about academic success, but about forming people who live virtuously, serve others, and contribute to society. It reflects Christ's teaching that the world would know his disciples by their love for one another (Jn 13:35).</p>
+            <p>The phrase also resonates strongly with St Josemaría's emphasis on sanctifying ordinary life through work, duty, discipline, and service. Love is not presented here as sentimentality, but as the animating principle of a meaningful life — the force that inspires excellence, civic responsibility, generosity, and self-mastery.</p>
+            <p>The motto is also especially appropriate for the school's future identity as a girls' school. John Paul II taught that women possess a particular strength in the "order of love" — a unique attentiveness to the dignity and flourishing of persons. Fons Vitae Caritas captures this insight in a way that is aspirational, dignified, and deeply Catholic.</p>
+            <p>Finally, the image of a fountain is rich in symbolism. A fountain gives life to everything around it. In the same way, the school aims to form young people whose faith, virtue, leadership, and charity become a source of life for their families, professions, communities, and nation.</p>
+          </div>
+        </div>
+        <div>
+          <div class="motto-section-label">What should be reflected</div>
+          <div class="motto-sentiment">
+            <div class="motto-text">The world needs the reminder that intelligence, confidence, virtue, and civic duty flow from love. If our students live by a motto that captures that, then we are doing what we can to turn the tide in the right direction.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MOTTO 5 — Virtute et Sapientia Crescimus -->
+    <div class="motto-card">
+      <div class="motto-header">
+        <div class="motto-badge">Proposed by one respondent · companion to In Sapientia et Virtute</div>
+        <div class="motto-latin">Virtute et Sapientia Crescimus</div>
+        <div class="motto-translation">Translation: <span>"We grow by virtue and wisdom"</span></div>
+      </div>
+      <div class="motto-body">
+        <div>
+          <div class="motto-section-label">Why it reflects Rosewood</div>
+          <div class="motto-text">
+            <p>Similar reasoning to In Sapientia et Virtute, but this version works particularly well with the tree and rose symbols of the emblem — the idea of growth is embedded in the motto itself.</p>
+          </div>
+        </div>
+        <div>
+          <div class="motto-section-label">What should be reflected</div>
+          <div class="motto-sentiment">
+            <div class="motto-text">Entrusted formation. Rosewood College is unlike any other school — we form children in partnership with their families, who entrust their children to us.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MOTTO 6 — Pulchritas, Caritas, Veritas -->
+    <div class="motto-card">
+      <div class="motto-header">
+        <div class="motto-badge">Proposed by one respondent</div>
+        <div class="motto-latin">Pulchritās, Caritās, Vēritās</div>
+        <div class="motto-translation">Translation: <span>"Beauty, Love, Truth"</span></div>
+      </div>
+      <div class="motto-body">
+        <div>
+          <div class="motto-section-label">Why it reflects Rosewood</div>
+          <div class="motto-text">
+            <ul>
+              <li><em>Pulchritās</em> — true, intrinsic beauty</li>
+              <li><em>Caritās</em> — selfless, generous love</li>
+              <li><em>Vēritās</em> — truth, reality, veracity</li>
+            </ul>
+          </div>
+        </div>
+        <div>
+          <div class="motto-section-label">What should be reflected</div>
+          <div class="motto-sentiment">
+            <div class="motto-text">No additional sentiment provided.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <hr class="section-divider" />
+
+    <!-- CALLOUT -->
+    <div class="callout">
+      <div class="callout-label">Next step</div>
+      <p>These suggestions have been gathered to inform the board's discussion. The school motto will be decided by vote at the board meeting. Responses have been presented anonymously and in full so every argument can be weighed on its merits.</p>
+    </div>
+
+    <div class="footer">
+      Rosewood College · Motto Survey · May 2026 · Confidential — Board Use Only
+    </div>
+
+  </div>
+
+</body>
+</html>
