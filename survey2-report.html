@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rosewood College — Design Direction Results</title>
+  <style>
+    :root {
+      --navy: #1b2a4a;
+      --navy-light: #243558;
+      --gold: #c8a951;
+      --gold-light: #e8c96a;
+      --rose: #a63232;
+      --tree: #2d6a4f;
+      --tree-light: #40916c;
+      --bg: #f4f2ee;
+      --white: #ffffff;
+      --text: #1b2a4a;
+      --muted: #6b7280;
+      --border: #ddd8d0;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Georgia', serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      background: var(--navy);
+      color: white;
+      padding: 60px 40px 50px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .header::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 40px,
+        rgba(255,255,255,0.015) 40px,
+        rgba(255,255,255,0.015) 80px
+      );
+    }
+    .header-eyebrow {
+      font-family: 'Arial', sans-serif;
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 16px;
+      position: relative;
+    }
+    .header h1 {
+      font-size: clamp(28px, 4vw, 44px);
+      font-weight: normal;
+      letter-spacing: 0.5px;
+      line-height: 1.2;
+      position: relative;
+      margin-bottom: 14px;
+    }
+    .header-sub {
+      font-family: 'Arial', sans-serif;
+      font-size: 14px;
+      color: rgba(255,255,255,0.6);
+      position: relative;
+    }
+
+    /* ── LAYOUT ── */
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 50px 24px 80px;
+    }
+
+    .section-label {
+      font-family: 'Arial', sans-serif;
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-size: 22px;
+      font-weight: normal;
+      color: var(--navy);
+      margin-bottom: 28px;
+    }
+
+    /* ── VOTE CARD ── */
+    .vote-section {
+      background: var(--navy);
+      border-radius: 16px;
+      padding: 50px 40px;
+      color: white;
+      margin-bottom: 40px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .vote-section::after {
+      content: '';
+      position: absolute;
+      bottom: -60px; right: -60px;
+      width: 200px; height: 200px;
+      border-radius: 50%;
+      background: rgba(200,169,81,0.07);
+    }
+    .vote-label {
+      font-family: 'Arial', sans-serif;
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 24px;
+    }
+    .vote-grid {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 24px;
+      align-items: center;
+      margin-bottom: 36px;
+    }
+    .vote-option {
+      padding: 24px 20px;
+      border-radius: 12px;
+    }
+    .vote-option.winner {
+      background: rgba(45,106,79,0.3);
+      border: 1px solid rgba(64,145,108,0.4);
+    }
+    .vote-option.other {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .vote-count {
+      font-size: 64px;
+      font-weight: bold;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+    .vote-option.winner .vote-count { color: #52b788; }
+    .vote-option.other .vote-count { color: rgba(255,255,255,0.5); }
+    .vote-name {
+      font-size: 14px;
+      color: rgba(255,255,255,0.75);
+      font-family: 'Arial', sans-serif;
+    }
+    .vote-vs {
+      font-family: 'Arial', sans-serif;
+      font-size: 12px;
+      color: rgba(255,255,255,0.3);
+      letter-spacing: 2px;
+    }
+    .vote-bar-wrap {
+      background: rgba(255,255,255,0.1);
+      border-radius: 99px;
+      height: 8px;
+      overflow: hidden;
+    }
+    .vote-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #40916c, #52b788);
+      border-radius: 99px;
+      width: 0;
+      transition: width 1.2s cubic-bezier(0.4,0,0.2,1);
+    }
+    .vote-bar-legend {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 10px;
+      font-family: 'Arial', sans-serif;
+      font-size: 11px;
+      color: rgba(255,255,255,0.4);
+    }
+
+    /* ── RATINGS ── */
+    .card {
+      background: white;
+      border-radius: 14px;
+      padding: 36px;
+      margin-bottom: 24px;
+      border: 1px solid var(--border);
+    }
+
+    .ratings-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    @media(max-width:600px){ .ratings-grid { grid-template-columns: 1fr; } }
+
+    .rating-card {
+      border-radius: 12px;
+      padding: 24px;
+    }
+    .rating-card.tree-card {
+      background: #f0f7f4;
+      border: 1px solid #b7d9c9;
+    }
+    .rating-card.rose-card {
+      background: #fdf4f4;
+      border: 1px solid #e8c4c4;
+    }
+    .rating-card-label {
+      font-family: 'Arial', sans-serif;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .tree-card .rating-card-label { color: var(--tree); }
+    .rose-card .rating-card-label { color: var(--rose); }
+
+    .rating-row {
+      margin-bottom: 14px;
+    }
+    .rating-row:last-child { margin-bottom: 0; }
+    .rating-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 6px;
+    }
+    .rating-criterion {
+      font-family: 'Arial', sans-serif;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .rating-value {
+      font-size: 16px;
+      font-weight: bold;
+    }
+    .tree-card .rating-value { color: var(--tree); }
+    .rose-card .rating-value { color: var(--rose); }
+    .rating-track {
+      height: 6px;
+      background: rgba(0,0,0,0.08);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .rating-fill {
+      height: 100%;
+      border-radius: 99px;
+      width: 0;
+      transition: width 1.2s cubic-bezier(0.4,0,0.2,1);
+    }
+    .tree-card .rating-fill { background: linear-gradient(90deg, var(--tree), var(--tree-light)); }
+    .rose-card .rating-fill { background: linear-gradient(90deg, var(--rose), #c45c5c); }
+
+    .rating-note {
+      font-family: 'Arial', sans-serif;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      font-style: italic;
+    }
+
+    /* ── THEMES ── */
+    .theme-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media(max-width:600px){ .theme-grid { grid-template-columns: 1fr; } }
+
+    .theme-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 22px 24px;
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+    .theme-badge {
+      font-family: 'Arial', sans-serif;
+      font-size: 13px;
+      font-weight: bold;
+      background: var(--navy);
+      color: white;
+      border-radius: 8px;
+      padding: 4px 10px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .theme-badge.high { background: var(--navy); }
+    .theme-badge.mid { background: #4a6fa5; }
+    .theme-badge.low { background: #7a92b8; }
+    .theme-text strong {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 4px;
+      color: var(--navy);
+    }
+    .theme-text p {
+      font-family: 'Arial', sans-serif;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    /* ── QUOTES ── */
+    .quotes-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media(max-width:640px){ .quotes-grid { grid-template-columns: 1fr; } }
+
+    .quote-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      position: relative;
+    }
+    .quote-card::before {
+      content: '\201C';
+      position: absolute;
+      top: 12px; left: 18px;
+      font-size: 48px;
+      color: var(--gold);
+      line-height: 1;
+      opacity: 0.4;
+    }
+    .quote-text {
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--text);
+      padding-top: 20px;
+      font-style: italic;
+    }
+    .quote-tag {
+      display: inline-block;
+      margin-top: 14px;
+      font-family: 'Arial', sans-serif;
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      padding-top: 10px;
+      width: 100%;
+    }
+
+    /* ── Q9 CALLOUT ── */
+    .callout {
+      background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+      border-radius: 14px;
+      padding: 40px;
+      color: white;
+      margin-bottom: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+    .callout::before {
+      content: '';
+      position: absolute;
+      top: -40px; right: -40px;
+      width: 160px; height: 160px;
+      border-radius: 50%;
+      background: rgba(200,169,81,0.08);
+    }
+    .callout-label {
+      font-family: 'Arial', sans-serif;
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 12px;
+    }
+    .callout h3 {
+      font-size: 18px;
+      font-weight: normal;
+      line-height: 1.5;
+      margin-bottom: 20px;
+      position: relative;
+    }
+    .callout-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      position: relative;
+    }
+    .callout-list li {
+      font-family: 'Arial', sans-serif;
+      font-size: 13px;
+      color: rgba(255,255,255,0.8);
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      line-height: 1.5;
+    }
+    .callout-list li::before {
+      content: '→';
+      color: var(--gold);
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* ── DIVIDER ── */
+    .section-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 44px 0;
+    }
+
+    /* ── FOOTER ── */
+    .footer {
+      text-align: center;
+      font-family: 'Arial', sans-serif;
+      font-size: 11px;
+      color: var(--muted);
+      padding-top: 40px;
+      border-top: 1px solid var(--border);
+      margin-top: 60px;
+      letter-spacing: 1px;
+    }
+
+    /* ── ANIMATION TRIGGER ── */
+    .animate { }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-eyebrow">Rosewood College · Branding Process</div>
+    <h1>Design Direction — Survey Results</h1>
+    <div class="header-sub">12 board responses · May 2026 · Confidential</div>
+  </div>
+
+  <div class="container">
+
+    <!-- VOTE -->
+    <div class="vote-section animate" id="vote-section">
+      <div class="vote-label">Q1 — Preferred Direction</div>
+      <div class="vote-grid">
+        <div class="vote-option winner">
+          <div class="vote-count" id="count-tree">9</div>
+          <div class="vote-name">The Living Tree</div>
+        </div>
+        <div class="vote-vs">VS</div>
+        <div class="vote-option other">
+          <div class="vote-count" id="count-rose">3</div>
+          <div class="vote-name">The Heritage Rose</div>
+        </div>
+      </div>
+      <div class="vote-bar-wrap">
+        <div class="vote-bar-fill" id="vote-bar"></div>
+      </div>
+      <div class="vote-bar-legend">
+        <span>The Living Tree — 75%</span>
+        <span>The Heritage Rose — 25%</span>
+      </div>
+    </div>
+
+    <!-- RATINGS Q7 -->
+    <div class="section-label">Q7 — Ratings by Criterion</div>
+    <div class="section-title">How each direction scored on three dimensions</div>
+
+    <div class="ratings-grid">
+      <div class="rating-card tree-card animate" id="tree-ratings">
+        <div class="rating-card-label">The Living Tree</div>
+
+        <div class="rating-row">
+          <div class="rating-meta">
+            <span class="rating-criterion">Professionalism</span>
+            <span class="rating-value">3.92 / 5</span>
+          </div>
+          <div class="rating-track"><div class="rating-fill" data-pct="78.4"></div></div>
+        </div>
+
+        <div class="rating-row">
+          <div class="rating-meta">
+            <span class="rating-criterion">Strength of Symbols</span>
+            <span class="rating-value">3.92 / 5</span>
+          </div>
+          <div class="rating-track"><div class="rating-fill" data-pct="78.4"></div></div>
+        </div>
+
+        <div class="rating-row">
+          <div class="rating-meta">
+            <span class="rating-criterion">Clarity of Message</span>
+            <span class="rating-value">3.67 / 5</span>
+          </div>
+          <div class="rating-track"><div class="rating-fill" data-pct="73.4"></div></div>
+        </div>
+      </div>
+
+      <div class="rating-card rose-card animate" id="rose-ratings">
+        <div class="rating-card-label">The Heritage Rose</div>
+
+        <div class="rating-row">
+          <div class="rating-meta">
+            <span class="rating-criterion">Professionalism</span>
+            <span class="rating-value">3.42 / 5</span>
+          </div>
+          <div class="rating-track"><div class="rating-fill" data-pct="68.4"></div></div>
+        </div>
+
+        <div class="rating-row">
+          <div class="rating-meta">
+            <span class="rating-criterion">Strength of Symbols</span>
+            <span class="rating-value">3.00 / 5</span>
+          </div>
+          <div class="rating-track"><div class="rating-fill" data-pct="60"></div></div>
+        </div>
+
+        <div class="rating-row">
+          <div class="rating-meta">
+            <span class="rating-criterion">Clarity of Message</span>
+            <span class="rating-value">2.67 / 5</span>
+          </div>
+          <div class="rating-track"><div class="rating-fill" data-pct="53.4"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RATINGS Q8 -->
+    <div class="section-label" style="margin-top:36px;">Q8 — Personal &amp; Parent Reaction</div>
+    <div class="section-title">How board members expect parents to respond</div>
+
+    <div class="ratings-grid">
+      <div class="rating-card tree-card animate">
+        <div class="rating-card-label">The Living Tree</div>
+
+        <div class="rating-row">
+          <div class="rating-meta">
+            <span class="rating-criterion">My personal reaction</span>
+            <span class="rating-value">3.83 / 5</span>
+          </div>
+          <div class="rating-track"><div class="rating-fill" data-pct="76.6"></div></div>
+        </div>
+
+        <div class="rating-row">
+          <div class="rating-meta">
+            <span class="rating-criterion">Unknown parent reaction</span>
+            <span class="rating-value">3.83 / 5</span>
+          </div>
+          <div class="rating-track"><div class="rating-fill" data-pct="76.6"></div></div>
+        </div>
+
+        <div class="rating-note">Personal and parent scores are identical — confidence in both.</div>
+      </div>
+
+      <div class="rating-card rose-card animate">
+        <div class="rating-card-label">The Heritage Rose</div>
+
+        <div class="rating-row">
+          <div class="rating-meta">
+            <span class="rating-criterion">My personal reaction</span>
+            <span class="rating-value">2.83 / 5</span>
+          </div>
+          <div class="rating-track"><div class="rating-fill" data-pct="56.6"></div></div>
+        </div>
+
+        <div class="rating-row">
+          <div class="rating-meta">
+            <span class="rating-criterion">Unknown parent reaction</span>
+            <span class="rating-value">3.17 / 5</span>
+          </div>
+          <div class="rating-track"><div class="rating-fill" data-pct="63.4"></div></div>
+        </div>
+
+        <div class="rating-note">Board members expect parents to respond more favourably than they personally do.</div>
+      </div>
+    </div>
+
+    <hr class="section-divider" />
+
+    <!-- THEMES -->
+    <div class="section-label">Qualitative Analysis</div>
+    <div class="section-title">Themes that surfaced across responses</div>
+
+    <div class="theme-grid">
+      <div class="theme-card">
+        <div class="theme-badge high">8 / 12</div>
+        <div class="theme-text">
+          <strong>Harkaway Hills similarity</strong>
+          <p>The most cited concern. Multiple respondents note that the rose, laurel leaves, and overall oval layout closely mirror Harkaway Hills College — making differentiation the Heritage Rose's central problem.</p>
+        </div>
+      </div>
+
+      <div class="theme-card">
+        <div class="theme-badge mid">4 / 12</div>
+        <div class="theme-text">
+          <strong>"Rosewood" should be one colour</strong>
+          <p>The two-tone treatment of "ROSE" and "wood" is consistently flagged as confusing — respondents worry it reads as two separate words and undermines the school name.</p>
+        </div>
+      </div>
+
+      <div class="theme-card">
+        <div class="theme-badge mid">4 / 12</div>
+        <div class="theme-text">
+          <strong>Border / contrast on the Tree</strong>
+          <p>On dark backgrounds the Living Tree loses definition. A white or light border around the crest is suggested by multiple respondents to improve visibility on uniforms and merchandise.</p>
+        </div>
+      </div>
+
+      <div class="theme-card">
+        <div class="theme-badge mid">3 / 12</div>
+        <div class="theme-text">
+          <strong>Banner issue on the Living Tree</strong>
+          <p>The ribbon/banner running through the crest divides opinion. Three respondents independently describe it as unfinished or awkward — with pointed notes about how it might render in embroidery.</p>
+        </div>
+      </div>
+
+      <div class="theme-card">
+        <div class="theme-badge mid">3 / 12</div>
+        <div class="theme-text">
+          <strong>Gold elements from the Rose into the Tree</strong>
+          <p>Several Tree-preferrers say they like the gold laurel branches of the Heritage Rose and would want them brought across — suggesting a hybrid enrichment of the winning direction.</p>
+        </div>
+      </div>
+
+      <div class="theme-card">
+        <div class="theme-badge low">3 / 12</div>
+        <div class="theme-text">
+          <strong>Australian identity</strong>
+          <p>Three respondents raise distinctly Australian elements — an Australian native tree variety, or the Southern Cross — as a way to ground the emblem in its local context.</p>
+        </div>
+      </div>
+
+      <div class="theme-card">
+        <div class="theme-badge low">2 / 12</div>
+        <div class="theme-text">
+          <strong>The three-roses proposal</strong>
+          <p>Two respondents suggest three roses as an alternative — keeping the rose motif while solving the Harkaway problem. One articulates a detailed theological rationale connecting three roses to the Trinity, the Theological Virtues, and the wood of the cross.</p>
+        </div>
+      </div>
+
+      <div class="theme-card">
+        <div class="theme-badge low">1 / 12</div>
+        <div class="theme-text">
+          <strong>Classical heraldic structure</strong>
+          <p>One respondent makes a case for moving toward a quartered heraldic shield using classical symbols (open book, torch, dove, vine) drawn from tradition. Both designs were rated 3/5 across all criteria.</p>
+        </div>
+      </div>
+
+      <div class="theme-card" style="grid-column: 1 / -1;">
+        <div class="theme-badge low">1 / 12</div>
+        <div class="theme-text">
+          <strong>The heraldic rose carries deep significance for Opus Dei</strong>
+          <p>One respondent notes that the heraldic rose is not merely a reference to the school's name — it holds profound institutional meaning within the Opus Dei prelature, where the rose features in the coat of arms and carries theological and spiritual symbolism tied to the charism of the Work. This adds a layer of significance to the Heritage Rose direction that goes beyond aesthetics or name-matching, and is worth the board weighing explicitly in their deliberations.</p>
+        </div>
+      </div>
+    </div>
+
+    <hr class="section-divider" />
+
+    <!-- QUOTES -->
+    <div class="section-label">Selected Responses</div>
+    <div class="section-title">What the board said — anonymised</div>
+
+    <div class="quotes-grid">
+      <div class="quote-card">
+        <div class="quote-text">The logo should make people feel: this is a place where a child is personally known, carefully formed, and helped to grow in wisdom and virtue. The final mark should avoid feeling like a generic college crest.</div>
+        <span class="quote-tag">On Q9 — what the designer must get right</span>
+      </div>
+
+      <div class="quote-card">
+        <div class="quote-text">The real issue is that it resembles too much to Harkaway Hills as their main symbol is the rose. That's a serious consideration — and even if we had more roses, it would still be the same key element.</div>
+        <span class="quote-tag">On the Heritage Rose</span>
+      </div>
+
+      <div class="quote-card">
+        <div class="quote-text">We have not properly played out the three roses option, which has been suggested several times from the beginning of this process, but has not been presented in any design options sent to us formally.</div>
+        <span class="quote-tag">On what has not yet been explored</span>
+      </div>
+
+      <div class="quote-card">
+        <div class="quote-text">As a tree it is like the vine, the branches — it is wood and it has the rose. Perfect. It works. Plus as a school based on virtue, the use of this tree is the classic icon of a virtue-based education.</div>
+        <span class="quote-tag">On the Living Tree</span>
+      </div>
+
+      <div class="quote-card">
+        <div class="quote-text">I like the dual symbology — the Rosewood tree at the top and the heraldic rose at the bottom. The rose is a nod to Our Lady, but also ties in with the name of the school.</div>
+        <span class="quote-tag">On the Living Tree's layered meaning</span>
+      </div>
+
+      <div class="quote-card">
+        <div class="quote-text">Change the "flowy" banner tails to just normal, similar to option 2. If not embroidered or executed properly, it will look like a snake with its mouth wide open.</div>
+        <span class="quote-tag">On the Living Tree banner</span>
+      </div>
+
+      <div class="quote-card">
+        <div class="quote-text">It needs to look very distinct from the other PARED schools. We need to have our own identity as a school.</div>
+        <span class="quote-tag">On distinctiveness — Q9</span>
+      </div>
+
+      <div class="quote-card">
+        <div class="quote-text">Both of these logo options are good. I honestly think the most important choice is the colours we choose for the uniform. That is what will set our school apart from others in the area.</div>
+        <span class="quote-tag">On colour as the defining factor</span>
+      </div>
+    </div>
+
+    <hr class="section-divider" />
+
+    <!-- Q9 CALLOUT -->
+    <div class="callout">
+      <div class="callout-label">Q9 — Non-negotiables for the designer</div>
+      <h3>What the board wants the final mark to achieve — regardless of direction</h3>
+      <ul class="callout-list">
+        <li>A parent should understand the emblem without it being explained to them — symbol and meaning must be immediate.</li>
+        <li>It must be visually distinct from other PARED schools, particularly Harkaway Hills College.</li>
+        <li>The name "Rosewood" should read as a single word — one colour, consistent treatment.</li>
+        <li>The design must hold up across all applications: embroidery, uniforms, letterhead, signage, and small-scale print.</li>
+        <li>It should feel like Rosewood specifically — personal, family-partnered, and virtue-forming — not a generic school crest.</li>
+      </ul>
+    </div>
+
+    <!-- FOOTNOTE NOTE -->
+    <div class="card" style="background:#fffbf0; border-color:#e8d89a;">
+      <div class="section-label" style="color:#8a6d00;">Note on the Heritage Rose responses</div>
+      <p style="font-family:'Arial',sans-serif; font-size:13px; line-height:1.7; color:#5a4a00;">
+        Of the three respondents who selected the Heritage Rose, two noted significant reservations about the current design — including the Harkaway similarity and the need for more visual richness. Only one respondent gave the Heritage Rose strong ratings across all criteria. The Heritage Rose preference appears to reflect attachment to the rose motif rather than confidence in the current execution.
+      </p>
+      <p style="font-family:'Arial',sans-serif; font-size:13px; line-height:1.7; color:#5a4a00; margin-top:12px;">
+        One respondent raises an additional dimension: the heraldic rose carries deep and specific meaning within the Opus Dei prelature, appearing in its coat of arms and connected to the charism of the Work. This institutional significance is distinct from the school-name connection and represents a consideration the board may wish to weigh independently of the visual and competitive arguments.
+      </p>
+    </div>
+
+    <div class="footer">
+      Rosewood College · Design Direction Survey · May 2026 · Confidential — Board Use Only
+    </div>
+
+  </div>
+
+  <script>
+    // Animate bars on load
+    function animateBars() {
+      document.querySelectorAll('.rating-fill').forEach(el => {
+        const pct = el.getAttribute('data-pct');
+        setTimeout(() => { el.style.width = pct + '%'; }, 200);
+      });
+      setTimeout(() => {
+        document.getElementById('vote-bar').style.width = '75%';
+      }, 300);
+    }
+
+    // Intersection observer for staggered entrance
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          animateBars();
+          observer.disconnect();
+        }
+      });
+    }, { threshold: 0.1 });
+
+    const voteSection = document.getElementById('vote-section');
+    if (voteSection) observer.observe(voteSection);
+
+    // Fallback: animate after 500ms if already visible
+    setTimeout(animateBars, 500);
+  </script>
+
+</body>
+</html>
