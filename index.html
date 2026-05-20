@@ -9,7 +9,7 @@
   <title>Families for Education | Homepage Preview 2</title>
 
   <!-- SEO -->
-  <meta name="description" content="Families for Education is a new parent-partnered independent Catholic school opening in Melton, Melbourne's West in 2027. Led by Founding Principal Dr Anne-Marie Irwin. Help us raise the final $2M. Register your child now.">
+  <meta name="description" content="Families for Education is a new parent-partnered independent Catholic school opening in Melton, Melbourne's West in 2027. Led by Founding Principal Dr Anne-Marie Irwin. $5.9M raised toward our $7.3M goal. Register your child now.">
   <meta name="keywords" content="Catholic school Melbourne West, independent school Melton, new school 2027, parent-partnered school, Families for Education, Catholic education Victoria, SALT teaching, Spalding Method">
   <meta name="author" content="Families for Education">
   <meta name="robots" content="noindex, nofollow">
@@ -20,7 +20,7 @@
 
   <!-- Open Graph -->
   <meta property="og:title" content="Families for Education | Proposed New School in Melton">
-  <meta property="og:description" content="A parent-partnered independent Catholic school for Melbourne's West, opening 2027. Led by Dr Anne-Marie Irwin. Help us raise the final $2M. EOIs now open.">
+  <meta property="og:description" content="A parent-partnered independent Catholic school for Melbourne's West, opening 2027. Led by Dr Anne-Marie Irwin. $5.9M raised toward our $7.3M goal. EOIs now open.">
   <meta property="og:image" content="https://ffe.org.au/img/logo.png">
   <meta property="og:url" content="https://ffe.org.au/">
   <meta property="og:type" content="website">
@@ -30,7 +30,7 @@
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Families for Education | Proposed New School in Melton">
-  <meta name="twitter:description" content="A parent-partnered independent Catholic school for Melbourne's West, opening 2027. Led by Dr Anne-Marie Irwin. $7.5M raised. EOIs now open.">
+  <meta name="twitter:description" content="A parent-partnered independent Catholic school for Melbourne's West, opening 2027. Led by Dr Anne-Marie Irwin. $5.9M raised toward our $7.3M goal. EOIs now open.">
   <meta name="twitter:image" content="https://ffe.org.au/img/logo.png">
 
   <!-- Structured Data (JSON-LD) -->
@@ -139,6 +139,140 @@
       transform: translateY(-2px);
       box-shadow: 0 8px 28px rgba(232, 160, 32, 0.5);
       animation: none;
+    }
+    .events-compact-list {
+      display: grid;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    .event-row {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 1.25rem;
+      align-items: center;
+      background: var(--off-white);
+      border-radius: var(--radius-lg);
+      padding: 1.35rem 1.5rem;
+      border-left: 6px solid var(--red);
+      box-shadow: var(--shadow);
+    }
+    .event-row-date {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--navy);
+      color: var(--white);
+      border-radius: var(--radius);
+      min-width: 74px;
+      padding: 0.7rem 0.85rem;
+      text-align: center;
+      line-height: 1;
+    }
+    .event-row-date .month {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.68);
+      margin-bottom: 0.3rem;
+    }
+    .event-row-date .day {
+      font-family: var(--font-heading);
+      font-size: 1.9rem;
+      font-weight: 700;
+    }
+    .event-row-text h3 {
+      font-size: 1.08rem;
+      color: var(--navy);
+      margin-bottom: 0.4rem;
+    }
+    .event-row-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.9rem;
+      color: var(--text-light);
+      font-size: 0.82rem;
+      margin-bottom: 0.45rem;
+    }
+    .event-row-text p {
+      font-size: 0.88rem;
+      line-height: 1.55;
+      color: var(--text-light);
+      max-width: 46rem;
+      margin: 0;
+    }
+    .event-row-actions {
+      display: flex;
+      gap: 0.7rem;
+      flex-wrap: wrap;
+      justify-content: flex-start;
+    }
+    @media (min-width: 901px) {
+      .event-row-actions {
+        justify-content: flex-end;
+      }
+    }
+    @media (max-width: 900px) {
+      .event-row {
+        grid-template-columns: auto 1fr;
+        align-items: start;
+      }
+      .event-row-actions {
+        grid-column: 1 / -1;
+        justify-content: flex-start;
+      }
+    }
+    @media (max-width: 640px) {
+      .event-row {
+        grid-template-columns: 1fr;
+      }
+      .event-row-date {
+        justify-self: start;
+      }
+    }
+    @media (min-width: 1024px) {
+      .events .section-title {
+        font-size: clamp(2.6rem, 4vw, 4.2rem);
+      }
+      .events-compact-list {
+        gap: 0.8rem;
+      }
+      .event-row {
+        gap: 1rem;
+        padding: 1.1rem 1.2rem;
+      }
+      .event-row-date {
+        min-width: 68px;
+        padding: 0.6rem 0.75rem;
+      }
+      .event-row-date .month {
+        font-size: 0.62rem;
+      }
+      .event-row-date .day {
+        font-size: 1.7rem;
+      }
+      .event-tag {
+        font-size: 0.68rem;
+        margin-bottom: 0.35rem;
+      }
+      .event-row-text h3 {
+        font-size: 1rem;
+        margin-bottom: 0.3rem;
+      }
+      .event-row-meta {
+        gap: 0.75rem;
+        font-size: 0.78rem;
+        margin-bottom: 0.35rem;
+      }
+      .event-row-text p {
+        font-size: 0.82rem;
+        line-height: 1.48;
+      }
+      .event-row-actions .btn {
+        font-size: 0.8rem !important;
+        padding: 0.45rem 0.95rem !important;
+      }
     }
   </style>
 </head>
@@ -336,13 +470,17 @@
       <div class="fundraising-block reveal delay-1">
         <div class="fundraising-header">
           <span>Fundraising Progress</span>
-          <span class="fund-amount">Approx. $2M still needed</span>
+          <span class="fund-amount">$5.9M raised</span>
         </div>
         <div class="progress-bar-track">
-          <div class="progress-bar-fill" data-width="78"></div>
+          <div class="progress-bar-fill" data-width="81"></div>
+        </div>
+        <div class="fundraising-footer">
+          <span>Raised so far: $5.9M</span>
+          <span>Goal: $7.3M</span>
         </div>
         <div class="fundraising-support">
-          <p>We are in the final stage of fundraising - your support now helps turn plans into fully equipped classrooms ready for 2027. Every contribution - no matter how big or small - helps bring our school to life.</p>
+          <p>We have raised $5.9M toward our $7.3M goal, bringing us significantly closer to fully equipped classrooms ready for students in 2027.</p>
           <a href="donate.html?v=2" class="btn btn-gold">Donate Now</a>
         </div>
       </div>
@@ -539,25 +677,65 @@
   <section class="events section-pad" id="events">
     <div class="container">
       <div class="section-label reveal">Community Events</div>
-      <h2 class="section-title reveal">Join Us <span class="accent">Online</span></h2>
-      <div class="event-card event-card-with-img reveal delay-1">
-        <div class="event-card-body">
-          <div class="event-date-block">
-            <span class="event-month">MAY</span>
-            <span class="event-day">20</span>
+      <h2 class="section-title reveal">Join Us at Our <span class="accent">Upcoming Events</span></h2>
+      <div class="events-compact-list reveal delay-1">
+        <div class="event-row">
+          <div class="event-row-date">
+            <span class="month">MAY</span>
+            <span class="day">20</span>
           </div>
-          <div class="event-details">
+          <div class="event-row-text">
             <div class="event-tag">Online Information Session</div>
             <h3>School Name Reveal &amp; Information Session</h3>
-            <div class="event-meta">
-              <span>8:30 PM – 9:30 PM</span>
+            <div class="event-row-meta">
+              <span>8:30 PM - 9:30 PM</span>
               <span>Via Google Meet</span>
               <span>Wednesday 20 May 2026</span>
             </div>
             <p>Join us online as we share progress toward opening in 2027, introduce the unique vision behind our approach to education, and publicly reveal the school's name for the first time.</p>
-            <div class="event-actions" style="margin-top:1rem;display:flex;gap:.75rem;flex-wrap:wrap;">
-              <a href="info-session.html" class="btn btn-primary" style="font-size:.875rem;padding:.5rem 1.25rem;">View Details</a>
+          </div>
+          <div class="event-row-actions">
+            <a href="info-session.html" class="btn btn-primary" style="font-size:.875rem;padding:.5rem 1.1rem;">View Details</a>
+          </div>
+        </div>
+        <div class="event-row">
+          <div class="event-row-date">
+            <span class="month">MAY</span>
+            <span class="day">23</span>
+          </div>
+          <div class="event-row-text">
+            <div class="event-tag">Family Rosary Pilgrimage</div>
+            <h3>Rosary Pilgrimage for Families and the School</h3>
+            <div class="event-row-meta">
+              <span>10:30 AM</span>
+              <span>Our Lady Ta' Pinu Shrine, Merrimu</span>
+              <span>Saturday 23 May 2026</span>
             </div>
+            <p>Please join us for a family Rosary pilgrimage to pray for the needs of our families and the school. We will meet at Ta Pinu Chapel before gathering for a simple morning tea picnic. Families are welcome to bring rosary beads, morning tea, and flowers for the children to offer to Mother Mary.</p>
+          </div>
+          <div class="event-row-actions">
+            <a href="tel:+61434636719" class="btn btn-primary" style="font-size:.875rem;padding:.5rem 1.1rem;">Contact Tara</a>
+            <a href="https://maps.google.com/?q=Our+Lady+Ta%27+Pinu+Shrine+15+Flanagans+Dr+Merrimu+VIC+3340" class="btn btn-outline" style="font-size:.875rem;padding:.5rem 1.1rem;" target="_blank" rel="noopener">Location</a>
+          </div>
+        </div>
+        <div class="event-row">
+          <div class="event-row-date">
+            <span class="month">JUN</span>
+            <span class="day">5</span>
+          </div>
+          <div class="event-row-text">
+            <div class="event-tag">Parents and Teachers Evening</div>
+            <h3>Ideals in Teaching: A Holistic Education, a School for the Family</h3>
+            <div class="event-row-meta">
+              <span>6:30 PM</span>
+              <span>The Club, Caroline Springs</span>
+              <span>Friday 5 June 2026</span>
+              <span>$10 per person</span>
+            </div>
+            <p>Join Joshua and Natasha Peart, a founding family of Harkaway Hills College, for an evening exploring the impact of a PARED-style education on children, family life, and a school community grounded in faith, character, and virtue. Dinner is available for purchase at the Bistro before the talk. Cost: $10 per person.</p>
+          </div>
+          <div class="event-row-actions">
+            <a href="https://www.trybooking.com/DMKPQ" class="btn btn-primary" style="font-size:.875rem;padding:.5rem 1.1rem;" target="_blank" rel="noopener">Register</a>
           </div>
         </div>
       </div>
