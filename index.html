@@ -331,7 +331,7 @@
       <div class="hero-stats animate-fade-up delay-4">
         <div class="stat">
           <div class="stat-value">
-            <span class="stat-prefix">$</span><span class="stat-number" data-target="2">0</span><span class="stat-suffix">M</span>
+            <span class="stat-prefix">$</span><span class="stat-number" data-target="1.4">0</span><span class="stat-suffix">M</span>
           </div>
           <span class="stat-label">Still to Raise</span>
         </div>
@@ -979,7 +979,7 @@
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           const el = entry.target;
-          const target = parseInt(el.dataset.target);
+          const target = parseFloat(el.dataset.target);
           if (isNaN(target)) return;
           const duration = 1800;
           const start = Date.now();
@@ -987,7 +987,9 @@
             const elapsed = Date.now() - start;
             const progress = Math.min(elapsed / duration, 1);
             const eased = 1 - Math.pow(1 - progress, 3);
-            el.textContent = Math.floor(target * eased);
+            const value = target * eased;
+            const decimals = Number.isInteger(target) ? 0 : 1;
+            el.textContent = value.toFixed(decimals);
             if (progress < 1) requestAnimationFrame(tick);
           };
           tick();
