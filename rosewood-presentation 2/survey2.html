@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rosewood College — Design Direction Feedback</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy: #1B2A4A;
+    --navy-light: #263859;
+    --sky: #4A90C4;
+    --sky-light: #E8F2FA;
+    --red: #C0392B;
+    --red-light: #FDECEA;
+    --gray-bg: #F5F5F3;
+    --gray-border: #DDDBD6;
+    --gray-border-strong: #B8B5AF;
+    --text-primary: #1A1A18;
+    --text-secondary: #5A5855;
+    --text-hint: #9A9793;
+    --white: #FFFFFF;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--gray-bg);
+    color: var(--text-primary);
+    line-height: 1.6;
+    min-height: 100vh;
+    padding: 2rem 1rem 4rem;
+  }
+
+  .wrap { max-width: 700px; margin: 0 auto; }
+
+  .poll-head {
+    background: var(--navy);
+    border-radius: 12px;
+    padding: 2rem 2rem 1.75rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+  }
+  .poll-round {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.45);
+    background: rgba(255,255,255,0.08);
+    border-radius: 20px;
+    padding: 3px 12px;
+    margin-bottom: 10px;
+  }
+  .school-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--sky);
+    margin-bottom: 10px;
+  }
+  .poll-head h1 {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--white);
+    margin-bottom: 8px;
+  }
+  .poll-head p {
+    font-size: 14px;
+    color: rgba(255,255,255,0.65);
+    line-height: 1.6;
+  }
+
+  .note {
+    background: var(--sky-light);
+    border: 1px solid #C5DCF0;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 1.5rem;
+    font-size: 13px;
+    color: #1B4F78;
+    line-height: 1.6;
+  }
+
+  .sec-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--text-hint);
+    margin-bottom: 12px;
+  }
+
+  .divider { border: none; border-top: 1px solid var(--gray-border); margin: 2rem 0; }
+
+  .card {
+    background: var(--white);
+    border: 1px solid var(--gray-border);
+    border-radius: 12px;
+    padding: 1.35rem 1.35rem 1.15rem;
+    margin-bottom: 1.1rem;
+  }
+
+  .q-num {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-hint);
+    background: var(--gray-bg);
+    border-radius: 4px;
+    padding: 2px 8px;
+    margin-bottom: 8px;
+  }
+  .q-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+    line-height: 1.45;
+  }
+  .q-hint {
+    font-size: 12px;
+    color: var(--text-hint);
+    margin-bottom: 14px;
+    line-height: 1.5;
+  }
+
+  textarea {
+    width: 100%;
+    border: 1px solid var(--gray-border);
+    border-radius: 8px;
+    background: var(--gray-bg);
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: inherit;
+    padding: 10px 13px;
+    resize: vertical;
+    min-height: 82px;
+    line-height: 1.5;
+    transition: border-color .15s;
+  }
+  textarea:focus { outline: none; border-color: var(--sky); background: var(--white); }
+  textarea::placeholder { color: var(--text-hint); }
+
+  /* Direction selection cards */
+  .dir-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .dir-card {
+    background: var(--white);
+    border: 2px solid var(--gray-border);
+    border-radius: 10px;
+    padding: 20px 16px 16px;
+    cursor: pointer;
+    transition: all .15s;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    font-family: inherit;
+    position: relative;
+  }
+  .dir-card:hover { border-color: var(--sky); box-shadow: 0 2px 8px rgba(74,144,196,0.12); }
+  .dir-card.sel { border-color: var(--sky); background: var(--sky-light); }
+  .dir-card-logo {
+    width: 90px;
+    height: 90px;
+    object-fit: contain;
+    margin-bottom: 4px;
+  }
+  .dir-card-num {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--text-hint);
+  }
+  .dir-card-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.3;
+  }
+  .dir-card.sel .dir-card-name { color: #1B4F78; }
+  .dir-card-sub {
+    font-size: 11px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+  }
+  .dir-card-check {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--sky);
+    color: var(--white);
+    font-size: 11px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+  }
+  .dir-card.sel .dir-card-check { display: flex; }
+
+  /* Sliders */
+  .scale-legend {
+    display: flex; justify-content: space-between;
+    font-size: 11px; color: var(--text-hint);
+    margin-bottom: 14px; padding: 0 2px;
+  }
+  .opt-block {
+    border: 1px solid var(--gray-border);
+    border-radius: 8px;
+    padding: 14px 14px 8px;
+    margin-bottom: 12px;
+    background: var(--gray-bg);
+  }
+  .opt-block-title { font-size: 12px; font-weight: 600; color: var(--navy); margin-bottom: 13px; }
+  .slider-row {
+    display: grid;
+    grid-template-columns: 155px 1fr 28px;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 11px;
+  }
+  .slider-cat { font-size: 13px; color: var(--text-primary); }
+  .slider-val { font-size: 13px; font-weight: 600; color: var(--navy); text-align: right; }
+  input[type=range] {
+    width: 100%;
+    -webkit-appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--gray-border);
+    outline: none;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--sky);
+    cursor: pointer;
+    border: 2px solid var(--white);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--sky);
+    cursor: pointer;
+    border: 2px solid var(--white);
+  }
+
+  /* Grid rating */
+  .rating-grid { width: 100%; border-collapse: collapse; }
+  .rating-grid th, .rating-grid td { padding: 10px 8px; text-align: center; font-size: 12px; }
+  .rating-grid thead tr { border-bottom: 2px solid var(--gray-border); }
+  .rating-grid th.opt-col { text-align: left; font-size: 12px; font-weight: 600; color: var(--text-hint); letter-spacing: .06em; text-transform: uppercase; width: 160px; }
+  .rating-grid th.score-col { font-size: 11px; font-weight: 600; color: var(--text-hint); letter-spacing: .06em; text-transform: uppercase; min-width: 90px; }
+  .rating-grid th.score-col.personal { color: var(--navy); background: #F0F4FA; border-radius: 6px 6px 0 0; }
+  .rating-grid th.score-col.public { color: #7A5200; background: #FEF6E4; border-radius: 6px 6px 0 0; }
+  .rating-grid tbody tr { border-bottom: 1px solid var(--gray-border); }
+  .rating-grid tbody tr:last-child { border-bottom: none; }
+  .opt-name { text-align: left; font-size: 13px; font-weight: 600; color: var(--text-primary); }
+  .opt-sub { font-size: 11px; color: var(--text-hint); font-weight: 400; display: block; margin-top: 2px; }
+  .cell-personal { background: #F7F9FD; }
+  .cell-public { background: #FFFBF2; }
+  .grid-slider-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .grid-slider-wrap input[type=range] { width: 80px; }
+  .cell-personal input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--navy); cursor: pointer; border: 2px solid var(--white); box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+  .cell-public input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #D4A017; cursor: pointer; border: 2px solid var(--white); box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+  .cell-personal input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--navy); cursor: pointer; border: 2px solid var(--white); }
+  .cell-public input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #D4A017; cursor: pointer; border: 2px solid var(--white); }
+  .grid-slider-val { font-size: 13px; font-weight: 600; }
+  .cell-personal .grid-slider-val { color: var(--navy); }
+  .cell-public .grid-slider-val { color: #7A5200; }
+  .grid-legend { display: flex; gap: 20px; margin-bottom: 16px; font-size: 12px; }
+  .grid-legend-item { display: flex; align-items: center; gap: 6px; }
+  .grid-legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .grid-legend-dot.personal { background: var(--navy); }
+  .grid-legend-dot.public { background: #D4A017; }
+
+  /* Errors */
+  .err {
+    font-size: 12px; color: var(--red);
+    margin-top: 6px; display: none;
+    padding: 6px 10px;
+    background: var(--red-light);
+    border-radius: 6px;
+  }
+
+  /* Submit */
+  .submit-area { text-align: center; margin-top: 2rem; }
+  .submit-btn {
+    background: var(--navy);
+    border: none;
+    border-radius: 8px;
+    padding: 12px 36px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--white);
+    cursor: pointer;
+    transition: background .15s;
+    font-family: inherit;
+  }
+  .submit-btn:hover { background: var(--navy-light); }
+  .submit-note { font-size: 12px; color: var(--text-hint); margin-top: 10px; }
+
+  .name-field { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--gray-border); }
+  .name-field label { font-size: 12px; color: var(--text-hint); display: block; margin-bottom: 6px; }
+  .name-field input {
+    width: 100%; border: 1px solid var(--gray-border); border-radius: 8px;
+    background: var(--gray-bg); color: var(--text-primary); font-size: 13px;
+    font-family: inherit; padding: 9px 13px; transition: border-color .15s;
+  }
+  .name-field input:focus { outline: none; border-color: var(--sky); background: var(--white); }
+  .name-field input::placeholder { color: var(--text-hint); }
+
+  /* Thank you */
+  .thankyou {
+    display: none;
+    text-align: center;
+    padding: 4rem 1rem;
+    background: var(--white);
+    border: 1px solid var(--gray-border);
+    border-radius: 12px;
+  }
+  .thankyou h2 { font-size: 22px; font-weight: 600; color: var(--navy); margin-bottom: 10px; }
+  .thankyou p { font-size: 14px; color: var(--text-secondary); margin-bottom: 1rem; }
+  .response-box {
+    background: var(--gray-bg);
+    border: 1px solid var(--gray-border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    text-align: left;
+    white-space: pre-wrap;
+    font-size: 12px;
+    color: var(--text-secondary);
+    max-height: 400px;
+    overflow-y: auto;
+    line-height: 1.7;
+    margin-top: 1rem;
+  }
+  .copy-btn {
+    margin-top: 12px;
+    background: var(--white);
+    border: 1px solid var(--gray-border);
+    border-radius: 8px;
+    padding: 9px 22px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background .12s;
+  }
+  .copy-btn:hover { background: var(--gray-bg); }
+
+  /* Autosave indicator */
+  #save-indicator {
+    position: fixed;
+    bottom: 18px;
+    right: 18px;
+    background: var(--navy);
+    color: var(--white);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 7px 14px;
+    border-radius: 20px;
+    opacity: 0;
+    transition: opacity .3s;
+    pointer-events: none;
+    z-index: 999;
+  }
+  #save-indicator.show { opacity: 1; }
+
+  @media (max-width: 500px) {
+    .dir-grid { grid-template-columns: 1fr; }
+    .slider-row { grid-template-columns: 120px 1fr 24px; }
+    .poll-head { padding: 1.5rem 1.25rem; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="poll-head">
+    <div class="school-label">Rosewood College</div>
+    <h1>Design direction / feedback form</h1>
+    <p>Nine questions. We are choosing a path forward. Your answers will shape both the decision and the development brief.</p>
+  </div>
+
+  <div style="margin-bottom:1rem;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);">Before you begin — review the proposals</div>
+  <a href="https://ffe.org.au/rosewood_college.html" style="text-decoration:none;display:block;margin-bottom:1rem;" target="_blank" rel="noopener noreferrer">
+    <div style="background:#fff;border-radius:10px;padding:18px 20px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border:2px solid var(--navy);transition:all .15s;" onmouseover="this.style.borderColor='var(--sky)'" onmouseout="this.style.borderColor='var(--navy)'">
+      <div>
+        <div style="font-size:16px;font-weight:600;color:var(--navy);">View the design proposal</div>
+        <div style="font-size:12px;color:var(--text-hint);margin-top:4px;">Once reviewed, tick the box below to begin the survey.</div>
+      </div>
+      <div style="background:var(--sky);color:#fff;font-size:13px;font-weight:700;padding:7px 16px;border-radius:6px;white-space:nowrap;margin-left:16px;">Open &#8599;</div>
+    </div>
+  </a>
+
+  <label id="proposal-check-wrap" style="display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--gray-border);border-radius:8px;padding:14px 16px;margin-bottom:1.5rem;cursor:pointer;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--sky)'" onmouseout="this.style.borderColor=document.getElementById('proposal-check').checked?'var(--sky)':'var(--gray-border)'">
+    <input type="checkbox" id="proposal-check" onchange="toggleForm(this)" style="width:18px;height:18px;accent-color:var(--sky);cursor:pointer;flex-shrink:0;">
+    <span style="font-size:14px;font-weight:500;color:var(--text-primary);">I have reviewed the design proposal</span>
+  </label>
+
+  <div id="form-body" style="display:none;">
+
+  <div class="note">The goal of this survey is to choose a path forward for the Rosewood College crest. Your preference will contribute to that decision. Please review both directions carefully and share your honest thoughts on each, whichever direction the board selects, the designer will need your notes on it.</div>
+
+  <div class="divider"></div>
+
+  <!-- Q1 -->
+  <div class="card">
+    <span class="q-num">Q1</span>
+    <div class="q-text">Which direction do you prefer?</div>
+    <div class="q-hint">Select one. This is your vote for the path forward.</div>
+    <div class="dir-grid">
+      <button class="dir-card" id="dir-tree" onclick="selectDir('tree')">
+        <div class="dir-card-check">✓</div>
+        <img class="dir-card-logo" src="assets/op1-logo.png" alt="The Living Tree logo">
+        <div class="dir-card-num">Option 01</div>
+        <div class="dir-card-name">The Living Tree</div>
+        <div class="dir-card-sub">Scholarly · Warm · Enduring</div>
+      </button>
+      <button class="dir-card" id="dir-rose" onclick="selectDir('rose')">
+        <div class="dir-card-check">✓</div>
+        <img class="dir-card-logo" src="assets/op2-logo.png" alt="The Heritage Rose logo">
+        <div class="dir-card-num">Option 02</div>
+        <div class="dir-card-name">The Heritage Rose</div>
+        <div class="dir-card-sub">Classical · Formal · Heraldic</div>
+      </button>
+    </div>
+    <div class="err" id="eDir">Please select a direction before continuing.</div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="sec-label" id="labelPartA">Part A — Your preferred direction</div>
+
+  <!-- Q2 -->
+  <div class="card">
+    <span class="q-num">Q2</span>
+    <div class="q-text" id="q2text">What qualities make your top-ranked emblem the strongest option?</div>
+    <div class="q-hint">Think about both what it communicates and how it is structured — the symbolism, the form, the composition. What makes it feel right for Rosewood College?</div>
+    <textarea id="a2" placeholder="Think about both what it communicates and how it is structured — the symbolism, the form, the composition. What makes it feel right for Rosewood College?"></textarea>
+    <div class="err" id="e2">Please share your reasoning.</div>
+  </div>
+
+  <!-- Q3 -->
+  <div class="card">
+    <span class="q-num">Q3</span>
+    <div class="q-text" id="q3text">What refinements, if any, would make your preferred direction stronger?</div>
+    <div class="q-hint">Think about what the designer should develop further — these notes will go directly into the brief.</div>
+    <textarea id="a3" placeholder="What could be sharpened, simplified, or made more confident?"></textarea>
+    <div class="err" id="e3">Please share your thoughts on refinements.</div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="sec-label" id="labelPartB">Part B — The second option</div>
+
+  <!-- Q4 -->
+  <div class="card">
+    <span class="q-num">Q4</span>
+    <div class="q-text" id="q4text">What is the strongest aspect of the second option?</div>
+    <div class="q-hint">Even if it is not your preference, engage with what it does well. If it were selected, what would be worth building on?</div>
+    <textarea id="a4" placeholder="What does the second direction do better, or differently, in a way that matters?"></textarea>
+    <div class="err" id="e4">Please share what works well in the second option.</div>
+  </div>
+
+  <!-- Q5 -->
+  <div class="card">
+    <span class="q-num">Q5</span>
+    <div class="q-text" id="q5text">What would need to improve (if anything) for you to feel confident if the second option were selected?</div>
+    <div class="q-hint">Not a list of complaints — a focused brief. If the board chose this direction, what should the designer address first?</div>
+    <textarea id="a5" placeholder="What is the one thing that would need to change for this direction to feel fully right?"></textarea>
+    <div class="err" id="e5">Please share what would need to improve.</div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="sec-label">Part C — School identity</div>
+
+  <!-- Q6 -->
+  <div class="card">
+    <span class="q-num">Q6</span>
+    <div class="q-text">Is there anything essential to Rosewood College's identity that is missing from both directions?</div>
+    <div class="q-hint">A value, a feeling, or a symbol that neither design captures — something that should be present in whatever direction is developed.</div>
+    <textarea id="a6" placeholder="What feeling is missing from both of them?" style="min-height:65px;"></textarea>
+  </div>
+
+  <div class="divider"></div>
+  <div class="sec-label">Part D — Ratings</div>
+
+  <!-- Q7 -->
+  <div class="card">
+    <span class="q-num">Q7</span>
+    <div class="q-text">Rate each direction across three criteria.</div>
+    <div class="q-hint">1 is weak, 5 is excellent. Be honest — this is designed to surface real differences between the two, not to give everything a 5.</div>
+    <div class="scale-legend"><span>1 — weak</span><span>3 — adequate</span><span>5 — excellent</span></div>
+    <div id="sliderBlocks"></div>
+  </div>
+
+  <!-- Q8 -->
+  <div class="card">
+    <span class="q-num">Q8</span>
+    <div class="q-text">Rate each direction twice — your personal reaction, and how you think an unknown parent would respond.</div>
+    <div class="q-hint">The gap between the two scores is often the most useful data. Be honest about both.</div>
+    <div class="grid-legend">
+      <div class="grid-legend-item"><div class="grid-legend-dot personal"></div><span><strong>My reaction</strong></span></div>
+      <div class="grid-legend-item"><div class="grid-legend-dot public"></div><span><strong>An unknown parent's reaction</strong></span></div>
+    </div>
+    <table class="rating-grid">
+      <thead>
+        <tr>
+          <th class="opt-col">Direction</th>
+          <th class="score-col personal">My reaction<div style="font-size:10px;font-weight:400;opacity:.7;margin-top:3px">1 weak · 5 excellent</div></th>
+          <th class="score-col public">Unknown parent<div style="font-size:10px;font-weight:400;opacity:.7;margin-top:3px">1 weak · 5 excellent</div></th>
+        </tr>
+      </thead>
+      <tbody id="gridBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Q9 -->
+  <div class="card">
+    <span class="q-num">Q9</span>
+    <div class="q-text">What is the one thing the final mark must get right, no matter which direction is chosen?</div>
+    <div class="q-hint">The designer will consider these responses when developing the final mark — so be as specific as you can.</div>
+    <textarea id="a9" placeholder="What would make you look at the final mark and know, without hesitation, that it is right?"></textarea>
+    <div class="err" id="e9">Please share your priority for the designer.</div>
+  </div>
+
+  <div class="submit-area">
+    <button class="submit-btn" onclick="submitForm()">Submit my feedback</button>
+    <p class="submit-note">Written responses are required for Q2–Q5 and Q9 before submitting.</p>
+    <div id="submit-error" style="display:none;margin-top:14px;padding:10px 14px;background:var(--red-light);border:1px solid #F5C6C2;border-radius:8px;font-size:13px;color:var(--red);">Something went wrong — your answers are still here. Please try submitting again.</div>
+    <div class="name-field" style="max-width:320px;margin:1.5rem auto 0;">
+      <label for="respName">Your name — to avoid duplicate submissions. Your feedback will be kept anonymous.</label>
+      <input type="text" id="respName" placeholder="First name is fine">
+      <div class="err" id="eName" style="margin-top:6px;">Please enter your name.</div>
+    </div>
+  </div>
+  </div><!-- end form-body -->
+</div>
+
+<div id="save-indicator">Progress saved</div>
+
+<div class="thankyou" id="ty">
+  <h2>Thank you for your feedback</h2>
+  <p>Your full response is shown below. Please copy it and send it to the session coordinator, or use the button to copy it to your clipboard.</p>
+  <div class="response-box" id="responseBox"></div>
+  <button class="copy-btn" onclick="copyResponse()">Copy response to clipboard</button>
+</div>
+
+<script>
+var selectedDir = null;
+var DIRS = {
+  tree: { name: 'The Living Tree', sub: 'Scholarly · Warm · Enduring' },
+  rose: { name: 'The Heritage Rose', sub: 'Classical · Formal · Heraldic' }
+};
+var OPTS = ['The Living Tree', 'The Heritage Rose'];
+var CATS = ['Professionalism', 'Strength of symbols', 'Clarity of message'];
+var sliderVals = {};
+var gridVals = {};
+
+function selectDir(key) {
+  selectedDir = key;
+  document.getElementById('dir-tree').classList.toggle('sel', key === 'tree');
+  document.getElementById('dir-rose').classList.toggle('sel', key === 'rose');
+  document.getElementById('eDir').style.display = 'none';
+  var preferred = DIRS[key].name;
+  var other = key === 'tree' ? DIRS.rose.name : DIRS.tree.name;
+  document.getElementById('labelPartA').textContent = 'Part A — ' + preferred + ' (your preferred direction)';
+  document.getElementById('labelPartB').textContent = 'Part B — ' + other + ' (the other direction)';
+  document.getElementById('q2text').textContent = 'What qualities make ' + preferred + ' the strongest option?';
+  document.getElementById('q3text').textContent = 'What refinements, if any, would make ' + preferred + ' stronger?';
+  document.getElementById('q4text').textContent = 'What is the strongest aspect of ' + other + '?';
+  document.getElementById('q5text').textContent = 'What would need to improve (if anything) for you to feel confident if ' + other + ' were selected?';
+  debounceSave();
+}
+
+function buildSliders() {
+  var container = document.getElementById('sliderBlocks');
+  OPTS.forEach(function(opt, oi) {
+    var block = document.createElement('div');
+    block.className = 'opt-block';
+    var title = document.createElement('div');
+    title.className = 'opt-block-title';
+    title.textContent = opt;
+    block.appendChild(title);
+    CATS.forEach(function(cat) {
+      var key = 'o' + oi + '_' + cat;
+      sliderVals[key] = 3;
+      var row = document.createElement('div');
+      row.className = 'slider-row';
+      var label = document.createElement('div');
+      label.className = 'slider-cat';
+      label.textContent = cat;
+      var sl = document.createElement('input');
+      sl.type = 'range'; sl.min = 1; sl.max = 5; sl.step = 1; sl.value = 3;
+      var valSpan = document.createElement('span');
+      valSpan.className = 'slider-val';
+      valSpan.textContent = '3';
+      sl.addEventListener('input', (function(k, vs) {
+        return function() { sliderVals[k] = parseInt(sl.value); vs.textContent = sl.value; debounceSave(); };
+      })(key, valSpan));
+      row.appendChild(label); row.appendChild(sl); row.appendChild(valSpan);
+      block.appendChild(row);
+    });
+    container.appendChild(block);
+  });
+}
+buildSliders();
+
+(function buildGrid() {
+  var GRID_OPTS = [
+    { name: 'The Living Tree', sub: 'Option 01' },
+    { name: 'The Heritage Rose', sub: 'Option 02' }
+  ];
+  var tbody = document.getElementById('gridBody');
+  GRID_OPTS.forEach(function(opt, i) {
+    gridVals['g' + i + '_personal'] = 3;
+    gridVals['g' + i + '_public'] = 3;
+    var tr = document.createElement('tr');
+    var tdName = document.createElement('td');
+    tdName.innerHTML = '<span class="opt-name">' + opt.name + '<span class="opt-sub">' + opt.sub + '</span></span>';
+    tr.appendChild(tdName);
+    ['personal', 'public'].forEach(function(type) {
+      var td = document.createElement('td');
+      td.className = 'cell-' + type;
+      var key = 'g' + i + '_' + type;
+      var wrap = document.createElement('div');
+      wrap.className = 'grid-slider-wrap';
+      var sl = document.createElement('input');
+      sl.type = 'range'; sl.min = 1; sl.max = 5; sl.step = 1; sl.value = 3;
+      var sp = document.createElement('span');
+      sp.className = 'grid-slider-val';
+      sp.textContent = '3';
+      sl.addEventListener('input', (function(k, s) {
+        return function() { gridVals[k] = parseInt(sl.value); s.textContent = sl.value; debounceSave(); };
+      })(key, sp));
+      wrap.appendChild(sl); wrap.appendChild(sp);
+      td.appendChild(wrap); tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+})();
+
+var SAVE_KEY = 'rosewood_draft_v2';
+
+function toggleForm(checkbox) {
+  var body = document.getElementById('form-body');
+  var wrap = document.getElementById('proposal-check-wrap');
+  if (checkbox.checked) {
+    body.style.display = 'block';
+    wrap.style.borderColor = 'var(--sky)';
+    wrap.style.background = 'var(--sky-light)';
+    try { localStorage.setItem('rosewood_proposal_reviewed', '1'); } catch(e) {}
+  } else {
+    body.style.display = 'none';
+    wrap.style.borderColor = 'var(--gray-border)';
+    wrap.style.background = '#fff';
+    try { localStorage.removeItem('rosewood_proposal_reviewed'); } catch(e) {}
+  }
+}
+
+// Restore checkbox state on load
+(function() {
+  try {
+    if (localStorage.getItem('rosewood_proposal_reviewed') === '1') {
+      var cb = document.getElementById('proposal-check');
+      if (cb) { cb.checked = true; toggleForm(cb); }
+    }
+  } catch(e) {}
+})();
+var saveTimer = null;
+
+function showSaved() {
+  var el = document.getElementById('save-indicator');
+  el.classList.add('show');
+  setTimeout(function() { el.classList.remove('show'); }, 2000);
+}
+
+function saveProgress() {
+  var draft = { selectedDir: selectedDir };
+  ['a2','a3','a4','a5','a6','a9'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) draft[id] = el.value;
+  });
+  draft.sliders = JSON.parse(JSON.stringify(sliderVals));
+  draft.grid = JSON.parse(JSON.stringify(gridVals));
+  var nameEl = document.getElementById('respName');
+  if (nameEl) draft.respName = nameEl.value;
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(draft)); } catch(e) {}
+  showSaved();
+}
+
+function debounceSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveProgress, 600);
+}
+
+function restoreProgress() {
+  var raw;
+  try { raw = localStorage.getItem(SAVE_KEY); } catch(e) {}
+  if (!raw) return;
+  var draft;
+  try { draft = JSON.parse(raw); } catch(e) { return; }
+  if (draft.selectedDir) selectDir(draft.selectedDir);
+  ['a2','a3','a4','a5','a6','a9'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el && draft[id] !== undefined) el.value = draft[id];
+  });
+  if (draft.sliders) {
+    var container = document.getElementById('sliderBlocks');
+    Object.keys(draft.sliders).forEach(function(k) {
+      sliderVals[k] = draft.sliders[k];
+      container.querySelectorAll('.slider-row').forEach(function(row) {
+        var block = row.closest('.opt-block');
+        var blocks = Array.from(container.querySelectorAll('.opt-block'));
+        var oi = blocks.indexOf(block);
+        var cat = row.querySelector('.slider-cat').textContent;
+        if ('o' + oi + '_' + cat === k) {
+          var sl = row.querySelector('input[type=range]');
+          var sp = row.querySelector('.slider-val');
+          if (sl) sl.value = draft.sliders[k];
+          if (sp) sp.textContent = draft.sliders[k];
+        }
+      });
+    });
+  }
+  if (draft.grid) {
+    var tbody = document.getElementById('gridBody');
+    Object.keys(draft.grid).forEach(function(k) {
+      gridVals[k] = draft.grid[k];
+      var parts = k.split('_');
+      var idx = parseInt(parts[0].slice(1));
+      var type = parts[1];
+      var row = tbody.querySelectorAll('tr')[idx];
+      if (!row) return;
+      var cell = row.querySelector('.cell-' + type);
+      if (!cell) return;
+      var sl = cell.querySelector('input[type=range]');
+      var sp = cell.querySelector('.grid-slider-val');
+      if (sl) sl.value = draft.grid[k];
+      if (sp) sp.textContent = draft.grid[k];
+    });
+  }
+  var nameEl = document.getElementById('respName');
+  if (nameEl && draft.respName !== undefined) nameEl.value = draft.respName;
+}
+
+restoreProgress();
+
+['a2','a3','a4','a5','a6','a9'].forEach(function(id) {
+  var el = document.getElementById(id);
+  if (el) el.addEventListener('input', debounceSave);
+});
+document.getElementById('respName').addEventListener('input', debounceSave);
+
+function val(id) { return document.getElementById(id).value.trim(); }
+function req(id, eid) {
+  var ok = val(id).length > 0;
+  document.getElementById(eid).style.display = ok ? 'none' : 'block';
+  return ok;
+}
+
+function getSliderSummary() {
+  var lines = [];
+  OPTS.forEach(function(opt, oi) {
+    lines.push(opt + ':');
+    CATS.forEach(function(cat) {
+      lines.push('  ' + cat + ': ' + sliderVals['o' + oi + '_' + cat] + '/5');
+    });
+  });
+  return lines.join('\n');
+}
+
+var finalResponse = '';
+
+function submitForm() {
+  var ok = true;
+  if (!selectedDir) {
+    document.getElementById('eDir').style.display = 'block';
+    ok = false;
+  }
+  ['a2','a3','a4','a5'].forEach(function(id) {
+    ok = req(id, 'e' + id.slice(1)) && ok;
+  });
+  ok = req('a9', 'e9') && ok;
+  var nameOk = document.getElementById('respName').value.trim().length > 0;
+  document.getElementById('eName').style.display = nameOk ? 'none' : 'block';
+  ok = nameOk && ok;
+  if (!ok) {
+    var firstErr = document.querySelector('.err[style*="block"]');
+    if (firstErr) firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+
+  var preferred = selectedDir ? DIRS[selectedDir].name : '(not selected)';
+  var other = selectedDir ? (selectedDir === 'tree' ? DIRS.rose.name : DIRS.tree.name) : '(not selected)';
+
+  var lines = ['ROSEWOOD COLLEGE — DESIGN DIRECTION FEEDBACK (ROUND 2)'];
+  lines.push('Submitted: ' + new Date().toLocaleString());
+  lines.push('\n--- Q1: PREFERRED DIRECTION ---\n' + preferred);
+  lines.push('\n--- Q2: WHAT MAKES IT THE STRONGEST OPTION ---\n' + val('a2'));
+  lines.push('\n--- Q3: REFINEMENTS FOR PREFERRED DIRECTION ---\n' + val('a3'));
+  lines.push('\n--- Q4: STRONGEST ASPECT OF ' + other.toUpperCase() + ' ---\n' + val('a4'));
+  lines.push('\n--- Q5: WHAT WOULD NEED TO IMPROVE IN ' + other.toUpperCase() + ' ---\n' + val('a5'));
+  lines.push('\n--- Q6: WHAT IS MISSING FROM BOTH DIRECTIONS ---\n' + (val('a6') || '(no written comment)'));
+  lines.push('\n--- Q7: RATINGS BY DIRECTION & CRITERION ---\n' + getSliderSummary());
+  var gridLines = [];
+  OPTS.forEach(function(opt, i) {
+    gridLines.push(opt + ':');
+    gridLines.push('  My reaction: ' + (gridVals['g' + i + '_personal'] || 3) + '/5');
+    gridLines.push('  Unknown parent reaction: ' + (gridVals['g' + i + '_public'] || 3) + '/5');
+  });
+  lines.push('\n--- Q8: PERSONAL VS UNKNOWN PARENT RATINGS ---\n' + gridLines.join('\n'));
+  lines.push('\n--- Q9: FIRST FOCUS FOR THE DESIGNER ---\n' + val('a9'));
+  lines.push('\n--- RESPONDENT ---\n' + (document.getElementById('respName').value.trim() || '(not provided)'));
+
+  finalResponse = lines.join('\n');
+
+  var btn = document.querySelector('.submit-btn');
+  btn.textContent = 'Submitting…';
+  btn.disabled = true;
+
+  fetch('https://n3pfu2dvp1.execute-api.us-east-1.amazonaws.com/prod/submit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ response: finalResponse })
+  })
+  .then(function(r) {
+    if (!r.ok) throw new Error('Server error ' + r.status);
+    return r.json();
+  })
+  .then(function(data) {
+    if (!data.ok) throw new Error('Submission rejected');
+    try { localStorage.removeItem(SAVE_KEY); } catch(e) {}
+    document.getElementById('responseBox').textContent = finalResponse;
+    document.querySelector('.wrap').style.display = 'none';
+    document.getElementById('ty').style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  })
+  .catch(function() {
+    btn.textContent = 'Submit my feedback';
+    btn.disabled = false;
+    document.getElementById('submit-error').style.display = 'block';
+    document.getElementById('submit-error').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+}
+
+function copyResponse() {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(finalResponse).then(function() {
+      var btn = document.querySelector('.copy-btn');
+      btn.textContent = 'Copied!';
+      setTimeout(function() { btn.textContent = 'Copy response to clipboard'; }, 2000);
+    });
+  } else {
+    var ta = document.createElement('textarea');
+    ta.value = finalResponse;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+}
+</script>
+</body>
+</html>

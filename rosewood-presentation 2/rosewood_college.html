@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rosewood College — Logo & Branding Proposal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #15233B;
+    --navy-deep: #0F1A2D;
+    --navy-light: #1F3252;
+    --terracotta: #C5483A;
+    --terracotta-soft: #D66556;
+    --sky: #9DC4D6;
+    --gold: #B89456;
+    --cream: #F4EFE6;
+    --cream-warm: #EDE5D6;
+    --paper: #FAF6EE;
+    --ink: #1A1F2E;
+    --muted: #6B6359;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .slide {
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    padding: 5vh 6vw;
+  }
+
+  /* ===== NAVIGATION DOTS ===== */
+  .nav-dots {
+    position: fixed;
+    right: 2rem;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .nav-dots a {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(21, 35, 59, 0.25);
+    transition: all 0.3s ease;
+    display: block;
+  }
+  .nav-dots a:hover, .nav-dots a.active {
+    background: var(--terracotta);
+    transform: scale(1.6);
+  }
+
+  /* ===== COVER ===== */
+  .cover {
+    background: var(--navy);
+    color: var(--cream);
+    justify-content: space-between;
+    overflow: hidden;
+  }
+  .cover::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 30%, rgba(197, 72, 58, 0.18) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 70%, rgba(157, 196, 214, 0.10) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  .cover-rays {
+    position: absolute;
+    inset: 0;
+    background-image: repeating-conic-gradient(
+      from 0deg at 50% 100%,
+      transparent 0deg,
+      rgba(244, 239, 230, 0.025) 1deg,
+      transparent 3deg
+    );
+    pointer-events: none;
+    opacity: 0.6;
+  }
+  .cover-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    z-index: 2;
+    position: relative;
+  }
+  .cover-mark {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.85rem;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--sky);
+    font-weight: 400;
+  }
+  .cover-mark::before {
+    content: '';
+    display: inline-block;
+    width: 30px;
+    height: 1px;
+    background: var(--terracotta);
+    margin-right: 1rem;
+    vertical-align: middle;
+  }
+  .cover-meta {
+    text-align: right;
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(244, 239, 230, 0.5);
+    line-height: 1.8;
+  }
+  .cover-main {
+    z-index: 2;
+    position: relative;
+    margin: auto 0;
+  }
+  .cover-eyebrow {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 1.1rem;
+    color: var(--terracotta-soft);
+    margin-bottom: 1.5rem;
+    letter-spacing: 0.05em;
+  }
+  .cover-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 400;
+    font-size: clamp(3.5rem, 9vw, 8.5rem);
+    line-height: 0.95;
+    letter-spacing: -0.02em;
+    color: var(--cream);
+  }
+  .cover-title .accent {
+    font-style: italic;
+    color: var(--sky);
+    font-weight: 300;
+  }
+  .cover-subtitle {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(1.3rem, 2.2vw, 2rem);
+    font-weight: 300;
+    color: rgba(244, 239, 230, 0.75);
+    margin-top: 1.5rem;
+    letter-spacing: 0.02em;
+    max-width: 600px;
+    line-height: 1.4;
+  }
+  .cover-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    z-index: 2;
+    position: relative;
+    padding-top: 3rem;
+    border-top: 1px solid rgba(244, 239, 230, 0.1);
+  }
+  .cover-options {
+    display: flex;
+    gap: 3rem;
+  }
+  .cover-options-item {
+    color: rgba(244, 239, 230, 0.6);
+  }
+  .cover-options-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.5rem;
+    color: var(--terracotta);
+    line-height: 1;
+    margin-bottom: 0.5rem;
+  }
+  .cover-options-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+  }
+  .cover-scroll {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--sky);
+  }
+  .cover-scroll::after {
+    content: '';
+    width: 60px;
+    height: 1px;
+    background: var(--sky);
+    animation: scrollLine 2s ease-in-out infinite;
+  }
+  @keyframes scrollLine {
+    0%, 100% { transform: scaleX(1); opacity: 1; }
+    50% { transform: scaleX(0.3); opacity: 0.5; }
+  }
+
+  /* ===== SECTION DIVIDERS ===== */
+  .section-divider {
+    background: var(--cream-warm);
+    min-height: 60vh;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 8vh 6vw;
+  }
+  .divider-mark {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.8rem;
+    letter-spacing: 0.5em;
+    text-transform: uppercase;
+    color: var(--terracotta);
+    margin-bottom: 1.5rem;
+  }
+  .divider-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(8rem, 18vw, 16rem);
+    font-style: italic;
+    color: var(--navy);
+    line-height: 0.85;
+    letter-spacing: -0.04em;
+    opacity: 0.95;
+  }
+  .divider-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(2rem, 4vw, 3.5rem);
+    color: var(--navy);
+    font-weight: 400;
+    margin-top: 0.5rem;
+    letter-spacing: -0.01em;
+  }
+  .divider-subtitle {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 1.3rem;
+    color: var(--muted);
+    margin-top: 1rem;
+    max-width: 500px;
+  }
+
+  /* ===== LOGO INTRODUCTION SLIDE ===== */
+  .logo-intro {
+    background: var(--navy);
+    color: var(--cream);
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 5rem;
+    align-items: center;
+    min-height: 100vh;
+    padding: 6vh 6vw;
+  }
+  .logo-intro::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 70% 50%, rgba(197, 72, 58, 0.12) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .logo-intro-image {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .logo-intro-image img {
+    max-width: 100%;
+    max-height: 75vh;
+    width: auto;
+    filter: drop-shadow(0 20px 60px rgba(0,0,0,0.4));
+  }
+  .logo-intro-text {
+    position: relative;
+    z-index: 2;
+    max-width: 540px;
+  }
+  .logo-intro-eyebrow {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 1rem;
+    color: var(--terracotta-soft);
+    letter-spacing: 0.08em;
+    margin-bottom: 1rem;
+  }
+  .logo-intro-eyebrow::before {
+    content: '— ';
+  }
+  .logo-intro-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(2.5rem, 5vw, 4.5rem);
+    line-height: 1;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: var(--cream);
+    margin-bottom: 2rem;
+  }
+  .logo-intro-title .accent {
+    font-style: italic;
+    color: var(--sky);
+  }
+  .logo-intro-rule {
+    width: 60px;
+    height: 1px;
+    background: var(--terracotta);
+    margin-bottom: 2rem;
+  }
+  .logo-intro-body {
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
+    line-height: 1.75;
+    color: rgba(244, 239, 230, 0.78);
+    font-weight: 300;
+  }
+  .logo-intro-body p {
+    margin-bottom: 1.2rem;
+  }
+  .logo-intro-body strong {
+    color: var(--cream);
+    font-weight: 500;
+  }
+  .logo-intro-attributes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-top: 2.5rem;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(244, 239, 230, 0.12);
+  }
+  .attribute {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .attribute-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--terracotta-soft);
+  }
+  .attribute-value {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.05rem;
+    color: var(--cream);
+  }
+
+  /* ===== APPLICATION SLIDES (Mockups) ===== */
+  .applications {
+    background: var(--paper);
+    padding: 8vh 6vw;
+  }
+  .applications-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 4rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(21, 35, 59, 0.1);
+  }
+  .applications-eyebrow {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 1rem;
+    color: var(--terracotta);
+    letter-spacing: 0.05em;
+  }
+  .applications-eyebrow::before {
+    content: '— ';
+  }
+  .applications-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(2rem, 3.5vw, 3rem);
+    color: var(--navy);
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    line-height: 1;
+  }
+  .applications-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 0.85rem;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  /* Layout grid: editorial, asymmetrical */
+  .uniforms-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+  }
+  .mockup {
+    background: var(--cream-warm);
+    overflow: hidden;
+    position: relative;
+    transition: transform 0.4s ease;
+  }
+  .mockup:hover {
+    transform: translateY(-4px);
+  }
+  .mockup img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .mockup-caption {
+    position: absolute;
+    bottom: 1rem;
+    left: 1rem;
+    background: rgba(21, 35, 59, 0.85);
+    color: var(--cream);
+    padding: 0.5rem 0.9rem;
+    font-size: 0.65rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    backdrop-filter: blur(8px);
+    z-index: 2;
+  }
+
+  /* Polos pair */
+  .pair-polos {
+    grid-column: span 12;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+  .pair-polos .mockup { aspect-ratio: 3/5; }
+
+  /* Sweater + PE wrapper */
+  .formal-row {
+    grid-column: span 12;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1.5rem;
+  }
+  .formal-row .mockup { aspect-ratio: 3/5; }
+
+  /* Sport row */
+  .sport-row {
+    grid-column: span 12;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1.5rem;
+  }
+  .sport-row .mockup { aspect-ratio: 3/5; }
+
+  /* Signage */
+  .signage-row {
+    grid-column: span 12;
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 1.5rem;
+  }
+  .signage-row .mockup-signage { aspect-ratio: 16/9; }
+  .signage-row .mockup-quote {
+    aspect-ratio: 16/9;
+    background: var(--navy);
+    color: var(--cream);
+    padding: 2.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .quote-text {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: clamp(1.2rem, 1.8vw, 1.6rem);
+    line-height: 1.4;
+    color: var(--navy);
+  }
+  .quote-attribution {
+    font-size: 0.7rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--terracotta-soft);
+  }
+
+  /* Merch row - full bleed */
+  .merch-row {
+    grid-column: span 12;
+  }
+  .merch-row .mockup { aspect-ratio: 16/9; }
+
+  /* OPTION 2 alternate layouts */
+  .sweater-pair {
+    grid-column: span 12;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+  .sweater-pair .mockup { aspect-ratio: 3/5; }
+
+  /* ===== END SLIDE ===== */
+  .end-slide {
+    background: var(--navy);
+    color: var(--cream);
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    min-height: 80vh;
+  }
+  .end-slide::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, rgba(197, 72, 58, 0.12) 0%, transparent 60%);
+  }
+  .end-content { z-index: 2; position: relative; max-width: 700px; }
+  .end-mark {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    color: var(--terracotta-soft);
+    letter-spacing: 0.1em;
+    margin-bottom: 1.5rem;
+  }
+  .end-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(2.5rem, 5vw, 4.5rem);
+    line-height: 1;
+    color: var(--cream);
+    font-weight: 400;
+    margin-bottom: 2rem;
+    letter-spacing: -0.02em;
+  }
+  .end-title .accent {
+    font-style: italic;
+    color: var(--sky);
+  }
+  .end-body {
+    font-size: 1rem;
+    line-height: 1.8;
+    color: rgba(244, 239, 230, 0.7);
+    font-weight: 300;
+    max-width: 540px;
+    margin: 0 auto;
+  }
+  .end-rule {
+    width: 60px;
+    height: 1px;
+    background: var(--terracotta);
+    margin: 2.5rem auto;
+  }
+  .end-signature {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 1.5rem;
+    color: var(--cream);
+    margin-top: 2rem;
+  }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 900px) {
+    .logo-intro {
+      grid-template-columns: 1fr;
+      gap: 3rem;
+      padding: 5vh 5vw;
+    }
+    .logo-intro-image img { max-height: 50vh; }
+    .pair-polos, .formal-row, .sport-row, .signage-row, .sweater-pair {
+      grid-template-columns: 1fr;
+    }
+    .nav-dots { right: 0.8rem; }
+    .cover-footer { flex-direction: column; gap: 2rem; align-items: flex-start; }
+    .cover-options { width: 100%; }
+    .applications-header { flex-direction: column; gap: 1rem; align-items: flex-start; }
+  }
+
+  /* Print styles */
+  @media print {
+    .nav-dots { display: none; }
+    .slide { page-break-after: always; min-height: 100vh; }
+  }
+
+  /* Subtle entrance animations */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .slide > * {
+    animation: fadeUp 0.8s ease backwards;
+  }
+  .slide > *:nth-child(2) { animation-delay: 0.15s; }
+  .slide > *:nth-child(3) { animation-delay: 0.3s; }
+</style>
+</head>
+<body>
+
+<!-- Navigation Dots -->
+<nav class="nav-dots">
+  <a href="#cover" data-section="cover"></a>
+  <a href="#option-one" data-section="option-one"></a>
+  <a href="#option-one-logo" data-section="option-one-logo"></a>
+  <a href="#option-one-applications" data-section="option-one-applications"></a>
+  <a href="#option-two" data-section="option-two"></a>
+  <a href="#option-two-logo" data-section="option-two-logo"></a>
+  <a href="#option-two-applications" data-section="option-two-applications"></a>
+  <a href="#end" data-section="end"></a>
+</nav>
+
+<!-- ============ COVER ============ -->
+<section class="slide cover" id="cover">
+  <div class="cover-rays"></div>
+
+  <header class="cover-header">
+    <div class="cover-mark">Rosewood College</div>
+    <div class="cover-meta">
+      Confidential<br>
+      March 2026
+    </div>
+  </header>
+
+  <div class="cover-main">
+    <div class="cover-eyebrow">Logo & Branding Proposal</div>
+    <h1 class="cover-title">
+      A mark<br>
+      worthy of <span class="accent">a generation.</span>
+    </h1>
+    <p class="cover-subtitle">
+      Two visual identities developed in response to the founding brief — each shaped by a distinct interpretation of Rosewood's character, heritage, and future.
+    </p>
+  </div>
+
+  <footer class="cover-footer">
+    <div class="cover-options">
+      <div class="cover-options-item">
+        <div class="cover-options-num">01</div>
+        <div class="cover-options-label">The Living Tree</div>
+      </div>
+      <div class="cover-options-item">
+        <div class="cover-options-num">02</div>
+        <div class="cover-options-label">The Heritage Rose</div>
+      </div>
+    </div>
+    <div class="cover-scroll">Scroll to explore</div>
+  </footer>
+</section>
+
+<!-- ============ OPTION 1 — DIVIDER ============ -->
+<section class="slide section-divider" id="option-one">
+  <div class="divider-mark">Option One</div>
+  <div class="divider-num"><em>01</em></div>
+  <h2 class="divider-title">The Living Tree</h2>
+  <p class="divider-subtitle">Growth, rootedness, and the quiet authority of a school that has always been there.</p>
+</section>
+
+<!-- ============ OPTION 1 — LOGO + EXPLANATION ============ -->
+<section class="slide logo-intro" id="option-one-logo">
+  <div class="logo-intro-image">
+    <img src="assets/op1-logo.png" alt="Rosewood College — Option 1 emblem">
+  </div>
+
+  <div class="logo-intro-text">
+    <div class="logo-intro-eyebrow">Concept Rationale</div>
+    <h2 class="logo-intro-title">
+      Rooted in<br>
+      <span class="accent">virtue.</span>
+    </h2>
+    <div class="logo-intro-rule"></div>
+
+    <div class="logo-intro-body">
+      <p>
+        The emblem builds on the traditional Australian girls' school oval, taking a confident step forward. At its heart, a <strong>flourishing tree</strong> rises with outstretched branches — a quiet metaphor for character formation, intellectual growth, and the lifelong fruit of a well-rooted education.
+      </p>
+      <p>
+        The motto <strong><em>Ad Summam Virtutem</em></strong> — "Toward the highest virtue" — arches above, framing the crest with academic purpose. Below, a single rose appears in subtle relief: an honoured nod to the school's name, refined enough to remain distinctive from neighbouring institutions.
+      </p>
+      <p>
+        The overall composition is warm, dignified, and unmistakably scholarly. It carries the weight of tradition without leaning on the past — a mark designed to belong to Rosewood for the next twenty-five years.
+      </p>
+    </div>
+
+    <div class="logo-intro-attributes">
+      <div class="attribute">
+        <div class="attribute-label">Symbolism</div>
+        <div class="attribute-value">Tree of virtue · Rose of identity</div>
+      </div>
+      <div class="attribute">
+        <div class="attribute-label">Tone</div>
+        <div class="attribute-value">Scholarly · Warm · Enduring</div>
+      </div>
+      <div class="attribute">
+        <div class="attribute-label">Form</div>
+        <div class="attribute-value">Heritage oval</div>
+      </div>
+      <div class="attribute">
+        <div class="attribute-label">Palette</div>
+        <div class="attribute-value">Navy · Terracotta · Sky · Cream</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ OPTION 1 — APPLICATIONS ============ -->
+<section class="slide applications" id="option-one-applications">
+  <header class="applications-header">
+    <div>
+      <div class="applications-eyebrow">Option One in context</div>
+      <h2 class="applications-title">Applied across the school</h2>
+    </div>
+    <div class="applications-num">01 / Applications</div>
+  </header>
+
+  <div class="uniforms-grid">
+
+    <!-- Polo pair: navy + white -->
+    <div class="pair-polos">
+      <div class="mockup">
+        <img src="assets/op1-polo-navy.png" alt="Navy polo with Option 1 emblem">
+        <div class="mockup-caption">Daily uniform · navy</div>
+      </div>
+      <div class="mockup">
+        <img src="assets/op1-polo-white.png" alt="White polo with Option 1 emblem">
+        <div class="mockup-caption">Summer uniform · white</div>
+      </div>
+    </div>
+
+    <!-- Formal sweater + PE -->
+    <div class="formal-row">
+      <div class="mockup">
+        <img src="assets/op1-sweater-navy.png" alt="Navy V-neck sweater with Option 1 emblem">
+        <div class="mockup-caption">Formal · V-neck sweater</div>
+      </div>
+      <div class="mockup">
+        <img src="assets/op1-pe-tshirt.jpg" alt="PE uniform with Option 1 emblem">
+        <div class="mockup-caption">Sport · PE kit</div>
+      </div>
+      <div class="mockup">
+        <img src="assets/op1-hoodie-navy.jpg" alt="Navy hoodie with Option 1 emblem">
+        <div class="mockup-caption">Sport · navy tracksuit</div>
+      </div>
+    </div>
+
+    <!-- White hoodie wide -->
+    <div class="sport-row">
+      <div class="mockup">
+        <img src="assets/op1-hoodie-white.jpg" alt="White hoodie with Option 1 emblem">
+        <div class="mockup-caption">Sport · white tracksuit</div>
+      </div>
+      <div class="mockup mockup-quote" style="aspect-ratio: 3/5; padding: 2rem;">
+        <div>
+          <div class="quote-text" style="font-size: 1.4rem;">
+            "A mark that grows with each girl — present from her first day to her last."
+          </div>
+        </div>
+        <div class="quote-attribution">Design Note · 01</div>
+      </div>
+      <div class="mockup">
+        <img src="assets/op1-signage.png" alt="Signage with Option 1 emblem" style="object-fit: contain; background: var(--cream);">
+        <div class="mockup-caption">Wayfinding · signage</div>
+      </div>
+    </div>
+
+    <!-- Merch (institutional) full bleed -->
+    <div class="merch-row">
+      <div class="mockup">
+        <img src="assets/op1-merch.jpg" alt="Brand applications: ID, signage, merchandise, glass">
+        <div class="mockup-caption">Brand applications · ID, exterior signage, stationery, glass</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ OPTION 2 — DIVIDER ============ -->
+<section class="slide section-divider" id="option-two">
+  <div class="divider-mark">Option Two</div>
+  <div class="divider-num"><em>02</em></div>
+  <h2 class="divider-title">The Heritage Rose</h2>
+  <p class="divider-subtitle">A traditional crest — refined, classical, and unapologetically rooted in academic heritage.</p>
+</section>
+
+<!-- ============ OPTION 2 — LOGO + EXPLANATION ============ -->
+<section class="slide logo-intro" id="option-two-logo">
+  <div class="logo-intro-image">
+    <img src="assets/op2-logo.png" alt="Rosewood College — Option 2 emblem">
+  </div>
+
+  <div class="logo-intro-text">
+    <div class="logo-intro-eyebrow">Concept Rationale</div>
+    <h2 class="logo-intro-title">
+      A name made<br>
+      <span class="accent">visible.</span>
+    </h2>
+    <div class="logo-intro-rule"></div>
+
+    <div class="logo-intro-body">
+      <p>
+        This composition takes the most direct route to the school's identity: <strong>the rose, plainly named, plainly drawn</strong>. The emblem honours the literal meaning of "Rosewood" with a single, upright bloom — confident, classical, and unmistakably feminine without ornamentation.
+      </p>
+      <p>
+        Twin laurel branches flank the rose in restrained gold, signalling academic distinction in the heraldic tradition of Australia's most established girls' schools. The motto <strong><em>Ad Summam Virtutem</em></strong> is set on a crimson banner below — a clear, formal anchor.
+      </p>
+      <p>
+        Where Option One favours metaphor, Option Two favours <strong>directness</strong>. It is the more traditional of the two — better suited to formal contexts, ceremonial use, and audiences who expect a school crest to look unmistakably like one.
+      </p>
+    </div>
+
+    <div class="logo-intro-attributes">
+      <div class="attribute">
+        <div class="attribute-label">Symbolism</div>
+        <div class="attribute-value">Rose of name · Laurels of merit</div>
+      </div>
+      <div class="attribute">
+        <div class="attribute-label">Tone</div>
+        <div class="attribute-value">Classical · Formal · Heraldic</div>
+      </div>
+      <div class="attribute">
+        <div class="attribute-label">Form</div>
+        <div class="attribute-value">Heritage oval</div>
+      </div>
+      <div class="attribute">
+        <div class="attribute-label">Palette</div>
+        <div class="attribute-value">Navy · Terracotta · Gold · Sky</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ OPTION 2 — APPLICATIONS ============ -->
+<section class="slide applications" id="option-two-applications">
+  <header class="applications-header">
+    <div>
+      <div class="applications-eyebrow">Option Two in context</div>
+      <h2 class="applications-title">Applied across the school</h2>
+    </div>
+    <div class="applications-num">02 / Applications</div>
+  </header>
+
+  <div class="uniforms-grid">
+
+    <!-- Polo pair -->
+    <div class="pair-polos">
+      <div class="mockup">
+        <img src="assets/op2-polo-navy.png" alt="Navy polo with Option 2 emblem">
+        <div class="mockup-caption">Daily uniform · navy</div>
+      </div>
+      <div class="mockup">
+        <img src="assets/op2-polo-white.png" alt="White polo with Option 2 emblem">
+        <div class="mockup-caption">Summer uniform · white</div>
+      </div>
+    </div>
+
+    <!-- Sweater pair: navy + grey -->
+    <div class="sweater-pair">
+      <div class="mockup">
+        <img src="assets/op2-sweater-navy.png" alt="Navy V-neck sweater with Option 2 emblem">
+        <div class="mockup-caption">Formal · navy V-neck</div>
+      </div>
+      <div class="mockup">
+        <img src="assets/op2-sweater-grey.png" alt="Grey V-neck sweater with Option 2 emblem">
+        <div class="mockup-caption">Formal · grey V-neck</div>
+      </div>
+    </div>
+
+    <!-- Sport row: PE + 2 hoodies -->
+    <div class="sport-row">
+      <div class="mockup">
+        <img src="assets/op2-pe-tshirt.jpg" alt="PE uniform with Option 2 emblem">
+        <div class="mockup-caption">Sport · PE kit</div>
+      </div>
+      <div class="mockup">
+        <img src="assets/op2-hoodie-white.jpg" alt="White hoodie with Option 2 emblem">
+        <div class="mockup-caption">Sport · white tracksuit</div>
+      </div>
+      <div class="mockup">
+        <img src="assets/op2-hoodie-navy.jpg" alt="Navy hoodie with Option 2 emblem">
+        <div class="mockup-caption">Sport · navy tracksuit</div>
+      </div>
+    </div>
+
+    <!-- Signage + Quote -->
+    <div class="signage-row">
+      <div class="mockup mockup-signage">
+        <img src="assets/op2-signage.png" alt="Signage with Option 2 emblem">
+        <div class="mockup-caption">Wayfinding · signage</div>
+      </div>
+      <div class="mockup mockup-quote">
+        <div>
+          <div class="quote-text">
+            "A crest in the heraldic tradition — formal enough for a diploma, warm enough for a daughter's first jumper."
+          </div>
+        </div>
+        <div class="quote-attribution">Design Note · 02</div>
+      </div>
+    </div>
+
+    <!-- Merch full bleed -->
+    <div class="merch-row">
+      <div class="mockup">
+        <img src="assets/op2-merch.jpg" alt="Brand applications: ID, signage, merchandise, glass">
+        <div class="mockup-caption">Brand applications · ID, exterior signage, stationery, glass</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ END SLIDE ============ -->
+<section class="slide end-slide" id="end">
+  <div class="end-content">
+    <div class="end-mark">— Next steps</div>
+    <h2 class="end-title">
+      Awaiting your<br>
+      <span class="accent">direction.</span>
+    </h2>
+    <div class="end-rule"></div>
+    <p class="end-body">
+      Both proposals are presented as complete visual systems, ready for refinement. We welcome your feedback on direction, palette balance, and any specific elements you would like to explore further before we proceed to the brand book stage.
+    </p>
+    <div class="end-signature">— xiy · Quito</div>
+  </div>
+</section>
+
+<script>
+  // Smooth nav dot active state on scroll
+  const sections = document.querySelectorAll('.slide');
+  const dots = document.querySelectorAll('.nav-dots a');
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.id;
+        dots.forEach(d => d.classList.toggle('active', d.dataset.section === id));
+      }
+    });
+  }, { threshold: 0.5 });
+
+  sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>
