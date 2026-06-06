@@ -91,9 +91,9 @@ These look more like working documents, presentations, or design assets than web
 
 ### 5. Infrastructure and donation backend
 
-- `aws/`
-- `aws/lambda/index.mjs`
-- `aws/stripe-donation-handover.md`
+- `Stripe donation/`
+- `Stripe donation/lambda/index.mjs`
+- `Stripe donation/stripe-donation-handover.md`
 - `scripts/stripe-embedded-checkout-server.mjs`
 
 These belong together conceptually and would be easier to maintain under a single `infrastructure/` or `backend/` area.
@@ -102,7 +102,7 @@ These belong together conceptually and would be easier to maintain under a singl
 
 - `.DS_Store`
 - `.codex-temp/`
-- `aws/lambda/stripe-donations-lambda.zip`
+- `Stripe donation/lambda/stripe-donations-lambda.zip`
 
 `.codex-temp/` has now been added to `.gitignore`.
 
@@ -279,7 +279,7 @@ archive/
   backups/
 
 infrastructure/
-  aws/
+  Stripe donation/
   stripe/
 ```
 

@@ -27,13 +27,13 @@ The old Raisely donate page has been replaced, so [`donate.html`](/Users/jativaf
 
 - Front end page: [`donate.html`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/donate.html:1)
 - Front end styles: [`donate.css`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/donate.css:1)
-- AWS Lambda source: [`aws/lambda/index.mjs`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/aws/lambda/index.mjs:1)
+- AWS Lambda source: [`Stripe donation/lambda/index.mjs`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/lambda/index.mjs:1)
 - Local test server: [`scripts/stripe-embedded-checkout-server.mjs`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/scripts/stripe-embedded-checkout-server.mjs:1)
 - Payment logos: [`img/donation page images`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/img/donation%20page%20images)
 
 Generated deployment artifact:
 
-- [`aws/lambda/stripe-donations-lambda.zip`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/aws/lambda/stripe-donations-lambda.zip:1)
+- [`Stripe donation/lambda/stripe-donations-lambda.zip`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/lambda/stripe-donations-lambda.zip:1)
 
 The zip is a generated artifact and is currently **not committed**.
 
@@ -199,7 +199,7 @@ Custom one-time donations are created dynamically using inline `price_data` and 
 
 ## Checkout Session Behavior
 
-Current session behavior in [`aws/lambda/index.mjs`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/aws/lambda/index.mjs:67):
+Current session behavior in [`Stripe donation/lambda/index.mjs`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/lambda/index.mjs:67):
 
 - `ui_mode=embedded_page`
 - `redirect_on_completion=if_required`
@@ -254,7 +254,7 @@ Important limitation:
 From repo root:
 
 ```bash
-cd aws/lambda
+cd "Stripe donation/lambda"
 zip -j stripe-donations-lambda.zip index.mjs
 aws lambda update-function-code \
   --region ap-southeast-2 \
