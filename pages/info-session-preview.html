@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>School Name Reveal Recap | Families for Education</title>
+  <meta name="description" content="Recap of the Families for Education Information Night on 20 May 2026, including the Rosewood College school name reveal and information night slides.">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy: #00234B;
+      --navy-deep: #001530;
+      --navy-soft: #123660;
+      --gold: #E8A020;
+      --gold-soft: #f6ead1;
+      --red: #C8102E;
+      --cream: #F8F6F1;
+      --white: #ffffff;
+      --text: #2d3748;
+      --muted: #64748b;
+      --border: rgba(0, 35, 75, 0.12);
+      --shadow: 0 18px 55px rgba(0, 0, 0, 0.18);
+      --radius: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(232, 160, 32, 0.18), transparent 28%),
+        linear-gradient(180deg, #001631 0%, #00234B 28%, #f5f2ea 28%, #f5f2ea 100%);
+      min-height: 100vh;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .shell {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 56px;
+    }
+
+    .logo-bar {
+      display: flex;
+      justify-content: center;
+      padding: 0 0 24px;
+    }
+
+    .logo-bar img {
+      width: min(300px, 78vw);
+      height: auto;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 0;
+      overflow: hidden;
+      border-radius: calc(var(--radius) + 6px);
+      box-shadow: var(--shadow);
+      background: var(--white);
+      margin-bottom: 28px;
+    }
+
+    .hero-copy {
+      background:
+        linear-gradient(135deg, rgba(0, 35, 75, 0.96), rgba(14, 52, 94, 0.94)),
+        linear-gradient(180deg, rgba(232, 160, 32, 0.08), rgba(255, 255, 255, 0));
+      color: var(--white);
+      padding: 46px 42px 40px;
+    }
+
+    .eyebrow {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 14px;
+    }
+
+    .hero h1 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(2.4rem, 5vw, 3.6rem);
+      line-height: 1.02;
+      margin-bottom: 14px;
+    }
+
+    .hero-subtitle {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.08rem;
+      font-style: italic;
+      color: rgba(255, 255, 255, 0.78);
+      margin-bottom: 24px;
+    }
+
+    .hero-lead {
+      font-size: 1rem;
+      line-height: 1.8;
+      color: rgba(255, 255, 255, 0.9);
+      max-width: 42rem;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 28px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      padding: 14px 22px;
+      border-radius: 999px;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: var(--red);
+      color: var(--white);
+      box-shadow: 0 12px 28px rgba(200, 16, 46, 0.25);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--gold-soft);
+      border: 1px solid rgba(232, 160, 32, 0.5);
+    }
+
+    .hero-side {
+      background: linear-gradient(180deg, #f8f6f1 0%, #eee8db 100%);
+      padding: 40px 34px;
+      display: grid;
+      align-content: center;
+      gap: 18px;
+      border-left: 1px solid rgba(0, 35, 75, 0.08);
+    }
+
+    .emblem-card {
+      background: var(--white);
+      border: 1px solid rgba(0, 35, 75, 0.08);
+      border-radius: var(--radius);
+      padding: 24px;
+      text-align: center;
+      box-shadow: 0 10px 28px rgba(0, 35, 75, 0.08);
+    }
+
+    .emblem-card img {
+      width: min(220px, 100%);
+      height: auto;
+      margin-bottom: 10px;
+    }
+
+    .emblem-note {
+      font-size: 0.83rem;
+      line-height: 1.7;
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    .summary-card {
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px solid rgba(0, 35, 75, 0.08);
+      border-radius: var(--radius);
+      padding: 22px 24px;
+    }
+
+    .summary-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--red);
+      margin-bottom: 10px;
+    }
+
+    .summary-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.55rem;
+      color: var(--navy);
+      margin-bottom: 8px;
+    }
+
+    .summary-meta {
+      font-size: 0.95rem;
+      line-height: 1.8;
+      color: var(--text);
+    }
+
+    .content-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+      gap: 26px;
+      align-items: start;
+    }
+
+    .main-column,
+    .side-column {
+      display: grid;
+      gap: 24px;
+    }
+
+    .panel {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      box-shadow: 0 10px 32px rgba(0, 35, 75, 0.06);
+    }
+
+    .panel h2 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.9rem;
+      color: var(--navy);
+      margin-bottom: 14px;
+    }
+
+    .panel h3 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.35rem;
+      color: var(--navy);
+      margin-bottom: 10px;
+    }
+
+    .panel p {
+      font-size: 0.98rem;
+      line-height: 1.9;
+      margin-bottom: 14px;
+    }
+
+    .panel p:last-child {
+      margin-bottom: 0;
+    }
+
+    .milestone-box {
+      background: var(--navy);
+      color: var(--white);
+      border-radius: var(--radius);
+      padding: 24px;
+      text-align: center;
+    }
+
+    .milestone-box .label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 12px;
+    }
+
+    .milestone-box .value {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(2rem, 4vw, 2.6rem);
+      line-height: 1.1;
+      margin-bottom: 10px;
+    }
+
+    .milestone-box .caption {
+      font-size: 0.95rem;
+      line-height: 1.75;
+      color: rgba(255, 255, 255, 0.82);
+    }
+
+    .recap-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .recap-item {
+      display: grid;
+      grid-template-columns: 14px 1fr;
+      gap: 12px;
+      align-items: start;
+      padding: 14px 0;
+      border-top: 1px solid rgba(0, 35, 75, 0.08);
+    }
+
+    .recap-item:first-child {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .recap-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-top: 9px;
+      background: var(--gold);
+    }
+
+    .recap-item strong {
+      display: block;
+      color: var(--navy);
+      margin-bottom: 5px;
+      font-size: 0.98rem;
+    }
+
+    .recap-item span {
+      display: block;
+      color: var(--text);
+      line-height: 1.75;
+      font-size: 0.95rem;
+    }
+
+    .meaning-box {
+      background: var(--cream);
+      border: 1px solid rgba(0, 35, 75, 0.08);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+
+    .meaning-box p + p {
+      margin-top: 12px;
+    }
+
+    .callout {
+      background: linear-gradient(180deg, #fffdf8 0%, #f8f2e4 100%);
+      border: 1px solid rgba(232, 160, 32, 0.32);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+
+    .callout h3 {
+      color: var(--navy);
+    }
+
+    .download-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .download-link {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      text-decoration: none;
+      padding: 15px 18px;
+      border-radius: 14px;
+      background: var(--white);
+      border: 1px solid rgba(0, 35, 75, 0.1);
+      color: var(--navy);
+      font-weight: 600;
+    }
+
+    .download-link span {
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    .quote-panel {
+      background: var(--navy-deep);
+      color: var(--white);
+      text-align: center;
+    }
+
+    .quote-panel .quote {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.45rem;
+      line-height: 1.7;
+      color: var(--gold);
+      margin-bottom: 10px;
+    }
+
+    .quote-panel .attr {
+      font-size: 0.78rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.56);
+    }
+
+    .footer {
+      margin-top: 26px;
+      padding: 24px 18px 0;
+      text-align: center;
+      color: rgba(255, 255, 255, 0.62);
+      font-size: 0.82rem;
+      line-height: 1.8;
+    }
+
+    .footer a {
+      color: rgba(255, 255, 255, 0.72);
+      text-decoration: none;
+    }
+
+    @media (max-width: 900px) {
+      .hero,
+      .content-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-side {
+        border-left: 0;
+        border-top: 1px solid rgba(0, 35, 75, 0.08);
+      }
+
+      .hero-copy,
+      .hero-side,
+      .panel {
+        padding: 24px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .shell {
+        width: min(100% - 20px, 1120px);
+      }
+
+      .hero h1 {
+        font-size: 2rem;
+      }
+
+      .panel h2 {
+        font-size: 1.55rem;
+      }
+
+      .btn {
+        width: 100%;
+      }
+
+      .download-link {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="logo-bar">
+      <img src="../img/LogoText.png" alt="Families for Education">
+    </div>
+
+    <section class="hero">
+      <div class="hero-copy">
+        <div class="eyebrow">School Name Reveal Recap</div>
+        <h1>Rosewood College was announced on the night.</h1>
+        <p class="hero-subtitle">A major milestone in the life of Families for Education.</p>
+        <p class="hero-lead">
+          On Wednesday 20 May 2026, families and supporters gathered online for an important Information Night sharing progress across the project, including site, fees, formation, and the next steps toward opening in 2027. During the evening, the school name was publicly announced for the first time: <strong>Rosewood College</strong>.
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="https://drive.google.com/file/d/1vT22z6y7FgTb4zlbh4oYsynWF7vaQ8bs/view?usp=sharing" target="_blank" rel="noopener">Download Information Night Slides</a>
+          <a class="btn btn-secondary" href="../emails/email05.html">Read the Original Post-Event Update</a>
+        </div>
+      </div>
+
+      <div class="hero-side">
+        <div class="emblem-card">
+          <img src="../img/rosewood-emblem-corrected-transparent.png" alt="Rosewood College emblem concept">
+          <p class="emblem-note">The emblem shown here is an early concept and remains subject to further refinement.</p>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Event Details</div>
+          <div class="summary-title">Wednesday 20 May 2026</div>
+          <div class="summary-meta">
+            8:30 p.m. to 9:30 p.m.<br>
+            Online via Google Meet
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="content-grid">
+      <div class="main-column">
+        <section class="panel">
+          <h2>What the evening covered</h2>
+          <p>
+            The Information Night brought together a number of the most important developments in the project so far. It gave families a clearer picture of how the school is taking shape and why this next stage matters so much.
+          </p>
+          <div class="recap-list">
+            <div class="recap-item">
+              <div class="recap-dot"></div>
+              <div>
+                <strong>School name announcement</strong>
+                <span>The project now has a public name: <strong>Rosewood College</strong>.</span>
+              </div>
+            </div>
+            <div class="recap-item">
+              <div class="recap-dot"></div>
+              <div>
+                <strong>Location and master planning progress</strong>
+                <span>Families heard updates on the permanent site and the broader planning work underway for the school’s future home.</span>
+              </div>
+            </div>
+            <div class="recap-item">
+              <div class="recap-dot"></div>
+              <div>
+                <strong>Fees and practical planning</strong>
+                <span>The night covered important practical questions, including fees and the planning assumptions shaping the path to opening.</span>
+              </div>
+            </div>
+            <div class="recap-item">
+              <div class="recap-dot"></div>
+              <div>
+                <strong>Formation and educational vision</strong>
+                <span>The project’s distinctive commitment to family life, faith, character, and virtue remained central throughout the presentation.</span>
+              </div>
+            </div>
+            <div class="recap-item">
+              <div class="recap-dot"></div>
+              <div>
+                <strong>Website, expressions of interest, and next steps</strong>
+                <span>The session also pointed families to the next practical steps for staying involved and registering interest.</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Why the name Rosewood College?</h2>
+          <div class="meaning-box">
+            <p>
+              From a spiritual perspective, <strong>the rose</strong> is a nod to <strong>Our Lady</strong>, while <strong>the wood</strong> recalls <strong>the wood of the Cross of Jesus</strong>.
+            </p>
+            <p>
+              From a human perspective, Rosewood evokes the image of a <strong>strong tree with deep roots</strong>. Deep roots give a tree strength, stability, and resilience. In the same way, the project seeks to help children grow in the human virtues that steady them through life, form character, and equip them to become a source of good for the world around them.
+            </p>
+          </div>
+        </section>
+
+        <section class="panel quote-panel">
+          <p class="quote">&ldquo;The future of humanity passes by way of the family.&rdquo;</p>
+          <p class="attr">Pope St. John Paul II</p>
+        </section>
+      </div>
+
+      <div class="side-column">
+        <section class="milestone-box">
+          <div class="label">School Name Announcement</div>
+          <div class="value">Rosewood College</div>
+          <div class="caption">A major public milestone for the project, announced during the 20 May 2026 Information Night.</div>
+        </section>
+
+        <section class="panel callout">
+          <h3>Download the slides</h3>
+          <p>
+            If you missed the night, or would like to revisit what was presented, the Information Night slides are available below.
+          </p>
+          <div class="download-list">
+            <a class="download-link" href="https://drive.google.com/file/d/1vT22z6y7FgTb4zlbh4oYsynWF7vaQ8bs/view?usp=sharing" target="_blank" rel="noopener">
+              <strong>Information Night Slides</strong>
+              <span>Open slide deck</span>
+            </a>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h3>Post-event update</h3>
+          <p>
+            The original post-event update sent to families is still available and captures the tone of the evening as it was first shared.
+          </p>
+          <div class="download-list">
+            <a class="download-link" href="../emails/email05.html">
+              <strong>View Email Update</strong>
+              <span>Open the Mailchimp email version</span>
+            </a>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h3>Why this moment matters</h3>
+          <p>
+            Naming the school publicly gave the project a new level of clarity and identity. It marked a step forward not only in planning, but in the shared imagination of the families helping build this future school together.
+          </p>
+        </section>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>
+        Produced by <strong>Families for Education Ltd</strong> &middot;
+        <a href="mailto:info@ffe.org.au">info@ffe.org.au</a>
+      </p>
+      <p>
+        School opening remains subject to regulatory approvals, including registration with the Victorian Registration and Qualifications Authority (VRQA).
+      </p>
+    </div>
+  </div>
+</body>
+</html>
