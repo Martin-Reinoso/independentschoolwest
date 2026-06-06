@@ -15,3 +15,6 @@ Icon
 
 # Claude Code
 .claude/
+
+# Codex local scratch output
+.codex-temp/
