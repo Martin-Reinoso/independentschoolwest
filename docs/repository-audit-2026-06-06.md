@@ -25,7 +25,7 @@ These appear to be the main public site and related pages:
 - `flyer-info-session-a4.html`
 - `emails/`
 - `img/`
-- `Bulletines/`
+- `Files/Bulletins/`
 - `robots.txt`
 - `sitemap.xml`
 - `CNAME`
