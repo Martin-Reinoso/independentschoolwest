@@ -6,14 +6,15 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>Families for Education | Donate</title>
+  <title>Support Families for Education | Donate</title>
 
   <meta name="description" content="Support Families for Education as we take the next steps toward opening a new parent-partnered independent school in Melbourne's West.">
   <meta name="author" content="Families for Education">
+  <meta name="robots" content="index, follow, max-image-preview:large">
   <link rel="canonical" href="https://ffe.org.au/donate.html">
   <link rel="icon" href="img/favicon.ico?v=2" type="image/x-icon">
 
-  <meta property="og:title" content="Families for Education | Donate">
+  <meta property="og:title" content="Support Families for Education | Donate">
   <meta property="og:description" content="Help bring Families for Education to life in Melbourne's West with a gift that supports the next stage of the project.">
   <meta property="og:image" content="https://ffe.org.au/img/Family-at-sunset.png?v=2">
   <meta property="og:url" content="https://ffe.org.au/donate.html">
@@ -22,7 +23,7 @@
   <meta property="og:site_name" content="Families for Education">
 
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Families for Education | Donate">
+  <meta name="twitter:title" content="Support Families for Education | Donate">
   <meta name="twitter:description" content="Support the next stage of Families for Education and help build a new independent school for families in Melbourne's West.">
   <meta name="twitter:image" content="https://ffe.org.au/img/Family-at-sunset.png?v=2">
 
@@ -33,19 +34,6 @@
   <link rel="stylesheet" href="index.css?v=26">
   <link rel="stylesheet" href="donate.css?v=2">
   <script src="https://js.stripe.com/v3/"></script>
-  <script>
-    (() => {
-      const donateVersion = '2';
-      const currentUrl = new URL(window.location.href);
-
-      if (currentUrl.searchParams.get('v') === donateVersion) {
-        return;
-      }
-
-      currentUrl.searchParams.set('v', donateVersion);
-      window.location.replace(currentUrl.toString());
-    })();
-  </script>
 </head>
 <body>
   <header id="header" class="header-solid">
@@ -286,7 +274,7 @@
       return {
         publishableKey: 'pk_live_51TR5J2PJukgoPLm78iWJEqWcEoT3TDwU8leKzH4VLhoycp6DCez8wNktzTtQBu0t2FfG7bizq2hNgv4RfSNb5FG600fYRqdvDn',
         sessionEndpoint: 'https://yc7kml3pbslhxfhkqiluj2hth40zuzpr.lambda-url.ap-southeast-2.on.aws/create-checkout-session',
-        returnUrl: 'https://ffe.org.au/donate.html?v=2'
+        returnUrl: 'https://ffe.org.au/donate.html'
       };
     })();
   </script>
