@@ -746,17 +746,71 @@ h1, h2, h3, h4 {
 .fundraising-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.9);
+  align-items: flex-end;
+  gap: 1.5rem;
+  margin-bottom: 1.15rem;
+}
+
+.fundraising-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.fundraising-kicker {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.fundraising-headline {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8rem;
+  flex-wrap: wrap;
 }
 
 .fund-amount {
   font-family: var(--font-heading);
-  font-size: 1.3rem;
+  font-size: clamp(2.8rem, 6vw, 4.4rem);
   font-weight: 700;
   color: var(--gold-light);
+  line-height: 0.95;
+}
+
+.fund-amount-caption {
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.fundraising-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.fund-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.42rem 0.82rem;
+  border-radius: 999px;
+  border: 1px solid rgba(200, 169, 110, 0.34);
+  background: rgba(200, 169, 110, 0.12);
+  color: var(--gold-light);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.fund-status-note {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.68);
 }
 .fund-exceeded {
   color: #6ee86e;
@@ -781,11 +835,20 @@ h1, h2, h3, h4 {
 }
 
 .fundraising-footer {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 0.75rem;
-  font-size: 0.83rem;
-  color: rgba(255, 255, 255, 0.55);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin-top: 1rem;
+}
+
+.fundraising-footer span {
+  display: block;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .fundraising-support {
@@ -804,6 +867,25 @@ h1, h2, h3, h4 {
 
 .fundraising-support .btn {
   margin-top: 1.25rem;
+}
+
+@media (max-width: 768px) {
+  .fundraising-block {
+    padding: 1.5rem;
+  }
+
+  .fundraising-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .fundraising-status {
+    align-items: flex-start;
+  }
+
+  .fundraising-footer {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Milestones */
