@@ -88,10 +88,12 @@ Current environment variables in AWS:
 - `ALLOWED_ORIGINS`
 - `RETURN_URL`
 
-Current configured values:
+Preferred configured values:
 
 - `ALLOWED_ORIGINS=https://ffe.org.au,https://www.ffe.org.au,http://127.0.0.1,http://localhost`
-- `RETURN_URL=https://ffe.org.au/donate.html?v=2`
+- `RETURN_URL=https://ffe.org.au/donate.html`
+
+If AWS still has an older `?v=2` return URL configured, the current `/donate.html` page remains compatible. The clean canonical return URL is `https://ffe.org.au/donate.html`.
 
 Do **not** commit the live secret key into the repo.
 

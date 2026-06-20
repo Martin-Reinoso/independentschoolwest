@@ -34,6 +34,149 @@
   <link rel="stylesheet" href="index.css?v=26">
   <link rel="stylesheet" href="donate.css?v=2">
   <script src="https://js.stripe.com/v3/"></script>
+
+  <style>
+    /* Streamlined widget-first donation layout promoted from donate_temp.html */
+    .donate-split {
+      position: relative;
+      overflow: hidden;
+      background: var(--navy);
+    }
+
+    .donate-split-bg {
+      position: absolute;
+      inset: 0;
+      background: url('img/Family-at-sunset.png?v=2') center center / cover no-repeat;
+      transform: scale(1.03);
+    }
+
+    .donate-split-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(120deg, rgba(0, 21, 48, 0.92) 0%, rgba(0, 35, 75, 0.8) 52%, rgba(200, 16, 46, 0.3) 100%);
+    }
+
+    .donate-split-inner {
+      position: relative;
+      z-index: 2;
+      max-width: 1180px;
+      margin: 0 auto;
+      width: 90%;
+      padding: 8rem 0 4rem;
+      display: grid;
+      grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+      gap: 3.5rem;
+      align-items: center;
+    }
+
+    .donate-split-copy {
+      color: var(--white);
+    }
+
+    .donate-split-copy .section-label {
+      color: var(--gold-light);
+    }
+
+    .donate-split-copy h1 {
+      font-size: clamp(2.1rem, 3.4vw, 3.1rem);
+      line-height: 1.08;
+      margin: 0.4rem 0 1.1rem;
+    }
+
+    .donate-split-copy .hero-sub {
+      color: rgba(255, 255, 255, 0.82);
+      max-width: 460px;
+      margin: 0 0 1.75rem;
+      line-height: 1.7;
+    }
+
+    .donate-split-copy .hero-stats {
+      justify-content: flex-start;
+      margin-bottom: 1.5rem;
+    }
+
+    .donate-split-trust {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 0.92rem;
+      line-height: 1.65;
+      max-width: 440px;
+    }
+
+    .donate-split-widget {
+      width: 100%;
+    }
+
+    .donate-split-widget .donation-builder {
+      box-shadow: 0 34px 80px rgba(0, 14, 40, 0.45);
+    }
+
+    @media (max-width: 1024px) {
+      .donate-split-inner {
+        grid-template-columns: 1fr;
+        gap: 2.25rem;
+        padding: 7rem 0 3.5rem;
+      }
+
+      .donate-split-copy {
+        text-align: center;
+      }
+
+      .donate-split-copy .hero-sub,
+      .donate-split-trust {
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      .donate-split-copy .hero-stats {
+        justify-content: center;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .donate-split-inner {
+        padding: 6.5rem 0 3rem;
+        gap: 1.6rem;
+      }
+
+      .donate-split-copy h1 {
+        font-size: 1.85rem;
+        margin: 0.3rem 0 0.85rem;
+      }
+
+      .donate-split-copy .hero-sub {
+        font-size: 0.98rem;
+        margin-bottom: 1.25rem;
+      }
+
+      .donate-split-copy .hero-stats {
+        flex-direction: row;
+        flex-wrap: nowrap;
+        gap: 0.75rem;
+        margin-bottom: 1.1rem;
+      }
+
+      .donate-split-copy .hero-stats .stat-value {
+        font-size: 1.5rem;
+      }
+
+      .donate-split-copy .hero-stats .stat-label {
+        font-size: 0.66rem;
+      }
+
+      .donate-split-copy .hero-stats .stat-divider {
+        display: none;
+      }
+
+      .donate-split-trust {
+        display: none;
+      }
+    }
+
+    .donate-temp-why {
+      background: var(--off-white);
+    }
+  </style>
 </head>
 <body>
   <header id="header" class="header-solid">
@@ -60,40 +203,135 @@
   <div class="nav-overlay" id="nav-overlay"></div>
 
   <main>
-    <section class="donate-hero">
-      <div class="donate-hero-bg"></div>
-      <div class="donate-hero-overlay"></div>
-      <div class="donate-hero-content container">
-        <h1 class="hero-title">Help Build a School<br>for Families in<br>Melbourne's West.</h1>
-        <p class="hero-sub">Your gift helps move Families for Education from planning into the next practical stage of opening, equipping, and preparing for 2027.</p>
-        <div class="hero-actions">
-          <a href="#donate-form" class="btn btn-primary">Give Now</a>
-          <a href="index.html#progress" class="btn btn-outline">See Our Progress</a>
+    <section class="donate-split" id="donate-form">
+      <div class="donate-split-bg"></div>
+      <div class="donate-split-overlay"></div>
+      <div class="donate-split-inner">
+        <div class="donate-split-copy">
+          <div class="section-label">Make a Gift</div>
+          <h1>Help Build a School for Families in Melbourne's West.</h1>
+          <p class="hero-sub">Your gift moves Families for Education from planning into the next practical stage of opening, equipping, and preparing for 2027.</p>
+          <div class="hero-stats">
+            <div class="stat">
+              <div class="stat-value">
+                <span class="stat-prefix">$</span><span class="stat-number">1.4</span><span class="stat-suffix">M</span>
+              </div>
+              <span class="stat-label">Still to Raise</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat">
+              <div class="stat-value">
+                <span class="stat-number">80</span><span class="stat-suffix">+</span>
+              </div>
+              <span class="stat-label">Families Registered</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat">
+              <div class="stat-value"><span class="stat-number">2027</span><span class="stat-suffix">*</span></div>
+              <span class="stat-label">Target Opening</span>
+            </div>
+          </div>
+          <p class="donate-split-trust">Secure one-time or monthly giving through Stripe, completed entirely on this page. Donations are not currently tax deductible; supporters will be notified when this status changes.</p>
         </div>
-        <div class="hero-stats">
-          <div class="stat">
-            <div class="stat-value">
-              <span class="stat-prefix">$</span><span class="stat-number">1.4</span><span class="stat-suffix">M</span>
+
+        <div class="donate-split-widget">
+          <section class="donation-builder" aria-labelledby="donation-builder-title">
+            <div class="donation-selection-stage" id="donation-selection-stage">
+              <div class="donation-builder-top">
+                <div class="donation-progress" aria-hidden="true">
+                  <span class="is-active"></span>
+                  <span></span>
+                  <span></span>
+                </div>
+              </div>
+
+              <h3 id="donation-builder-title" class="donation-builder-title">Choose the kind of support that fits your family.</h3>
+
+              <div class="donation-mode-toggle" role="tablist" aria-label="Donation type">
+                <button type="button" class="donation-mode-btn is-active" data-mode="oneTime" aria-selected="true">One-time</button>
+                <button type="button" class="donation-mode-btn" data-mode="monthly" aria-selected="false">Monthly</button>
+              </div>
+
+              <p class="donation-encouragement" id="donation-encouragement">Giving monthly has a greater impact</p>
+
+              <div class="donation-options" role="list" aria-label="Suggested donation amounts">
+                <button type="button" class="donation-option" data-amount="20" role="listitem">A$20</button>
+                <button type="button" class="donation-option" data-amount="50" role="listitem">A$50</button>
+                <button type="button" class="donation-option" data-amount="100" role="listitem">A$100</button>
+                <button type="button" class="donation-option" data-amount="250" role="listitem">A$250</button>
+                <button type="button" class="donation-option donation-option-wide" data-amount="500" role="listitem">A$500</button>
+              </div>
+
+              <div class="donation-custom-field" id="donation-custom-field">
+                <label class="donation-custom-label" for="donation-custom-input">Or choose your own one-time amount</label>
+                <div class="donation-custom-input-row">
+                  <span class="donation-custom-currency">A$</span>
+                  <input type="number" inputmode="numeric" min="1" step="1" class="donation-custom-input" id="donation-custom-input" placeholder="Enter whole dollars">
+                  <button type="button" class="donation-custom-submit" id="donation-custom-submit">Continue</button>
+                </div>
+                <p class="donation-custom-help" id="donation-custom-help"></p>
+              </div>
+
+              <p class="donation-direct-note" id="donation-direct-note"></p>
+
+              <div class="donation-payment-logos" aria-label="Accepted payment methods">
+                <img src="img/donation%20page%20images/gpay.webp?v=2" alt="Google Pay" class="donation-payment-logo donation-payment-logo-gpay">
+                <img src="img/donation%20page%20images/visa.webp?v=2" alt="Visa" class="donation-payment-logo">
+                <img src="img/donation%20page%20images/mastercard.webp?v=2" alt="Mastercard" class="donation-payment-logo">
+                <img src="img/donation%20page%20images/americanexpress.webp?v=2" alt="American Express" class="donation-payment-logo">
+                <img src="img/donation%20page%20images/Apple_Pay_Mark_RGB_041619.svg?v=2" alt="Apple Pay" class="donation-payment-logo donation-payment-logo-apple">
+              </div>
             </div>
-            <span class="stat-label">Still to Raise</span>
-          </div>
-          <div class="stat-divider"></div>
-          <div class="stat">
-            <div class="stat-value">
-              <span class="stat-number">80</span><span class="stat-suffix">+</span>
+
+            <div class="donation-checkout-stage" id="donation-checkout-stage" hidden>
+              <div class="donation-builder-top donation-builder-top-checkout">
+                <button type="button" class="donation-back-btn" id="donation-back-btn">Back</button>
+                <div class="donation-progress" aria-hidden="true">
+                  <span class="is-complete"></span>
+                  <span class="is-active"></span>
+                  <span></span>
+                </div>
+              </div>
+
+              <p class="donation-selected-pill" id="donation-selected-pill">Your donation</p>
+              <h3 class="donation-builder-title checkout-title">Complete your secure details</h3>
+              <p class="checkout-subcopy">Families can include first name, last name, and an optional message in checkout. Stripe keeps the payment step on this page.</p>
+
+              <div class="donation-checkout-status">
+                <p class="donation-checkout-message" id="donation-checkout-message">Preparing secure checkout…</p>
+              </div>
+
+              <div class="donation-embedded-shell">
+                <div id="embedded-checkout" class="embedded-checkout"></div>
+              </div>
             </div>
-            <span class="stat-label">Families Registered</span>
-          </div>
-          <div class="stat-divider"></div>
-          <div class="stat">
-            <div class="stat-value"><span class="stat-number">2027</span><span class="stat-suffix">*</span></div>
-            <span class="stat-label">Target Opening</span>
-          </div>
+
+            <div class="donation-complete-panel" id="donation-complete-panel" hidden>
+              <div class="donation-builder-top donation-builder-top-complete">
+                <div class="donation-progress" aria-hidden="true">
+                  <span class="is-complete"></span>
+                  <span class="is-complete"></span>
+                  <span class="is-success"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.8 13.9 4.6 10.7l-1.4 1.4 4.6 4.6L16.8 7.7l-1.4-1.4z"/></svg></span>
+                </div>
+                <p class="donation-kicker">Complete</p>
+              </div>
+              <p class="donation-complete-label">Payment successful</p>
+              <h3 class="donation-builder-title donation-complete-title">Thank you — your gift has been received.</h3>
+              <p class="donation-complete-copy" id="donation-complete-copy">Stripe will email your confirmation and payment record shortly.</p>
+              <p class="donation-complete-meta" id="donation-complete-meta">Your support helps strengthen and grow Families for Education. If you would like to give again or support the project in another way, you can start again below or contact us directly.</p>
+              <div class="donation-complete-actions">
+                <button type="button" class="btn btn-primary donate-cta" id="donation-restart-btn">Make another gift</button>
+                <a href="mailto:info@ffe.org.au?subject=Giving%20Enquiry" class="btn btn-outline donate-outline-btn">Email us</a>
+              </div>
+            </div>
+
+            <p class="donation-step-footnote">Need to discuss a larger gift, a family pledge, or another form of support? <a href="#larger-gift-support">Get in touch</a>.</p>
+          </section>
         </div>
       </div>
     </section>
 
-    <section class="section-pad donate-intro">
+    <section class="section-pad donate-temp-why">
       <div class="container">
         <div class="section-label">Why Give</div>
         <h2 class="section-title">Every Contribution Helps Turn the Vision into a Real School.</h2>
@@ -112,112 +350,6 @@
             <p>This is a long-term contribution to families in Melbourne's West, with benefits that extend far beyond a single event or campaign.</p>
           </article>
         </div>
-      </div>
-    </section>
-
-    <section class="section-pad donate-form-section" id="donate-form">
-      <div class="container">
-      <div class="donate-form-shell">
-        <div class="donate-form-copy">
-          <div class="section-label">Make a Gift</div>
-          <h2 class="section-title">Give Securely<br>Online</h2>
-          <p>Support families with a one-time or monthly gift through our secure Stripe checkout. The donation process is quick, secure, and completed entirely within our website.</p>
-          <p>Donations are not currently tax deductible. Supporters will be notified when this status changes.</p>
-          <p class="donate-bold">Thank you for helping build and strengthen our school community.</p>
-        </div>
-        <section class="donation-builder" aria-labelledby="donation-builder-title">
-          <div class="donation-selection-stage" id="donation-selection-stage">
-            <div class="donation-builder-top">
-              <div class="donation-progress" aria-hidden="true">
-                <span class="is-active"></span>
-                <span></span>
-                <span></span>
-              </div>
-            </div>
-
-            <h3 id="donation-builder-title" class="donation-builder-title">Choose the kind of support that fits your family.</h3>
-
-            <div class="donation-mode-toggle" role="tablist" aria-label="Donation type">
-              <button type="button" class="donation-mode-btn is-active" data-mode="oneTime" aria-selected="true">One-time</button>
-              <button type="button" class="donation-mode-btn" data-mode="monthly" aria-selected="false">Monthly</button>
-            </div>
-
-            <p class="donation-encouragement" id="donation-encouragement">Giving monthly has a greater impact</p>
-
-            <div class="donation-options" role="list" aria-label="Suggested donation amounts">
-              <button type="button" class="donation-option" data-amount="20" role="listitem">A$20</button>
-              <button type="button" class="donation-option" data-amount="50" role="listitem">A$50</button>
-              <button type="button" class="donation-option" data-amount="100" role="listitem">A$100</button>
-              <button type="button" class="donation-option" data-amount="250" role="listitem">A$250</button>
-              <button type="button" class="donation-option donation-option-wide" data-amount="500" role="listitem">A$500</button>
-            </div>
-
-            <div class="donation-custom-field" id="donation-custom-field">
-              <label class="donation-custom-label" for="donation-custom-input">Or choose your own one-time amount</label>
-              <div class="donation-custom-input-row">
-                <span class="donation-custom-currency">A$</span>
-                <input type="number" inputmode="numeric" min="1" step="1" class="donation-custom-input" id="donation-custom-input" placeholder="Enter whole dollars">
-                <button type="button" class="donation-custom-submit" id="donation-custom-submit">Continue</button>
-              </div>
-              <p class="donation-custom-help" id="donation-custom-help"></p>
-            </div>
-
-            <p class="donation-direct-note" id="donation-direct-note"></p>
-
-            <div class="donation-payment-logos" aria-label="Accepted payment methods">
-              <img src="img/donation%20page%20images/gpay.webp?v=2" alt="Google Pay" class="donation-payment-logo donation-payment-logo-gpay">
-              <img src="img/donation%20page%20images/visa.webp?v=2" alt="Visa" class="donation-payment-logo">
-              <img src="img/donation%20page%20images/mastercard.webp?v=2" alt="Mastercard" class="donation-payment-logo">
-              <img src="img/donation%20page%20images/americanexpress.webp?v=2" alt="American Express" class="donation-payment-logo">
-              <img src="img/donation%20page%20images/Apple_Pay_Mark_RGB_041619.svg?v=2" alt="Apple Pay" class="donation-payment-logo donation-payment-logo-apple">
-            </div>
-          </div>
-
-          <div class="donation-checkout-stage" id="donation-checkout-stage" hidden>
-            <div class="donation-builder-top donation-builder-top-checkout">
-              <button type="button" class="donation-back-btn" id="donation-back-btn">Back</button>
-              <div class="donation-progress" aria-hidden="true">
-                <span class="is-complete"></span>
-                <span class="is-active"></span>
-                <span></span>
-              </div>
-            </div>
-
-            <p class="donation-selected-pill" id="donation-selected-pill">Your donation</p>
-            <h3 class="donation-builder-title checkout-title">Complete your secure details</h3>
-            <p class="checkout-subcopy">Families can include first name, last name, and an optional message in checkout. Stripe keeps the payment step on this page.</p>
-
-            <div class="donation-checkout-status">
-              <p class="donation-checkout-message" id="donation-checkout-message">Preparing secure checkout…</p>
-            </div>
-
-            <div class="donation-embedded-shell">
-              <div id="embedded-checkout" class="embedded-checkout"></div>
-            </div>
-          </div>
-
-          <div class="donation-complete-panel" id="donation-complete-panel" hidden>
-            <div class="donation-builder-top donation-builder-top-complete">
-              <div class="donation-progress" aria-hidden="true">
-                <span class="is-complete"></span>
-                <span class="is-complete"></span>
-                <span class="is-success"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.8 13.9 4.6 10.7l-1.4 1.4 4.6 4.6L16.8 7.7l-1.4-1.4z"/></svg></span>
-              </div>
-              <p class="donation-kicker">Complete</p>
-            </div>
-            <p class="donation-complete-label">Payment successful</p>
-            <h3 class="donation-builder-title donation-complete-title">Thank you — your gift has been received.</h3>
-            <p class="donation-complete-copy" id="donation-complete-copy">Stripe will email your confirmation and payment record shortly.</p>
-            <p class="donation-complete-meta" id="donation-complete-meta">Your support helps strengthen and grow Families for Education. If you would like to give again or support the project in another way, you can start again below or contact us directly.</p>
-            <div class="donation-complete-actions">
-              <button type="button" class="btn btn-primary donate-cta" id="donation-restart-btn">Make another gift</button>
-              <a href="mailto:info@ffe.org.au?subject=Giving%20Enquiry" class="btn btn-outline donate-outline-btn">Email us</a>
-            </div>
-          </div>
-
-          <p class="donation-step-footnote">Need to discuss a larger gift, a family pledge, or another form of support? <a href="#larger-gift-support">Get in touch</a>.</p>
-        </section>
-      </div>
       </div>
     </section>
 
