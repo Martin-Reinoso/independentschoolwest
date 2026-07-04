@@ -18,3 +18,7 @@ Icon
 
 # Codex local scratch output
 .codex-temp/
+
+# Stripe export / reconciliation data containing donor or payout details
+outputs/stripe-reconciliation-20*/
+stripe-donations-recent.csv

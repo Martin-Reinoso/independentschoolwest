@@ -94,7 +94,7 @@ These look more like working documents, presentations, or design assets than web
 - `Stripe donation/`
 - `Stripe donation/lambda/index.mjs`
 - `Stripe donation/stripe-donation-handover.md`
-- `scripts/stripe-embedded-checkout-server.mjs`
+- `Stripe donation/scripts/stripe-embedded-checkout-server.mjs`
 
 These belong together conceptually and would be easier to maintain under a single `infrastructure/` or `backend/` area.
 

@@ -1,187 +1,156 @@
 # Stripe Donation Handover
 
-Last updated: 2026-05-11
+Last updated: 2026-07-04
 
-This file documents the current Stripe donation setup for `https://ffe.org.au/donate.html`, including:
+This file is the main handover document for the Families for Education Stripe donation system.
 
-- the live AWS Lambda endpoint
-- the Stripe products and prices in use
-- the repo files that power the page
-- the deployment/update steps
-- the main gotchas discovered during setup
+It explains:
+
+- what is live today
+- which AWS and Stripe components are involved
+- how donations reach the website, Stripe, AWS, Google Sheets, and the bank
+- what was built during the July 2026 automation work
+- which repo files matter if someone new needs to take over
 
 It intentionally does **not** store any live secret values.
 
-## Overview
+## System Summary
 
-The Stripe donation page uses:
+The live donation stack now has two separate AWS Lambda functions:
 
-- a static front end in [`donate.html`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/donate.html:1)
-- styling in [`donate.css`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/donate.css:1)
-- a live AWS Lambda function that creates Stripe Checkout Sessions
-- Stripe Embedded Checkout rendered on the page
+1. `ffe-stripe-donations`
+This creates Stripe Checkout Sessions for the public donation page.
 
-The old Raisely donate page has been replaced, so [`donate.html`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/donate.html:1) is now the live Stripe donation page.
+2. `ffe-stripe-webhook-automation`
+This receives Stripe webhooks and writes operational records into Google Sheets.
 
-## Repo Files
+That separation matters:
 
-- Front end page: [`donate.html`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/donate.html:1)
-- Front end styles: [`donate.css`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/donate.css:1)
-- AWS Lambda source: [`Stripe donation/lambda/index.mjs`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/lambda/index.mjs:1)
-- Local test server: [`scripts/stripe-embedded-checkout-server.mjs`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/scripts/stripe-embedded-checkout-server.mjs:1)
-- Payment logos: [`img/donation page images`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/img/donation%20page%20images)
+- the donation page continues to work even if reporting changes later
+- the webhook/reporting automation can be redeployed without changing the checkout flow
+- payout reconciliation and Slack alerts are handled outside the public website path
 
-Generated deployment artifact:
+## High-Level Flow
 
-- [`Stripe donation/lambda/stripe-donations-lambda.zip`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/lambda/stripe-donations-lambda.zip:1)
+### Public donation flow
 
-The zip is a generated artifact and is currently **not committed**.
+1. A donor opens [https://ffe.org.au/donate.html](https://ffe.org.au/donate.html)
+2. The page calls the checkout Lambda
+3. The Lambda creates a Stripe Checkout Session
+4. Stripe Embedded Checkout collects payment
+5. Stripe completes the payment or subscription setup
 
-## Public URLs
+### Reporting / bookkeeping flow
 
-- Live donation page: [https://ffe.org.au/donate.html](https://ffe.org.au/donate.html)
-- Live Lambda Function URL base: [https://yc7kml3pbslhxfhkqiluj2hth40zuzpr.lambda-url.ap-southeast-2.on.aws/](https://yc7kml3pbslhxfhkqiluj2hth40zuzpr.lambda-url.ap-southeast-2.on.aws/)
-- Live Lambda session endpoint: [https://yc7kml3pbslhxfhkqiluj2hth40zuzpr.lambda-url.ap-southeast-2.on.aws/create-checkout-session](https://yc7kml3pbslhxfhkqiluj2hth40zuzpr.lambda-url.ap-southeast-2.on.aws/create-checkout-session)
+1. Stripe sends webhook events to the webhook Lambda
+2. The webhook Lambda verifies the Stripe signature
+3. The Lambda writes rows into Google Sheets
+4. The Google Sheet recalculates the `Reconciliation` tab automatically from the other tabs
+5. If Slack is configured, the Lambda posts a simple donation alert
 
-## Front End Configuration
+## What Was Added In July 2026
 
-Current Stripe config is set in [`donate.html`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/donate.html:270):
+The automation and reconciliation work completed on 2026-07-04 included:
 
-- publishable key: stored directly in page config
-- session endpoint: the Lambda Function URL above
-- return URL: `https://ffe.org.au/donate.html`
+- creating a separate webhook Lambda so reporting does not interfere with checkout
+- wiring Stripe webhook events into Google Sheets
+- backfilling recent live Stripe donations and payouts into a shared workbook
+- adding a `Reconciliation` tab as the first Google Sheet tab
+- verifying live end-to-end webhook delivery with a signed synthetic event
+- cleaning the synthetic test rows back out so the workbook remained clean
+- creating repo-safe helper scripts so the workbook can be rebuilt later
+- creating a sanitized example workbook for future reference
 
-The page currently supports:
+## Live Components
 
-- one-time donations:
-  - fixed: `20`, `50`, `100`, `250`, `500`
-  - custom: whole-dollar values, minimum `A$1`
-- monthly donations:
-  - fixed only: `20`, `50`, `100`, `250`, `500`
+### Public donation page
 
-The page collects:
+- Live page: [https://ffe.org.au/donate.html](https://ffe.org.au/donate.html)
+- Page source: [`donate.html`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/donate.html:1)
+- Page styles: [`donate.css`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/donate.css:1)
 
-- first name
-- last name
-- optional message
+### Checkout Lambda
 
-through Stripe Checkout custom fields.
+- Function name: `ffe-stripe-donations`
+- Region: `ap-southeast-2`
+- Runtime: `nodejs22.x`
+- Handler: `index.handler`
+- Purpose: create Stripe Checkout Sessions for one-time and monthly gifts
+- Source: [`Stripe donation/lambda/index.mjs`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/lambda/index.mjs:1)
+- Deployment zip reference: [`Stripe donation/lambda/stripe-donations-lambda.zip`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/lambda/stripe-donations-lambda.zip)
 
-## AWS Configuration
+### Webhook Lambda
 
-### Lambda
+- Function name: `ffe-stripe-webhook-automation`
+- Region: `ap-southeast-2`
+- Runtime: `nodejs22.x`
+- Handler: `index.handler`
+- Purpose: write donations, payouts, payout transactions, and event log records into Google Sheets
+- Source: [`Stripe donation/webhook/index.mjs`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/webhook/index.mjs:1)
+- Deployment zip reference: [`Stripe donation/webhook/stripe-webhook-automation.zip`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/webhook/stripe-webhook-automation.zip)
+- Helper env-prep script: [`Stripe donation/webhook/prepare-webhook-env.py`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/webhook/prepare-webhook-env.py:1)
 
-Current live Lambda configuration:
+### Stripe webhook endpoint
 
-- function name: `ffe-stripe-donations`
-- region: `ap-southeast-2`
-- runtime: `nodejs22.x`
-- handler: `index.handler`
-- role: `arn:aws:iam::274319535046:role/ffe-stripe-donations-lambda-role`
-- memory: `256 MB`
-- timeout: `15 seconds`
-- log group: `/aws/lambda/ffe-stripe-donations`
+The live Stripe webhook endpoint currently points at the webhook Lambda Function URL and is subscribed to:
 
-Current environment variables in AWS:
+- `checkout.session.completed`
+- `invoice.paid`
+- `payout.paid`
 
-- `STRIPE_SECRET_KEY`
-- `ALLOWED_ORIGINS`
-- `RETURN_URL`
+These three events cover:
 
-Preferred configured values:
+- one-time donations
+- monthly donation renewals
+- Stripe payouts deposited toward the bank account
 
-- `ALLOWED_ORIGINS=https://ffe.org.au,https://www.ffe.org.au,http://127.0.0.1,http://localhost`
-- `RETURN_URL=https://ffe.org.au/donate.html`
+### Google Sheets workbook
 
-If AWS still has an older `?v=2` return URL configured, the current `/donate.html` page remains compatible. The clean canonical return URL is `https://ffe.org.au/donate.html`.
+The live operational workbook is private and shared with a Google service account.
 
-Do **not** commit the live secret key into the repo.
+Important:
 
-### Function URL
+- the live workbook URL and service-account private key should stay outside git
+- the workbook contains donor information and payout records
+- the repo includes scripts and a sanitized example workbook, not the live private workbook
 
-Current Function URL settings:
+## Repo Files You Need To Know
 
-- auth type: `NONE`
-- invoke mode: `BUFFERED`
+### Donation page and checkout
 
-CORS:
+- [`donate.html`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/donate.html:1)
+- [`donate.css`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/donate.css:1)
+- [`Stripe donation/lambda/index.mjs`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/lambda/index.mjs:1)
+- [`Stripe donation/scripts/stripe-embedded-checkout-server.mjs`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/scripts/stripe-embedded-checkout-server.mjs:1)
 
-- allow origins:
-  - `https://ffe.org.au`
-  - `https://www.ffe.org.au`
-  - `http://127.0.0.1`
-  - `http://localhost`
-- allow methods:
-  - `GET`
-  - `POST`
-- allow headers:
-  - `content-type`
-- max age:
-  - `86400`
+### Reporting, exports, and reconciliation
 
-### Lambda Resource Policy
+- [`Stripe donation/webhook/index.mjs`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/webhook/index.mjs:1)
+- [`Stripe donation/stripe-automation-setup.md`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/stripe-automation-setup.md:1)
+- [`Stripe donation/scripts/export-stripe-donations.mjs`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/scripts/export-stripe-donations.mjs:1)
+- [`Stripe donation/scripts/export-stripe-reconciliation-data.py`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/scripts/export-stripe-reconciliation-data.py:1)
+- [`Stripe donation/scripts/init-stripe-google-sheet.mjs`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/scripts/init-stripe-google-sheet.mjs:1)
+- [`Stripe donation/scripts/backfill-stripe-google-sheet.mjs`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/scripts/backfill-stripe-google-sheet.mjs:1)
+- [`Stripe donation/scripts/create-stripe-reconciliation-tab.mjs`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/scripts/create-stripe-reconciliation-tab.mjs:1)
 
-The function needs **both** public permissions below for Function URL invocation:
+### Safe reference assets
 
-- `lambda:InvokeFunctionUrl`
-- `lambda:InvokeFunction` with `InvokedViaFunctionUrl=true`
+- Sanitized example workbook: [`Stripe donation/examples/stripe-deposit-reconciliation-example.xlsx`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/examples/stripe-deposit-reconciliation-example.xlsx)
+- Example workbook notes: [`Stripe donation/examples/README.md`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/examples/README.md:1)
 
-These were required to avoid `Forbidden` errors from the Function URL.
+## Stripe Products And Prices
 
-## Stripe Configuration
+### One-time product
 
-### Account
+- Product ID: `prod_UUUxDVM8bDhgFh`
+- Name: `Families for Education Ltd One-time Gift`
 
-The Stripe account in use is the Families for Education live account already connected to Raisely.
+### Monthly product
 
-### Payment Method Domains
+- Product ID: `prod_UUUxROpTAk7mfZ`
+- Name: `Families for Education Ltd Monthly Gift`
 
-The following relevant payment method domains are enabled:
-
-- `ffe.org.au`
-- `www.ffe.org.au`
-- `js.stripe.com`
-- `checkout.stripe.com`
-- `buy.stripe.com`
-- legacy Raisely domains:
-  - `families-for-education.raisely.com`
-  - `families-for-education.raiselysite.com`
-
-The `ffe.org.au` and `www.ffe.org.au` registrations were important for Embedded Checkout and wallet support.
-
-### Supported Payment Methods
-
-Current checkout sessions use:
-
-- `payment_method_types[0]=card`
-
-That supports normal card rails including:
-
-- Visa
-- Mastercard
-- Amex
-
-And, where eligible on the donor’s device/browser:
-
-- Apple Pay
-- Google Pay
-- Link
-
-### Stripe Products
-
-One-time product:
-
-- product id: `prod_UUUxDVM8bDhgFh`
-- name: `Families for Education Ltd One-time Gift`
-
-Monthly product:
-
-- product id: `prod_UUUxROpTAk7mfZ`
-- name: `Families for Education Ltd Monthly Gift`
-
-### Stripe Price Map
-
-One-time fixed prices:
+### One-time fixed prices
 
 - `A$20` -> `price_1TVXGcPJukgoPLm77XhWQ2ol`
 - `A$50` -> `price_1TVVxxPJukgoPLm7fKxukt8F`
@@ -189,7 +158,7 @@ One-time fixed prices:
 - `A$250` -> `price_1TVXGdPJukgoPLm72lBdV7QK`
 - `A$500` -> `price_1TVVxzPJukgoPLm7SWAu3TDb`
 
-Monthly fixed prices:
+### Monthly fixed prices
 
 - `A$20/month` -> `price_1TVXGePJukgoPLm7EFc36Nbq`
 - `A$50/month` -> `price_1TVVy0PJukgoPLm7SBXcVCRN`
@@ -197,185 +166,296 @@ Monthly fixed prices:
 - `A$250/month` -> `price_1TVXGfPJukgoPLm7tlLWqX9E`
 - `A$500/month` -> `price_1TVVy3PJukgoPLm7I8ADfmQJ`
 
-Custom one-time donations are created dynamically using inline `price_data` and do not require pre-created Stripe prices.
+Custom one-time donations are created dynamically and do not need pre-created Stripe prices.
 
-## Checkout Session Behavior
+## How The Donation Page Works
 
-Current session behavior in [`Stripe donation/lambda/index.mjs`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/lambda/index.mjs:67):
+The public page currently supports:
 
-- `ui_mode=embedded_page`
-- `redirect_on_completion=if_required`
-- `return_url=https://ffe.org.au/donate.html`
-- `billing_address_collection=auto`
-- `payment_method_types[0]=card`
+- one-time fixed donations
+- one-time custom whole-dollar donations
+- monthly fixed donations
 
-Custom fields:
+The page collects:
 
-- `first_name`
-- `last_name`
-- `message`
+- first name
+- last name
+- optional message
 
-One-time donations:
+The checkout Lambda uses Stripe Embedded Checkout and returns a session to the page.
 
-- use `customer_creation=always`
-- rely on Stripe payment receipts rather than paid invoice emails
-- support custom amounts from `A$1`
+Important behavior:
 
-Monthly donations:
+- one-time donations rely on Stripe receipts rather than invoice emails
+- monthly donations are created as Stripe subscriptions
+- publishable Stripe configuration is in the front-end page
+- secret Stripe configuration stays in AWS Lambda environment variables
 
-- fixed amount only
-- create subscription-mode Checkout Sessions
+## How The Webhook Automation Works
 
-## Local Development
+The webhook Lambda:
 
-For local testing there is a helper server:
+1. checks required environment variables
+2. reads the raw request body
+3. verifies the Stripe webhook signature
+4. rejects duplicate event IDs using `Event Log`
+5. branches by event type
+6. appends rows to the correct Google Sheets tabs
+7. optionally posts a Slack notification
 
-- [`scripts/stripe-embedded-checkout-server.mjs`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/scripts/stripe-embedded-checkout-server.mjs:1)
+### Event routing
 
-Example:
+`checkout.session.completed`
+
+- used for paid one-time donations
+- appends a row to `Donations`
+
+`invoice.paid`
+
+- used for monthly subscription donation renewals
+- appends a row to `Donations`
+
+`payout.paid`
+
+- used when Stripe groups funds and pays out to the bank
+- appends one summary row to `Payouts`
+- appends many underlying balance-transaction rows to `Payout Transactions`
+
+Every successfully processed event:
+
+- appends one row to `Event Log`
+
+That `Event Log` tab is used for lightweight idempotency so Stripe retries do not create duplicate entries.
+
+## Google Sheet Design
+
+The workbook is designed to be accountant-friendly and operationally simple.
+
+### Tabs
+
+`Reconciliation`
+
+- first tab
+- styled summary tab
+- formula-driven
+- pulls from `Donations` and `Payouts`
+- updates automatically when those tabs change
+
+`Donations`
+
+- one row per donation payment
+- includes donor name, donor email, message, charge and payout information when available
+
+`Payouts`
+
+- one row per Stripe payout paid to the bank
+- summarizes how many donations were grouped into that payout and the total fees/adjustments
+
+`Payout Transactions`
+
+- underlying Stripe balance transactions for each payout
+- useful for auditors or accountants who need the detail
+
+`Event Log`
+
+- internal idempotency log
+- not meant as an accounting report
+
+## Reconciliation Logic
+
+The current reconciliation approach is payout-authoritative.
+
+That means:
+
+- the `Payouts` tab reflects actual Stripe payout records
+- the `Payout Transactions` tab reflects the underlying Stripe balance transactions inside each payout
+- the `Reconciliation` tab summarizes the payout-level view
+
+This is important because Stripe may:
+
+- group multiple donations into one payout
+- delay availability of a donation to a later payout
+- include fees or adjustments that make payout amount differ from gross donation total
+
+The key formula relationship is:
+
+- gross donations in a payout
+- minus fees / adjustments
+- equals net donations in that payout
+- which should match the Stripe payout amount for normal paid payouts
+
+## Testing And Verification Already Performed
+
+The following checks were completed on 2026-07-04:
+
+- the webhook Lambda was deployed in the personal AWS account, not the work account
+- the Stripe webhook endpoint was confirmed live and enabled
+- the endpoint subscription list matched the Lambda code
+- a signed synthetic webhook event was sent successfully to the live Function URL
+- the webhook returned `200 OK`
+- the synthetic event was recorded in `Event Log`
+- the synthetic event rows were then deleted so the workbook stayed clean
+- the `Reconciliation` tab was created and moved to the first position
+
+What was **not** performed:
+
+- a real live donation test after automation deployment
+- a real live payout test after automation deployment
+
+Those are still the best final confidence checks if the team wants absolute production verification.
+
+## Local Development And Manual Reporting
+
+### Embedded checkout local server
+
+Use:
 
 ```bash
-export STRIPE_SECRET_KEY='REDACTED'
-node scripts/stripe-embedded-checkout-server.mjs
+node "Stripe donation/scripts/stripe-embedded-checkout-server.mjs"
 ```
 
-That serves:
+This is useful when testing the page locally with a real browser origin such as `http://localhost`.
 
-- `http://127.0.0.1:8787/create-checkout-session`
+### Donation CSV export
 
-Important limitation:
+Use:
 
-- `file://` previews are not a reliable test path for the live Lambda because AWS Function URL CORS cannot allow the `null` origin.
-- Prefer:
-  - `http://localhost`
-  - `http://127.0.0.1`
-  - or the deployed site
+```bash
+STRIPE_SECRET_KEY=REDACTED node "Stripe donation/scripts/export-stripe-donations.mjs" --days=30 --out=.codex-temp/stripe-donations-recent.csv
+```
 
-## Redeploying Lambda
+### Reconciliation export
+
+Use:
+
+```bash
+STRIPE_SECRET_KEY=REDACTED python3 "Stripe donation/scripts/export-stripe-reconciliation-data.py" --days=90 --out-dir .codex-temp/stripe-recon/data
+```
+
+These exports are useful for:
+
+- manual audit work
+- rebuilding the Google Sheet
+- generating private workbook outputs for accounting
+
+## Rebuilding The Google Sheet
+
+If the private workbook ever needs to be rebuilt:
+
+1. create or choose a Google Sheet
+2. share it with the Google service account as an editor
+3. initialize the four raw tabs
+4. backfill historical Stripe data if needed
+5. create the `Reconciliation` tab
+6. point the webhook Lambda to that spreadsheet ID
+
+Use:
+
+```bash
+GOOGLE_SERVICE_ACCOUNT_JSON=/path/to/service-account.json \
+GOOGLE_SHEETS_SPREADSHEET_ID=spreadsheet_id \
+node "Stripe donation/scripts/init-stripe-google-sheet.mjs"
+```
+
+Then:
+
+```bash
+GOOGLE_SERVICE_ACCOUNT_JSON=/path/to/service-account.json \
+GOOGLE_SHEETS_SPREADSHEET_ID=spreadsheet_id \
+STRIPE_RECON_DATA_DIR=/path/to/recon-data \
+node "Stripe donation/scripts/backfill-stripe-google-sheet.mjs"
+```
+
+Then:
+
+```bash
+GOOGLE_SERVICE_ACCOUNT_JSON=/path/to/service-account.json \
+GOOGLE_SHEETS_SPREADSHEET_ID=spreadsheet_id \
+node "Stripe donation/scripts/create-stripe-reconciliation-tab.mjs"
+```
+
+## Redeploying Lambdas
+
+### Checkout Lambda
 
 From repo root:
 
 ```bash
 cd "Stripe donation/lambda"
 zip -j stripe-donations-lambda.zip index.mjs
-aws lambda update-function-code \
-  --region ap-southeast-2 \
-  --function-name ffe-stripe-donations \
-  --zip-file fileb://stripe-donations-lambda.zip
-aws lambda wait function-updated-v2 \
-  --region ap-southeast-2 \
-  --function-name ffe-stripe-donations
 ```
 
-If environment variables need updating:
+Upload that zip to `ffe-stripe-donations`.
+
+### Webhook Lambda
+
+From repo root:
 
 ```bash
-aws lambda update-function-configuration \
-  --region ap-southeast-2 \
-  --function-name ffe-stripe-donations \
-  --environment '{"Variables":{"STRIPE_SECRET_KEY":"REDACTED","ALLOWED_ORIGINS":"https://ffe.org.au,https://www.ffe.org.au,http://127.0.0.1,http://localhost","RETURN_URL":"https://ffe.org.au/donate.html"}}'
+cd "Stripe donation/webhook"
+zip -j stripe-webhook-automation.zip index.mjs
 ```
 
-## Useful AWS Commands
+Upload that zip to `ffe-stripe-webhook-automation`.
 
-Inspect current function:
+After deployment, confirm:
 
-```bash
-aws lambda get-function-configuration \
-  --region ap-southeast-2 \
-  --function-name ffe-stripe-donations
-```
+- handler is still `index.handler`
+- Function URL still exists
+- environment variables are still present
+- Stripe webhook endpoint still points to the correct Function URL
 
-Inspect Function URL:
+## Operational Gotchas
 
-```bash
-aws lambda get-function-url-config \
-  --region ap-southeast-2 \
-  --function-name ffe-stripe-donations
-```
+### Work AWS account vs personal AWS account
 
-Read recent logs:
+There are separate AWS identities in use.
 
-```bash
-aws logs tail /aws/lambda/ffe-stripe-donations \
-  --region ap-southeast-2 \
-  --since 30m \
-  --format short
-```
+The live Stripe Lambdas for this project were managed in the personal AWS account, not the work account.
 
-## Useful Stripe Checks
+Anyone taking over should confirm the active AWS account before changing anything.
 
-List payment method domains:
+### Secrets are not in git
 
-```bash
-curl -sS https://api.stripe.com/v1/payment_method_domains \
-  -u 'REDACTED:' | jq
-```
+Live secrets remain outside the repo:
 
-Check a price:
+- Stripe secret keys
+- Stripe webhook signing secret
+- Google service-account private key
+- Slack incoming webhook URL
 
-```bash
-curl -sS https://api.stripe.com/v1/prices/PRICE_ID \
-  -u 'REDACTED:' | jq
-```
+If those are ever lost, they must be re-created or rotated from the provider dashboards.
 
-## Known Gotchas
+### Slack is optional
 
-### 1. Duplicate CORS headers break the live page
+The webhook supports Slack alerts, but Slack is not required for the Google Sheets sync to work.
 
-Do not set `Access-Control-Allow-Origin` both:
+If Slack is not configured, donation and payout syncing still works.
 
-- in the Lambda Function URL CORS config
-- and in the Lambda response headers
+### Real exports are sensitive
 
-This caused Chrome to reject the fetch with:
+Local CSV and XLSX exports may contain:
 
-- duplicated `Access-Control-Allow-Origin`
-- generic Stripe “Something went wrong” in the iframe
+- donor names
+- donor email addresses
+- donor messages
+- payout identifiers
+- payout amounts
 
-Current fix:
+These should stay private. The repo-safe example workbook is sanitized for that reason.
 
-- let the Function URL handle CORS
-- keep Lambda responses simple
+## If Someone New Takes Over
 
-### 2. `ffe.org.au` must be registered as a Stripe payment method domain
+Recommended first steps:
 
-Without that, embedded Stripe and wallet behavior can fail or behave inconsistently.
+1. Read this file
+2. Read [`Stripe donation/stripe-automation-setup.md`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/stripe-automation-setup.md:1)
+3. Confirm access to:
+   - Stripe dashboard
+   - personal AWS account hosting the Lambdas
+   - Google Sheet and Google Cloud service account
+4. Review both Lambda source files
+5. Send one synthetic webhook test before making changes
+6. Avoid rotating secrets unless necessary
 
-### 3. `embedded_page` rules matter
-
-The working combination is:
-
-- `ui_mode=embedded_page`
-- `redirect_on_completion=if_required`
-- `return_url=...`
-
-Previous combinations caused Stripe API validation errors.
-
-### 4. Repo state vs live AWS state can drift
-
-Some issues were caused by updating repo code without redeploying the Lambda afterward. If the page and backend behave differently, redeploy the Lambda first.
-
-## Security Notes
-
-- The live Stripe secret key is currently stored in AWS Lambda environment variables.
-- It was also exposed during setup in terminal/chat history.
-- It should be rotated when convenient.
-- Never commit the live secret key into the repository.
-
-Recommended future improvement:
-
-- move the Stripe secret into AWS Secrets Manager
-- update the Lambda to read it securely at runtime
-
-## Current Status
-
-As of this handover:
-
-- the live page is wired to the live Lambda session endpoint
-- the live Lambda is active in `ap-southeast-2`
-- the live endpoint supports:
-  - one-time fixed amounts
-  - one-time custom amounts from `A$1`
-  - monthly fixed amounts
-- `ffe.org.au` and `www.ffe.org.au` are registered in Stripe as payment method domains
+If the live workbook is ever lost, the reporting system can be rebuilt from Stripe because Stripe remains the source of truth.
