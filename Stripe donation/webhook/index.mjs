@@ -5,13 +5,35 @@ const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
 const GOOGLE_SERVICE_ACCOUNT_EMAIL = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || '';
 const GOOGLE_PRIVATE_KEY = (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
 const GOOGLE_SHEETS_SPREADSHEET_ID = process.env.GOOGLE_SHEETS_SPREADSHEET_ID || '';
-const GOOGLE_SHEETS_DONATIONS_RANGE = process.env.GOOGLE_SHEETS_DONATIONS_RANGE || 'Donations!A:Z';
-const GOOGLE_SHEETS_PAYOUTS_RANGE = process.env.GOOGLE_SHEETS_PAYOUTS_RANGE || 'Payouts!A:K';
+const GOOGLE_SHEETS_DONATIONS_RANGE = process.env.GOOGLE_SHEETS_DONATIONS_RANGE || 'Donations!A:AA';
+const GOOGLE_SHEETS_PAYOUTS_RANGE = process.env.GOOGLE_SHEETS_PAYOUTS_RANGE || 'Payouts!A:I';
 const GOOGLE_SHEETS_PAYOUT_TXNS_RANGE = process.env.GOOGLE_SHEETS_PAYOUT_TXNS_RANGE || 'Payout Transactions!A:U';
 const GOOGLE_SHEETS_EVENT_LOG_RANGE = process.env.GOOGLE_SHEETS_EVENT_LOG_RANGE || 'Event Log!A:C';
 const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL || '';
 const DISPLAY_TIME_ZONE = process.env.DISPLAY_TIME_ZONE || 'Australia/Melbourne';
 const STRIPE_API_BASE = 'https://api.stripe.com/v1';
+
+const SHEET_HEADERS = {
+  Donations: [
+    'transaction_date', 'transaction_time', 'mode', 'amount', 'currency', 'payment_status', 'donor_email',
+    'donor_name', 'first_name', 'last_name', 'message', 'invoice_id', 'stripe_hosted_receipt_url',
+    'charge_id', 'charge_date', 'charge_time', 'gross_amount', 'stripe_fee', 'net_amount', 'payout_id',
+    'payout_date', 'payout_time', 'payout_arrival_date', 'payout_amount', 'payout_status',
+    'payout_trace_id', 'reconciliation_note'
+  ],
+  Payouts: [
+    'payout_date', 'payout_id', 'trace_id', 'payout_amount', 'donations_grouped_in_this_payout',
+    'gross_donations_in_this_payout', 'fees_adjustments', 'net_donations_in_this_payout',
+    'stripe_payout_status'
+  ],
+  'Payout Transactions': [
+    'payout_id', 'payout_date', 'payout_time', 'payout_arrival_date', 'payout_status', 'payout_trace_id',
+    'payout_amount', 'balance_transaction_id', 'available_on_date', 'reporting_category', 'type',
+    'description', 'source_id', 'source_object', 'amount', 'fee', 'net', 'currency', 'source_invoice_id',
+    'source_payment_intent_id', 'source_receipt_url'
+  ],
+  'Event Log': ['event_id', 'event_type', 'processed_at']
+};
 
 function jsonResponse(statusCode, payload) {
   return {
@@ -232,6 +254,50 @@ async function googleSheetsAppend(range, rows) {
   return payload;
 }
 
+async function googleSheetsBatchUpdate(data) {
+  if (!data.length) {
+    return;
+  }
+
+  const token = await getGoogleAccessToken();
+  const response = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_SPREADSHEET_ID}/values:batchUpdate`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ valueInputOption: 'USER_ENTERED', data })
+    }
+  );
+
+  const payload = await response.json();
+  if (!response.ok) {
+    throw new Error(payload?.error?.message || 'Failed to update Google Sheets values.');
+  }
+}
+
+function sheetNameFromRange(range) {
+  return range.split('!')[0].replace(/^'|'$/g, '');
+}
+
+async function assertSheetSchema(range) {
+  const sheetName = sheetNameFromRange(range);
+  const expected = SHEET_HEADERS[sheetName];
+  if (!expected) {
+    throw new Error(`No schema is configured for Google Sheet tab ${sheetName}.`);
+  }
+
+  const [actual = []] = await googleSheetsGet(`${sheetName}!1:1`);
+  const matches = expected.length === actual.length && expected.every((header, index) => actual[index] === header);
+  if (!matches) {
+    throw new Error(
+      `Google Sheet schema mismatch in ${sheetName}. Expected ${expected.length} columns; refusing to write.`
+    );
+  }
+}
+
 async function hasProcessedEvent(eventId) {
   const values = await googleSheetsGet(GOOGLE_SHEETS_EVENT_LOG_RANGE);
   return values.some((row) => row[0] === eventId);
@@ -255,7 +321,7 @@ function customFieldMap(customFields = []) {
 
 async function fetchCheckoutSession(sessionId) {
   return stripeRequest(`/checkout/sessions/${sessionId}`, {
-    'expand[]': ['payment_intent.latest_charge', 'subscription']
+    'expand[]': ['payment_intent.latest_charge.balance_transaction', 'subscription']
   });
 }
 
@@ -273,12 +339,22 @@ async function fetchChargesForInvoice(invoiceId) {
 }
 
 async function fetchPayoutTransactions(payoutId) {
-  const payload = await stripeRequest('/balance_transactions', {
-    payout: payoutId,
-    limit: 100,
-    'expand[]': ['data.source']
-  });
-  return payload.data || [];
+  const transactions = [];
+  let startingAfter = '';
+
+  do {
+    const payload = await stripeRequest('/balance_transactions', {
+      payout: payoutId,
+      limit: 100,
+      starting_after: startingAfter,
+      'expand[]': ['data.source']
+    });
+    const page = payload.data || [];
+    transactions.push(...page);
+    startingAfter = payload.has_more && page.length ? page[page.length - 1].id : '';
+  } while (startingAfter);
+
+  return transactions;
 }
 
 function donationRowFromSession(session) {
@@ -357,11 +433,8 @@ function donationRowFromInvoice(invoice, charge, session) {
 function payoutSummaryRow(payout, transactions) {
   const created = formattedDateParts(payout.created);
   const chargeTransactions = transactions.filter((txn) => txn.type === 'charge');
-  const feeAdjustments = transactions
-    .filter((txn) => txn.reporting_category === 'fee')
-    .reduce((sum, txn) => sum + txn.net, 0);
   const grossTotal = chargeTransactions.reduce((sum, txn) => sum + txn.amount, 0);
-  const netTotal = chargeTransactions.reduce((sum, txn) => sum + txn.net, 0) + feeAdjustments;
+  const netTotal = payout.amount;
 
   return [
     created.date,
@@ -442,6 +515,14 @@ async function handleCheckoutCompleted(eventObject) {
 
   const session = await fetchCheckoutSession(eventObject.id);
   const row = donationRowFromSession(session);
+  await assertSheetSchema(GOOGLE_SHEETS_DONATIONS_RANGE);
+  const donationRows = await googleSheetsGet(GOOGLE_SHEETS_DONATIONS_RANGE);
+  const alreadyInserted = donationRows.slice(1).some((existing) =>
+    (row[13] && existing[13] === row[13]) || (row[11] && existing[11] === row[11])
+  );
+  if (alreadyInserted) {
+    return { skipped: true, reason: 'Donation already exists.', sessionId: session.id };
+  }
   await googleSheetsAppend(GOOGLE_SHEETS_DONATIONS_RANGE, [row]);
   await sendSlackDonationMessage({
     donorName: row[7],
@@ -476,6 +557,14 @@ async function handleInvoicePaid(eventObject) {
   const charges = await fetchChargesForInvoice(invoice.id);
   const charge = charges.find((item) => item.paid && item.captured) || charges[0] || null;
   const row = donationRowFromInvoice(invoice, charge, session);
+  await assertSheetSchema(GOOGLE_SHEETS_DONATIONS_RANGE);
+  const donationRows = await googleSheetsGet(GOOGLE_SHEETS_DONATIONS_RANGE);
+  const alreadyInserted = donationRows.slice(1).some((existing) =>
+    (row[13] && existing[13] === row[13]) || (row[11] && existing[11] === row[11])
+  );
+  if (alreadyInserted) {
+    return { skipped: true, reason: 'Donation already exists.', invoiceId: invoice.id };
+  }
   await googleSheetsAppend(GOOGLE_SHEETS_DONATIONS_RANGE, [row]);
   await sendSlackDonationMessage({
     donorName: row[7],
@@ -495,10 +584,60 @@ async function handlePayoutPaid(eventObject) {
   const payoutRow = payoutSummaryRow(payout, transactions);
   const transactionRows = payoutTransactionRows(payout, transactions);
 
-  await googleSheetsAppend(GOOGLE_SHEETS_PAYOUTS_RANGE, [payoutRow]);
-  await googleSheetsAppend(GOOGLE_SHEETS_PAYOUT_TXNS_RANGE, transactionRows);
+  await assertSheetSchema(GOOGLE_SHEETS_PAYOUTS_RANGE);
+  await assertSheetSchema(GOOGLE_SHEETS_PAYOUT_TXNS_RANGE);
+  await assertSheetSchema(GOOGLE_SHEETS_DONATIONS_RANGE);
 
-  return { inserted: 'payout', payoutId: payout.id, transactionCount: transactionRows.length };
+  const existingPayouts = await googleSheetsGet(GOOGLE_SHEETS_PAYOUTS_RANGE);
+  if (!existingPayouts.slice(1).some((row) => row[1] === payout.id)) {
+    await googleSheetsAppend(GOOGLE_SHEETS_PAYOUTS_RANGE, [payoutRow]);
+  }
+
+  const existingTransactions = await googleSheetsGet(GOOGLE_SHEETS_PAYOUT_TXNS_RANGE);
+  const existingTransactionIds = new Set(existingTransactions.slice(1).map((row) => row[7]).filter(Boolean));
+  const newTransactionRows = transactionRows.filter((row) => !existingTransactionIds.has(row[7]));
+  await googleSheetsAppend(GOOGLE_SHEETS_PAYOUT_TXNS_RANGE, newTransactionRows);
+
+  const donationRows = await googleSheetsGet(GOOGLE_SHEETS_DONATIONS_RANGE);
+  const transactionByChargeId = new Map(
+    transactions
+      .filter((txn) => txn.type === 'charge')
+      .map((txn) => [typeof txn.source === 'object' ? txn.source?.id : txn.source, txn])
+      .filter(([chargeId]) => chargeId)
+  );
+  const payoutCreated = formattedDateParts(payout.created);
+  const donationUpdates = [];
+  donationRows.slice(1).forEach((row, index) => {
+    const transaction = transactionByChargeId.get(row[13]);
+    if (!transaction) {
+      return;
+    }
+    donationUpdates.push({
+      range: `Donations!Q${index + 2}:AA${index + 2}`,
+      majorDimension: 'ROWS',
+      values: [[
+        amountDecimal(transaction.amount),
+        amountDecimal(transaction.fee),
+        amountDecimal(transaction.net),
+        payout.id,
+        payoutCreated.date,
+        payoutCreated.time,
+        payout.arrival_date ? formattedDateParts(payout.arrival_date).date : '',
+        amountDecimal(payout.amount),
+        payout.status || '',
+        payout.trace_id?.value || '',
+        'Linked automatically from Stripe payout webhook'
+      ]]
+    });
+  });
+  await googleSheetsBatchUpdate(donationUpdates);
+
+  return {
+    inserted: 'payout',
+    payoutId: payout.id,
+    transactionCount: newTransactionRows.length,
+    linkedDonationCount: donationUpdates.length
+  };
 }
 
 export async function handler(event) {
@@ -517,6 +656,7 @@ export async function handler(event) {
     verifyStripeWebhook(rawBody, signatureHeader);
     const stripeEvent = JSON.parse(rawBody);
 
+    await assertSheetSchema(GOOGLE_SHEETS_EVENT_LOG_RANGE);
     if (await hasProcessedEvent(stripeEvent.id)) {
       return jsonResponse(200, { ok: true, duplicate: true, eventId: stripeEvent.id });
     }

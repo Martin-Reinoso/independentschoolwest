@@ -1,6 +1,6 @@
 # Stripe Automation Setup
 
-Last updated: 2026-07-04
+Last updated: 2026-07-17
 
 This guide explains how to rebuild or maintain the Stripe-to-Google-Sheets automation.
 
@@ -32,6 +32,7 @@ Everything Stripe-specific now lives under [`Stripe donation`](/Users/jativaf/Li
   - [`Stripe donation/scripts/init-stripe-google-sheet.mjs`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/scripts/init-stripe-google-sheet.mjs:1)
   - [`Stripe donation/scripts/backfill-stripe-google-sheet.mjs`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/scripts/backfill-stripe-google-sheet.mjs:1)
   - [`Stripe donation/scripts/create-stripe-reconciliation-tab.mjs`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/scripts/create-stripe-reconciliation-tab.mjs:1)
+  - [`Stripe donation/scripts/repair-stripe-google-sheet.mjs`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/scripts/repair-stripe-google-sheet.mjs:1)
 - Safe example workbook: [`Stripe donation/examples/stripe-deposit-reconciliation-example.xlsx`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/examples/stripe-deposit-reconciliation-example.xlsx)
 
 ## Architecture
@@ -47,10 +48,12 @@ The Google Sheet is a reporting and operations surface built from Stripe events 
 1. Stripe creates an event
 2. Stripe sends the event to the webhook Lambda
 3. The webhook Lambda verifies the Stripe signature
-4. The Lambda checks `Event Log` so duplicate retries do not create duplicate rows
-5. The Lambda appends rows into the correct sheet tab
-6. The `Reconciliation` tab updates automatically from formulas
-7. Slack receives a short donation alert if a webhook URL is configured
+4. The Lambda validates the destination tab's exact headers and refuses to write if they do not match
+5. The Lambda checks `Event Log` and the Stripe record IDs so retries do not create duplicate rows
+6. The Lambda appends or updates rows in the correct sheet tab
+7. A payout event links its charge records back to the matching rows in `Donations`
+8. The `Reconciliation` tab updates automatically from formulas
+9. Slack receives a short donation alert if a webhook URL is configured
 
 ## Live Event Coverage
 
@@ -91,6 +94,14 @@ Behavior:
 - fetches all Stripe balance transactions tied to that payout
 - writes one summary row to `Payouts`
 - writes detailed rows to `Payout Transactions`
+- fills the payout, fee, and net columns on matching `Donations` rows
+- follows Stripe pagination, including payouts containing more than 100 balance transactions
+
+### Sheet schema contract
+
+The header rows listed below are an API contract, not just labels. The webhook checks the complete header row before every write. If a tab has been renamed, reordered, or given an old header layout, the webhook returns an error without appending a shifted row.
+
+The export, initialization, backfill, repair, and Lambda scripts all use the same 9-column `Payouts` schema.
 
 ## Google Sheet Structure
 
@@ -371,6 +382,26 @@ This script:
 - mirrors the payout summary table
 - applies the blue accountant-friendly formatting
 
+## Repairing Or Auditing An Existing Sheet
+
+Use the repair script if payout columns were changed manually, an older backfill was used, or donation-to-payout links need to be rebuilt:
+
+```bash
+GOOGLE_SERVICE_ACCOUNT_JSON=/path/to/service-account.json \
+GOOGLE_SHEETS_SPREADSHEET_ID=spreadsheet_id \
+node "Stripe donation/scripts/repair-stripe-google-sheet.mjs"
+```
+
+The script:
+
+- saves a private JSON backup under `.codex-temp/stripe-sheet-backups/`
+- rebuilds `Payouts` from `Payout Transactions` using the current 9-column schema
+- fills gross, fee, net, and payout fields on matching `Donations` rows
+- restores the `Reconciliation` formulas to the current columns
+- reapplies date, time, count, and Australian-dollar formatting
+
+The backup directory is ignored by git because it contains private operational data.
+
 ## Manual Donation Export
 
 For a simple recent donation CSV:
@@ -439,6 +470,8 @@ After deployment or rebuild, verify these things in order:
 7. A real donation later appears in `Donations`
 8. A real payout later appears in `Payouts` and `Payout Transactions`
 9. `Reconciliation` reflects the new payout automatically
+10. `Payouts` has exactly the 9 documented headers in the documented order
+11. The payout amount equals net donations for ordinary paid payouts
 
 ## Troubleshooting
 
@@ -465,6 +498,11 @@ Check whether:
 
 - `Event Log` is writable
 - event IDs are being recorded successfully
+- the Lambda is running the current deployment package, which also deduplicates payout IDs, balance transaction IDs, charge IDs, and invoice IDs
+
+### Values appear under the wrong payout headings
+
+This indicates a schema mismatch. Do not move individual cells by hand. Run `repair-stripe-google-sheet.mjs`, confirm the 9 payout headers, and redeploy the current webhook package. The current Lambda refuses future writes when headers do not match.
 
 ### Donations sync but Slack is silent
 

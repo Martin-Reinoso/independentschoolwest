@@ -5,7 +5,6 @@ import sys
 import time
 import urllib.parse
 import urllib.request
-from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -19,11 +18,20 @@ MELBOURNE_OFFSET_DST = timedelta(hours=11)
 def parse_args(argv):
     days = 90
     out_dir = None
-    for arg in argv:
+    index = 0
+    while index < len(argv):
+        arg = argv[index]
         if arg.startswith("--days="):
             days = int(arg.split("=", 1)[1])
+        elif arg == "--days" and index + 1 < len(argv):
+            index += 1
+            days = int(argv[index])
         elif arg.startswith("--out-dir="):
             out_dir = arg.split("=", 1)[1]
+        elif arg == "--out-dir" and index + 1 < len(argv):
+            index += 1
+            out_dir = argv[index]
+        index += 1
     if days < 1:
         raise ValueError("--days must be positive")
     if out_dir is None:
@@ -505,29 +513,24 @@ def main(argv):
     supplemental_donation_rows(donations, payout_transactions, charges_by_id, payout_summary, existing_charge_ids)
 
     payout_rows = []
-    donations_by_payout = defaultdict(list)
-    for donation in donations:
-        if donation["payout_id"]:
-            donations_by_payout[donation["payout_id"]].append(donation)
-
     for payout_id, summary in payout_summary.items():
-        linked = donations_by_payout.get(payout_id, [])
-        donation_total = sum(float(item["amount"]) for item in linked)
-        net_total = sum(float(item["net_amount"] or 0) for item in linked)
+        gross_total = float(summary["gross_charges_in_payout"])
+        net_total = float(summary["payout_amount"])
         payout_rows.append(
             {
-                **summary,
-                "linked_donation_count": len(linked),
-                "linked_donation_total": f"{donation_total:.2f}",
-                "linked_net_total": f"{net_total:.2f}",
-                "difference_to_payout": f"{donation_total - float(summary['payout_amount']):.2f}",
-                "notes": "Difference can reflect Stripe fees, refunds, or payout timing."
-                if linked
-                else "No donation rows linked automatically in the current window.",
+                "payout_date": summary["payout_date"],
+                "payout_id": payout_id,
+                "trace_id": summary["payout_trace_id"],
+                "payout_amount": summary["payout_amount"],
+                "donations_grouped_in_this_payout": summary["charge_count"],
+                "gross_donations_in_this_payout": f"{gross_total:.2f}",
+                "fees_adjustments": f"{gross_total - net_total:.2f}",
+                "net_donations_in_this_payout": f"{net_total:.2f}",
+                "stripe_payout_status": summary["payout_status"],
             }
         )
 
-    payout_rows.sort(key=lambda row: (row["payout_date"], row["payout_time"]))
+    payout_rows.sort(key=lambda row: (row["payout_date"], row["payout_id"]))
     donations.sort(key=lambda row: (row["transaction_date"], row["transaction_time"]))
     payout_transactions.sort(key=lambda row: (row["payout_date"], row["payout_time"], row["available_on_date"], row["balance_transaction_id"]))
 
@@ -568,24 +571,15 @@ def main(argv):
         out_dir / "payouts.csv",
         payout_rows,
         [
-            "payout_id",
             "payout_date",
-            "payout_time",
-            "payout_arrival_date",
-            "payout_status",
-            "payout_trace_id",
+            "payout_id",
+            "trace_id",
             "payout_amount",
-            "currency",
-            "gross_charges_in_payout",
-            "stripe_fees_in_payout",
-            "net_transactions_in_payout",
-            "charge_count",
-            "refund_count",
-            "linked_donation_count",
-            "linked_donation_total",
-            "linked_net_total",
-            "difference_to_payout",
-            "notes",
+            "donations_grouped_in_this_payout",
+            "gross_donations_in_this_payout",
+            "fees_adjustments",
+            "net_donations_in_this_payout",
+            "stripe_payout_status",
         ],
     )
     write_csv(

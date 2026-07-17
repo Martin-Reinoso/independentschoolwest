@@ -119,9 +119,18 @@ async function main() {
 
   const datasets = {
     'Donations!A1:AA': await loadCsv('donations'),
-    'Payouts!A1:R': await loadCsv('payouts'),
+    'Payouts!A1:I': await loadCsv('payouts'),
     'Payout Transactions!A1:U': await loadCsv('payout_transactions')
   };
+
+  const clearResponse = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent('Payouts!A:R')}:clear`,
+    { method: 'POST', headers, body: '{}' }
+  );
+  if (!clearResponse.ok) {
+    const payload = await clearResponse.json();
+    throw new Error(payload.error?.message || 'Failed to clear the existing Payouts data.');
+  }
 
   for (const [range, values] of Object.entries(datasets)) {
     const response = await fetch(

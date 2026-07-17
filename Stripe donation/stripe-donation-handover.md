@@ -1,6 +1,6 @@
 # Stripe Donation Handover
 
-Last updated: 2026-07-04
+Last updated: 2026-07-17
 
 This file is the main handover document for the Families for Education Stripe donation system.
 
@@ -61,6 +61,18 @@ The automation and reconciliation work completed on 2026-07-04 included:
 - creating repo-safe helper scripts so the workbook can be rebuilt later
 - creating a sanitized example workbook for future reference
 
+The maintenance work completed on 2026-07-17 included:
+
+- migrating the live `Payouts` tab from its legacy 18-column layout to the documented 9-column layout
+- rebuilding all payout summaries from `Payout Transactions`
+- linking all existing donation rows to their authoritative payout transactions
+- restoring the `Reconciliation` formulas to the current columns
+- adding exact header validation so the Lambda refuses shifted writes
+- adding record-level deduplication for webhook retries and partial failures
+- adding pagination for payouts with more than 100 balance transactions
+- aligning the export and backfill scripts with the same payout schema
+- deploying and replay-testing the reporting Lambda without changing the checkout Lambda
+
 ## Live Components
 
 ### Public donation page
@@ -89,6 +101,7 @@ The automation and reconciliation work completed on 2026-07-04 included:
 - Source: [`Stripe donation/webhook/index.mjs`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/webhook/index.mjs:1)
 - Deployment zip reference: [`Stripe donation/webhook/stripe-webhook-automation.zip`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/webhook/stripe-webhook-automation.zip)
 - Helper env-prep script: [`Stripe donation/webhook/prepare-webhook-env.py`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/webhook/prepare-webhook-env.py:1)
+- Sheet repair script: [`Stripe donation/scripts/repair-stripe-google-sheet.mjs`](/Users/jativaf/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/Documents/GitHub/independentschoolwest/Stripe%20donation/scripts/repair-stripe-google-sheet.mjs:1)
 
 ### Stripe webhook endpoint
 
@@ -220,6 +233,9 @@ The webhook Lambda:
 - used when Stripe groups funds and pays out to the bank
 - appends one summary row to `Payouts`
 - appends many underlying balance-transaction rows to `Payout Transactions`
+- updates matching `Donations` rows with gross, fee, net, payout, status, and trace information
+
+Before any write, the Lambda checks the exact header row for the destination tab. It refuses the write if the schema differs. It also checks Stripe record IDs independently of `Event Log`, which prevents duplicates if a previous webhook attempt completed only part of its work.
 
 Every successfully processed event:
 
@@ -297,12 +313,18 @@ The following checks were completed on 2026-07-04:
 - the synthetic event rows were then deleted so the workbook stayed clean
 - the `Reconciliation` tab was created and moved to the first position
 
-What was **not** performed:
+Additional checks completed on 2026-07-17:
 
-- a real live donation test after automation deployment
-- a real live payout test after automation deployment
+- real donation and payout webhook records were confirmed in the live workbook
+- all 12 existing payout summaries were recalculated from the detailed transactions
+- all 33 existing donation rows were linked to paid payouts
+- the payout total and grouped net total both reconciled to `A$20,205.63` at the time of verification
+- an actual signed `payout.paid` event was replayed with a temporary event ID against the deployed Lambda
+- the replay added zero duplicate payouts and zero duplicate balance transactions
+- the replay relinked the correct donation and returned `200 OK`
+- the temporary verification event was removed from `Event Log`
 
-Those are still the best final confidence checks if the team wants absolute production verification.
+These totals are a dated verification snapshot, not a permanent expected balance. They will change as new donations and payouts arrive.
 
 ## Local Development And Manual Reporting
 
@@ -373,6 +395,16 @@ GOOGLE_SERVICE_ACCOUNT_JSON=/path/to/service-account.json \
 GOOGLE_SHEETS_SPREADSHEET_ID=spreadsheet_id \
 node "Stripe donation/scripts/create-stripe-reconciliation-tab.mjs"
 ```
+
+If an existing workbook has an old payout layout or broken links, run:
+
+```bash
+GOOGLE_SERVICE_ACCOUNT_JSON=/path/to/service-account.json \
+GOOGLE_SHEETS_SPREADSHEET_ID=spreadsheet_id \
+node "Stripe donation/scripts/repair-stripe-google-sheet.mjs"
+```
+
+This makes a private backup under `.codex-temp`, rebuilds the payout summaries and donation links from the detailed transaction tab, and restores the current formulas and formats.
 
 ## Redeploying Lambdas
 
