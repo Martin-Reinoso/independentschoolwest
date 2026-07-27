@@ -19,7 +19,7 @@
   const sessionId = crypto.randomUUID();
   const storageKey = `rosewood-enrolment-${inviteToken.slice(-12) || "preview"}`;
   let currentStep = 0;
-  let highestStep = 0;
+  let highestStep = previewMode ? 6 : 0;
   let invitation = null;
   let saveTimer;
 
@@ -146,6 +146,14 @@
   }
 
   function restoreDraft() {
+    if (previewMode) {
+      try {
+        localStorage.removeItem(storageKey);
+      } catch {
+        // Preview mode remains usable when browser storage is unavailable.
+      }
+      return;
+    }
     try {
       const draft = JSON.parse(localStorage.getItem(storageKey) || "null");
       if (!draft || draft.submitted) return;
@@ -181,7 +189,7 @@
   }
 
   function saveDraft() {
-    if (currentStep === 7) return;
+    if (previewMode || currentStep === 7) return;
     saveState.classList.add("is-saving");
     saveState.querySelector("span:last-child").textContent = "Saving…";
     try {
@@ -203,6 +211,7 @@
   }
 
   function scheduleSave() {
+    if (previewMode) return;
     window.clearTimeout(saveTimer);
     saveTimer = window.setTimeout(saveDraft, 350);
   }
@@ -231,13 +240,13 @@
     document.getElementById("progress-label").textContent = `Step ${progressStep} of 6`;
     document.getElementById("progress-percent").textContent = `${percent}% complete`;
     document.getElementById("progress-bar").style.width = `${percent}%`;
-    stepTitle.textContent = stepNames[currentStep];
+    stepTitle.textContent = previewMode && currentStep === 7 ? "Preview complete" : stepNames[currentStep];
 
     progressButtons.forEach((button) => {
       const step = Number(button.dataset.goStep);
       button.classList.toggle("is-active", step === currentStep);
       button.classList.toggle("is-complete", step < currentStep || step <= highestStep);
-      button.disabled = step > highestStep;
+      button.disabled = !previewMode && step > highestStep;
     });
   }
 
@@ -294,6 +303,7 @@
     const section = steps.find((step) => Number(step.dataset.step) === stepNumber);
     if (!section) return true;
     clearFieldErrors(section);
+    if (previewMode) return true;
     syncConditionalFields();
     let firstInvalid = null;
 
@@ -479,6 +489,7 @@
   }
 
   function validateDocuments() {
+    if (previewMode) return true;
     const missing = [...document.querySelectorAll("[data-required-document]")].filter((card) => {
       return !uploadedDocuments[card.dataset.document];
     });
@@ -492,8 +503,8 @@
 
   async function submitApplication() {
     submitError.hidden = true;
-    if (!validateStep(6)) return;
-    const missingDocuments = !validateDocuments();
+    if (!previewMode && !validateStep(6)) return;
+    const missingDocuments = previewMode ? false : !validateDocuments();
     const finalComments = form.elements.final_comments.value.trim();
     if (missingDocuments && !finalComments) {
       submitError.textContent = "Please upload the required documents or explain in final comments why they are not yet available.";
@@ -551,8 +562,8 @@
 
     document.querySelectorAll("[data-next]").forEach((button) => {
       button.addEventListener("click", () => {
-        if (currentStep > 0 && !validateStep(currentStep)) return;
-        if (currentStep === 5) validateDocuments();
+        if (!previewMode && currentStep > 0 && !validateStep(currentStep)) return;
+        if (!previewMode && currentStep === 5) validateDocuments();
         logEvent(currentStep === 0 ? "form_started" : "step_completed", stepNames[currentStep]);
         showStep(currentStep + 1);
       });
@@ -563,7 +574,7 @@
     progressButtons.forEach((button) => {
       button.addEventListener("click", () => {
         const requestedStep = Number(button.dataset.goStep);
-        if (requestedStep <= highestStep) showStep(requestedStep);
+        if (previewMode || requestedStep <= highestStep) showStep(requestedStep);
       });
     });
 
@@ -612,6 +623,17 @@
       await validateInvitation();
       accessMessage.hidden = true;
       form.hidden = false;
+      if (previewMode) {
+        document.body.classList.add("is-preview-mode");
+        document.getElementById("preview-banner").hidden = false;
+        saveState.querySelector("span:last-child").textContent = "Preview only";
+        document.getElementById("submit-button").querySelector("span").textContent = "Finish content preview";
+        document.getElementById("success-eyebrow").textContent = "Preview complete";
+        document.getElementById("success-heading").textContent = "You’ve reached the end of the enrolment form.";
+        document.getElementById("success-lead").textContent = "This was a content review only. No application or information was sent to Rosewood College.";
+        document.getElementById("success-note").textContent = "You can return to the preview link at any time to review the form again.";
+        document.getElementById("reference-label").textContent = "Preview reference";
+      }
       if (invitation?.familyLabel) {
         document.getElementById("family-greeting").textContent = `, ${invitation.familyLabel}`;
       }

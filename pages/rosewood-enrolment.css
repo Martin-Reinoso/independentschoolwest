@@ -90,11 +90,13 @@ a:focus-visible,
   inset: 0 auto 0 0;
   width: min(37vw, 620px);
   min-width: 340px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: clamp(2rem, 4.5vw, 5rem);
+  gap: clamp(1rem, 2vh, 2rem);
+  padding: clamp(1.5rem, 4vh, 4rem) clamp(2rem, 4.5vw, 5rem);
   color: var(--cream);
   background:
     radial-gradient(circle at 70% 24%, rgba(120, 201, 238, 0.2), transparent 28%),
@@ -133,9 +135,9 @@ a:focus-visible,
 }
 
 .rosewood-emblem {
-  width: clamp(116px, 11vw, 176px);
+  width: clamp(96px, min(11vw, 18vh), 176px);
   height: auto;
-  margin-bottom: clamp(2rem, 5vh, 4rem);
+  margin-bottom: clamp(1.25rem, 3vh, 3rem);
   filter: drop-shadow(0 18px 28px rgba(0, 0, 0, 0.28));
 }
 
@@ -157,22 +159,22 @@ a:focus-visible,
   max-width: 470px;
   margin: 0;
   font-family: "Cormorant Garamond", Georgia, serif;
-  font-size: clamp(2.7rem, 4.2vw, 4.6rem);
+  font-size: clamp(2.35rem, min(4.2vw, 6.8vh), 4.6rem);
   font-weight: 500;
-  line-height: 0.98;
+  line-height: 1;
   letter-spacing: -0.035em;
 }
 
 .story-copy {
   max-width: 430px;
-  margin: 1.35rem 0 0;
+  margin: clamp(0.8rem, 2vh, 1.35rem) 0 0;
   color: rgba(246, 240, 230, 0.75);
   font-size: 1.05rem;
 }
 
 .story-panel blockquote {
   position: relative;
-  margin: clamp(2.5rem, 7vh, 5rem) 0 0;
+  margin: clamp(1.75rem, 4vh, 3.5rem) 0 0;
   padding-left: 2.4rem;
   color: rgba(246, 240, 230, 0.88);
   font-family: "Cormorant Garamond", Georgia, serif;
@@ -201,6 +203,7 @@ a:focus-visible,
 }
 
 .story-footer {
+  flex: 0 0 auto;
   display: flex;
   justify-content: space-between;
   padding-top: 1rem;
@@ -220,6 +223,37 @@ a:focus-visible,
   background:
     radial-gradient(circle at 92% 4%, rgba(120, 201, 238, 0.13), transparent 23rem),
     var(--paper);
+}
+
+.preview-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem clamp(2rem, 5.5vw, 6rem);
+  border-bottom: 1px solid rgba(31, 92, 120, 0.14);
+  color: var(--navy);
+  background: linear-gradient(90deg, rgba(120, 201, 238, 0.22), rgba(120, 201, 238, 0.08));
+}
+
+.preview-banner svg {
+  flex: 0 0 auto;
+  width: 27px;
+  fill: var(--terracotta);
+}
+
+.preview-banner div {
+  display: flex;
+  align-items: baseline;
+  gap: 0.65rem;
+}
+
+.preview-banner strong {
+  white-space: nowrap;
+}
+
+.preview-banner span {
+  color: var(--muted);
+  font-size: 0.86rem;
 }
 
 .form-header {
@@ -1253,11 +1287,11 @@ textarea[aria-invalid="true"] {
   .story-panel {
     width: 320px;
     min-width: 320px;
-    padding: 2.25rem;
+    padding: clamp(1.4rem, 3.5vh, 2.25rem);
   }
 
   .story-panel h1 {
-    font-size: 2.8rem;
+    font-size: clamp(2.25rem, 5.5vh, 2.8rem);
   }
 
   .field-grid.three {
@@ -1275,7 +1309,37 @@ textarea[aria-invalid="true"] {
   }
 
   .story-panel {
-    display: none;
+    position: relative;
+    inset: auto;
+    width: 100%;
+    min-width: 0;
+    min-height: 70svh;
+    overflow: hidden;
+    padding: clamp(2rem, 6vw, 4rem);
+  }
+
+  .story-content {
+    width: 100%;
+    max-width: 640px;
+  }
+
+  .rosewood-emblem {
+    width: 116px;
+    margin-bottom: 1.5rem;
+  }
+
+  .story-panel h1 {
+    max-width: 620px;
+    font-size: clamp(3rem, 8vw, 4.2rem);
+  }
+
+  .story-copy,
+  .story-panel blockquote {
+    max-width: 560px;
+  }
+
+  .story-footer {
+    margin-top: 2.5rem;
   }
 
   .form-panel {
@@ -1306,6 +1370,47 @@ textarea[aria-invalid="true"] {
 }
 
 @media (max-width: 700px) {
+  .story-panel {
+    min-height: 0;
+    padding: 1.5rem 1.15rem 1.25rem;
+  }
+
+  .rosewood-emblem {
+    width: 88px;
+    margin-bottom: 1rem;
+  }
+
+  .story-panel h1 {
+    font-size: clamp(2.45rem, 12vw, 3.35rem);
+    line-height: 0.96;
+  }
+
+  .story-copy {
+    margin-top: 0.85rem;
+    font-size: 0.96rem;
+  }
+
+  .story-panel blockquote {
+    margin-top: 1.8rem;
+    font-size: 1.2rem;
+  }
+
+  .story-footer {
+    margin-top: 2rem;
+    font-size: 0.65rem;
+  }
+
+  .preview-banner {
+    align-items: flex-start;
+    padding: 0.8rem 1.1rem;
+  }
+
+  .preview-banner div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+
   .form-header {
     min-height: 72px;
     padding: 0.8rem 1.1rem;

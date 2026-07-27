@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="rosewood-enrolment.css?v=5">
+  <link rel="stylesheet" href="rosewood-enrolment.css?v=6">
 </head>
 <body>
   <a class="skip-link" href="#enrolment-form">Skip to the form</a>
@@ -36,6 +36,14 @@
     </aside>
 
     <main class="form-panel">
+      <div class="preview-banner" id="preview-banner" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5c-5.5 0-9.5 5.2-9.5 7s4 7 9.5 7 9.5-5.2 9.5-7S17.5 5 12 5Zm0 11.5A4.5 4.5 0 1 1 16.5 12 4.5 4.5 0 0 1 12 16.5Zm0-7A2.5 2.5 0 1 0 14.5 12 2.5 2.5 0 0 0 12 9.5Z"/></svg>
+        <div>
+          <strong>Content review mode</strong>
+          <span>Move through every section without completing fields. Nothing is uploaded, submitted or saved.</span>
+        </div>
+      </div>
+
       <header class="form-header">
         <div class="mobile-brand">
           <img src="../img/rosewood-emblem-corrected-transparent.png" alt="">
@@ -854,14 +862,14 @@
           <div class="success-seal">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 16.17-4.17-4.17L3.41 13.41 9 19 21 7l-1.41-1.41Z"/></svg>
           </div>
-          <p class="eyebrow">Application received</p>
+          <p class="eyebrow" id="success-eyebrow">Application received</p>
           <h3 id="success-heading">Thank you. Your family’s next chapter has begun.</h3>
-          <p class="lead">Your application has been securely received by the Rosewood College enrolment team.</p>
+          <p class="lead" id="success-lead">Your application has been securely received by the Rosewood College enrolment team.</p>
           <div class="reference-card">
-            <span>Application reference</span>
+            <span id="reference-label">Application reference</span>
             <strong id="submission-reference">—</strong>
           </div>
-          <p class="success-note">We’ll review the information and contact you about next steps. Keep the reference above for your records.</p>
+          <p class="success-note" id="success-note">We’ll review the information and contact you about next steps. Keep the reference above for your records.</p>
           <a class="button button-secondary" href="../index.html">Return to Families for Education</a>
         </section>
       </form>
@@ -880,6 +888,6 @@
       previewMode: new URLSearchParams(window.location.search).get("preview") === "1"
     };
   </script>
-  <script src="rosewood-enrolment.js?v=2" defer></script>
+  <script src="rosewood-enrolment.js?v=3" defer></script>
 </body>
 </html>
