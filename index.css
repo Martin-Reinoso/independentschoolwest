@@ -269,13 +269,34 @@ h1, h2, h3, h4 {
   align-items: center;
   gap: 1.75rem;
 }
+
+#main-nav {
+  position: relative;
+}
+
+.nav-indicator {
+  position: absolute;
+  bottom: -0.7rem;
+  left: 0;
+  width: 0;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--gold-light);
+  opacity: 0;
+  transform: translateX(0);
+  transition: width 0.42s cubic-bezier(0.22, 1, 0.36, 1), transform 0.42s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.nav-indicator.visible { opacity: 1; }
 #main-nav ul li a {
   color: rgba(255, 255, 255, 0.88);
   font-size: 0.88rem;
   font-weight: 500;
   transition: color var(--t);
 }
-#main-nav ul li a:hover { color: var(--white); }
+#main-nav ul li a:hover,
+#main-nav ul li a.nav-active { color: var(--white); }
 #main-nav ul li a.nav-cta {
   background: var(--red);
   color: var(--white);
@@ -341,6 +362,12 @@ h1, h2, h3, h4 {
   background: url('img/hero.jpg') center center / cover no-repeat;
   background-attachment: fixed;
   transform: scale(1.04);
+  animation: hero-settle 1.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes hero-settle {
+  from { transform: scale(1.075); }
+  to   { transform: scale(1.04); }
 }
 
 .hero-overlay {
@@ -401,9 +428,45 @@ h1, h2, h3, h4 {
   font-weight: 700;
 }
 
+.hero-line {
+  display: block;
+  opacity: 0;
+  transform: translateY(0.72em);
+  animation: hero-line-in 0.78s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.hero-line-1 { animation-delay: 0.18s; }
+.hero-line-2 { animation-delay: 0.32s; }
+.hero-line-3 { animation-delay: 0.46s; }
+
+@keyframes hero-line-in {
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .hero-accent {
+  position: relative;
+  width: fit-content;
+  margin-inline: auto;
   color: #e8a020;
   font-style: italic;
+}
+
+.hero-accent::after {
+  content: '';
+  position: absolute;
+  right: 7%;
+  bottom: 0.02em;
+  left: 7%;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(246, 215, 155, 0.9), transparent);
+  transform: scaleX(0);
+  transform-origin: left;
+  animation: hero-accent-line 0.85s cubic-bezier(0.22, 1, 0.36, 1) 0.92s forwards;
+}
+
+@keyframes hero-accent-line {
+  to { transform: scaleX(1); }
 }
 
 .hero-sub {
@@ -513,12 +576,32 @@ h1, h2, h3, h4 {
 }
 
 .pillar-card {
+  position: relative;
+  overflow: hidden;
   background: var(--white);
   border-radius: var(--radius-lg);
   padding: 2.5rem 2rem;
   box-shadow: var(--shadow);
   transition: transform var(--t), box-shadow var(--t), border-bottom-color var(--t);
   border-bottom: 4px solid transparent;
+}
+
+.pillar-card::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 4px;
+  background: var(--red);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.24s;
+}
+
+.pillar-card.revealed::after,
+.pillar-card:hover::after {
+  transform: scaleX(1);
 }
 .pillar-card:hover {
   transform: translateY(-8px);
@@ -528,6 +611,19 @@ h1, h2, h3, h4 {
 
 .pillar-icon     { margin-bottom: 1.25rem; width: 48px; height: 48px; color: var(--red); }
 .pillar-icon svg { width: 100%; height: 100%; }
+.pillar-icon svg path,
+.pillar-icon svg line,
+.pillar-icon svg circle {
+  stroke-dasharray: 70;
+  stroke-dashoffset: 70;
+  transition: stroke-dashoffset 0.85s cubic-bezier(0.22, 1, 0.36, 1) 0.18s;
+}
+
+.pillar-card.revealed .pillar-icon svg path,
+.pillar-card.revealed .pillar-icon svg line,
+.pillar-card.revealed .pillar-icon svg circle {
+  stroke-dashoffset: 0;
+}
 .pillar-card h3  { font-size: 1.25rem; color: var(--navy); margin-bottom: 0.75rem; }
 .pillar-card p   { color: var(--text-light); line-height: 1.75; font-size: 0.94rem; }
 .pillar-card p + p { margin-top: 0.85rem; }
@@ -589,6 +685,9 @@ h1, h2, h3, h4 {
   display: block;
   border-radius: var(--radius-lg);
   object-fit: cover;
+  clip-path: inset(0 100% 0 0 round var(--radius-lg));
+  transform: scale(1.06);
+  transition: clip-path 0.95s cubic-bezier(0.22, 1, 0.36, 1), transform 1.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .story-quote-box {
@@ -600,6 +699,19 @@ h1, h2, h3, h4 {
   padding: 1rem 1.25rem;
   max-width: 50%;
   box-shadow: var(--shadow-lg);
+  opacity: 0;
+  transform: translate(-28px, 20px);
+  transition: opacity 0.6s ease 0.42s, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.42s;
+}
+
+.story-scene.revealed .story-quote-img {
+  clip-path: inset(0 0 0 0 round var(--radius-lg));
+  transform: scale(1);
+}
+
+.story-scene.revealed .story-quote-box {
+  opacity: 1;
+  transform: translate(0, 0);
 }
 
 .story-quote-text {
@@ -643,12 +755,27 @@ h1, h2, h3, h4 {
 }
 
 .approach-card {
+  position: relative;
+  overflow: hidden;
   background: var(--white);
   border-radius: var(--radius-lg);
   padding: 2.5rem 2rem;
   box-shadow: var(--shadow-lg);
-  border-top: 4px solid var(--red);
+  border-top: 4px solid transparent;
 }
+
+.approach-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: var(--red);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.72s cubic-bezier(0.22, 1, 0.36, 1) 0.18s;
+}
+
+.approach-card.revealed::before { transform: scaleX(1); }
 
 .approach-card h3 {
   font-family: var(--font-head);
@@ -668,6 +795,14 @@ h1, h2, h3, h4 {
   margin-top: 1.25rem;
   padding-top: 1.25rem;
   border-top: 1px solid var(--border, #e2e6f0);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.5s ease 0.38s, transform 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.38s;
+}
+
+.approach-card.revealed .approach-practice {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .approach-practice-label {
@@ -789,6 +924,13 @@ h1, h2, h3, h4 {
   line-height: 0.95;
 }
 
+.fund-amount-number,
+.fund-currency,
+.fund-unit {
+  font: inherit;
+  color: inherit;
+}
+
 .fund-amount-caption {
   font-size: 1.05rem;
   font-weight: 500;
@@ -899,9 +1041,34 @@ h1, h2, h3, h4 {
 
 /* Milestones */
 .milestones {
+  --timeline-progress: 0;
+  position: relative;
   display: grid;
   grid-template-columns: 1fr;
   gap: 1.25rem;
+  padding-left: 3.5rem;
+}
+
+.milestones::before,
+.milestones::after {
+  content: '';
+  position: absolute;
+  top: 1.35rem;
+  left: 1.15rem;
+  width: 3px;
+  border-radius: 999px;
+}
+
+.milestones::before {
+  bottom: 1.35rem;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.milestones::after {
+  height: calc((100% - 2.7rem) * var(--timeline-progress));
+  background: linear-gradient(180deg, #4ade80 0%, var(--gold-light) 55%, var(--gold) 100%);
+  box-shadow: 0 0 18px rgba(232, 160, 32, 0.2);
+  transition: height 0.08s linear;
 }
 
 .milestones-heading {
@@ -920,6 +1087,7 @@ h1, h2, h3, h4 {
 }
 
 .milestone {
+  position: relative;
   display: flex;
   gap: 1rem;
   align-items: flex-start;
@@ -932,11 +1100,15 @@ h1, h2, h3, h4 {
 .milestone:hover { background: rgba(255, 255, 255, 0.1); }
 
 .milestone-dot {
+  position: absolute;
+  top: 1.42rem;
+  left: -3.05rem;
   width: 14px;
   height: 14px;
   border-radius: 50%;
   flex-shrink: 0;
-  margin-top: 3px;
+  margin-top: 0;
+  z-index: 2;
 }
 
 .milestone.completed .milestone-dot {
@@ -946,7 +1118,11 @@ h1, h2, h3, h4 {
 .milestone.active .milestone-dot {
   background: var(--gold-light);
   box-shadow: 0 0 0 4px rgba(232, 160, 32, 0.25);
-  animation: pulse-dot 2s ease-in-out infinite;
+  animation: none;
+}
+
+.milestone.active.revealed .milestone-dot {
+  animation: pulse-dot 2s ease-in-out 2;
 }
 .milestone.upcoming .milestone-dot {
   background: rgba(255, 255, 255, 0.25);
@@ -1011,12 +1187,23 @@ h1, h2, h3, h4 {
   box-shadow: var(--shadow-lg);
 }
 
+.update-card:focus-within {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-lg);
+}
+
 .update-card-img {
   width: 100%;
   height: 180px;
   object-fit: cover;
   display: block;
   flex-shrink: 0;
+  transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.update-card:hover .update-card-img,
+.update-card:focus-within .update-card-img {
+  transform: scale(1.035);
 }
 
 .update-card-body {
@@ -1072,11 +1259,16 @@ h1, h2, h3, h4 {
   font-size: 0.88rem;
   font-weight: 600;
   color: var(--red);
-  transition: color var(--t);
+  transition: color var(--t), transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
   display: inline-flex;
   align-items: center;
 }
-.update-link:hover { color: var(--red-light); }
+.update-link:hover,
+.update-card:hover .update-link,
+.update-card:focus-within .update-link {
+  color: var(--red-light);
+  transform: translateX(4px);
+}
 
 /* ====================================================
    EVENTS
@@ -1384,6 +1576,7 @@ h1, h2, h3, h4 {
   object-fit: cover;
   display: block;
   border-radius: var(--radius) var(--radius) 0 0;
+  transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .past-event-body {
@@ -1403,6 +1596,16 @@ h1, h2, h3, h4 {
 .past-event-card:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow-lg);
+}
+
+.past-event-card:focus-within {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+.past-event-card:hover .past-event-img,
+.past-event-card:focus-within .past-event-img {
+  transform: scale(1.035);
 }
 
 .past-event-date {
@@ -1539,6 +1742,14 @@ h1, h2, h3, h4 {
 
 .reveal.revealed { opacity: 1; transform: translateY(0); }
 
+.milestones .milestone.reveal {
+  transform: translateX(24px);
+}
+
+.milestones .milestone.reveal.revealed {
+  transform: translateX(0);
+}
+
 /* ====================================================
    RESPONSIVE — TABLET (≤ 1024px)
    ==================================================== */
@@ -1580,6 +1791,8 @@ h1, h2, h3, h4 {
     box-shadow: -10px 0 40px rgba(0, 0, 0, 0.3);
   }
   #main-nav.open { right: 0; }
+
+  .nav-indicator { display: none; }
 
   #main-nav ul   { flex-direction: column; gap: 0; }
   #main-nav ul li a {
@@ -1646,6 +1859,27 @@ h1, h2, h3, h4 {
   }
   .story-quote-text { font-size: 0.95rem; }
   .story-quote-card { margin-bottom: 1.5rem; }
+
+  .milestones {
+    padding-left: 2.75rem;
+  }
+
+  .milestones::before,
+  .milestones::after {
+    left: 0.75rem;
+  }
+
+  .milestone-dot {
+    left: -2.72rem;
+  }
+
+  .milestones .milestone.reveal {
+    transform: translateY(20px);
+  }
+
+  .milestones .milestone.reveal.revealed {
+    transform: translateY(0);
+  }
 }
 
 /* ====================================================
@@ -1683,4 +1917,62 @@ h1, h2, h3, h4 {
 
   .story-quote-text { font-size: 0.95rem; }
   .story-quote-attr { font-size: 0.78rem; }
+}
+
+/* ====================================================
+   REDUCED MOTION
+   ==================================================== */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-fade-up,
+  .hero-line,
+  .reveal,
+  .milestones .milestone.reveal,
+  .story-quote-box,
+  .approach-practice {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .hero-bg,
+  .story-quote-img,
+  .update-card-img,
+  .past-event-img {
+    transform: none !important;
+  }
+
+  .hero-accent::after,
+  .pillar-card::after,
+  .approach-card::before {
+    transform: scaleX(1) !important;
+  }
+
+  .story-quote-img {
+    clip-path: none !important;
+  }
+
+  .pillar-icon svg path,
+  .pillar-icon svg line,
+  .pillar-icon svg circle {
+    stroke-dashoffset: 0 !important;
+  }
+
+  .milestones {
+    --timeline-progress: 0.62 !important;
+  }
+
+  .scroll-arrow,
+  .btn-info-session,
+  .milestone.active.revealed .milestone-dot {
+    animation: none !important;
+  }
 }

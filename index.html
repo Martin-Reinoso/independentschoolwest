@@ -99,7 +99,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="index.css?v=27">
+  <link rel="stylesheet" href="index.css?v=28">
 
   <style>
     #main-nav ul li a.nav-donate {
@@ -128,7 +128,7 @@
       color: var(--gold-light);
       border: 2px solid var(--gold);
       font-weight: 700;
-      animation: info-pulse 2s ease-in-out infinite;
+      animation: info-pulse 2s ease-in-out 2 1.4s;
     }
     .btn-info-session:hover {
       background: var(--navy);
@@ -298,6 +298,7 @@
           <li><a href="donate.html" class="nav-donate">Donate</a></li>
           <li><a href="#contact" class="nav-cta">Get Involved</a></li>
         </ul>
+        <span class="nav-indicator" aria-hidden="true"></span>
       </nav>
       <button class="hamburger" id="hamburger" aria-label="Open menu">
         <span></span><span></span><span></span>
@@ -311,10 +312,10 @@
     <div class="hero-bg"></div>
     <div class="hero-overlay"></div>
     <div class="hero-content">
-      <h1 class="hero-title animate-fade-up delay-2">
-        A School Built<br>
-        <em class="hero-accent">by Families,</em><br>
-        for Families.
+      <h1 class="hero-title">
+        <span class="hero-line hero-line-1">A School Built</span>
+        <em class="hero-line hero-line-2 hero-accent">by Families,</em>
+        <span class="hero-line hero-line-3">for Families.</span>
       </h1>
       <p class="hero-sub animate-fade-up delay-3">
         A parent-partnered independent school forming young people in Catholic faith, character, and academic excellence.
@@ -395,7 +396,7 @@
           <h2 class="section-title">Inspired by a <span class="accent">Proven Model</span></h2>
           <p>Our educational approach draws on the <strong>Parents for Education (Pared)</strong> model, developed over decades and implemented successfully across schools in Australia and New Zealand. Pared schools are known for their strong academic culture, close partnership with parents, and commitment to forming the whole child: intellectually, morally, and spiritually.</p>
         </div>
-        <div class="story-visual reveal delay-2">
+        <div class="story-visual story-scene reveal delay-2">
           <div class="story-quote-card">
             <img src="img/Mother & child reading.jpg" alt="Mother and child reading together" class="story-quote-img">
             <div class="story-quote-box">
@@ -476,7 +477,7 @@
           <div class="fundraising-title-group">
             <span class="fundraising-kicker">Fundraising Progress</span>
             <div class="fundraising-headline">
-              <span class="fund-amount">$5.9M</span>
+              <span class="fund-amount"><span class="fund-currency">$</span><span class="fund-amount-number" data-target="5.9">5.9</span><span class="fund-unit">M</span></span>
               <span class="fund-amount-caption">raised so far</span>
             </div>
           </div>
@@ -926,15 +927,73 @@
   </footer>
 
   <script>
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
     // ====== HEADER SCROLL ======
     const header = document.getElementById('header');
-    window.addEventListener('scroll', () => {
+    const mainNav = document.getElementById('main-nav');
+    const navIndicator = mainNav.querySelector('.nav-indicator');
+    const sectionNavLinks = [...mainNav.querySelectorAll('a[href^="#"]')];
+    let scrollTicking = false;
+
+    function updateHeader() {
       header.classList.toggle('scrolled', window.scrollY > 60);
-    }, { passive: true });
+    }
+
+    function updateActiveNavigation() {
+      const marker = window.scrollY + Math.min(window.innerHeight * 0.36, 320);
+      let activeLink = sectionNavLinks[0];
+
+      sectionNavLinks.forEach(link => {
+        const section = document.querySelector(link.getAttribute('href'));
+        if (section && section.offsetTop <= marker) activeLink = link;
+      });
+
+      sectionNavLinks.forEach(link => {
+        const isActive = link === activeLink;
+        link.classList.toggle('nav-active', isActive);
+        if (isActive) link.setAttribute('aria-current', 'location');
+        else link.removeAttribute('aria-current');
+      });
+
+      if (window.innerWidth > 768 && activeLink) {
+        const navRect = mainNav.getBoundingClientRect();
+        const linkRect = activeLink.getBoundingClientRect();
+        navIndicator.style.width = linkRect.width + 'px';
+        navIndicator.style.transform = `translateX(${linkRect.left - navRect.left}px)`;
+        navIndicator.classList.add('visible');
+      } else {
+        navIndicator.classList.remove('visible');
+      }
+    }
+
+    const milestones = document.querySelector('.milestones');
+    function updateTimelineProgress() {
+      if (!milestones || prefersReducedMotion) return;
+      const rect = milestones.getBoundingClientRect();
+      const viewportAnchor = window.innerHeight * 0.58;
+      const progress = Math.max(0, Math.min(1, (viewportAnchor - rect.top) / Math.max(rect.height, 1)));
+      milestones.style.setProperty('--timeline-progress', progress.toFixed(4));
+    }
+
+    function updateScrollEffects() {
+      scrollTicking = false;
+      updateHeader();
+      updateActiveNavigation();
+      updateTimelineProgress();
+    }
+
+    function requestScrollUpdate() {
+      if (scrollTicking) return;
+      scrollTicking = true;
+      requestAnimationFrame(updateScrollEffects);
+    }
+
+    window.addEventListener('scroll', requestScrollUpdate, { passive: true });
+    window.addEventListener('resize', requestScrollUpdate);
 
     // ====== HAMBURGER / MOBILE NAV ======
     const hamburger = document.getElementById('hamburger');
-    const mainNav = document.getElementById('main-nav');
     const navOverlay = document.getElementById('nav-overlay');
 
     function toggleNav(open) {
@@ -957,61 +1016,86 @@
           e.preventDefault();
           const offset = header.offsetHeight;
           const top = target.getBoundingClientRect().top + window.scrollY - offset;
-          window.scrollTo({ top, behavior: 'smooth' });
+          window.scrollTo({ top, behavior: prefersReducedMotion ? 'auto' : 'smooth' });
         }
       });
     });
 
     // ====== SCROLL REVEAL ======
-    const revealObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('revealed');
-          revealObserver.unobserve(entry.target);
-        }
-      });
-    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+    const revealElements = document.querySelectorAll('.reveal');
+    if (prefersReducedMotion || !('IntersectionObserver' in window)) {
+      revealElements.forEach(el => el.classList.add('revealed'));
+    } else {
+      const revealObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('revealed');
+            revealObserver.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
 
-    document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+      revealElements.forEach(el => revealObserver.observe(el));
+    }
 
     // ====== COUNTER ANIMATION ======
-    const counterObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const el = entry.target;
-          const target = parseFloat(el.dataset.target);
-          if (isNaN(target)) return;
-          const duration = 1800;
-          const start = Date.now();
-          const tick = () => {
-            const elapsed = Date.now() - start;
-            const progress = Math.min(elapsed / duration, 1);
-            const eased = 1 - Math.pow(1 - progress, 3);
-            const value = target * eased;
-            const decimals = Number.isInteger(target) ? 0 : 1;
-            el.textContent = value.toFixed(decimals);
-            if (progress < 1) requestAnimationFrame(tick);
-          };
-          tick();
-          counterObserver.unobserve(el);
-        }
-      });
-    }, { threshold: 0.5 });
+    const counterElements = document.querySelectorAll('.stat-number[data-target], .fund-amount-number[data-target]');
 
-    document.querySelectorAll('.stat-number[data-target]').forEach(el => counterObserver.observe(el));
+    function setCounterValue(el, value) {
+      const target = parseFloat(el.dataset.target);
+      el.textContent = value.toFixed(Number.isInteger(target) ? 0 : 1);
+    }
+
+    function animateCounter(el) {
+      const target = parseFloat(el.dataset.target);
+      if (isNaN(target)) return;
+      const duration = 1800;
+      const start = performance.now();
+      const tick = now => {
+        const progress = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        setCounterValue(el, target * eased);
+        if (progress < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }
+
+    if (prefersReducedMotion || !('IntersectionObserver' in window)) {
+      counterElements.forEach(el => setCounterValue(el, parseFloat(el.dataset.target)));
+    } else {
+      const counterObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          animateCounter(entry.target);
+          counterObserver.unobserve(entry.target);
+        });
+      }, { threshold: 0.5 });
+
+      counterElements.forEach(el => {
+        setCounterValue(el, 0);
+        counterObserver.observe(el);
+      });
+    }
 
     // ====== PROGRESS BAR ANIMATION ======
-    const progressObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const el = entry.target;
-          setTimeout(() => { el.style.width = el.dataset.width + '%'; }, 400);
-          progressObserver.unobserve(el);
-        }
-      });
-    }, { threshold: 0.5 });
+    const progressBars = document.querySelectorAll('.progress-bar-fill[data-width]');
+    if (prefersReducedMotion || !('IntersectionObserver' in window)) {
+      progressBars.forEach(el => { el.style.width = el.dataset.width + '%'; });
+    } else {
+      const progressObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const el = entry.target;
+            setTimeout(() => { el.style.width = el.dataset.width + '%'; }, 400);
+            progressObserver.unobserve(el);
+          }
+        });
+      }, { threshold: 0.5 });
 
-    document.querySelectorAll('.progress-bar-fill[data-width]').forEach(el => progressObserver.observe(el));
+      progressBars.forEach(el => progressObserver.observe(el));
+    }
+
+    updateScrollEffects();
 
     // ====== CACHE-BUST LOCAL IMAGES ======
     const ts = Date.now();
