@@ -2,6 +2,11 @@
 
 This folder contains the private invitation and data-capture service for the Rosewood College enrolment form.
 
+Related records:
+
+- `GOOGLE-DRIVE-INTERIM-GUIDELINES.md` records the approved interim use of Google Drive and Google Sheets.
+- `st-lawrence-reference/README.md` defines the evidence-capture and process-mapping project.
+
 The public-site frontend is:
 
 - `pages/rosewood-enrolment-2027-7c91a4.html`

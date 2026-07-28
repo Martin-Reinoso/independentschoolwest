@@ -19,6 +19,9 @@ Icon
 # Codex local scratch output
 .codex-temp/
 
+# Private source material used to map external enrolment processes
+Rosewood enrolment/st-lawrence-reference/raw/
+
 # Stripe export / reconciliation data containing donor or payout details
 outputs/stripe-reconciliation-20*/
 stripe-donations-recent.csv
