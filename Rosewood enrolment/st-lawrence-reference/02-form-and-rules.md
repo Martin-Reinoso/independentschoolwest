@@ -54,11 +54,20 @@
 - A successful match displays one contact row with last-updated, address, email and
   mobile columns. All observed values are restricted and excluded here.
 - A second table lists student records with last-updated date, form status and an
-  action. Submitted records expose View; Not Started records expose Start.
+  action. Submitted records expose View. A previously opened draft was later observed
+  as In Progress with Continue.
 - A separate new-enrolment path asks for required student first and last names and
   keeps Start disabled while those fields are empty.
 - The screen demonstrates that one verified contact can have multiple student or
   application records in different states.
+- Pressing Start with both new-student names completed showed only a brief loading
+  progress indicator before navigating directly to a distinct application route.
+  There was no substantive interim screen.
+- The five-step form opened on Student with the two typed names prefilled. The other
+  student fields and primary address were blank. The header already showed Saved.
+- The low-level request stream was unavailable in the connected Chrome session, so
+  the exact create-draft endpoint, method and payload remain unverified. The private
+  route identifier is deliberately excluded.
 
 ### Identity Matching And Prefill Findings
 
@@ -239,3 +248,5 @@ live screens before being treated as a complete specification.
 | SLB-RULE-021 | The active guardian signs on one local canvas. A second contactable guardian removes the one-signature explanation but does not add a second local canvas. | Combined evidence indicates staged signature requests and a Pending Signatures state rather than simultaneous local signatures. | SLB-003, SLB-006, SLB-EMAIL-006 |
 | SLB-RULE-022 | Uploads accept multiple files up to 10.0 MB in the documented office-document, image and video formats. | Client and server validation would both be needed in a Rosewood implementation. | SLB-006 |
 | SLB-RULE-023 | Fee cards are independent checkboxes and survey influences enforce a minimum of one despite wording that asks for three. | The observed validation can accept internally inconsistent answers; Rosewood should not copy these defects. | SLB-006 |
+| SLB-RULE-024 | Start from the separate new-student fields opens a distinct application route after a transient loader, without an interim confirmation screen. | The typed first and last names seed the new Student step; the remaining fields begin blank and the draft reports Saved. | SLB-007 |
+| SLB-RULE-025 | Continue and Start are different paths. | Continue resumes an existing In Progress record; Start creates or opens a distinct new-draft route from the names entered below the records table. | SLB-005, SLB-007 |

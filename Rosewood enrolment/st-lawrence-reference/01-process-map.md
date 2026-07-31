@@ -19,8 +19,8 @@ behaviour from staff activity and family activity.
 | 7 | Open private application gateway | Family | Invitation link opened | Introductory screen with policies, privacy notices, document checklist and email field | SLB-EMAIL-004, SLB-002 | Captured |
 | 8 | Identify the existing enquiry | Family and Enquiry Tracker | Family enters the same email used for the EOI | Existing contact and application records are matched for possible prefill | SLB-002, SLB-005, SLB-EMAIL-004 | Confirmed after OTP: the existing contact and multiple student records were located |
 | 9 | Verify email address | Enquiry Tracker and family | Application access continues | Required code field, Verify, Resend code and Change email actions; six-digit passcode valid for 30 minutes | SLB-004, SLB-EMAIL-005, SLB-EMAIL-013 | Interface and repeated email template captured |
-| 10 | Select an existing student or start an application | Family | Verification succeeds | Existing contact details, student application statuses and Start or View actions | SLB-005 | Captured |
-| 11 | Complete application | Family | Existing or new student application is opened | Five editable steps: Student, Parent/Guardian, Documents, Conditions and Signature; direct marker navigation and Next/Back are available | SLB-003, SLB-006 | Editable and submitted states captured |
+| 10 | Select an existing student or start an application | Family | Verification succeeds | Submitted records expose View, active drafts expose Continue and the separate new-student fields expose Start | SLB-005, SLB-007 | Captured, including the new-application transition |
+| 11 | Complete application | Family | Existing or new student application is opened | Start shows a brief loading indicator and then opens the five editable steps directly; only the typed new-student names were prefilled in the observed fresh draft | SLB-003, SLB-006, SLB-007 | Editable, new-draft and submitted states captured |
 | 12 | Obtain all required signatures | Family and other recorded signatories | Application is ready to sign | First guardian signs locally; additional contactable guardians appear to receive separate signature requests; status can remain Pending Signatures | SLB-003, SLB-006, SLB-EMAIL-006 | Local signature behavior captured; separate request delivery inferred from combined evidence |
 | 13 | Submit application | Enquiry Tracker | All required signatures are received | Submitted application | SLB-EMAIL-006 | Captured |
 | 14 | Confirm receipt | Enquiry Tracker | Application is submitted | Receipt, unique reference, timestamp and view link | SLB-EMAIL-007 | Captured |
@@ -58,6 +58,7 @@ behaviour from staff activity and family activity.
 - Does the observed autosaved draft reliably resume after expiry, logout or a new
   browser session, and what support recovery is available?
 - What exact email and access screen does a second parent or guardian receive to complete the inferred separate signature request?
+- Which create-draft API request is made by Start, and when does the new route become a visible In Progress row? Chrome exposed the route transition but not its low-level network event stream during this capture.
 - What is displayed after OTP expiry, failed verification or an interrupted session?
 - What security challenge is shown when Cloudflare Turnstile or invisible reCAPTCHA requires user interaction?
 - What caused the duplicate application invitation on consecutive days?

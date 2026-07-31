@@ -3,13 +3,30 @@
 ## Scope And Safety
 
 This record describes the editable five-step Enquiry Tracker application observed on
-31 July 2026 after a verified contact opened a Not Started student record. The review
-used the family's explicitly designated test draft. No file was uploaded, no signature
-was drawn, no signature declaration was accepted and Submit was never pressed.
+31 July and 1 August 2026 after a verified contact opened test student records. The
+review used the family's explicitly designated test drafts. No file was uploaded, no
+signature was drawn, no signature declaration was accepted and Submit was never
+pressed.
 
 Personal names, contact details, addresses, identifiers, invitation URLs, one-time
 codes and uploaded-file names are excluded. The static walkthrough uses synthetic
 placeholders and has no backend, persistence or working upload/submission action.
+
+## New-Application Creation Transition
+
+- The verified selection page can show Submitted records with View and active drafts
+  with In Progress / Continue.
+- A separate Start a New Enrolment Form area accepts required student first and last
+  names. Start remains disabled until both are present.
+- Pressing Start showed a brief loading progress indicator and then navigated directly
+  to a distinct application route. No confirmation, duplicate warning or other
+  substantive interim screen appeared.
+- The new five-step form opened on Student with only the typed first and last names
+  prefilled. Date of birth, school, entry details, residence and the other student
+  controls were blank.
+- The header showed Saved shortly after load, supporting creation of a distinct draft.
+  The exact network endpoint, HTTP method and payload could not be captured because
+  the connected Chrome tab did not expose its low-level traffic feed.
 
 ## Application Shell And Navigation
 
