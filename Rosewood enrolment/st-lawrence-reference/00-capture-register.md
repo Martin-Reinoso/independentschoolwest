@@ -10,6 +10,7 @@ Do not include active access links, tokens or personal information.
 | SLB-003 | Verified live form | Submitted online application view | 2026-07-31 | Restricted live system | Yes | Complete single-page read-only application captured. Family answers, addresses, medical identifiers, uploads, tracking ID, signatures and access data are excluded. |
 | SLB-004 | Invited live form | Email verification screen | 2026-07-31 | Restricted live system | Yes | Sanitised Chrome capture completed. OTP, email and security keys are excluded. |
 | SLB-005 | Verified live form | Contact and student selection | 2026-07-31 | Restricted live system | Yes | Existing contact, student records, application statuses and start/view actions captured without retaining personal row data. |
+| SLB-006 | Verified editable form | Five-step online enrolment application | 2026-07-31 | Restricted live system | Yes | All five steps, navigation, field types, principal option catalogues, conditional branches, validation states, upload rules and signature behavior captured in an authorised test draft. No upload, signature or submission occurred. |
 | SLB-DOC-001 | PDF | St Lawrence Enrolment Policy | 2026-07-31 | Public source and repository snapshot | Yes | Six-page third-party reference snapshot; source URL and hash recorded. |
 | SLB-DOC-002 | PDF | Enrolment Procedures for MACS Schools | 2026-07-31 | Public source and repository snapshot | Yes | Nine-page third-party reference snapshot; source URL and hash recorded. |
 | SLB-DOC-003 | PDF | MACS Privacy Policy | 2026-07-31 | Public source and repository snapshot | Yes | Ten-page third-party reference snapshot; source URL and hash recorded. |
@@ -30,6 +31,7 @@ Do not include active access links, tokens or personal information.
 | SLB-EMAIL-013 | Email | Repeated one-time passcode request | 2026-07-31 | Restricted Gmail mailbox | Yes | Confirms the same access-verification template is sent on a later return. The live code and recipient address are deliberately excluded. |
 | SLB-WALK-002 | Static HTML | Sanitised one-time passcode email replica | 2026-07-31 | Public repository | Yes | Structural reference only. It contains no recipient address, active code, private URL or tracking link. |
 | SLB-WALK-003 | Static HTML | Contact selection and submitted application replicas | 2026-07-31 | Public repository | Yes | No backend, persistence, uploads, signatures or personal values. Long legal conditions are structurally mapped and linked to the archived source documents. |
+| SLB-WALK-004 | Static HTML | Interactive editable-application replica | 2026-07-31 | Public repository | Yes | Five-step, non-submitting reference with synthetic placeholders, conditional branches and validation markers. It performs no network request, storage, upload, email, signature persistence or submission. |
 
 ## Capture Status
 

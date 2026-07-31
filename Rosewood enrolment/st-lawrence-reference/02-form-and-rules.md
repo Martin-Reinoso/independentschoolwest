@@ -9,6 +9,7 @@
 | APP-01 | Email verification | Verify access to the matching enquiry email before showing the application | Application gateway | Verified application form | SLB-004 |
 | APP-02 | Select or enter a student | Show the matched contact, existing student applications and a new-application path | Email verification | View, resume or start application | SLB-005 |
 | APP-03 | Online enrolment form | Collect and display the complete application, evidence, agreements, permissions and signatures | Student selection | Pending signatures or submitted application | SLB-003 |
+| APP-03E | Editable online enrolment form | Collect the application across five navigable steps with conditional fields, validation markers, uploads and signature capture | Student selection | Pending signatures or submitted application | SLB-006 |
 
 ### EOI-01 Interface Observations
 
@@ -72,10 +73,25 @@
 - The gateway and invitation email say that using the same email can prepopulate the
   application. The observed values are therefore described as stored or prefilled,
   not hardcoded into the page or URL.
-- The mobile number was shown in the matched contact row and rendered by the
-  application phone component. The submitted application was a read-only view, so
-  this capture cannot determine whether a family can edit an inherited mobile number
-  while starting or completing an application.
+- In the editable application, inherited Given Name, Surname, Email and Mobile fields
+  were enabled and writable. The mobile value is therefore prefilled stored data, not
+  a hardcoded or read-only page value. Whether editing it changes the master contact
+  record remains unknown.
+
+### APP-03E Editable Interface Observations
+
+- The editable form uses five top markers: Student, Parent/Guardian, Documents,
+  Conditions and Signature. Direct marker clicks and Next/Back both change steps.
+- Navigation is not blocked by missing required fields. Leaving an incomplete step
+  adds a red marker state and `Missing required fields.`
+- The header exposes Saved/Unsaved Changes state. The production system auto-saved
+  test-draft changes; the static replica deliberately does not persist anything.
+- Conditional fields include repeatable siblings/relatives, additional-needs Other,
+  Australian-residency evidence, postal address, alumni details and added guardians.
+- Minimum-one messages are used for additional needs, medical status, immunisation
+  and survey influences.
+- The complete field, option, document, validation and signature map is maintained in
+  `05-editable-application-map.md`.
 
 ### APP-03 Interface Observations
 
@@ -146,15 +162,15 @@
 
 | Document | Required when | Format or limit | Collection point | Follow-up if missing | Source ID |
 | --- | --- | --- | --- | --- | --- |
-| Birth certificate | Formal application | One file required in observed form; format and maximum size not shown in submitted view | Documents section | Staff recovery behaviour not observed | SLB-002, SLB-003 |
-| Immunisation statement | Formal application | One file required in observed form; format and maximum size not shown in submitted view | Documents section | Staff recovery behaviour not observed | SLB-002, SLB-003 |
+| Birth certificate | Formal application | One file required; editable form accepts the documented multiple-file format list up to 10.0 MB per file | Documents section | Staff recovery behaviour not observed | SLB-002, SLB-003, SLB-006 |
+| Immunisation statement | Formal application | Submitted view showed one required; the later editable form combined it with medical plans/reports and showed zero required. This is a captured state/version discrepancy, not a resolved rule. | Documents section | Staff recovery behaviour not observed | SLB-002, SLB-003, SLB-006 |
 | Sacramental certificates, such as a baptismal certificate | Applicable to the student | Zero files required by form; upload category remains available | Documents section | Not observed | SLB-002, SLB-003 |
 | Temporary or permanent residency-status document | Applicable to the student | Not stated | Suggested upload at the end of the online application | Not yet observed | SLB-002 |
-| Most recent school report and most recent NAPLAN report | Available for the student's current stage | Not stated | Suggested upload at the end of the online application | A later email requested the school report in the observed case | SLB-002, SLB-EMAIL-008 |
+| Two most recent school reports and available NAPLAN results | Available for the student's current stage | Zero files required in the editable form; accepted types and 10.0 MB per-file limit apply | Documents section | A later email requested a school report in the observed case | SLB-002, SLB-006, SLB-EMAIL-008 |
 | Court order or restriction documentation | Applicable to the family | Not shown as a dedicated upload category in the submitted record; the application says copies must be provided when relevant | Application or later staff follow-up is not confirmed | Not observed | SLB-002, SLB-003 |
-| Medical management plans or health-professional reports | Applicable to the student | Zero files required by form; upload category remains available | Documents section | Not observed | SLB-002, SLB-003 |
-| Proof of address | Formal application | One file required; gas, electricity or water bill requested | Documents section | Not observed | SLB-003 |
-| Passport and visa documentation | Applicable to student or overseas-born parents | Zero files required by form; copy of student residency evidence and relevant parent visa/citizenship evidence requested when applicable | Documents section | Later email accepted a parent citizenship certificate or passport | SLB-003, SLB-EMAIL-008 |
+| Medical management plans or health-professional reports | Applicable to the student | Combined with the immunisation category and zero files required in the editable form | Documents section | Not observed | SLB-002, SLB-003, SLB-006 |
+| Proof of address | Formal application | One file required; gas, electricity or water bill requested; accepted types and 10.0 MB per-file limit apply | Documents section | Not observed | SLB-003, SLB-006 |
+| Passport and visa documentation | Applicable to student or overseas-born parents | Zero files required; copy of student residency evidence and relevant parent visa/citizenship evidence requested when applicable | Documents section | Later email accepted a parent citizenship certificate or passport | SLB-003, SLB-006, SLB-EMAIL-008 |
 | Most recent school report | Requested after staff review of the submitted application | Not stated | Reply to enrolment email | Staff confirms receipt; further escalation not observed | SLB-EMAIL-008 |
 | Parent citizenship certificate or passport | Requested after staff review; either document was accepted | Not stated | Reply to enrolment email | Staff confirms receipt; further escalation not observed | SLB-EMAIL-008 |
 | Interview calendar file | Appointment is booked | ICS calendar file | Attached to booking confirmation | Reminder email follows near the event | SLB-EMAIL-010, SLB-EMAIL-011 |
@@ -187,6 +203,10 @@
 | APP-01 | One-time passcode is more than 30 minutes old | Passcode expires after 30 minutes | Yes | Use Resend code; the exact expired-code message has not been captured | SLB-004, SLB-EMAIL-005, SLB-EMAIL-013 |
 | APP-02 | New-student first or last name is empty | Start remains disabled | Yes | Complete both required name fields | SLB-005 |
 | APP-03 | Required guardian signature is incomplete | Form status remains Pending Signatures | Yes for completed submission, based on observed state and confirmation email | Required guardian completes acknowledgement, declaration and electronic signature | SLB-003, SLB-EMAIL-006 |
+| APP-03E | Family leaves an incomplete step | `Missing required fields.` appears under that top marker | No for step navigation; final Submit remained disabled | Return to the marked step and complete its required controls | SLB-006 |
+| APP-03E | A custom multi-select has no answer | `Please select a minimum of 1 items.` | No for step navigation; contributes to incomplete state | Select at least one item | SLB-006 |
+| APP-03E | More than three survey influences are selected | No maximum-selection warning appeared; four choices were accepted | No | The live implementation does not match the instruction asking for three | SLB-006 |
+| APP-03E | Multiple fee-responsibility cards are checked | No exclusivity warning appeared and all three could be selected | No | The live implementation does not enforce its implied choose-one rule | SLB-006 |
 | Offer response | Family does not respond within 48 hours | Offer will lapse after 48 hours | Yes, according to the offer | Exact expired-offer and staff recovery process not captured | SLB-EMAIL-012 |
 
 ## Workflow Rules
@@ -213,4 +233,9 @@ live screens before being treated as a complete specification.
 | SLB-RULE-015 | The electronic-signature acknowledgement states that the signer's IP address is recorded and stored. | The implementation has an explicit security/legal audit-data disclosure. | SLB-003 |
 | SLB-RULE-016 | The invitation URL does not by itself expose the matched family record. | Email matching and OTP verification are still required before contact and student records appear. | SLB-002, SLB-004, SLB-005 |
 | SLB-RULE-017 | Contact details shown after verification are stored record values, not values hardcoded into the invitation page or URL. | Rosewood should model reusable contact data separately from student applications and render approved inherited values at runtime. | SLB-002, SLB-003, SLB-005 |
-| SLB-RULE-018 | Editable-state behavior for inherited contact values has not been observed. | Rosewood must make an explicit product decision about which prefilled fields families can update and how changes affect the master contact record. | SLB-003 |
+| SLB-RULE-018 | Inherited contact Given Name, Surname, Email and Mobile values are editable in a new application. | Prefill reduces re-entry but Rosewood must decide whether a correction updates the reusable contact record, application snapshot or both. | SLB-006 |
+| SLB-RULE-019 | Incomplete steps do not block Next, Back or direct marker navigation. | The departed marker displays a red error and `Missing required fields.` while the family may continue reviewing later steps. | SLB-006 |
+| SLB-RULE-020 | Added guardians have a contact-permission choice. | `No, do not contact them` suppresses school communication and the separate signature-request email. | SLB-006 |
+| SLB-RULE-021 | The active guardian signs on one local canvas. A second contactable guardian removes the one-signature explanation but does not add a second local canvas. | Combined evidence indicates staged signature requests and a Pending Signatures state rather than simultaneous local signatures. | SLB-003, SLB-006, SLB-EMAIL-006 |
+| SLB-RULE-022 | Uploads accept multiple files up to 10.0 MB in the documented office-document, image and video formats. | Client and server validation would both be needed in a Rosewood implementation. | SLB-006 |
+| SLB-RULE-023 | Fee cards are independent checkboxes and survey influences enforce a minimum of one despite wording that asks for three. | The observed validation can accept internally inconsistent answers; Rosewood should not copy these defects. | SLB-006 |

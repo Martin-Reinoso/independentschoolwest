@@ -11,7 +11,7 @@
   <nav class="reference-nav" aria-label="Reference navigation">
     <a href="otp.html">Previous: email verification</a>
     <a href="index.html">Process map</a>
-    <a href="application.html">Next: application view</a>
+    <a href="application-editable.html">Next: editable application</a>
   </nav>
 
   <header class="gateway-header">
@@ -48,7 +48,7 @@
           <thead><tr><th>Student Name</th><th>Last Updated</th><th>Form Status</th><th>Action</th></tr></thead>
           <tbody>
             <tr><td>Existing student record</td><td>Removed</td><td><span class="status-chip submitted">Submitted</span></td><td><a class="table-action" href="application.html">View</a></td></tr>
-            <tr><td>Existing student record</td><td>Removed</td><td><span class="status-chip">Not Started</span></td><td><button class="table-action muted" type="button" data-static-action="Reference only: this does not create or change an application.">Start</button></td></tr>
+            <tr><td>Existing student record</td><td>Removed</td><td><span class="status-chip">Not Started</span></td><td><a class="table-action muted" href="application-editable.html">Start</a></td></tr>
           </tbody>
         </table>
       </div>
@@ -57,7 +57,7 @@
     <section class="selection-panel new-student-panel">
       <p class="selection-kicker">Start a new enrolment form</p>
       <p>Please enter Student details below</p>
-      <form class="selection-form" data-static-form data-next="application.html">
+      <form class="selection-form" data-static-form data-next="application-editable.html">
         <label>Student First Name <span>*</span><input name="student-first-name" required></label>
         <label>Student Last Name <span>*</span><input name="student-last-name" required></label>
         <button type="submit" class="gateway-next">Start</button>

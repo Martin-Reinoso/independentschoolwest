@@ -20,8 +20,8 @@ behaviour from staff activity and family activity.
 | 8 | Identify the existing enquiry | Family and Enquiry Tracker | Family enters the same email used for the EOI | Existing contact and application records are matched for possible prefill | SLB-002, SLB-005, SLB-EMAIL-004 | Confirmed after OTP: the existing contact and multiple student records were located |
 | 9 | Verify email address | Enquiry Tracker and family | Application access continues | Required code field, Verify, Resend code and Change email actions; six-digit passcode valid for 30 minutes | SLB-004, SLB-EMAIL-005, SLB-EMAIL-013 | Interface and repeated email template captured |
 | 10 | Select an existing student or start an application | Family | Verification succeeds | Existing contact details, student application statuses and Start or View actions | SLB-005 | Captured |
-| 11 | Complete application | Family | Existing or new student application is opened | Single-page student, guardian, emergency, document, condition, permission, fee, survey and signature record | SLB-003 | Submitted read-only view captured; editable-state conditional behaviour remains to test |
-| 12 | Obtain all required signatures | Family and other recorded signatories | Application is ready to sign | Separate guardian consent and signature blocks; status can remain Pending Signatures | SLB-003, SLB-EMAIL-006 | Interface and rule captured |
+| 11 | Complete application | Family | Existing or new student application is opened | Five editable steps: Student, Parent/Guardian, Documents, Conditions and Signature; direct marker navigation and Next/Back are available | SLB-003, SLB-006 | Editable and submitted states captured |
+| 12 | Obtain all required signatures | Family and other recorded signatories | Application is ready to sign | First guardian signs locally; additional contactable guardians appear to receive separate signature requests; status can remain Pending Signatures | SLB-003, SLB-006, SLB-EMAIL-006 | Local signature behavior captured; separate request delivery inferred from combined evidence |
 | 13 | Submit application | Enquiry Tracker | All required signatures are received | Submitted application | SLB-EMAIL-006 | Captured |
 | 14 | Confirm receipt | Enquiry Tracker | Application is submitted | Receipt, unique reference, timestamp and view link | SLB-EMAIL-007 | Captured |
 | 15 | Review application and identify missing evidence | Enrolment staff | Submitted application is assessed | Additional document request when needed | SLB-EMAIL-008 | Captured |
@@ -46,15 +46,18 @@ behaviour from staff activity and family activity.
 | SLB-BR-004 | Family receives an interview invitation | Book and attend | Reply that the family is no longer interested | SLB-EMAIL-009 |
 | SLB-BR-005 | School makes an offer | Accept and obtain all required guardian signatures | Decline the place | SLB-EMAIL-012 |
 | SLB-BR-006 | No response is received within the offer window | Outcome not yet observed | Timely response continues the selected branch | SLB-EMAIL-012 |
+| SLB-BR-007 | A required field remains incomplete when the family changes application steps | Navigation continues and the departed marker shows `Missing required fields.` | Completing the step avoids or clears its error state | SLB-006 |
+| SLB-BR-008 | A Yes/No or Other answer activates dependent details | Repeatable sibling/relative, additional-needs, residency, postal or alumni fields appear | The dependent section stays hidden or not applicable | SLB-006 |
+| SLB-BR-009 | An additional guardian may be contacted about the student | The guardian can receive a separate signature request | `No, do not contact them` suppresses school communication and signature email | SLB-006 |
 
 ## Open Questions
 
-- Which conditional fields and validation messages appear while editing a new application rather than viewing a submitted record?
 - Does pressing Next on the gateway always send a new OTP? Returning users are shown existing Submitted and Not Started records, but other record states remain unknown.
 - Does the opaque invitation URL identify an individual family, a campaign, a school/form configuration or some combination? The link appears invitation-specific, but email plus OTP was still required before family records were exposed.
-- Which inherited contact values can a family edit in a new application? The submitted read-only view confirms stored prepopulation but cannot establish editable-state behavior.
-- Can a family save and return?
-- How does a second parent or guardian receive and complete the observed separate signature request?
+- Do edits to inherited contact values update the reusable contact master record, only the application snapshot or both?
+- Does the observed autosaved draft reliably resume after expiry, logout or a new
+  browser session, and what support recovery is available?
+- What exact email and access screen does a second parent or guardian receive to complete the inferred separate signature request?
 - What is displayed after OTP expiry, failed verification or an interrupted session?
 - What security challenge is shown when Cloudflare Turnstile or invisible reCAPTCHA requires user interaction?
 - What caused the duplicate application invitation on consecutive days?
