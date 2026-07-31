@@ -59,6 +59,24 @@
 - The screen demonstrates that one verified contact can have multiple student or
   application records in different states.
 
+### Identity Matching And Prefill Findings
+
+- The private email link contains opaque identifiers and should be treated as a
+  restricted invitation URL. Its structure suggests invitation-specific routing,
+  but the capture does not prove that the URL alone uniquely identifies a family.
+- The URL was not sufficient to expose family data. The family still had to provide
+  the previously used email address and complete a six-digit OTP challenge.
+- After OTP verification, the system displayed the stored contact record, including
+  contact channels, and multiple associated student/application records. This
+  confirms a persistent contact-to-many-applications data model.
+- The gateway and invitation email say that using the same email can prepopulate the
+  application. The observed values are therefore described as stored or prefilled,
+  not hardcoded into the page or URL.
+- The mobile number was shown in the matched contact row and rendered by the
+  application phone component. The submitted application was a read-only view, so
+  this capture cannot determine whether a family can edit an inherited mobile number
+  while starting or completing an application.
+
 ### APP-03 Interface Observations
 
 - The submitted record is presented as one very long, read-only page rather than a
@@ -193,3 +211,6 @@ live screens before being treated as a complete specification.
 | SLB-RULE-013 | The application stores separate consent and signature state for each parent or guardian. | A record may display Pending Signatures after one guardian has completed their block. | SLB-003, SLB-EMAIL-006 |
 | SLB-RULE-014 | Required document counts differ by upload category. | Birth certificate, immunisation statement and proof of address required one file in the observed form; conditional categories remained available with zero required. | SLB-003 |
 | SLB-RULE-015 | The electronic-signature acknowledgement states that the signer's IP address is recorded and stored. | The implementation has an explicit security/legal audit-data disclosure. | SLB-003 |
+| SLB-RULE-016 | The invitation URL does not by itself expose the matched family record. | Email matching and OTP verification are still required before contact and student records appear. | SLB-002, SLB-004, SLB-005 |
+| SLB-RULE-017 | Contact details shown after verification are stored record values, not values hardcoded into the invitation page or URL. | Rosewood should model reusable contact data separately from student applications and render approved inherited values at runtime. | SLB-002, SLB-003, SLB-005 |
+| SLB-RULE-018 | Editable-state behavior for inherited contact values has not been observed. | Rosewood must make an explicit product decision about which prefilled fields families can update and how changes affect the master contact record. | SLB-003 |

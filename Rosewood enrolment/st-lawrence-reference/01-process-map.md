@@ -17,7 +17,7 @@ behaviour from staff activity and family activity.
 | 5 | Reconfirm waitlist interest | Enrolment staff and family | Place is not yet offered | Yes or no response recorded by a deadline | SLB-EMAIL-003 | Captured |
 | 6 | Issue invitation to apply | Enrolment staff via Enquiry Tracker | Family is progressed | Application link | SLB-EMAIL-004 | Captured |
 | 7 | Open private application gateway | Family | Invitation link opened | Introductory screen with policies, privacy notices, document checklist and email field | SLB-EMAIL-004, SLB-002 | Captured |
-| 8 | Identify the existing enquiry | Family and Enquiry Tracker | Family enters the same email used for the EOI | Existing enquiry details may be matched and prefilled | SLB-002, SLB-EMAIL-004 | Gateway captured; Next action not tested |
+| 8 | Identify the existing enquiry | Family and Enquiry Tracker | Family enters the same email used for the EOI | Existing contact and application records are matched for possible prefill | SLB-002, SLB-005, SLB-EMAIL-004 | Confirmed after OTP: the existing contact and multiple student records were located |
 | 9 | Verify email address | Enquiry Tracker and family | Application access continues | Required code field, Verify, Resend code and Change email actions; six-digit passcode valid for 30 minutes | SLB-004, SLB-EMAIL-005, SLB-EMAIL-013 | Interface and repeated email template captured |
 | 10 | Select an existing student or start an application | Family | Verification succeeds | Existing contact details, student application statuses and Start or View actions | SLB-005 | Captured |
 | 11 | Complete application | Family | Existing or new student application is opened | Single-page student, guardian, emergency, document, condition, permission, fee, survey and signature record | SLB-003 | Submitted read-only view captured; editable-state conditional behaviour remains to test |
@@ -51,6 +51,8 @@ behaviour from staff activity and family activity.
 
 - Which conditional fields and validation messages appear while editing a new application rather than viewing a submitted record?
 - Does pressing Next on the gateway always send a new OTP? Returning users are shown existing Submitted and Not Started records, but other record states remain unknown.
+- Does the opaque invitation URL identify an individual family, a campaign, a school/form configuration or some combination? The link appears invitation-specific, but email plus OTP was still required before family records were exposed.
+- Which inherited contact values can a family edit in a new application? The submitted read-only view confirms stored prepopulation but cannot establish editable-state behavior.
 - Can a family save and return?
 - How does a second parent or guardian receive and complete the observed separate signature request?
 - What is displayed after OTP expiry, failed verification or an interrupted session?
