@@ -95,6 +95,8 @@ neutral Rosewood reference styling.
 - `04-rosewood-decisions.md`: adopt, adapt, defer and reject decisions
 - `05-editable-application-map.md`: detailed five-step field, conditional,
   validation, document and signature behavior
+- `06-acceptance-process-map.md`: post-offer acceptance gateway, evidence status,
+  unresolved transition and future capture checklist
 - `source-documents/`: point-in-time third-party PDF snapshots with provenance and
   integrity hashes
 - `walkthrough/`: static, non-submitting HTML process map and captured-screen replicas,

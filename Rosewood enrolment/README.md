@@ -5,6 +5,9 @@ This folder contains the private invitation and data-capture service for the Ros
 Related records:
 
 - `GOOGLE-DRIVE-INTERIM-GUIDELINES.md` records the approved interim use of Google Drive and Google Sheets.
+- `ARCHITECTURE-EXPLORATION-PLAN.md` records unapproved draft-saving,
+  connection-status and storage options for later decision. It is not an
+  implementation instruction.
 - `st-lawrence-reference/README.md` defines the evidence-capture and process-mapping project.
 
 The public-site frontend is:

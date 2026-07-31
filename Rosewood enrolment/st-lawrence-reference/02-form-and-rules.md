@@ -10,6 +10,7 @@
 | APP-02 | Select or enter a student | Show the matched contact, existing student applications and a new-application path | Email verification | View, resume or start application | SLB-005 |
 | APP-03 | Online enrolment form | Collect and display the complete application, evidence, agreements, permissions and signatures | Student selection | Pending signatures or submitted application | SLB-003 |
 | APP-03E | Editable online enrolment form | Collect the application across five navigable steps with conditional fields, validation markers, uploads and signature capture | Student selection | Pending signatures or submitted application | SLB-006 |
+| ACC-00 | Offer acceptance gateway | Begin formal acceptance and match the recipient using the same email address used previously | Private Accept link in offer email | Expected verification screen; first observed transition remained on `Sending...` | SLB-008 |
 
 ### EOI-01 Interface Observations
 
@@ -101,6 +102,21 @@
   and survey influences.
 - The complete field, option, document, validation and signature map is maintained in
   `05-editable-application-map.md`.
+
+### ACC-00 Acceptance Gateway Observations
+
+- The acceptance link opens a separate Enquiry Tracker gateway rather than the
+  submitted application view.
+- The page asks the Parent / Guardian to use the same email address used previously
+  to begin formal acceptance of the offered place.
+- It links to the MACS Privacy Policy and Privacy Collection Notice for Parents and
+  Students.
+- Email is the only family input and Next is disabled while it is empty.
+- After one authorised Next click, the button changed to disabled `Sending...` and
+  remained there for more than eight seconds. No OTP field, CAPTCHA prompt, inline
+  error or acceptance agreement became visible, and the action was not retried.
+- The detailed status and future capture checklist are maintained in
+  `06-acceptance-process-map.md`.
 
 ### APP-03 Interface Observations
 

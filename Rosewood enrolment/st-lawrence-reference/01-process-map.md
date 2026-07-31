@@ -32,8 +32,8 @@ behaviour from staff activity and family activity.
 | 20 | Remind family | Enquiry Tracker | Interview approaches | Reminder email | SLB-EMAIL-011 | Captured |
 | 21 | Attend and assess interview | Family and school | Appointment occurs | Enrolment assessment outcome | SLB-EMAIL-009 | Inferred; assessment method unknown |
 | 22 | Issue offer | Enrolment staff via Enquiry Tracker | School approves a place | Offer with acceptance and decline options | SLB-EMAIL-012 | Captured |
-| 23 | Accept or decline | Family | Offer is received | Branch selection within 48 hours | SLB-EMAIL-012 | Rule captured; interface to capture |
-| 24 | Complete acceptance signatures | All parents or guardians recorded on application | Acceptance selected | Signed enrolment acceptance form | SLB-EMAIL-012 | Rule captured; interface to capture |
+| 23 | Accept or decline | Family | Offer is received | Accept opens a separate email-matching gateway with privacy links; the first authorised Next remained on `Sending...` and did not expose the next screen | SLB-EMAIL-012, SLB-008 | Accept gateway captured; verification and decline interfaces still to capture |
+| 24 | Complete acceptance signatures | All parents or guardians recorded on application | Acceptance selected and identity verification succeeds | Signed enrolment acceptance form | SLB-EMAIL-012, SLB-008 | Rule captured; agreement and signature interfaces not reached |
 | 25 | Complete post-acceptance onboarding | School and family | Acceptance is complete | Onboarding communications and school-readiness tasks | | To capture |
 
 ## Conditional Branches
