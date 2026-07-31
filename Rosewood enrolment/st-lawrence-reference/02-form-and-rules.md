@@ -5,6 +5,7 @@
 | Screen ID | Screen title | Purpose | Previous | Next | Source ID |
 | --- | --- | --- | --- | --- | --- |
 | EOI-01 | Expression of Interest Form | Collect initial family, student and proposed-enrolment information | Public enrolment page | Enquiry acknowledgement | SLB-001 |
+| APP-00 | Application gateway | Explain the formal application, present governing documents and match the existing enquiry by email | Private invitation link | Email verification and application | SLB-002 |
 
 ### EOI-01 Interface Observations
 
@@ -19,6 +20,20 @@
 - An invisible reCAPTCHA control is present.
 - The browser review changed only local yes/no selections to reveal conditional
   questions. No personal data was entered and Submit was not pressed.
+
+### APP-00 Interface Observations
+
+- The gateway is branded with the school's contact details and provides a language
+  selector.
+- It asks the family to use the same email address used in the earlier enquiry so the
+  application may be prepopulated.
+- It links to the school's Enrolment Policy, the Enrolment Procedure for MACS schools,
+  the MACS Privacy Policy and the Privacy Collection Notice for Parents and Students.
+- It presents seven document categories to prepare for upload at the end of the
+  application.
+- The only input is Email. Next is disabled before an email is entered.
+- The family-specific invitation URL and all personal identifiers are excluded from
+  this record. Email was not entered and Next was not pressed during capture.
 
 ## Field Register
 
@@ -51,11 +66,19 @@
 | EOI-01 | Other children who may attend | Radio | Yes | Yes, No | No additional field appeared for Yes | Required asterisk | SLB-001 |
 | EOI-01 | How family first heard about the school | Select | Yes | Advertising, current family, early learning centre, friends, internet, local area, parish, past family, school website, social media, word of mouth, another primary school, Other | Other response behaviour not tested | Required asterisk | SLB-001 |
 | EOI-01 | Additional information or questions | Textarea | No | Free text | None observed | None observed | SLB-001 |
+| APP-00 | Email | Email | Yes | Must match the address previously used with the school for prepopulation | Enables the next application-access step | Next is disabled before entry | SLB-002 |
 
 ## Document Register
 
 | Document | Required when | Format or limit | Collection point | Follow-up if missing | Source ID |
 | --- | --- | --- | --- | --- | --- |
+| Birth certificate | Family is preparing the formal application | Not stated | Suggested upload at the end of the online application | Not yet observed | SLB-002 |
+| Immunisation statement | Family is preparing the formal application | Not stated | Suggested upload at the end of the online application | Not yet observed | SLB-002 |
+| Sacramental certificates, such as a baptismal certificate | Applicable to the student | Not stated | Suggested upload at the end of the online application | Not yet observed | SLB-002 |
+| Temporary or permanent residency-status document | Applicable to the student | Not stated | Suggested upload at the end of the online application | Not yet observed | SLB-002 |
+| Most recent school report and most recent NAPLAN report | Available for the student's current stage | Not stated | Suggested upload at the end of the online application | A later email requested the school report in the observed case | SLB-002, SLB-EMAIL-008 |
+| Court order or restriction documentation | Applicable to the family | Not stated | Suggested upload at the end of the online application | Not yet observed | SLB-002 |
+| Specialist reports | Applicable to the student | Not stated | Suggested upload at the end of the online application | Not yet observed | SLB-002 |
 | Most recent school report | Requested after staff review of the submitted application | Not stated | Reply to enrolment email | Staff confirms receipt; further escalation not observed | SLB-EMAIL-008 |
 | Parent citizenship certificate or passport | Requested after staff review; either document was accepted | Not stated | Reply to enrolment email | Staff confirms receipt; further escalation not observed | SLB-EMAIL-008 |
 | Interview calendar file | Appointment is booked | ICS calendar file | Attached to booking confirmation | Reminder email follows near the event | SLB-EMAIL-010, SLB-EMAIL-011 |
@@ -65,6 +88,7 @@
 | Item | Who agrees or signs | Required when | Exact legal source identified | Process effect | Source ID |
 | --- | --- | --- | --- | --- | --- |
 | Promotional and informational email/SMS notice | Primary contact, by providing an email address or mobile number | Contact details are entered | No; wording is presented in the live third-party form | Treats provision of contact details as agreement to receive promotional and informational messages; promotional messages can be stopped through unsubscribe or STOP | SLB-001 |
+| Enrolment and privacy document presentation | Parent or guardian | Before email verification | Enrolment Policy, MACS Enrolment Procedure, MACS Privacy Policy and Privacy Collection Notice are linked | Family is asked to familiarise themselves with the enrolment documents and read the privacy documents; no acknowledgement checkbox is visible on this screen | SLB-002 |
 | Initial application signatures | All people the application identifies as required signatories | Before application submission | No; email evidence describes the workflow only | Application is not submitted until all required signatures are received | SLB-EMAIL-006 |
 | Enrolment acceptance agreement | All parents or guardians recorded on the original application | After an offer is accepted | No; acceptance form wording has not been captured | Acceptance requires the recorded guardian signature set | SLB-EMAIL-012 |
 
@@ -74,17 +98,18 @@
 | --- | --- | --- | --- | --- | --- |
 | EOI-01 | A required field is incomplete | Required fields are marked with an asterisk | Not tested against the live submission action | Complete the field; exact inline errors were not tested | SLB-001 |
 | EOI-01 | Automated-submission protection is invoked | Invisible reCAPTCHA is present | Not tested | Not tested | SLB-001 |
+| APP-00 | Email is empty | Email is marked required and Next remains disabled | Yes | Enter the email used for the earlier enquiry | SLB-002 |
 | Application access | One-time passcode is more than 30 minutes old | Passcode expires after 30 minutes | Yes | Request or receive a new code; exact interface not captured | SLB-EMAIL-005 |
 | Offer response | Family does not respond within 48 hours | Offer will lapse after 48 hours | Yes, according to the offer | Exact expired-offer and staff recovery process not captured | SLB-EMAIL-012 |
 
-## Email-Derived Workflow Rules
+## Workflow Rules
 
 These rules are confirmed by communications but still need to be checked against the
 live screens before being treated as a complete specification.
 
 | Rule ID | Rule | Effect | Source ID |
 | --- | --- | --- | --- |
-| SLB-RULE-001 | The family should use the same email address used for the enquiry. | Existing enquiry information may prefill the application. | SLB-EMAIL-004 |
+| SLB-RULE-001 | The family should use the same email address used for the enquiry. | Existing enquiry information may prefill the application. | SLB-002, SLB-EMAIL-004 |
 | SLB-RULE-002 | The one-time passcode is valid for 30 minutes. | An expired code cannot be used to continue. | SLB-EMAIL-005 |
 | SLB-RULE-003 | All required application signatures must be received before submission. | A partly signed application remains unsubmitted. | SLB-EMAIL-006 |
 | SLB-RULE-004 | A submitted application receives a unique reference, submission timestamp and view link. | The family can identify and revisit the submitted record. | SLB-EMAIL-007 |
@@ -93,3 +118,4 @@ live screens before being treated as a complete specification.
 | SLB-RULE-007 | Booking an interview generates confirmation and calendar details, followed by a reminder. | The appointment workflow supports attendance. | SLB-EMAIL-010, SLB-EMAIL-011 |
 | SLB-RULE-008 | An offer provides separate accept and decline actions and states a 48-hour response window. | The family must choose a branch before the offer lapses. | SLB-EMAIL-012 |
 | SLB-RULE-009 | Acceptance requires signatures from all parents or guardians recorded on the original application. | A single response may not complete acceptance. | SLB-EMAIL-012 |
+| SLB-RULE-010 | The gateway advises families to prepare seven categories of evidence for upload at the end of the application. | Document readiness is established before the verified form begins. | SLB-002 |

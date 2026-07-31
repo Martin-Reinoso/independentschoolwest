@@ -31,6 +31,7 @@ Every material St Lawrence feature should receive an explicit Rosewood dispositi
 | RWD-015 | EOI has no visible collection notice or privacy-policy link | SLB-001 | Pending | Rosewood should explain collection, use, storage and disclosure at the point of entry. | Rosewood privacy lead | Add approved collection notice and privacy-policy links before production. |
 | RWD-016 | Binary gender field and detailed religion/additional-needs categories at enquiry stage | SLB-001 | Pending | These fields may be unnecessarily restrictive or collect sensitive data earlier than needed. | Rosewood governance and privacy leads | Test necessity, inclusivity, lawful basis and collection timing for each field. |
 | RWD-017 | Localised current-school and discovery-source lists | SLB-001 | Pending | Structured options support reporting, but lists require maintenance and an accessible Other path. | Rosewood enrolment lead | Define Rosewood lists, ownership and review schedule. |
+| RWD-018 | Private application gateway presents policy, privacy and evidence guidance before verification | SLB-002 | Pending | Preparing families before a long application is helpful, but Rosewood must use its own approved policies, collection notice and document requirements. | Rosewood governance and privacy leads | Draft the gateway from approved Rosewood sources and distinguish recommended from mandatory evidence. |
 
 ## Principles
 

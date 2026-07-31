@@ -6,7 +6,8 @@ Do not include active access links, tokens or personal information.
 | ID | Source type | Title or stage | Observed date | Raw Drive location | Sanitised | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | SLB-001 | Public live form | Expression of Interest Form | 2026-07-31 | Public school website | Yes | Read-only Chrome review completed. No data was entered and the form was not submitted. |
-| SLB-002 | Invited live form | Application entry screen | Not yet captured | Restricted live system | No | Capture only after removing family data, access links and tokens. |
+| SLB-002 | Invited live form | Application gateway | 2026-07-31 | Restricted live system | Yes | Sanitised read-only capture completed. The family-specific access link is excluded; email was not entered and Next was not pressed. |
+| SLB-003 | Verified live form | Online application screens | Not yet captured | Restricted live system | No | Requires email verification. Capture without storing family answers, access links or tokens. |
 | SLB-EMAIL-001 | Email | Enquiry acknowledgement | 2026-06-05 | Restricted Gmail mailbox | Yes | Automated acknowledgement and indicative review timing. |
 | SLB-EMAIL-002 | Email thread | Zone decision and exception discussion | 2026-06-09 to 2026-06-10 | Restricted Gmail mailbox | Yes | Staff explained the out-of-zone position, capacity limits and possible release-letter path. |
 | SLB-EMAIL-003 | Email thread | Waitlist interest reconfirmation | 2026-06-16 to 2026-06-24 | Restricted Gmail mailbox | Yes | Family confirmed continued interest; staff updated the record and progressed the application. |
