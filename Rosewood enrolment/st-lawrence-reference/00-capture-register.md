@@ -8,11 +8,12 @@ Do not include active access links, tokens or personal information.
 | SLB-001 | Public live form | Expression of Interest Form | 2026-07-31 | Public school website | Yes | Read-only Chrome review completed. No data was entered and the form was not submitted. |
 | SLB-002 | Invited live form | Application gateway | 2026-07-31 | Restricted live system | Yes | Sanitised read-only capture completed. The family-specific access link is excluded; email was not entered and Next was not pressed. |
 | SLB-003 | Verified live form | Online application screens | Not yet captured | Restricted live system | No | Requires email verification. Capture without storing family answers, access links or tokens. |
+| SLB-004 | Invited live form | Email verification screen | 2026-07-31 | Restricted live system | Yes | Sanitised Chrome capture completed. OTP, email and security keys are excluded. |
 | SLB-DOC-001 | PDF | St Lawrence Enrolment Policy | 2026-07-31 | Public source and repository snapshot | Yes | Six-page third-party reference snapshot; source URL and hash recorded. |
 | SLB-DOC-002 | PDF | Enrolment Procedures for MACS Schools | 2026-07-31 | Public source and repository snapshot | Yes | Nine-page third-party reference snapshot; source URL and hash recorded. |
 | SLB-DOC-003 | PDF | MACS Privacy Policy | 2026-07-31 | Public source and repository snapshot | Yes | Ten-page third-party reference snapshot; source URL and hash recorded. |
 | SLB-DOC-004 | PDF | Privacy Collection Notice - Students and Parents | 2026-07-31 | Public source and repository snapshot | Yes | Seven-page third-party reference snapshot; source URL and hash recorded. |
-| SLB-WALK-001 | Static HTML | Process-map index, EOI and application gateway replicas | 2026-07-31 | Public repository | Yes | No backend, production endpoint, tokens, persistence or uploads. Uncaptured screens are marked pending. |
+| SLB-WALK-001 | Static HTML | Process-map index, EOI, application gateway and OTP replicas | 2026-07-31 | Public repository | Yes | No backend, production endpoint, tokens, persistence or uploads. Uncaptured screens are marked pending. |
 | SLB-EMAIL-001 | Email | Enquiry acknowledgement | 2026-06-05 | Restricted Gmail mailbox | Yes | Automated acknowledgement and indicative review timing. |
 | SLB-EMAIL-002 | Email thread | Zone decision and exception discussion | 2026-06-09 to 2026-06-10 | Restricted Gmail mailbox | Yes | Staff explained the out-of-zone position, capacity limits and possible release-letter path. |
 | SLB-EMAIL-003 | Email thread | Waitlist interest reconfirmation | 2026-06-16 to 2026-06-24 | Restricted Gmail mailbox | Yes | Family confirmed continued interest; staff updated the record and progressed the application. |

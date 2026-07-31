@@ -6,6 +6,7 @@
 | --- | --- | --- | --- | --- | --- |
 | EOI-01 | Expression of Interest Form | Collect initial family, student and proposed-enrolment information | Public enrolment page | Enquiry acknowledgement | SLB-001 |
 | APP-00 | Application gateway | Explain the formal application, present governing documents and match the existing enquiry by email | Private invitation link | Email verification and application | SLB-002 |
+| APP-01 | Email verification | Verify access to the matching enquiry email before showing the application | Application gateway | Verified application form | SLB-004 |
 
 ### EOI-01 Interface Observations
 
@@ -34,6 +35,16 @@
 - The only input is Email. Next is disabled before an email is entered.
 - The family-specific invitation URL and all personal identifiers are excluded from
   this record. Email was not entered and Next was not pressed during capture.
+
+### APP-01 Interface Observations
+
+- The screen retains the same school header, language selector and footer artwork as
+  the gateway.
+- It confirms that a code was sent and asks the family to enter it to continue.
+- Verify is disabled while the required code field is empty.
+- Resend code and Change email are separate secondary actions.
+- Cloudflare Turnstile/Insights and an invisible Google reCAPTCHA are loaded during
+  the access transition. No security keys are stored in this repository.
 
 ## Field Register
 
@@ -67,6 +78,7 @@
 | EOI-01 | How family first heard about the school | Select | Yes | Advertising, current family, early learning centre, friends, internet, local area, parish, past family, school website, social media, word of mouth, another primary school, Other | Other response behaviour not tested | Required asterisk | SLB-001 |
 | EOI-01 | Additional information or questions | Textarea | No | Free text | None observed | None observed | SLB-001 |
 | APP-00 | Email | Email | Yes | Must match the address previously used with the school for prepopulation | Enables the next application-access step | Next is disabled before entry | SLB-002 |
+| APP-01 | Verification Code | One-time code | Yes | Code delivered to the matched email address | Successful verification continues to the application | Verify is disabled before entry; email evidence states a 30-minute expiry | SLB-004, SLB-EMAIL-005 |
 
 ## Document Register
 
@@ -99,7 +111,8 @@
 | EOI-01 | A required field is incomplete | Required fields are marked with an asterisk | Not tested against the live submission action | Complete the field; exact inline errors were not tested | SLB-001 |
 | EOI-01 | Automated-submission protection is invoked | Invisible reCAPTCHA is present | Not tested | Not tested | SLB-001 |
 | APP-00 | Email is empty | Email is marked required and Next remains disabled | Yes | Enter the email used for the earlier enquiry | SLB-002 |
-| Application access | One-time passcode is more than 30 minutes old | Passcode expires after 30 minutes | Yes | Request or receive a new code; exact interface not captured | SLB-EMAIL-005 |
+| APP-01 | Verification code is empty | Verification Code is marked required and Verify remains disabled | Yes | Enter the emailed code, resend the code or change the email | SLB-004 |
+| APP-01 | One-time passcode is more than 30 minutes old | Passcode expires after 30 minutes | Yes | Use Resend code; the exact expired-code message has not been captured | SLB-004, SLB-EMAIL-005 |
 | Offer response | Family does not respond within 48 hours | Offer will lapse after 48 hours | Yes, according to the offer | Exact expired-offer and staff recovery process not captured | SLB-EMAIL-012 |
 
 ## Workflow Rules
@@ -110,7 +123,7 @@ live screens before being treated as a complete specification.
 | Rule ID | Rule | Effect | Source ID |
 | --- | --- | --- | --- |
 | SLB-RULE-001 | The family should use the same email address used for the enquiry. | Existing enquiry information may prefill the application. | SLB-002, SLB-EMAIL-004 |
-| SLB-RULE-002 | The one-time passcode is valid for 30 minutes. | An expired code cannot be used to continue. | SLB-EMAIL-005 |
+| SLB-RULE-002 | The one-time passcode is valid for 30 minutes. | An expired code cannot be used to continue; the verification screen provides Resend code and Change email actions. | SLB-004, SLB-EMAIL-005 |
 | SLB-RULE-003 | All required application signatures must be received before submission. | A partly signed application remains unsubmitted. | SLB-EMAIL-006 |
 | SLB-RULE-004 | A submitted application receives a unique reference, submission timestamp and view link. | The family can identify and revisit the submitted record. | SLB-EMAIL-007 |
 | SLB-RULE-005 | Staff may request extra evidence after submission. | The application portal is not the only document collection channel. | SLB-EMAIL-008 |

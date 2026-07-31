@@ -88,6 +88,15 @@ a { color: inherit; }
 .static-feedback { margin-top: 18px; padding: 12px 14px; color: #174957; background: #e7f2ef; border-left: 3px solid #3b8d78; font-size: 13px; }
 .gateway-footer { max-width: 720px; margin: 60px auto 0; }
 .gateway-footer img { display: block; width: 100%; }
+.otp-main { margin-top: 36px; }
+.otp-copy p { margin: 0 0 22px; }
+.otp-form { width: 200px; margin-top: 58px; }
+.otp-form label { display: block; color: #555; }
+.otp-form label span { color: #e53935; }
+.otp-form input { width: 100%; padding: 8px 2px; border: 0; border-bottom: 1px solid #d05252; outline: 0; font-size: 16px; }
+.otp-verify { margin-top: 56px; }
+.otp-actions { display: flex; gap: 26px; align-items: center; width: 300px; margin: 34px 0 0 8px; }
+.otp-actions button, .otp-actions a { padding: 0; color: #999; background: none; border: 0; font: 12px/1 Roboto, Helvetica, Arial, sans-serif; text-decoration: none; text-transform: uppercase; }
 
 /* Public EOI */
 .eoi-page { color: #434343; background: #fff; font-family: 'Open Sans', Helvetica, Arial, sans-serif; }
@@ -152,6 +161,8 @@ a { color: inherit; }
   .gateway-contact { margin: 0 auto; text-align: center; }
   .language-control { margin-bottom: 42px; }
   .gateway-next { margin-top: 60px; }
+  .otp-form { width: 100%; }
+  .otp-actions { width: 100%; margin-left: 0; }
   .form-grid { grid-template-columns: 1fr; }
   .wide { grid-column: auto; }
   .eoi-form-shell { margin-top: 45px; }
