@@ -19,21 +19,22 @@ behaviour from staff activity and family activity.
 | 7 | Open private application gateway | Family | Invitation link opened | Introductory screen with policies, privacy notices, document checklist and email field | SLB-EMAIL-004, SLB-002 | Captured |
 | 8 | Identify the existing enquiry | Family and Enquiry Tracker | Family enters the same email used for the EOI | Existing enquiry details may be matched and prefilled | SLB-002, SLB-EMAIL-004 | Gateway captured; Next action not tested |
 | 9 | Verify email address | Enquiry Tracker and family | Application access continues | Required code field, Verify, Resend code and Change email actions; six-digit passcode valid for 30 minutes | SLB-004, SLB-EMAIL-005, SLB-EMAIL-013 | Interface and repeated email template captured |
-| 10 | Complete application | Family | Verification succeeds | Application data and uploaded evidence | SLB-003 | To capture |
-| 11 | Obtain all required signatures | Family and other recorded signatories | Application is ready to sign | Completed signature set | SLB-EMAIL-006 | Rule captured; interface to capture |
-| 12 | Submit application | Enquiry Tracker | All required signatures are received | Submitted application | SLB-EMAIL-006 | Captured |
-| 13 | Confirm receipt | Enquiry Tracker | Application is submitted | Receipt, unique reference, timestamp and view link | SLB-EMAIL-007 | Captured |
-| 14 | Review application and identify missing evidence | Enrolment staff | Submitted application is assessed | Additional document request when needed | SLB-EMAIL-008 | Captured |
-| 15 | Supply and acknowledge extra documents | Family and enrolment staff | Document request is received | Email attachments and staff receipt confirmation | SLB-EMAIL-008 | Captured |
-| 16 | Shortlist for interview | Enrolment staff via Enquiry Tracker | Application progresses | Interview invitation | SLB-EMAIL-009 | Captured |
-| 17 | Book interview | Family | Invitation link opened | Selected appointment | SLB-EMAIL-009 | Interface to capture |
-| 18 | Confirm interview booking | Enquiry Tracker | Appointment is booked | Confirmation email and calendar file | SLB-EMAIL-010 | Captured |
-| 19 | Remind family | Enquiry Tracker | Interview approaches | Reminder email | SLB-EMAIL-011 | Captured |
-| 20 | Attend and assess interview | Family and school | Appointment occurs | Enrolment assessment outcome | SLB-EMAIL-009 | Inferred; assessment method unknown |
-| 21 | Issue offer | Enrolment staff via Enquiry Tracker | School approves a place | Offer with acceptance and decline options | SLB-EMAIL-012 | Captured |
-| 22 | Accept or decline | Family | Offer is received | Branch selection within 48 hours | SLB-EMAIL-012 | Rule captured; interface to capture |
-| 23 | Complete acceptance signatures | All parents or guardians recorded on application | Acceptance selected | Signed enrolment acceptance form | SLB-EMAIL-012 | Rule captured; interface to capture |
-| 24 | Complete post-acceptance onboarding | School and family | Acceptance is complete | Onboarding communications and school-readiness tasks | | To capture |
+| 10 | Select an existing student or start an application | Family | Verification succeeds | Existing contact details, student application statuses and Start or View actions | SLB-005 | Captured |
+| 11 | Complete application | Family | Existing or new student application is opened | Single-page student, guardian, emergency, document, condition, permission, fee, survey and signature record | SLB-003 | Submitted read-only view captured; editable-state conditional behaviour remains to test |
+| 12 | Obtain all required signatures | Family and other recorded signatories | Application is ready to sign | Separate guardian consent and signature blocks; status can remain Pending Signatures | SLB-003, SLB-EMAIL-006 | Interface and rule captured |
+| 13 | Submit application | Enquiry Tracker | All required signatures are received | Submitted application | SLB-EMAIL-006 | Captured |
+| 14 | Confirm receipt | Enquiry Tracker | Application is submitted | Receipt, unique reference, timestamp and view link | SLB-EMAIL-007 | Captured |
+| 15 | Review application and identify missing evidence | Enrolment staff | Submitted application is assessed | Additional document request when needed | SLB-EMAIL-008 | Captured |
+| 16 | Supply and acknowledge extra documents | Family and enrolment staff | Document request is received | Email attachments and staff receipt confirmation | SLB-EMAIL-008 | Captured |
+| 17 | Shortlist for interview | Enrolment staff via Enquiry Tracker | Application progresses | Interview invitation | SLB-EMAIL-009 | Captured |
+| 18 | Book interview | Family | Invitation link opened | Selected appointment | SLB-EMAIL-009 | Interface to capture |
+| 19 | Confirm interview booking | Enquiry Tracker | Appointment is booked | Confirmation email and calendar file | SLB-EMAIL-010 | Captured |
+| 20 | Remind family | Enquiry Tracker | Interview approaches | Reminder email | SLB-EMAIL-011 | Captured |
+| 21 | Attend and assess interview | Family and school | Appointment occurs | Enrolment assessment outcome | SLB-EMAIL-009 | Inferred; assessment method unknown |
+| 22 | Issue offer | Enrolment staff via Enquiry Tracker | School approves a place | Offer with acceptance and decline options | SLB-EMAIL-012 | Captured |
+| 23 | Accept or decline | Family | Offer is received | Branch selection within 48 hours | SLB-EMAIL-012 | Rule captured; interface to capture |
+| 24 | Complete acceptance signatures | All parents or guardians recorded on application | Acceptance selected | Signed enrolment acceptance form | SLB-EMAIL-012 | Rule captured; interface to capture |
+| 25 | Complete post-acceptance onboarding | School and family | Acceptance is complete | Onboarding communications and school-readiness tasks | | To capture |
 
 ## Conditional Branches
 
@@ -48,10 +49,10 @@ behaviour from staff activity and family activity.
 
 ## Open Questions
 
-- What fields, declarations, uploads and validation appear in the invited application interface?
-- Does pressing Next on the gateway always send a new OTP, and how does the system handle an already submitted application?
+- Which conditional fields and validation messages appear while editing a new application rather than viewing a submitted record?
+- Does pressing Next on the gateway always send a new OTP? Returning users are shown existing Submitted and Not Started records, but other record states remain unknown.
 - Can a family save and return?
-- How does a second parent or guardian receive and complete a signature request?
+- How does a second parent or guardian receive and complete the observed separate signature request?
 - What is displayed after OTP expiry, failed verification or an interrupted session?
 - What security challenge is shown when Cloudflare Turnstile or invisible reCAPTCHA requires user interaction?
 - What caused the duplicate application invitation on consecutive days?

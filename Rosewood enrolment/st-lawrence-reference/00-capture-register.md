@@ -7,13 +7,14 @@ Do not include active access links, tokens or personal information.
 | --- | --- | --- | --- | --- | --- | --- |
 | SLB-001 | Public live form | Expression of Interest Form | 2026-07-31 | Public school website | Yes | Read-only Chrome review completed. No data was entered and the form was not submitted. |
 | SLB-002 | Invited live form | Application gateway | 2026-07-31 | Restricted live system | Yes | Sanitised read-only capture completed. The family-specific access link is excluded; email was not entered and Next was not pressed. |
-| SLB-003 | Verified live form | Online application screens | Not yet captured | Restricted live system | No | Requires email verification. Capture without storing family answers, access links or tokens. |
+| SLB-003 | Verified live form | Submitted online application view | 2026-07-31 | Restricted live system | Yes | Complete single-page read-only application captured. Family answers, addresses, medical identifiers, uploads, tracking ID, signatures and access data are excluded. |
 | SLB-004 | Invited live form | Email verification screen | 2026-07-31 | Restricted live system | Yes | Sanitised Chrome capture completed. OTP, email and security keys are excluded. |
+| SLB-005 | Verified live form | Contact and student selection | 2026-07-31 | Restricted live system | Yes | Existing contact, student records, application statuses and start/view actions captured without retaining personal row data. |
 | SLB-DOC-001 | PDF | St Lawrence Enrolment Policy | 2026-07-31 | Public source and repository snapshot | Yes | Six-page third-party reference snapshot; source URL and hash recorded. |
 | SLB-DOC-002 | PDF | Enrolment Procedures for MACS Schools | 2026-07-31 | Public source and repository snapshot | Yes | Nine-page third-party reference snapshot; source URL and hash recorded. |
 | SLB-DOC-003 | PDF | MACS Privacy Policy | 2026-07-31 | Public source and repository snapshot | Yes | Ten-page third-party reference snapshot; source URL and hash recorded. |
 | SLB-DOC-004 | PDF | Privacy Collection Notice - Students and Parents | 2026-07-31 | Public source and repository snapshot | Yes | Seven-page third-party reference snapshot; source URL and hash recorded. |
-| SLB-WALK-001 | Static HTML | Process-map index, EOI, application gateway and OTP replicas | 2026-07-31 | Public repository | Yes | No backend, production endpoint, tokens, persistence or uploads. Uncaptured screens are marked pending. |
+| SLB-WALK-001 | Static HTML | Process map, EOI, gateway, OTP, contact selection and application replicas | 2026-07-31 | Public repository | Yes | No backend, production endpoint, tokens, persistence or uploads. Uncaptured screens are marked pending. |
 | SLB-EMAIL-001 | Email | Enquiry acknowledgement | 2026-06-05 | Restricted Gmail mailbox | Yes | Automated acknowledgement and indicative review timing. |
 | SLB-EMAIL-002 | Email thread | Zone decision and exception discussion | 2026-06-09 to 2026-06-10 | Restricted Gmail mailbox | Yes | Staff explained the out-of-zone position, capacity limits and possible release-letter path. |
 | SLB-EMAIL-003 | Email thread | Waitlist interest reconfirmation | 2026-06-16 to 2026-06-24 | Restricted Gmail mailbox | Yes | Family confirmed continued interest; staff updated the record and progressed the application. |
@@ -28,6 +29,7 @@ Do not include active access links, tokens or personal information.
 | SLB-EMAIL-012 | Email | Offer of place | 2026-07-31 | Restricted Gmail mailbox | Yes | Active acceptance and decline links are deliberately excluded; the offer states a 48-hour response window. |
 | SLB-EMAIL-013 | Email | Repeated one-time passcode request | 2026-07-31 | Restricted Gmail mailbox | Yes | Confirms the same access-verification template is sent on a later return. The live code and recipient address are deliberately excluded. |
 | SLB-WALK-002 | Static HTML | Sanitised one-time passcode email replica | 2026-07-31 | Public repository | Yes | Structural reference only. It contains no recipient address, active code, private URL or tracking link. |
+| SLB-WALK-003 | Static HTML | Contact selection and submitted application replicas | 2026-07-31 | Public repository | Yes | No backend, persistence, uploads, signatures or personal values. Long legal conditions are structurally mapped and linked to the archived source documents. |
 
 ## Capture Status
 

@@ -7,6 +7,8 @@
 | EOI-01 | Expression of Interest Form | Collect initial family, student and proposed-enrolment information | Public enrolment page | Enquiry acknowledgement | SLB-001 |
 | APP-00 | Application gateway | Explain the formal application, present governing documents and match the existing enquiry by email | Private invitation link | Email verification and application | SLB-002 |
 | APP-01 | Email verification | Verify access to the matching enquiry email before showing the application | Application gateway | Verified application form | SLB-004 |
+| APP-02 | Select or enter a student | Show the matched contact, existing student applications and a new-application path | Email verification | View, resume or start application | SLB-005 |
+| APP-03 | Online enrolment form | Collect and display the complete application, evidence, agreements, permissions and signatures | Student selection | Pending signatures or submitted application | SLB-003 |
 
 ### EOI-01 Interface Observations
 
@@ -46,6 +48,48 @@
 - Cloudflare Turnstile/Insights and an invisible Google reCAPTCHA are loaded during
   the access transition. No security keys are stored in this repository.
 
+### APP-02 Interface Observations
+
+- A successful match displays one contact row with last-updated, address, email and
+  mobile columns. All observed values are restricted and excluded here.
+- A second table lists student records with last-updated date, form status and an
+  action. Submitted records expose View; Not Started records expose Start.
+- A separate new-enrolment path asks for required student first and last names and
+  keeps Start disabled while those fields are empty.
+- The screen demonstrates that one verified contact can have multiple student or
+  application records in different states.
+
+### APP-03 Interface Observations
+
+- The submitted record is presented as one very long, read-only page rather than a
+  step-by-step wizard. A Print action appears at the top and bottom.
+- The header shows submission date, a unique tracking ID and form status. Those
+  family-specific values are excluded from this repository.
+- The observed status was Pending Signatures. Separate guardian blocks showed one
+  completed signature and one outstanding signature.
+- The page contains Student, Parent/Guardian, Documents, Conditions and Signature
+  sections. Major subsections are recorded below.
+- Uploaded filenames and file sizes are displayed in the submitted view. They are
+  excluded because filenames can contain student details.
+- The verified record includes the Victorian Government admission-consent guidance,
+  the privacy disclaimer, IP-address acknowledgement and guardian declaration.
+
+## APP-03 Section And Field Groups
+
+| Section | Subsections and fields observed | Source ID |
+| --- | --- | --- |
+| Student | Names, date of birth, gender, religion, current year and school, destination campus, entry year and level, commencement term/date, home and primary address | SLB-003 |
+| Residence and family | Home care arrangement, family connection, future siblings with repeatable sibling details, existing/new family and other relatives | SLB-003 |
+| Citizenship and background | Current residence, birth and nationality countries, citizenship, Indigenous status, main language and other languages | SLB-003 |
+| Additional needs | Additional-needs status, health-professional categories, other specialist, NDIS support, court/parenting orders and other information | SLB-003 |
+| Sacraments | Parish plus Baptism, Reconciliation, Eucharist and Confirmation checkboxes with date and location | SLB-003 |
+| Medical | Condition categories, anaphylaxis and medication, immunisation, humanitarian health check, doctor, Medicare, private health insurance and ambulance cover | SLB-003 |
+| Parents and guardians | Repeatable contact panels with identity, phones, messaging consent, relationship, contact type, religion, health-care card, SMS, residential/postal address, alumni, employment/education and residency | SLB-003 |
+| Additional guardian and emergency | Add or confirm no additional legal guardian; counter-signature contact choice; emergency contact identity, relationship and phone details | SLB-003 |
+| Documents | Birth, immunisation, baptism, medical/specialist, proof-of-address and passport/visa upload categories | SLB-003 |
+| Conditions | Fifteen-part enrolment terms, acceptance agreement, previous-school permission, photograph/recording permission, fee responsibility and decision survey | SLB-003 |
+| Signature | Victorian admission guidance, per-guardian IP acknowledgement, declaration, electronic signature, date, comments and additional information | SLB-003 |
+
 ## Field Register
 
 | Screen ID | Field | Type | Required | Options or format | Conditional logic | Validation or help text | Source ID |
@@ -84,13 +128,15 @@
 
 | Document | Required when | Format or limit | Collection point | Follow-up if missing | Source ID |
 | --- | --- | --- | --- | --- | --- |
-| Birth certificate | Family is preparing the formal application | Not stated | Suggested upload at the end of the online application | Not yet observed | SLB-002 |
-| Immunisation statement | Family is preparing the formal application | Not stated | Suggested upload at the end of the online application | Not yet observed | SLB-002 |
-| Sacramental certificates, such as a baptismal certificate | Applicable to the student | Not stated | Suggested upload at the end of the online application | Not yet observed | SLB-002 |
+| Birth certificate | Formal application | One file required in observed form; format and maximum size not shown in submitted view | Documents section | Staff recovery behaviour not observed | SLB-002, SLB-003 |
+| Immunisation statement | Formal application | One file required in observed form; format and maximum size not shown in submitted view | Documents section | Staff recovery behaviour not observed | SLB-002, SLB-003 |
+| Sacramental certificates, such as a baptismal certificate | Applicable to the student | Zero files required by form; upload category remains available | Documents section | Not observed | SLB-002, SLB-003 |
 | Temporary or permanent residency-status document | Applicable to the student | Not stated | Suggested upload at the end of the online application | Not yet observed | SLB-002 |
 | Most recent school report and most recent NAPLAN report | Available for the student's current stage | Not stated | Suggested upload at the end of the online application | A later email requested the school report in the observed case | SLB-002, SLB-EMAIL-008 |
-| Court order or restriction documentation | Applicable to the family | Not stated | Suggested upload at the end of the online application | Not yet observed | SLB-002 |
-| Specialist reports | Applicable to the student | Not stated | Suggested upload at the end of the online application | Not yet observed | SLB-002 |
+| Court order or restriction documentation | Applicable to the family | Not shown as a dedicated upload category in the submitted record; the application says copies must be provided when relevant | Application or later staff follow-up is not confirmed | Not observed | SLB-002, SLB-003 |
+| Medical management plans or health-professional reports | Applicable to the student | Zero files required by form; upload category remains available | Documents section | Not observed | SLB-002, SLB-003 |
+| Proof of address | Formal application | One file required; gas, electricity or water bill requested | Documents section | Not observed | SLB-003 |
+| Passport and visa documentation | Applicable to student or overseas-born parents | Zero files required by form; copy of student residency evidence and relevant parent visa/citizenship evidence requested when applicable | Documents section | Later email accepted a parent citizenship certificate or passport | SLB-003, SLB-EMAIL-008 |
 | Most recent school report | Requested after staff review of the submitted application | Not stated | Reply to enrolment email | Staff confirms receipt; further escalation not observed | SLB-EMAIL-008 |
 | Parent citizenship certificate or passport | Requested after staff review; either document was accepted | Not stated | Reply to enrolment email | Staff confirms receipt; further escalation not observed | SLB-EMAIL-008 |
 | Interview calendar file | Appointment is booked | ICS calendar file | Attached to booking confirmation | Reminder email follows near the event | SLB-EMAIL-010, SLB-EMAIL-011 |
@@ -103,6 +149,14 @@
 | Enrolment and privacy document presentation | Parent or guardian | Before email verification | Enrolment Policy, MACS Enrolment Procedure, MACS Privacy Policy and Privacy Collection Notice are linked | Family is asked to familiarise themselves with the enrolment documents and read the privacy documents; no acknowledgement checkbox is visible on this screen | SLB-002 |
 | Initial application signatures | All people the application identifies as required signatories | Before application submission | No; email evidence describes the workflow only | Application is not submitted until all required signatures are received | SLB-EMAIL-006 |
 | Enrolment acceptance agreement | All parents or guardians recorded on the original application | After an offer is accepted | No; acceptance form wording has not been captured | Acceptance requires the recorded guardian signature set | SLB-EMAIL-012 |
+| Enrolment terms and acceptance | Parent or guardian | During formal application | Fifteen-part Terms and Conditions of Enrolment plus Acceptance of enrolment displayed in the form | Required I / We Agree checkbox records acceptance | SLB-003 |
+| Previous school or preschool permission | Parent or guardian | During formal application | Form-specific consent wording | Authorises the school to obtain reports and information for educational planning | SLB-003 |
+| Photograph and recording permission | Parent or guardian; student may withdraw if aged 15 or over | During formal application | Form-specific permission with NEALS notice | Separately selects name, photograph/recording and publication channels | SLB-003 |
+| School fee responsibility | Parent or guardian | During formal application | Form-specific allocation | Select both guardians, one guardian or percentage split and nominate account responsibility | SLB-003 |
+| Admission signature guidance | Student over 15 living independently, parent or eligible informal carer as applicable | Signature stage | Victorian Government guidance reproduced in the form | Explains equal parental responsibility, separated-parent/court-order and informal-carer evidence expectations | SLB-003 |
+| IP-address acknowledgement | Each required parent or guardian | Electronic signature | Form-specific acknowledgement | Records that the signer's IP address will be stored for administrative, security and legal-compliance purposes | SLB-003 |
+| Parent or guardian declaration | Each required parent or guardian | Electronic signature | Form-specific declaration | Confirms the signer has read, understood and consented to all matters in the form for the period of enrolment | SLB-003 |
+| Privacy disclaimer | Parent or guardian | Conditions and signature stages | MACS and school Privacy Collection Notice and Privacy Policy | Personal information is held, used and disclosed under the cited privacy documents | SLB-003 |
 
 ## Validation And Error Behaviour
 
@@ -113,6 +167,8 @@
 | APP-00 | Email is empty | Email is marked required and Next remains disabled | Yes | Enter the email used for the earlier enquiry | SLB-002 |
 | APP-01 | Verification code is empty | Verification Code is marked required and Verify remains disabled | Yes | Enter the emailed code, resend the code or change the email | SLB-004 |
 | APP-01 | One-time passcode is more than 30 minutes old | Passcode expires after 30 minutes | Yes | Use Resend code; the exact expired-code message has not been captured | SLB-004, SLB-EMAIL-005, SLB-EMAIL-013 |
+| APP-02 | New-student first or last name is empty | Start remains disabled | Yes | Complete both required name fields | SLB-005 |
+| APP-03 | Required guardian signature is incomplete | Form status remains Pending Signatures | Yes for completed submission, based on observed state and confirmation email | Required guardian completes acknowledgement, declaration and electronic signature | SLB-003, SLB-EMAIL-006 |
 | Offer response | Family does not respond within 48 hours | Offer will lapse after 48 hours | Yes, according to the offer | Exact expired-offer and staff recovery process not captured | SLB-EMAIL-012 |
 
 ## Workflow Rules
@@ -132,3 +188,8 @@ live screens before being treated as a complete specification.
 | SLB-RULE-008 | An offer provides separate accept and decline actions and states a 48-hour response window. | The family must choose a branch before the offer lapses. | SLB-EMAIL-012 |
 | SLB-RULE-009 | Acceptance requires signatures from all parents or guardians recorded on the original application. | A single response may not complete acceptance. | SLB-EMAIL-012 |
 | SLB-RULE-010 | The gateway advises families to prepare seven categories of evidence for upload at the end of the application. | Document readiness is established before the verified form begins. | SLB-002 |
+| SLB-RULE-011 | OTP verification resolves to a contact-and-student selection screen. | A family can view a submitted application, resume a Not Started record or begin another student's application. | SLB-005 |
+| SLB-RULE-012 | One verified contact can be associated with multiple student application records and statuses. | The process must not assume one contact equals one application. | SLB-005 |
+| SLB-RULE-013 | The application stores separate consent and signature state for each parent or guardian. | A record may display Pending Signatures after one guardian has completed their block. | SLB-003, SLB-EMAIL-006 |
+| SLB-RULE-014 | Required document counts differ by upload category. | Birth certificate, immunisation statement and proof of address required one file in the observed form; conditional categories remained available with zero required. | SLB-003 |
+| SLB-RULE-015 | The electronic-signature acknowledgement states that the signer's IP address is recorded and stored. | The implementation has an explicit security/legal audit-data disclosure. | SLB-003 |

@@ -3,6 +3,7 @@ document.querySelectorAll('[data-static-form]').forEach((form) => {
   const submit = form.querySelector('[type="submit"]');
   const email = form.querySelector('input[type="email"]');
   const code = form.querySelector('[name="verification-code"]');
+  const studentNames = form.querySelectorAll('[name^="student-"]');
 
   if (email && submit?.classList.contains('gateway-next')) {
     const updateButton = () => {
@@ -20,6 +21,14 @@ document.querySelectorAll('[data-static-form]').forEach((form) => {
     updateButton();
   }
 
+  if (studentNames.length && submit) {
+    const updateButton = () => {
+      submit.disabled = Array.from(studentNames).some((input) => input.value.trim().length === 0);
+    };
+    studentNames.forEach((input) => input.addEventListener('input', updateButton));
+    updateButton();
+  }
+
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     if (!form.reportValidity()) return;
@@ -32,6 +41,10 @@ document.querySelectorAll('[data-static-form]').forEach((form) => {
       feedback.hidden = false;
     }
   });
+});
+
+document.querySelectorAll('[data-print]').forEach((button) => {
+  button.addEventListener('click', () => window.print());
 });
 
 document.querySelectorAll('[data-static-action]').forEach((button) => {
