@@ -2,8 +2,8 @@
 
 ## Status And Scope
 
-**Status:** Capture in progress. Only the acceptance gateway and its first transition
-have been observed.
+**Status:** Capture in progress. The acceptance gateway and matched-contact/student
+selection screen have been observed. The agreement itself has not been started.
 
 This record maps the workflow after a family selects Accept in an offer email. It does
 not authorise accepting the place, completing an OTP, signing an agreement or
@@ -27,9 +27,9 @@ details and application identifiers are excluded from this public repository.
 | 1 | ACC-00 | Offer recipient selects the private Accept action | Separate Enquiry Tracker acceptance gateway opens | Captured | SLB-EMAIL-012, SLB-008 |
 | 2 | ACC-00 | Family is asked for the same email address used previously | Email becomes valid and Next is enabled | Captured | SLB-008 |
 | 3 | ACC-00T | Next is pressed once | Button changes to disabled `Sending...` | Captured | SLB-008 |
-| 4 | ACC-01 | Expected verification or identity screen | The gateway remained on `Sending...` for more than eight seconds; no next screen or visible error appeared | Not reached | SLB-008 |
-| 5 | ACC-02 | Match offered student/application | Unknown | To capture | |
-| 6 | ACC-03 | Display acceptance agreement and conditions | Unknown | To capture | |
+| 4 | ACC-01 | Verification or identity check | The earlier observation remained on `Sending...`; a later authorised session reached the matched-record screen after verification | Partially captured | SLB-008, SLB-009 |
+| 5 | ACC-02 | Match contact and students eligible for an enrolment agreement | One reusable contact and three student records were shown; every agreement status was `Not Started` with a `Start` action | Captured | SLB-009 |
+| 6 | ACC-03 | Display acceptance agreement and conditions | Not opened | To capture | |
 | 7 | ACC-04 | Collect guardian decisions/signatures | Unknown | To capture | |
 | 8 | ACC-05 | Final acceptance confirmation | Unknown | To capture | |
 | 9 | ACC-EMAIL | Send acceptance receipt/onboarding communication | Unknown | To capture | |
@@ -76,6 +76,50 @@ The only captured console warning concerned non-async Google Maps loading and do
 explain the stalled transition. The request must not be retried without a fresh user
 instruction because it may already have generated an email or server-side event.
 
+## ACC-02 Contact And Student Selection
+
+### Purpose
+
+Locate the previously stored family contact and present the student records for which
+an enrolment agreement can be started.
+
+### Visible Content
+
+- confirmation that the family's information was successfully located
+- one contact row with Name, Last Updated, Address, Email and Mobile Phone columns
+- a student table with Student Name, Last Updated, Form Status and Action columns
+- three matched student records in the observed family account
+- `Not Started` in the Form Status column for all three records
+- a `Start` action for each existing student
+- a separate `START A NEW ENROLMENT AGREEMENT FORM` area with required Student First
+  Name and Student Last Name fields
+- the new-agreement Start button disabled while both new-student fields are empty
+
+### Status Meaning
+
+`Not Started` on this screen refers to the **enrolment agreement / acceptance form**,
+not to the earlier enrolment application. This is confirmed by comparing the two
+workflows:
+
+- a student whose earlier enrolment application had already been submitted was still
+  shown as `Not Started` in the acceptance workflow
+- a different student had an open autosaved application draft on the application route
+  while the corresponding acceptance row also showed `Not Started`
+- the acceptance page labels its creation area `START A NEW ENROLMENT AGREEMENT FORM`,
+  making the status namespace explicit
+
+The acceptance workflow therefore maintains a separate form instance or status record
+from the original application. The displayed `Last Updated` value may be inherited from
+or associated with the student/application record; its exact source has not been
+verified.
+
+### Rosewood Design Implication
+
+Rosewood should never show a bare `Not Started` label after an application has already
+been submitted. Statuses should be qualified by workflow, for example `Application:
+Submitted` and `Enrolment agreement: Not started`, with the current stage stated in the
+page heading and family-facing explanation.
+
 ## Working Data-Model Hypothesis
 
 The acceptance link is distinct from the earlier application link. Combined with the
@@ -91,14 +135,16 @@ Contact
                   -> Guardian acceptance signatures
 ```
 
-This is an inference. The acceptance gateway has not yet exposed matched records,
-agreement data or signatures.
+The separate acceptance status is now directly observed. The exact backend entity
+boundaries remain an inference because the agreement, low-level requests and staff-side
+records have not been inspected.
 
 ## Questions For The Next Authorised Observation
 
 - Does Next send a six-digit OTP using the same 30-minute template as application access?
 - Does it match the contact, student, submitted application or offer before showing data?
-- Can more than one offered student appear?
+- Why were three student records eligible to start an agreement, and does every row
+  represent an active offer?
 - Is the offer response deadline rechecked after verification?
 - Are Accept and Decline reversible before final submission?
 - Does the acceptance agreement reuse application data or present a separate record?
@@ -120,7 +166,7 @@ agreement data or signatures.
 - [ ] Successful verification screen
 - [ ] Verification email template
 - [ ] Error, retry, resend and change-email behavior
-- [ ] Contact/student/offer matching screen
+- [x] Contact/student matching screen and acceptance-specific status
 - [ ] Acceptance agreement content
 - [ ] Conditional fields and validation
 - [ ] Fee or payment obligations
