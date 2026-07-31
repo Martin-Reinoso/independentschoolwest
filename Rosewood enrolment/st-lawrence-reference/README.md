@@ -93,6 +93,9 @@ neutral Rosewood reference styling.
 - `02-form-and-rules.md`: screens, fields, validation, documents and consent
 - `03-communications.md`: emails, confirmations, reminders and staff actions
 - `04-rosewood-decisions.md`: adopt, adapt, defer and reject decisions
+- `source-documents/`: point-in-time third-party PDF snapshots with provenance and
+  integrity hashes
+- `walkthrough/`: static, non-submitting HTML process map and captured-screen replicas
 
 The ignored `raw/` directory may be used for temporary local working material, but
 restricted Google Drive is the durable location for raw evidence.
