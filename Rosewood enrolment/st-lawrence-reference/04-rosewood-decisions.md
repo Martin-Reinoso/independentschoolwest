@@ -26,6 +26,11 @@ Every material St Lawrence feature should receive an explicit Rosewood dispositi
 | RWD-010 | Separate accept and decline actions | SLB-EMAIL-012 | Pending | Explicit branches provide a clear outcome and enable follow-up. | Rosewood enrolment lead | Capture both interfaces and define confirmation messages. |
 | RWD-011 | Offer expires after 48 hours | SLB-EMAIL-012 | Pending | A short deadline may assist capacity planning but could create accessibility and fairness concerns. | Rosewood governance | Approve a response window and exception process. |
 | RWD-012 | All recorded guardians sign the acceptance agreement | SLB-EMAIL-012 | Pending | This may strengthen the acceptance record but requires legal and operational review. | Rosewood governance | Confirm guardian rules, disputes, court orders and incomplete signatures. |
+| RWD-013 | Public single-page expression-of-interest form | SLB-001 | Pending | A low-friction public entry point is useful, but Rosewood must distinguish an enquiry from an application and invitation. | Rosewood enrolment lead | Define the public EOI purpose, outcome, response time and transition to invitation. |
+| RWD-014 | Consent to promotional and informational messages is inferred from contact entry | SLB-001 | Pending | Bundled marketing consent may not provide the clarity or choice Rosewood wants. | Rosewood privacy lead | Obtain privacy review and design separate, explicit communication choices if required. |
+| RWD-015 | EOI has no visible collection notice or privacy-policy link | SLB-001 | Pending | Rosewood should explain collection, use, storage and disclosure at the point of entry. | Rosewood privacy lead | Add approved collection notice and privacy-policy links before production. |
+| RWD-016 | Binary gender field and detailed religion/additional-needs categories at enquiry stage | SLB-001 | Pending | These fields may be unnecessarily restrictive or collect sensitive data earlier than needed. | Rosewood governance and privacy leads | Test necessity, inclusivity, lawful basis and collection timing for each field. |
+| RWD-017 | Localised current-school and discovery-source lists | SLB-001 | Pending | Structured options support reporting, but lists require maintenance and an accessible Other path. | Rosewood enrolment lead | Define Rosewood lists, ownership and review schedule. |
 
 ## Principles
 

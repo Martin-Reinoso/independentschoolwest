@@ -10,15 +10,15 @@ behaviour from staff activity and family activity.
 
 | Order | Stage | Actor | Trigger | Output | Source ID | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Submit initial enquiry | Family | Family expresses interest | Enquiry record | SLB-EMAIL-001 | Interface to capture |
+| 1 | Submit expression of interest | Family | Family completes the public single-page form | Enquiry record | SLB-001, SLB-EMAIL-001 | Interface captured; submission not tested |
 | 2 | Acknowledge enquiry | Enquiry Tracker | Enquiry received | Confirmation email and indicative review timing | SLB-EMAIL-001 | Captured |
 | 3 | Review zone and initial eligibility | Enrolment staff | Staff reviews enquiry | Zone decision or next-step advice | SLB-EMAIL-002 | Captured |
 | 4 | Consider exceptional circumstances | Enrolment staff | Out-of-zone family supplies context | Capacity-based response and possible release-letter requirement | SLB-EMAIL-002 | Captured |
 | 5 | Reconfirm waitlist interest | Enrolment staff and family | Place is not yet offered | Yes or no response recorded by a deadline | SLB-EMAIL-003 | Captured |
 | 6 | Issue invitation to apply | Enrolment staff via Enquiry Tracker | Family is progressed | Application link | SLB-EMAIL-004 | Captured |
-| 7 | Start application with matching email | Family | Application link opened | Existing enquiry details may prefill | SLB-EMAIL-004, SLB-001 | Interface to capture |
+| 7 | Start application with matching email | Family | Application link opened | Existing enquiry details may prefill | SLB-EMAIL-004, SLB-002 | Interface to capture |
 | 8 | Verify email address | Enquiry Tracker and family | Application access begins | One-time passcode valid for 30 minutes | SLB-EMAIL-005 | Captured |
-| 9 | Complete application | Family | Verification succeeds | Application data and uploaded evidence | SLB-001 | To capture |
+| 9 | Complete application | Family | Verification succeeds | Application data and uploaded evidence | SLB-002 | To capture |
 | 10 | Obtain all required signatures | Family and other recorded signatories | Application is ready to sign | Completed signature set | SLB-EMAIL-006 | Rule captured; interface to capture |
 | 11 | Submit application | Enquiry Tracker | All required signatures are received | Submitted application | SLB-EMAIL-006 | Captured |
 | 12 | Confirm receipt | Enquiry Tracker | Application is submitted | Receipt, unique reference, timestamp and view link | SLB-EMAIL-007 | Captured |
@@ -47,7 +47,7 @@ behaviour from staff activity and family activity.
 
 ## Open Questions
 
-- What fields, declarations, uploads and validation appear in the initial enquiry and application interfaces?
+- What fields, declarations, uploads and validation appear in the invited application interface?
 - Can a family save and return?
 - How does a second parent or guardian receive and complete a signature request?
 - What is displayed after OTP expiry, failed verification or an interrupted session?
