@@ -192,6 +192,24 @@ read-only inherited contact. It also reinforces that contact permission and lega
 signing responsibility are related in the source interface but should be modelled as
 separate concepts for Rosewood.
 
+### Guardian Completeness Confirmation
+
+Below Add Contact, the required all-caps confirmation is initially unchecked and the
+entire checkbox/message row has a dotted red validation outline. The family is asked to
+confirm either that every additional legal parent or guardian has been entered through
+Add Contact, or that there is no additional parent or guardian to add.
+
+One explicitly authorised checkbox click produced this sequence:
+
+1. the checkbox became checked and the dotted red outline disappeared immediately
+2. the global cloud state changed from `Saved` to `Unsaved Changes` with a sync icon
+3. after approximately 1.8 seconds, the global state returned to `Saved` with the
+   cloud-complete icon
+
+This provides direct evidence that validation feedback is reactive and that a checkbox
+change is persisted through the same asynchronous autosave mechanism as other agreement
+data. The checkbox remained checked after the save completed. No other value was changed.
+
 ## Working Data-Model Hypothesis
 
 The acceptance link is distinct from the earlier application link. Combined with the
@@ -245,6 +263,7 @@ records have not been inspected.
 - [x] Guardian/signatory model
 - [x] Electronic signature interface
 - [x] Save-state indicator
+- [x] Required guardian-completeness confirmation and autosave cycle
 - [x] Required conduct documents
 - [ ] Final confirmation
 - [ ] Acceptance receipt and onboarding communications

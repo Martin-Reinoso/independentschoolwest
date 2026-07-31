@@ -139,6 +139,9 @@
   exposed required contact permission plus a second-contact Remove action.
 - The second-contact permission defaults to Yes. Selecting No is described as
   suppressing both school communication and the separate signature-request email.
+- The no-more-guardians confirmation initially has a dotted red outline. Checking it
+  clears the outline immediately, changes `Saved` to `Unsaved Changes`, then returns
+  to `Saved` after asynchronous persistence.
 - The contact panel treats provision of mandatory email/mobile details as agreement
   to promotional and informational messages and describes unsubscribe/STOP only for
   promotional communications.

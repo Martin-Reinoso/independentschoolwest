@@ -58,6 +58,26 @@ document.querySelectorAll('[data-loading-link]').forEach((link) => {
   });
 });
 
+document.querySelectorAll('[data-guardian-confirmation]').forEach((confirmation) => {
+  const checkbox = confirmation.querySelector('input[type="checkbox"]');
+  const saveState = document.querySelector('.save-state');
+  const saveLabel = saveState?.querySelector('[data-save-label]');
+  let saveTimer;
+  const update = () => confirmation.classList.toggle('is-confirmed', checkbox.checked);
+  checkbox.addEventListener('change', () => {
+    update();
+    if (!saveState || !saveLabel) return;
+    window.clearTimeout(saveTimer);
+    saveState.classList.add('is-unsaved');
+    saveLabel.textContent = 'Unsaved Changes';
+    saveTimer = window.setTimeout(() => {
+      saveState.classList.remove('is-unsaved');
+      saveLabel.textContent = 'Saved';
+    }, 1200);
+  });
+  update();
+});
+
 document.querySelectorAll('[data-static-action]').forEach((button) => {
   button.addEventListener('click', () => {
     const form = button.closest('form');
