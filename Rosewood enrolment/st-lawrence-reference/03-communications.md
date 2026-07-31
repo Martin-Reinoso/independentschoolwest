@@ -11,7 +11,7 @@ paraphrased unless publication rights have been confirmed.
 | SLB-COM-003 | Family provides exceptional circumstances | Enrolment staff | Family | Zone discussion reply | Clarify whether an exception may be considered | A release letter may be requested if the zoned school has no capacity; no outcome is guaranteed | None observed | SLB-EMAIL-002 |
 | SLB-COM-004 | Waitlist is being reviewed | Enrolment team via Enquiry Tracker | Family | Continued-interest check | Confirm whether the family wants to remain in consideration | Requests a yes or no response by a stated deadline | Reply action | SLB-EMAIL-003 |
 | SLB-COM-005 | Family is approved to progress | Enrolment team via Enquiry Tracker | Family | Invitation to apply | Open the formal application stage | Instructs the family to use the same email so enquiry data can prefill | Application link; duplicate dispatch observed | SLB-EMAIL-004 |
-| SLB-COM-006 | Application access requested | Enquiry Tracker automation | Family | One-time passcode | Verify application access | Code expires after 30 minutes | Application continuation link | SLB-EMAIL-005 |
+| SLB-COM-006 | Application access requested | Enquiry Tracker automation | Family | Verification code for the school enrolment form | Verify application access | Six-digit one-time code; ignore if not requested; code expires after 30 minutes; message is automatically generated and cannot receive replies | No link observed; family returns to the browser page where the code was requested | SLB-EMAIL-005, SLB-EMAIL-013 |
 | SLB-COM-007 | Last required application signature received | Enquiry Tracker automation | Family | All signatures complete | Confirm that the application can now be submitted | Submission occurs only after all required signatures are received | None observed | SLB-EMAIL-006 |
 | SLB-COM-008 | Application submitted | Enquiry Tracker automation | Family | Application receipt | Confirm successful submission and provide a reference | Includes a unique ID, timestamp and expected follow-up according to starting year | View-submitted-application link | SLB-EMAIL-007 |
 | SLB-COM-009 | Staff review identifies additional evidence | Enrolment team via Enquiry Tracker | Family | Document request | Complete the evidence record | Requests the latest school report and either a parent citizenship certificate or passport | Reply-by-email instruction | SLB-EMAIL-008 |
@@ -52,5 +52,7 @@ paraphrased unless publication rights have been confirmed.
   the actual family reference is restricted.
 - Link delivery: system links are wrapped by an email tracking service. Active,
   family-specific URLs must never be copied into this repository.
+- Passcode delivery: the verification email contains the code itself but no application
+  link; it instructs the family to enter the code on the already-open web page.
 - Footer behaviour: system emails include an unsubscribe footer. Staff Google Group
   messages include confidentiality and cloud-service privacy wording.

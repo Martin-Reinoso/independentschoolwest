@@ -18,7 +18,7 @@ behaviour from staff activity and family activity.
 | 6 | Issue invitation to apply | Enrolment staff via Enquiry Tracker | Family is progressed | Application link | SLB-EMAIL-004 | Captured |
 | 7 | Open private application gateway | Family | Invitation link opened | Introductory screen with policies, privacy notices, document checklist and email field | SLB-EMAIL-004, SLB-002 | Captured |
 | 8 | Identify the existing enquiry | Family and Enquiry Tracker | Family enters the same email used for the EOI | Existing enquiry details may be matched and prefilled | SLB-002, SLB-EMAIL-004 | Gateway captured; Next action not tested |
-| 9 | Verify email address | Enquiry Tracker and family | Application access continues | Required code field, Verify, Resend code and Change email actions; passcode valid for 30 minutes | SLB-004, SLB-EMAIL-005 | Interface and email captured |
+| 9 | Verify email address | Enquiry Tracker and family | Application access continues | Required code field, Verify, Resend code and Change email actions; six-digit passcode valid for 30 minutes | SLB-004, SLB-EMAIL-005, SLB-EMAIL-013 | Interface and repeated email template captured |
 | 10 | Complete application | Family | Verification succeeds | Application data and uploaded evidence | SLB-003 | To capture |
 | 11 | Obtain all required signatures | Family and other recorded signatories | Application is ready to sign | Completed signature set | SLB-EMAIL-006 | Rule captured; interface to capture |
 | 12 | Submit application | Enquiry Tracker | All required signatures are received | Submitted application | SLB-EMAIL-006 | Captured |

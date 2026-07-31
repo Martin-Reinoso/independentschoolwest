@@ -26,6 +26,8 @@ Do not include active access links, tokens or personal information.
 | SLB-EMAIL-010 | Email | Interview booking confirmation | 2026-07-04 | Restricted Gmail mailbox | Yes | Included appointment details and a calendar file. |
 | SLB-EMAIL-011 | Email | Interview reminder | 2026-07-13 | Restricted Gmail mailbox | Yes | Sent approximately one day before the booked event. |
 | SLB-EMAIL-012 | Email | Offer of place | 2026-07-31 | Restricted Gmail mailbox | Yes | Active acceptance and decline links are deliberately excluded; the offer states a 48-hour response window. |
+| SLB-EMAIL-013 | Email | Repeated one-time passcode request | 2026-07-31 | Restricted Gmail mailbox | Yes | Confirms the same access-verification template is sent on a later return. The live code and recipient address are deliberately excluded. |
+| SLB-WALK-002 | Static HTML | Sanitised one-time passcode email replica | 2026-07-31 | Public repository | Yes | Structural reference only. It contains no recipient address, active code, private URL or tracking link. |
 
 ## Capture Status
 

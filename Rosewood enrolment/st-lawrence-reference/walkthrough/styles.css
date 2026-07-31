@@ -98,6 +98,23 @@ a { color: inherit; }
 .otp-actions { display: flex; gap: 26px; align-items: center; width: 300px; margin: 34px 0 0 8px; }
 .otp-actions button, .otp-actions a { padding: 0; color: #999; background: none; border: 0; font: 12px/1 Roboto, Helvetica, Arial, sans-serif; text-decoration: none; text-transform: uppercase; }
 
+/* Sanitised verification email */
+.email-page { min-height: 100vh; color: #202124; background: #f4f7f8; font-family: Roboto, Helvetica, Arial, sans-serif; }
+.email-shell { width: min(760px, calc(100% - 40px)); margin: 58px auto 90px; }
+.email-context { margin-bottom: 18px; color: #5f6368; font-size: 13px; }
+.email-card { overflow: hidden; background: #fff; border: 1px solid #dfe3e7; border-radius: 8px; box-shadow: 0 12px 36px #092f4b14; }
+.email-heading { padding: 24px 30px 20px; border-bottom: 1px solid #edf0f2; }
+.email-heading h1 { margin: 0 0 20px; color: #202124; font-size: 22px; font-weight: 400; }
+.email-sender { display: grid; grid-template-columns: 42px 1fr; gap: 12px; align-items: center; }
+.email-avatar { display: grid; place-items: center; width: 42px; height: 42px; color: #fff; background: var(--purple); border-radius: 50%; font-weight: 700; }
+.email-sender p { margin: 0; font-size: 13px; }
+.email-sender span { color: #5f6368; }
+.email-body { padding: 38px 48px 46px; color: #343a40; font: 15px/1.65 Arial, sans-serif; }
+.email-body p { margin: 0 0 22px; }
+.email-code { margin: 30px 0; padding: 22px; color: #263238; background: #f4f1f7; border-left: 4px solid var(--purple); text-align: center; font: 700 32px/1.1 monospace; letter-spacing: .24em; }
+.email-note { margin-top: 30px; padding-top: 22px; color: #5f6368; border-top: 1px solid #edf0f2; font-size: 13px; }
+.email-safety { padding: 15px 30px; color: #5f6368; background: #fff8de; border-top: 1px solid #f1e3a8; font-size: 12px; }
+
 /* Public EOI */
 .eoi-page { color: #434343; background: #fff; font-family: 'Open Sans', Helvetica, Arial, sans-serif; }
 .eoi-header { height: 78px; color: #fff; background: var(--purple-bright); }
@@ -163,6 +180,10 @@ a { color: inherit; }
   .gateway-next { margin-top: 60px; }
   .otp-form { width: 100%; }
   .otp-actions { width: 100%; margin-left: 0; }
+  .email-shell { width: calc(100% - 24px); margin-top: 26px; }
+  .email-heading { padding: 20px; }
+  .email-body { padding: 30px 22px 34px; }
+  .email-code { font-size: 27px; }
   .form-grid { grid-template-columns: 1fr; }
   .wide { grid-column: auto; }
   .eoi-form-shell { margin-top: 45px; }
