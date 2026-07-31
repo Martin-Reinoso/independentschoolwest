@@ -31,7 +31,7 @@ details and application identifiers are excluded from this public repository.
 | 4 | ACC-01 | Verification or identity check | The earlier observation remained on `Sending...`; a later authorised session reached the matched-record screen after verification | Partially captured | SLB-008, SLB-009 |
 | 5 | ACC-02 | Match contact and students eligible for an enrolment agreement | One agreement later showed `In Progress` with `Continue`; the other two remained `Not Started` with `Start` | Captured | SLB-009, SLB-010 |
 | 6 | ACC-03 | Continue the enrolment agreement | Continue changed to a private agreement route, briefly showed only a progress bar, then opened the five-step form with `Saved` status | Captured | SLB-010 |
-| 7 | ACC-04 | Review agreement conditions and signatures | Student, Parent/Guardian, Documents, Conditions and Signature steps were inspected without changing any value | Captured | SLB-010 |
+| 7 | ACC-04 | Review agreement conditions, contacts and signatures | Student, Parent/Guardian, Documents, Conditions and Signature steps were inspected; the second-contact accordion was expanded without changing any value | Captured | SLB-010, SLB-011 |
 | 8 | ACC-05 | Final acceptance confirmation | Unknown | To capture | |
 | 9 | ACC-EMAIL | Send acceptance receipt/onboarding communication | Unknown | To capture | |
 
@@ -168,6 +168,29 @@ Visiting incomplete steps did not block navigation. The stepper changed visited 
 to an editable state and marked incomplete Parent/Guardian, Conditions and Signature
 steps with `Missing required fields.` No field, checkbox, signature, upload or Submit
 action was changed during this capture.
+
+### Second Contact Accordion Behavior
+
+Opening the existing second-contact summary produced an independent expanded panel:
+
+- the first contact remained expanded; the interface did not behave as an exclusive
+  one-panel accordion
+- the collapsed second-contact header initially included the guardian name and
+  `(Missing Fields)`; while expanded, the header showed only `2nd Contact Details`
+- the expanded panel repeated Primary Information, share choice, name, email, mobile
+  and the promotional/informational messaging notice
+- Relationship to Student and Contact Type remained blank and required
+- a separate required contact-permission question appeared with `Yes` selected and
+  `No, do not contact them` as the alternative
+- help text said that selecting No prevents school communication and the separate
+  signature-request email, and advises contacting the office when unsure
+- a Remove action appeared only for the second contact
+- Add Contact and the no-more-guardians confirmation remained below both panels
+
+This confirms the second guardian is an editable agreement participant rather than a
+read-only inherited contact. It also reinforces that contact permission and legal
+signing responsibility are related in the source interface but should be modelled as
+separate concepts for Rosewood.
 
 ## Working Data-Model Hypothesis
 

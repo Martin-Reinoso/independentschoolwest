@@ -134,6 +134,11 @@
   one required acceptance declaration.
 - Parent/Guardian included prefilled contact values, share choice, relationship,
   contact type, a second contact marked Missing Fields and a no-more-guardians check.
+- Opening the second contact kept the first panel expanded, removed the guardian-name
+  and Missing Fields summary from the open header, repeated Primary Information and
+  exposed required contact permission plus a second-contact Remove action.
+- The second-contact permission defaults to Yes. Selecting No is described as
+  suppressing both school communication and the separate signature-request email.
 - The contact panel treats provision of mandatory email/mobile details as agreement
   to promotional and informational messages and describes unsubscribe/STOP only for
   promotional communications.
