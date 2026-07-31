@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Select an Enrolment Agreement - St Lawrence Process Reference</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="gateway-page selection-page">
+  <nav class="reference-nav" aria-label="Reference navigation">
+    <a href="acceptance-gateway.html">Previous: acceptance gateway</a>
+    <a href="index.html">Process map</a>
+    <a href="acceptance-agreement.html">Next: agreement</a>
+  </nav>
+  <header class="gateway-header">
+    <a href="index.html" class="gateway-logo-link" aria-label="Return to process map"><img src="assets/slb-gateway-logo.png" alt="St Lawrence of Brindisi Catholic Primary School"></a>
+    <div class="gateway-contact"><p>St Lawrence of Brindisi Catholic Primary School</p><p>31 Waterway Boulevard<br>Weir Views VIC 3338</p><p>office@slweirviews.catholic.edu.au<br>8099 6699<br>www.slweirviews.catholic.edu.au</p><p>ABN 44 357 311 791</p></div>
+  </header>
+  <main class="selection-main">
+    <div class="language-control"><label for="agreement-language">Choose Language</label><div><select id="agreement-language"><option>English</option></select><button type="button" aria-label="Refresh language">&#8635;</button></div></div>
+    <div class="reference-warning"><strong>Observed source ambiguity</strong><span>The source says “continue or start a new application” although this route creates a separate Enrolment Agreement. The wording is preserved here because it is the usability issue being studied.</span></div>
+    <section class="selection-panel">
+      <p class="selection-kicker">Select or enter a student</p>
+      <p>Your information has been successfully located.</p>
+      <div class="table-scroll"><table class="record-table"><thead><tr><th>Name</th><th>Last Updated</th><th>Address</th><th>Email</th><th>Mobile Phone</th></tr></thead><tbody><tr><td>Invited contact</td><td>Removed</td><td>Removed</td><td>synthetic@example.invalid</td><td>0400 000 000</td></tr></tbody></table></div>
+      <p>Please select a student to continue or start a new application.</p>
+      <div class="table-scroll"><table class="record-table"><thead><tr><th>Student Name</th><th>Last Updated</th><th>Form Status</th><th>Action</th></tr></thead><tbody>
+        <tr><td>Offered student</td><td>Removed</td><td><span class="status-chip in-progress">In Progress</span></td><td><a class="table-action" href="acceptance-agreement.html" data-loading-link>Continue</a></td></tr>
+        <tr><td>Associated student record</td><td>Removed</td><td><span class="status-chip">Not Started</span></td><td><a class="table-action muted" href="acceptance-agreement.html" data-loading-link>Start</a></td></tr>
+        <tr><td>Associated student record</td><td>Removed</td><td><span class="status-chip">Not Started</span></td><td><a class="table-action muted" href="acceptance-agreement.html" data-loading-link>Start</a></td></tr>
+      </tbody></table></div>
+    </section>
+    <section class="selection-panel new-student-panel">
+      <p class="selection-kicker">Start a new enrolment agreement form</p>
+      <p>Please enter Student details below</p>
+      <form class="selection-form" data-static-form data-next="acceptance-agreement.html"><label>Student First Name <span>*</span><input name="student-first-name" required></label><label>Student Last Name <span>*</span><input name="student-last-name" required></label><button type="submit" class="gateway-next" disabled>Start</button><p class="static-feedback" role="status" hidden></p></form>
+    </section>
+  </main>
+  <div class="route-loader" data-route-loader hidden><div></div><p>Loading enrolment agreement...</p></div>
+  <footer class="gateway-footer"><img src="assets/slb-gateway-footer.jpg" alt="A light to the mind and a fire to the will"></footer>
+  <script src="walkthrough.js"></script>
+</body>
+</html>

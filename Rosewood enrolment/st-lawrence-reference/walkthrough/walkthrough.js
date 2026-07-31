@@ -47,6 +47,17 @@ document.querySelectorAll('[data-print]').forEach((button) => {
   button.addEventListener('click', () => window.print());
 });
 
+document.querySelectorAll('[data-loading-link]').forEach((link) => {
+  link.addEventListener('click', (event) => {
+    event.preventDefault();
+    const loader = document.querySelector('[data-route-loader]');
+    if (loader) loader.hidden = false;
+    window.setTimeout(() => {
+      window.location.href = link.href;
+    }, 650);
+  });
+});
+
 document.querySelectorAll('[data-static-action]').forEach((button) => {
   button.addEventListener('click', () => {
     const form = button.closest('form');

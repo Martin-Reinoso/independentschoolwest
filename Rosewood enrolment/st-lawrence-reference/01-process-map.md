@@ -33,8 +33,8 @@ behaviour from staff activity and family activity.
 | 21 | Attend and assess interview | Family and school | Appointment occurs | Enrolment assessment outcome | SLB-EMAIL-009 | Inferred; assessment method unknown |
 | 22 | Issue offer | Enrolment staff via Enquiry Tracker | School approves a place | Offer with acceptance and decline options | SLB-EMAIL-012 | Captured |
 | 23 | Accept or decline | Family | Offer is received | Accept opens a separate email-matching gateway with privacy links; after verification, the system locates the reusable contact and presents matched students | SLB-EMAIL-012, SLB-008, SLB-009 | Accept gateway and matched-record screen captured; decline interface still to capture |
-| 24 | Start an enrolment agreement | Family | A matched student is selected | A separate acceptance-form record begins; existing student rows show acceptance-specific `Not Started` and Start regardless of earlier application status | SLB-009 | Selection captured; Start was not pressed and agreement content is still to capture |
-| 25 | Complete acceptance signatures | All parents or guardians recorded on application | Acceptance agreement is completed | Signed enrolment acceptance form | SLB-EMAIL-012, SLB-008, SLB-009 | Rule captured; agreement and signature interfaces not reached |
+| 24 | Start or continue an enrolment agreement | Family | A matched student is selected | A separate acceptance record changes from `Not Started`/Start to `In Progress`/Continue; Continue briefly shows a progress bar then opens a distinct private agreement route | SLB-009, SLB-010 | Captured; source wording incorrectly calls this a new application |
+| 25 | Complete acceptance conditions and signatures | All parents or guardians recorded on application | Five-step agreement is completed | Acceptance declaration, signed conduct documents, conditions, permissions and staged guardian signatures | SLB-EMAIL-012, SLB-010 | Interface captured read-only; no value, signature or submission action changed |
 | 26 | Complete post-acceptance onboarding | School and family | Acceptance is complete | Onboarding communications and school-readiness tasks | | To capture |
 
 ## Conditional Branches
@@ -65,6 +65,8 @@ behaviour from staff activity and family activity.
 - What caused the duplicate application invitation on consecutive days?
 - What criteria and staff actions determine interview shortlisting and the final offer?
 - What appears on the acceptance and decline pages before a family commits?
+- Does the second guardian receive the same agreement, a signature-only view or a
+  different verification flow after the first guardian submits?
 - Why does the acceptance selector expose three student records with Start actions, and
   are all three backed by active offers or merely associated with the matched contact?
 - Does the acceptance screen's Last Updated value come from the student, application,

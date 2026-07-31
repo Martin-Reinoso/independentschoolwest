@@ -11,6 +11,8 @@
 | APP-03 | Online enrolment form | Collect and display the complete application, evidence, agreements, permissions and signatures | Student selection | Pending signatures or submitted application | SLB-003 |
 | APP-03E | Editable online enrolment form | Collect the application across five navigable steps with conditional fields, validation markers, uploads and signature capture | Student selection | Pending signatures or submitted application | SLB-006 |
 | ACC-00 | Offer acceptance gateway | Begin formal acceptance and match the recipient using the same email address used previously | Private Accept link in offer email | Expected verification screen; first observed transition remained on `Sending...` | SLB-008 |
+| ACC-02 | Acceptance contact and student selection | Show matched records and agreement-specific Not Started/In Progress states | Acceptance verification | Start or Continue agreement | SLB-009, SLB-010 |
+| ACC-03 | Enrolment Agreement | Collect acceptance, guardians, conduct documents, conditions and signatures across five steps | Acceptance selector | Pending signatures or submitted acceptance | SLB-010 |
 
 ### EOI-01 Interface Observations
 
@@ -118,6 +120,31 @@
 - The detailed status and future capture checklist are maintained in
   `06-acceptance-process-map.md`.
 
+### ACC-02 And ACC-03 Acceptance Observations
+
+- The selector reuses the application screen structure and the exact instruction
+  `Please select a student to continue or start a new application.` even though the
+  statuses and actions belong to a separate Enrolment Agreement.
+- After Start had previously been used, the selected student row showed `In Progress`
+  with `Continue`; the other two matched rows remained `Not Started` with `Start`.
+- Continue navigated to a distinct private route after a brief progress-bar-only state.
+- The agreement reused the five markers Student, Parent/Guardian, Documents,
+  Conditions and Signature and showed `Saved` with a cloud-complete icon.
+- Student included prefilled identity, year-level and commencement-year values plus
+  one required acceptance declaration.
+- Parent/Guardian included prefilled contact values, share choice, relationship,
+  contact type, a second contact marked Missing Fields and a no-more-guardians check.
+- The contact panel treats provision of mandatory email/mobile details as agreement
+  to promotional and informational messages and describes unsubscribe/STOP only for
+  promotional communications.
+- Documents required signed Parent and Student Codes of Conduct.
+- Conditions included the full enrolment agreement, school-transfer consent,
+  photography/recording permission and ICT acceptable-use acknowledgement.
+- Signature required an IP-address acknowledgement, a broad guardian declaration,
+  local electronic signature and date. A second guardian was marked for contact after
+  submission.
+- No value, file, signature or submission action was changed during capture.
+
 ### APP-03 Interface Observations
 
 - The submitted record is presented as one very long, read-only page rather than a
@@ -205,6 +232,13 @@
 | Item | Who agrees or signs | Required when | Exact legal source identified | Process effect | Source ID |
 | --- | --- | --- | --- | --- | --- |
 | Promotional and informational email/SMS notice | Primary contact, by providing an email address or mobile number | Contact details are entered | No; wording is presented in the live third-party form | Treats provision of contact details as agreement to receive promotional and informational messages; promotional messages can be stopped through unsubscribe or STOP | SLB-001 |
+| Acceptance-form promotional and informational notice | Parent or guardian, by providing required email/mobile details | Enrolment Agreement contact step | No; wording is presented in the live third-party form | Bundles promotional and informational messaging with required contact details; promotional messages can be stopped through unsubscribe or STOP | SLB-010 |
+| Offer acceptance declaration | Parent or guardian | Student step of Enrolment Agreement | No independent governing source identified | Records acceptance of the offered place | SLB-010 |
+| Signed Parent and Student Codes of Conduct | Family/student as applicable | Documents step of Enrolment Agreement | Public source documents linked by the form | One signed file for each code is required before completion | SLB-010 |
+| Consent to transfer school information | Parent or guardian | Conditions step of Enrolment Agreement | MACS privacy documents referenced | Authorises relevant health and educational information to transfer between schools | SLB-010 |
+| Photography and recording permission | Parent or guardian | Conditions step of Enrolment Agreement | Form references MACS Privacy Collection Notice | Explicit give/do-not-give choice for listed uses | SLB-010 |
+| ICT Acceptable Usage Policy acknowledgement | Parent or guardian | Conditions step of Enrolment Agreement | Policy is referenced but not archived in this capture | Required read-and-understand acknowledgement | SLB-010 |
+| Acceptance signature IP acknowledgement and declaration | Current guardian; second guardian contacted later | Signature step of Enrolment Agreement | No independent governing source identified | Records signing IP, signature/date and broad consent; second guardian signs separately | SLB-010 |
 | Enrolment and privacy document presentation | Parent or guardian | Before email verification | Enrolment Policy, MACS Enrolment Procedure, MACS Privacy Policy and Privacy Collection Notice are linked | Family is asked to familiarise themselves with the enrolment documents and read the privacy documents; no acknowledgement checkbox is visible on this screen | SLB-002 |
 | Initial application signatures | All people the application identifies as required signatories | Before application submission | No; email evidence describes the workflow only | Application is not submitted until all required signatures are received | SLB-EMAIL-006 |
 | Enrolment acceptance agreement | All parents or guardians recorded on the original application | After an offer is accepted | No; acceptance form wording has not been captured | Acceptance requires the recorded guardian signature set | SLB-EMAIL-012 |

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Acceptance Gateway - St Lawrence Process Reference</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="gateway-page">
+  <nav class="reference-nav" aria-label="Reference navigation">
+    <a href="index.html">Previous: offer</a>
+    <a href="index.html">Process map</a>
+    <a href="acceptance-selection.html">Next: matched students</a>
+  </nav>
+  <header class="gateway-header">
+    <a href="index.html" class="gateway-logo-link" aria-label="Return to process map"><img src="assets/slb-gateway-logo.png" alt="St Lawrence of Brindisi Catholic Primary School"></a>
+    <div class="gateway-contact"><p>St Lawrence of Brindisi Catholic Primary School</p><p>31 Waterway Boulevard<br>Weir Views VIC 3338</p><p>office@slweirviews.catholic.edu.au<br>8099 6699<br>www.slweirviews.catholic.edu.au</p><p>ABN 44 357 311 791</p></div>
+  </header>
+  <main class="gateway-main acceptance-gateway-main">
+    <div class="language-control"><label for="acceptance-language">Choose Language</label><div><select id="acceptance-language"><option>English</option></select><button type="button" aria-label="Refresh language">&#8635;</button></div></div>
+    <section class="gateway-copy">
+      <p>Dear Parent / Guardian,</p>
+      <p>This process is used to formally accept the offered place for your child.</p>
+      <p>Please use the same email address that you previously used with the school.</p>
+      <p>For information about the handling of personal information, read the <a href="../source-documents/macs-privacy-policy.pdf">Privacy Policy</a> and <a href="../source-documents/macs-privacy-collection-notice-parents-students.pdf">Privacy Collection Notice - Parents and Students</a>.</p>
+      <form class="gateway-form" data-static-form data-next="acceptance-selection.html">
+        <label for="acceptance-email">Email <span>*</span></label>
+        <input id="acceptance-email" name="email" type="email" autocomplete="off" required>
+        <button type="submit" class="gateway-next" disabled>Next</button>
+        <p class="static-feedback" role="status" hidden></p>
+      </form>
+    </section>
+  </main>
+  <footer class="gateway-footer"><img src="assets/slb-gateway-footer.jpg" alt="A light to the mind and a fire to the will"></footer>
+  <script src="walkthrough.js"></script>
+</body>
+</html>

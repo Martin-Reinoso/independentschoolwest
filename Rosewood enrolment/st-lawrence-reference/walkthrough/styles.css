@@ -126,6 +126,7 @@ a { color: inherit; }
 .record-table td { padding: 17px 14px; border-top: 1px solid #e2e4e7; }
 .status-chip { display: inline-block; padding: 5px 9px; color: #6f5620; background: #fff1c4; border-radius: 3px; font-size: 11px; }
 .status-chip.submitted { color: #29624c; background: #dceee6; }
+.status-chip.in-progress { color: #315e79; background: #dcecf5; }
 .table-action { display: inline-block; padding: 7px 15px; color: #fff; background: var(--green); border: 0; border-radius: 2px; font: 12px/1.2 Roboto, sans-serif; text-decoration: none; }
 .table-action.muted { background: #8f96a0; }
 .new-student-panel { padding-top: 8px; border-top: 1px solid #e2e4e7; }
@@ -134,6 +135,11 @@ a { color: inherit; }
 .selection-form label span, .application-page label > span, .application-page legend + span { color: #d83b32; }
 .selection-form input { width: 100%; padding: 9px 2px; border: 0; border-bottom: 1px solid #999; font-size: 16px; }
 .selection-form .gateway-next { margin: 0; }
+.route-loader { position: fixed; inset: 0; z-index: 30; display: grid; place-content: center; gap: 18px; color: #606975; background: #fff; text-align: center; }
+.route-loader[hidden] { display: none; }
+.route-loader div { width: min(520px, 70vw); height: 4px; overflow: hidden; background: #e4e6e8; }
+.route-loader div::after { content: ''; display: block; width: 42%; height: 100%; background: var(--purple); animation: route-progress .65s ease-in-out infinite alternate; }
+@keyframes route-progress { from { transform: translateX(-15%); } to { transform: translateX(155%); } }
 
 /* Submitted application */
 .application-page { color: #4a535d; background: #fff; }
@@ -241,6 +247,12 @@ a { color: inherit; }
 .signature-label { display: block; margin: 22px 0 8px; font-size: 13px; }
 .signature-pad { display: block; width: 100%; height: 150px; margin-top: 7px; background: repeating-linear-gradient(0deg, #fff, #fff 29px, #edf0f2 30px); border: 1px solid #c7ccd1; touch-action: none; }
 .signature-flow-note { margin-top: 24px; }
+.communication-notice { margin: 24px 0 8px; padding: 16px 18px; color: #5e6670; background: #f6f7f8; border-left: 3px solid #80608e; font-size: 12px; line-height: 1.55; }
+.collapsed-guardian h3 { display: flex; justify-content: space-between; gap: 18px; }
+.collapsed-guardian h3 span { color: #f4d7d7; font-size: 12px; }
+.agreement-page .app-choice > span small { display: block; margin-top: 5px; color: #7b838b; font-weight: 400; }
+.agreement-page .editable-panel > h2 { color: #59626d; font-size: 26px; font-weight: 400; }
+.agreement-page .terms-list { grid-template-columns: 1fr; }
 .submit-lock { margin: 42px 0 10px; text-align: right; }
 .submit-lock button { width: 140px; padding: 13px; color: #fff; background: #69727b; border: 0; opacity: .48; text-transform: uppercase; }
 .submit-lock p { color: #7a8188; font-size: 11px; }

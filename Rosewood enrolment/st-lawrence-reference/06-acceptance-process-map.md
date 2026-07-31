@@ -2,8 +2,9 @@
 
 ## Status And Scope
 
-**Status:** Capture in progress. The acceptance gateway and matched-contact/student
-selection screen have been observed. The agreement itself has not been started.
+**Status:** Capture in progress. The acceptance gateway, matched-contact/student
+selection screen, Continue transition and five-step agreement have been observed. No
+field was changed and the agreement was not submitted.
 
 This record maps the workflow after a family selects Accept in an offer email. It does
 not authorise accepting the place, completing an OTP, signing an agreement or
@@ -28,9 +29,9 @@ details and application identifiers are excluded from this public repository.
 | 2 | ACC-00 | Family is asked for the same email address used previously | Email becomes valid and Next is enabled | Captured | SLB-008 |
 | 3 | ACC-00T | Next is pressed once | Button changes to disabled `Sending...` | Captured | SLB-008 |
 | 4 | ACC-01 | Verification or identity check | The earlier observation remained on `Sending...`; a later authorised session reached the matched-record screen after verification | Partially captured | SLB-008, SLB-009 |
-| 5 | ACC-02 | Match contact and students eligible for an enrolment agreement | One reusable contact and three student records were shown; every agreement status was `Not Started` with a `Start` action | Captured | SLB-009 |
-| 6 | ACC-03 | Display acceptance agreement and conditions | Not opened | To capture | |
-| 7 | ACC-04 | Collect guardian decisions/signatures | Unknown | To capture | |
+| 5 | ACC-02 | Match contact and students eligible for an enrolment agreement | One agreement later showed `In Progress` with `Continue`; the other two remained `Not Started` with `Start` | Captured | SLB-009, SLB-010 |
+| 6 | ACC-03 | Continue the enrolment agreement | Continue changed to a private agreement route, briefly showed only a progress bar, then opened the five-step form with `Saved` status | Captured | SLB-010 |
+| 7 | ACC-04 | Review agreement conditions and signatures | Student, Parent/Guardian, Documents, Conditions and Signature steps were inspected without changing any value | Captured | SLB-010 |
 | 8 | ACC-05 | Final acceptance confirmation | Unknown | To capture | |
 | 9 | ACC-EMAIL | Send acceptance receipt/onboarding communication | Unknown | To capture | |
 
@@ -94,6 +95,23 @@ an enrolment agreement can be started.
 - a separate `START A NEW ENROLMENT AGREEMENT FORM` area with required Student First
   Name and Student Last Name fields
 - the new-agreement Start button disabled while both new-student fields are empty
+- after Start had previously been selected, the corresponding row changed to
+  `In Progress` with a `Continue` action and a newer Last Updated value
+
+### Usability Finding
+
+The source sentence immediately above the agreement rows says `Please select a student
+to continue or start a new application.` It does not say that the family is starting or
+continuing a separate acceptance or Enrolment Agreement form. Because the selector,
+status labels, action names and five-step shell closely resemble the earlier application
+workflow, a family can reasonably believe it is reopening or restarting the submitted
+application. The later heading `START A NEW ENROLMENT AGREEMENT FORM` is not enough to
+resolve the ambiguity for the existing-student rows above it.
+
+Rosewood should use an explicit page title such as `Accept your offer`, label each row
+`Enrolment agreement status`, and use actions such as `Start acceptance form` and
+`Continue acceptance form`. It should also show the earlier application status
+separately when that context is useful.
 
 ### Status Meaning
 
@@ -119,6 +137,37 @@ Rosewood should never show a bare `Not Started` label after an application has a
 been submitted. Statuses should be qualified by workflow, for example `Application:
 Submitted` and `Enrolment agreement: Not started`, with the current stage stated in the
 page heading and family-facing explanation.
+
+## ACC-03 And ACC-04 Agreement Form
+
+Continue retained the school header, navigated from the request route to a distinct
+private agreement route and briefly displayed only a progress bar. The loaded page
+showed `Saved` with a cloud-complete icon and reused the five-step shell from the earlier
+application:
+
+1. **Student:** prefilled student name, year level and commencement year, followed by
+   one required `Enrolment Acceptance` radio declaration.
+2. **Parent/Guardian:** prefilled contact details, required share choice, relationship
+   and contact type, a second guardian marked `Missing Fields`, Add Contact, and a
+   required no-more-guardians confirmation.
+3. **Documents:** one signed Parent Code of Conduct and one signed Student Code of
+   Conduct are each required for upload.
+4. **Conditions:** complete enrolment terms plus acceptance, school-transfer consent,
+   photography/recording permission and ICT acceptable-use acknowledgement.
+5. **Signature:** IP-address acknowledgement, parent/guardian declaration, local
+   electronic signature and date for the current guardian; the second guardian is
+   identified as someone who will be contacted after submission.
+
+The Parent/Guardian step displays this bundled communication notice beneath the mobile
+number: providing an email and/or mobile number is treated as agreement to receive both
+promotional and informational messages, with unsubscribe or `STOP` available for
+promotional communications. Rosewood should not infer marketing consent merely from
+mandatory contact details; this requires a separate privacy and communications decision.
+
+Visiting incomplete steps did not block navigation. The stepper changed visited Student
+to an editable state and marked incomplete Parent/Guardian, Conditions and Signature
+steps with `Missing required fields.` No field, checkbox, signature, upload or Submit
+action was changed during this capture.
 
 ## Working Data-Model Hypothesis
 
@@ -147,12 +196,13 @@ records have not been inspected.
   represent an active offer?
 - Is the offer response deadline rechecked after verification?
 - Are Accept and Decline reversible before final submission?
-- Does the acceptance agreement reuse application data or present a separate record?
-- Which parent/guardian records are prefilled?
+- Does editing a prefilled agreement value update only the agreement snapshot or the
+  reusable contact/student master record?
 - Must every recorded guardian sign independently?
 - What happens when a guardian is marked `No, do not contact them`?
 - Is there a one-signature explanation or court-order branch?
-- Are fees, permissions, medical updates or new documents requested?
+- Is the bundled promotional/informational messaging notice legally and operationally
+  intended to create marketing consent from required contact fields?
 - What save/autosave states appear?
 - What receipt, reference and onboarding message follows completion?
 - What happens after OTP expiry, email mismatch, duplicate access or a stalled Sending state?
@@ -167,12 +217,12 @@ records have not been inspected.
 - [ ] Verification email template
 - [ ] Error, retry, resend and change-email behavior
 - [x] Contact/student matching screen and acceptance-specific status
-- [ ] Acceptance agreement content
-- [ ] Conditional fields and validation
-- [ ] Fee or payment obligations
-- [ ] Guardian/signatory model
-- [ ] Electronic signature behavior
-- [ ] Save-state behavior
+- [x] Acceptance agreement content and five-step structure
+- [x] Visible validation markers
+- [x] Guardian/signatory model
+- [x] Electronic signature interface
+- [x] Save-state indicator
+- [x] Required conduct documents
 - [ ] Final confirmation
 - [ ] Acceptance receipt and onboarding communications
 - [ ] Decline path
