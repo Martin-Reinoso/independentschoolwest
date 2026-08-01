@@ -239,6 +239,8 @@
 | Most recent school report | Requested after staff review of the submitted application | Not stated | Reply to enrolment email | Staff confirms receipt; further escalation not observed | SLB-EMAIL-008 |
 | Parent citizenship certificate or passport | Requested after staff review; either document was accepted | Not stated | Reply to enrolment email | Staff confirms receipt; further escalation not observed | SLB-EMAIL-008 |
 | Interview calendar file | Appointment is booked | ICS calendar file | Attached to booking confirmation | Reminder email follows near the event | SLB-EMAIL-010, SLB-EMAIL-011 |
+| Parent/Guardian/Carer Code of Conduct | Enrolment Agreement | Download, complete and sign; four-page PDF contains two parent/guardian/carer signature blocks | Agreement Documents step; one signed file required for upload | Agreement cannot be completed while required upload is absent | SLB-010, SLB-DOC-005 |
+| Student Code of Conduct | Enrolment Agreement | Download, complete and sign; three-page PDF contains student and parent/guardian/carer signature fields | Agreement Documents step; one signed file required for upload | Agreement cannot be completed while required upload is absent | SLB-010, SLB-DOC-006 |
 
 ## Consent And Declaration Register
 
@@ -247,7 +249,7 @@
 | Promotional and informational email/SMS notice | Primary contact, by providing an email address or mobile number | Contact details are entered | No; wording is presented in the live third-party form | Treats provision of contact details as agreement to receive promotional and informational messages; promotional messages can be stopped through unsubscribe or STOP | SLB-001 |
 | Acceptance-form promotional and informational notice | Parent or guardian, by providing required email/mobile details | Enrolment Agreement contact step | No; wording is presented in the live third-party form | Bundles promotional and informational messaging with required contact details; promotional messages can be stopped through unsubscribe or STOP | SLB-010 |
 | Offer acceptance declaration | Parent or guardian | Student step of Enrolment Agreement | No independent governing source identified | Records acceptance of the offered place | SLB-010 |
-| Signed Parent and Student Codes of Conduct | Family/student as applicable | Documents step of Enrolment Agreement | Public source documents linked by the form | One signed file for each code is required before completion | SLB-010 |
+| Signed Parent and Student Codes of Conduct | Family/student as applicable | Documents step of Enrolment Agreement | Exact source PDFs archived as SLB-DOC-005 and SLB-DOC-006 | One signed file for each code is required before completion | SLB-010, SLB-DOC-005, SLB-DOC-006 |
 | Consent to transfer school information | Parent or guardian | Conditions step of Enrolment Agreement | MACS privacy documents referenced | Authorises relevant health and educational information to transfer between schools | SLB-010 |
 | Photography and recording permission | Parent or guardian | Conditions step of Enrolment Agreement | Form references MACS Privacy Collection Notice | Explicit give/do-not-give choice for listed uses | SLB-010 |
 | ICT Acceptable Usage Policy acknowledgement | Parent or guardian | Conditions step of Enrolment Agreement | Policy is referenced but not archived in this capture | Required read-and-understand acknowledgement | SLB-010 |

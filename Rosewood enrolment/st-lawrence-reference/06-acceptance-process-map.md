@@ -151,7 +151,8 @@ application:
    and contact type, a second guardian marked `Missing Fields`, Add Contact, and a
    required no-more-guardians confirmation.
 3. **Documents:** one signed Parent Code of Conduct and one signed Student Code of
-   Conduct are each required for upload.
+   Conduct are each required for upload. Exact point-in-time PDFs are archived as
+   SLB-DOC-005 and SLB-DOC-006 with source URLs, page counts and hashes.
 4. **Conditions:** complete enrolment terms plus acceptance, school-transfer consent,
    photography/recording permission and ICT acceptable-use acknowledgement.
 5. **Signature:** IP-address acknowledgement, parent/guardian declaration, local
@@ -295,3 +296,26 @@ records have not been inspected.
 - [ ] Acceptance receipt and onboarding communications
 - [ ] Decline path
 - [ ] Expired-offer path
+
+## Outstanding Artifact Gaps
+
+This section is intentionally explicit so that the static walkthrough and six archived
+PDFs are not mistaken for a complete evidentiary copy of the live process.
+
+- **ICT Acceptable Usage Policy and User Agreement:** referenced in the agreement and
+  in the Student Code of Conduct, but its source/download link has not been observed.
+  No local copy is archived.
+- **Complete acceptance legal wording:** the live Conditions step was mapped by section
+  and control, but the public HTML walkthrough does not reproduce the full third-party
+  legal text verbatim. That text remains subject to source-authority and redistribution
+  review.
+- **Second-guardian signing package:** the live form states that the additional guardian
+  will be contacted after submission, but that guardian's email, access screen,
+  verification, signing view and completion behavior have not been observed.
+- **Completion outputs:** final acceptance confirmation, acceptance receipt, onboarding
+  communications and any downloadable completed agreement have not been reached.
+- **Alternative and failure paths:** decline, expired offer, invalid or expired OTP,
+  resend, change-email, duplicate access, server error and retry behavior remain
+  uncaptured.
+- **Guardian removal:** the Remove control is visible, but its confirmation, autosave,
+  validation and signature consequences have not been tested.
