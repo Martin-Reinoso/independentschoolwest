@@ -114,6 +114,12 @@ a { color: inherit; }
 .email-code { margin: 30px 0; padding: 22px; color: #263238; background: #f4f1f7; border-left: 4px solid var(--purple); text-align: center; font: 700 32px/1.1 monospace; letter-spacing: .24em; }
 .email-note { margin-top: 30px; padding-top: 22px; color: #5f6368; border-top: 1px solid #edf0f2; font-size: 13px; }
 .email-safety { padding: 15px 30px; color: #5f6368; background: #fff8de; border-top: 1px solid #f1e3a8; font-size: 12px; }
+.guardian-email + .guardian-email { margin-top: 22px; }
+.email-stage { margin: 0 0 8px; color: var(--purple); font: 700 11px/1.4 "Montserrat", sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+.email-heading h2 { margin: 0; color: #202124; font-size: 20px; font-weight: 400; }
+.email-action { display: inline-block; margin: 4px 0 26px; padding: 12px 22px; color: #fff; background: var(--purple); border-radius: 4px; font-weight: 700; }
+.email-flow-marker { display: flex; align-items: center; gap: 14px; margin: 26px 0; color: #5f6368; font-size: 12px; text-align: center; }
+.email-flow-marker::before, .email-flow-marker::after { content: ""; flex: 1; height: 1px; background: #cfd7dc; }
 
 /* Verified contact selection */
 .selection-main, .application-shell { width: min(1180px, calc(100% - 48px)); margin: 34px auto 80px; }

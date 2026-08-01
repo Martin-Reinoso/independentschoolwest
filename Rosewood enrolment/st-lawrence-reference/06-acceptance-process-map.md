@@ -3,8 +3,9 @@
 ## Status And Scope
 
 **Status:** Capture in progress. The acceptance gateway, matched-contact/student
-selection screen, Continue transition and five-step agreement have been observed. No
-field was changed and the agreement was not submitted.
+selection screen, Continue transition, five-step agreement, current-guardian submission
+and the resulting additional-guardian signature-request email have been observed. The
+additional guardian has not opened or completed the current acceptance signing task.
 
 This record maps the workflow after a family selects Accept in an offer email. It does
 not authorise accepting the place, completing an OTP, signing an agreement or
@@ -32,8 +33,10 @@ details and application identifiers are excluded from this public repository.
 | 5 | ACC-02 | Match contact and students eligible for an enrolment agreement | One agreement later showed `In Progress` with `Continue`; the other two remained `Not Started` with `Start` | Captured | SLB-009, SLB-010 |
 | 6 | ACC-03 | Continue the enrolment agreement | Continue changed to a private agreement route, briefly showed only a progress bar, then opened the five-step form with `Saved` status | Captured | SLB-010 |
 | 7 | ACC-04 | Review agreement conditions, contacts and signatures | Student, Parent/Guardian, Documents, Conditions and Signature steps were inspected; the second-contact accordion was expanded without changing any value | Captured | SLB-010, SLB-011 |
-| 8 | ACC-05 | Final acceptance confirmation | Unknown | To capture | |
-| 9 | ACC-EMAIL | Send acceptance receipt/onboarding communication | Unknown | To capture | |
+| 8 | ACC-05 | Current guardian submits the agreement | The post-submit state says the form is complete for the current guardian but remains pending while another guardian is contacted | Captured | SLB-014 |
+| 9 | ACC-06 | Send additional-guardian signature request | A dedicated Enrolment Agreement email says the guardian's signature is required and supplies a unique signed Contact Portal task link | Captured | SLB-EMAIL-014 |
+| 10 | ACC-07 | Additional guardian verifies and signs | Current acceptance route not opened; the historical application establishes a Contact Portal OTP, signature acknowledgement and all-signatures-complete sequence | Partially evidenced | SLB-EMAIL-015 to SLB-EMAIL-018 |
+| 11 | ACC-EMAIL | Send final acceptance receipt/onboarding communication | Unknown | To capture | |
 
 ## ACC-00 Acceptance Gateway
 
@@ -257,6 +260,29 @@ The separate acceptance status is now directly observed. The exact backend entit
 boundaries remain an inference because the agreement, low-level requests and staff-side
 records have not been inspected.
 
+## Additional-Guardian Email Package
+
+Submitting the current Enrolment Agreement generated a dedicated email to the recorded
+additional guardian. The message identifies the form, states that the recipient's
+signature is required and provides one `Click here to sign` action. The underlying URL
+uses a Contact Portal login route and a signed, expiring task envelope. Its observed
+parameter names bind the signing task, form instance, form template, contact, expiry,
+version and signature; all values and the active URL remain restricted.
+
+The current acceptance link has not been opened. A directly observed historical Online
+Enrolment Form sequence in the same guardian mailbox nevertheless confirms the platform
+pattern:
+
+1. the additional guardian receives a unique signature-required message
+2. opening the task leads to a Contact Portal login-code request
+3. the six-digit code expires after 30 minutes
+4. successful signing generates an individual acknowledgement
+5. completing the required signature set generates a separate all-signatures-complete
+   message and states that the application has been submitted for school processing
+
+This historical sequence is evidence of Enquiry Tracker's guardian-signing architecture,
+not proof that the unfinished acceptance will have identical screens or completion copy.
+
 ## Questions For The Next Authorised Observation
 
 - Does Next send a six-digit OTP using the same 30-minute template as application access?
@@ -295,6 +321,9 @@ records have not been inspected.
 - [x] Add Contact insertion, defaults, validation and autosave behavior
 - [x] Required conduct documents
 - [x] Current-guardian submission confirmation and pending-further-signature state
+- [x] Additional-guardian Enrolment Agreement signature-request email
+- [x] Historical Contact Portal OTP and signature-confirmation email sequence
+- [ ] Current additional-guardian access, verification and signing screens
 - [ ] Acceptance receipt and onboarding communications
 - [x] Decline gateway, OTP and record-selection entry
 - [x] Decline Start/Continue transition and three-step form
@@ -315,9 +344,10 @@ process.
   and control, and the exact source School Enrolment Agreement is archived as
   SLB-DOC-009. The public HTML walkthrough still paraphrases the full third-party legal
   text pending redistribution review.
-- **Second-guardian signing package:** the post-submit page confirms a pending further
-  signature request and contact by email, but the email, access screen, verification,
-  signing view and completion behavior have not been observed.
+- **Second-guardian signing package:** the current signature-request email is captured,
+  and the historical application proves the platform's OTP and completion-email pattern.
+  The current acceptance access screen, verification, signing view and completion
+  behavior have not been observed.
 - **Completion outputs:** the current guardian's post-submit state is captured, but the
   all-signatures-complete confirmation, acceptance receipt, onboarding communications
   and any downloadable completed agreement have not been reached.

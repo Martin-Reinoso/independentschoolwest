@@ -20,6 +20,10 @@ paraphrased unless publication rights have been confirmed.
 | SLB-COM-012 | Family books an interview | Enquiry Tracker automation | Family | Booking confirmation | Confirm appointment details | Provides time and school location | Calendar file and event details | SLB-EMAIL-010 |
 | SLB-COM-013 | Interview is approaching | Enquiry Tracker automation | Family | Event reminder | Reduce missed appointments | Restates the upcoming booking details | Event details | SLB-EMAIL-011 |
 | SLB-COM-014 | School approves a place | Enrolment team via Enquiry Tracker | Family | Offer of place | Obtain an acceptance or decline decision | Acceptance requires all recorded parent or guardian signatures; offer states a 48-hour response window | Separate acceptance and decline links | SLB-EMAIL-012 |
+| SLB-COM-015 | Current guardian submits a form that requires another signature | Enquiry Tracker automation | Additional guardian | Signature required | Obtain an independent guardian signature | Names the relevant form and says the recipient's signature is now required | Unique signed Contact Portal task link | SLB-EMAIL-014, SLB-EMAIL-015 |
+| SLB-COM-016 | Additional guardian opens the historical application signing task | Enquiry Tracker automation | Additional guardian | Contact Portal login code | Verify access before exposing the signing task | Six-digit one-time code; ignore if not requested; expires after 30 minutes | No link; guardian returns to the open Contact Portal | SLB-EMAIL-016 |
+| SLB-COM-017 | Additional guardian signs the historical application | Enquiry Tracker automation | Additional guardian | Thank you for signing | Confirm that the individual signature was stored | States that the signature was successfully recorded | None observed | SLB-EMAIL-017 |
+| SLB-COM-018 | Last historical application signature is received | Enquiry Tracker automation | Additional guardian | All signatures complete | Confirm completion of the required signature set | States that all signatures were received and the application was submitted for school processing | None observed | SLB-EMAIL-006, SLB-EMAIL-018 |
 
 ## Sequence
 
@@ -39,6 +43,10 @@ paraphrased unless publication rights have been confirmed.
 | 12 | SLB-COM-012 | Interview booking | Automatic | Add or retain appointment details |
 | 13 | SLB-COM-013 | Upcoming interview | Automatic | Attend the appointment |
 | 14 | SLB-COM-014 | School offer decision | Staff-triggered template, inferred | Accept or decline within 48 hours |
+| 15 | SLB-COM-015 | A submitted application or agreement still requires another guardian | Automatic | Open the unique signing task |
+| 16 | SLB-COM-016 | Historical guardian signing link opened | Automatic | Enter the code within 30 minutes |
+| 17 | SLB-COM-017 | Historical guardian signature recorded | Automatic | No immediate action stated |
+| 18 | SLB-COM-018 | Historical required-signature set completed | Automatic | No immediate action stated |
 
 ## Delivery Details
 
@@ -54,5 +62,11 @@ paraphrased unless publication rights have been confirmed.
   family-specific URLs must never be copied into this repository.
 - Passcode delivery: the verification email contains the code itself but no application
   link; it instructs the family to enter the code on the already-open web page.
+- Second-guardian delivery: the signature request contains a unique, signed Contact
+  Portal task URL. Its observed query structure binds a signing task, form instance,
+  form template, contact, expiry, version and signature. All values are restricted.
+- Historical signing outcome: the guardian received both an individual signature
+  acknowledgement and a separate all-signatures-complete message at the same recorded
+  time. The current acceptance has reached only the initial signature-request stage.
 - Footer behaviour: system emails include an unsubscribe footer. Staff Google Group
   messages include confidentiality and cloud-service privacy wording.
