@@ -154,7 +154,9 @@ application:
    Conduct are each required for upload. Exact point-in-time PDFs are archived as
    SLB-DOC-005 and SLB-DOC-006 with source URLs, page counts and hashes.
 4. **Conditions:** complete enrolment terms plus acceptance, school-transfer consent,
-   photography/recording permission and ICT acceptable-use acknowledgement.
+   photography/recording permission and ICT acceptable-use acknowledgement. The
+   underlying agreement, ICT policy and referenced child-safety statement are archived
+   as SLB-DOC-009, SLB-DOC-007 and SLB-DOC-011.
 5. **Signature:** IP-address acknowledgement, parent/guardian declaration, local
    electronic signature and date for the current guardian; the second guardian is
    identified as someone who will be contacted after submission.
@@ -299,16 +301,18 @@ records have not been inspected.
 
 ## Outstanding Artifact Gaps
 
-This section is intentionally explicit so that the static walkthrough and six archived
-PDFs are not mistaken for a complete evidentiary copy of the live process.
+This section is intentionally explicit so that the static walkthrough and eleven
+archived source files are not mistaken for a complete evidentiary copy of the live
+process.
 
-- **ICT Acceptable Usage Policy and User Agreement:** referenced in the agreement and
-  in the Student Code of Conduct, but its source/download link has not been observed.
-  No local copy is archived.
+- **Age-banded Acceptable Use Agreements:** the archived ICT policy names separate
+  agreements for Years F-4, 5-8 and 9-12, but no public St Lawrence download link for
+  those supporting documents was observed. The live acceptance form links only the
+  archived ICT policy.
 - **Complete acceptance legal wording:** the live Conditions step was mapped by section
-  and control, but the public HTML walkthrough does not reproduce the full third-party
-  legal text verbatim. That text remains subject to source-authority and redistribution
-  review.
+  and control, and the exact source School Enrolment Agreement is archived as
+  SLB-DOC-009. The public HTML walkthrough still paraphrases the full third-party legal
+  text pending redistribution review.
 - **Second-guardian signing package:** the live form states that the additional guardian
   will be contacted after submission, but that guardian's email, access screen,
   verification, signing view and completion behavior have not been observed.
