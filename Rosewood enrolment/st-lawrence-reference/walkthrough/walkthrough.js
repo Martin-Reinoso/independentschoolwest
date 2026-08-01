@@ -78,7 +78,55 @@ document.querySelectorAll('[data-guardian-confirmation]').forEach((confirmation)
   update();
 });
 
+document.querySelectorAll('[data-static-action="Reference only. An additional guardian panel would be added."]').forEach((button) => {
+  const guardianPanel = button.closest('[data-step-panel="guardian"]');
+  const actions = button.closest('.guardian-actions');
+  const saveState = document.querySelector('.save-state');
+  const saveLabel = saveState?.querySelector('[data-save-label]');
+  let saveTimer;
+  const ordinal = (number) => {
+    const remainder = number % 100;
+    if (remainder >= 11 && remainder <= 13) return `${number}th`;
+    return `${number}${({ 1: 'st', 2: 'nd', 3: 'rd' })[number % 10] || 'th'}`;
+  };
+
+  button.addEventListener('click', () => {
+    if (!guardianPanel || !actions) return;
+    const contactNumber = guardianPanel.querySelectorAll('.guardian-card').length + 1;
+    const contact = document.createElement('details');
+    contact.className = 'guardian-card agreement-contact-card new-contact';
+    contact.open = true;
+    contact.innerHTML = `
+      <summary><span>${ordinal(contactNumber)} Contact Details</span></summary>
+      <fieldset><legend>Primary Information</legend>
+        <div class="app-choice new-contact-share"><span>Share these details? <b>*</b><small>Show the contact details with other people associated with the student on this form.</small></span><label><input type="radio" name="added-share-${contactNumber}" data-required> Yes, share them</label><label><input type="radio" name="added-share-${contactNumber}"> No, keep them private</label></div>
+        <div class="app-grid three"><label>First Name <span>*</span><input data-required></label><label>Last Name <span>*</span><input data-required></label><label>Email <span>*</span><input type="email" data-required></label><label>Mobile Phone <span>*</span><input type="tel" data-required></label><label>Relationship to Student <span>*</span><select data-required><option value="">Relationship to Student</option><option>Father</option><option>Mother</option><option>Guardian</option></select></label><label>Contact Type <span>*</span><select data-required><option value="">Contact Type</option><option>Primary</option><option>Secondary</option></select></label></div>
+        <p class="communication-notice">By providing your email address and/or mobile phone number, you agree to receive messages of both promotional and informational nature. Message frequency varies. Msg &amp; data rates may apply. You can opt out of promotional communications at any time by using the unsubscribe link in our emails and/or by replying STOP to our text messages.</p>
+        <div class="contact-permission"><strong>Can the school contact this person about the student on this form? <span>*</span></strong><p>If No, the school will not communicate with this person, nor send any email requesting a signature. Not sure? Please contact our office before submitting.</p><div class="app-choice"><label><input type="radio" name="added-permission-${contactNumber}" data-required checked> Yes</label><label><input type="radio" name="added-permission-${contactNumber}"> No, do not contact them</label></div></div>
+      </fieldset>
+      <button type="button" class="remove-contact">Remove</button>`;
+    actions.before(contact);
+    contact.querySelector('.remove-contact').addEventListener('click', () => {
+      const feedback = guardianPanel.closest('form')?.querySelector('.static-feedback');
+      if (feedback) {
+        feedback.textContent = 'Reference only. Removal behavior has not been tested.';
+        feedback.hidden = false;
+      }
+    });
+    contact.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (!saveState || !saveLabel) return;
+    window.clearTimeout(saveTimer);
+    saveState.classList.add('is-unsaved');
+    saveLabel.textContent = 'Unsaved Changes';
+    saveTimer = window.setTimeout(() => {
+      saveState.classList.remove('is-unsaved');
+      saveLabel.textContent = 'Saved';
+    }, 1200);
+  });
+});
+
 document.querySelectorAll('[data-static-action]').forEach((button) => {
+  if (button.dataset.staticAction === 'Reference only. An additional guardian panel would be added.') return;
   button.addEventListener('click', () => {
     const form = button.closest('form');
     const feedback = form?.querySelector('.static-feedback');

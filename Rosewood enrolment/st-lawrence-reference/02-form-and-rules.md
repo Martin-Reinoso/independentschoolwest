@@ -142,6 +142,11 @@
 - The no-more-guardians confirmation initially has a dotted red outline. Checking it
   clears the outline immediately, changes `Saved` to `Unsaved Changes`, then returns
   to `Saved` after asynchronous persistence.
+- Add Contact inserts an expanded blank third-contact panel with the same contact
+  fields and Remove action. Share has no default; contact permission defaults to Yes.
+- The blank third contact is autosaved despite required-field errors. The existing
+  guardian-completeness checkbox incorrectly remains checked after the new contact is
+  added.
 - The contact panel treats provision of mandatory email/mobile details as agreement
   to promotional and informational messages and describes unsubscribe/STOP only for
   promotional communications.

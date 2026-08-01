@@ -210,6 +210,31 @@ This provides direct evidence that validation feedback is reactive and that a ch
 change is persisted through the same asynchronous autosave mechanism as other agreement
 data. The checkbox remained checked after the save completed. No other value was changed.
 
+### Add Contact Behavior
+
+With two existing contacts expanded and the guardian-completeness confirmation already
+checked, one explicitly authorised Add Contact click produced this sequence:
+
+1. a blank `3rd Contact Details` panel was inserted immediately above Add Contact and
+   opened automatically
+2. the first and second contact panels remained present; Add Contact also remained
+   available below the new panel
+3. the new panel repeated Primary Information, share choice, name, email, mobile,
+   messaging notice, relationship, contact type, contact permission and Remove
+4. Share these details had no default and showed a red validation outline; blank
+   required fields also showed red validation styling
+5. contact permission defaulted to `Yes`
+6. the global state changed to `Unsaved Changes`, then returned to `Saved` after about
+   1.9 seconds even though the third contact remained blank and incomplete
+7. the previously checked guardian-completeness confirmation remained checked and was
+   not invalidated or reset
+
+The last point is a state-consistency defect: the agreement can simultaneously assert
+that all legal parents/guardians have been entered and contain a newly created incomplete
+guardian. Rosewood should clear or revalidate the completeness attestation whenever a
+guardian is added or removed, and should distinguish saving a draft record from passing
+step validation.
+
 ## Working Data-Model Hypothesis
 
 The acceptance link is distinct from the earlier application link. Combined with the
@@ -264,6 +289,7 @@ records have not been inspected.
 - [x] Electronic signature interface
 - [x] Save-state indicator
 - [x] Required guardian-completeness confirmation and autosave cycle
+- [x] Add Contact insertion, defaults, validation and autosave behavior
 - [x] Required conduct documents
 - [ ] Final confirmation
 - [ ] Acceptance receipt and onboarding communications

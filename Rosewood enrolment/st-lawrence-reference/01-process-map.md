@@ -50,6 +50,7 @@ behaviour from staff activity and family activity.
 | SLB-BR-007 | A required field remains incomplete when the family changes application steps | Navigation continues and the departed marker shows `Missing required fields.` | Completing the step avoids or clears its error state | SLB-006 |
 | SLB-BR-008 | A Yes/No or Other answer activates dependent details | Repeatable sibling/relative, additional-needs, residency, postal or alumni fields appear | The dependent section stays hidden or not applicable | SLB-006 |
 | SLB-BR-009 | An additional guardian may be contacted about the student | The guardian can receive a separate signature request | `No, do not contact them` suppresses school communication and signature email | SLB-006 |
+| SLB-BR-010 | Family selects Add Contact in the agreement | Insert and autosave an expanded blank additional guardian with required-field errors | Do not add another guardian | SLB-013 |
 
 ## Open Questions
 
