@@ -273,7 +273,7 @@ records have not been inspected.
 - Is the bundled promotional/informational messaging notice legally and operationally
   intended to create marketing consent from required contact fields?
 - What save/autosave states appear?
-- What receipt, reference and onboarding message follows completion?
+- What receipt, reference and onboarding message follows all required signatures?
 - What happens after OTP expiry, email mismatch, duplicate access or a stalled Sending state?
 
 ## Capture Checklist
@@ -294,7 +294,7 @@ records have not been inspected.
 - [x] Required guardian-completeness confirmation and autosave cycle
 - [x] Add Contact insertion, defaults, validation and autosave behavior
 - [x] Required conduct documents
-- [ ] Final confirmation
+- [x] Current-guardian submission confirmation and pending-further-signature state
 - [ ] Acceptance receipt and onboarding communications
 - [ ] Decline path
 - [ ] Expired-offer path
@@ -313,11 +313,12 @@ process.
   and control, and the exact source School Enrolment Agreement is archived as
   SLB-DOC-009. The public HTML walkthrough still paraphrases the full third-party legal
   text pending redistribution review.
-- **Second-guardian signing package:** the live form states that the additional guardian
-  will be contacted after submission, but that guardian's email, access screen,
-  verification, signing view and completion behavior have not been observed.
-- **Completion outputs:** final acceptance confirmation, acceptance receipt, onboarding
-  communications and any downloadable completed agreement have not been reached.
+- **Second-guardian signing package:** the post-submit page confirms a pending further
+  signature request and contact by email, but the email, access screen, verification,
+  signing view and completion behavior have not been observed.
+- **Completion outputs:** the current guardian's post-submit state is captured, but the
+  all-signatures-complete confirmation, acceptance receipt, onboarding communications
+  and any downloadable completed agreement have not been reached.
 - **Alternative and failure paths:** decline, expired offer, invalid or expired OTP,
   resend, change-email, duplicate access, server error and retry behavior remain
   uncaptured.

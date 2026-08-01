@@ -97,6 +97,8 @@ neutral Rosewood reference styling.
   validation, document and signature behavior
 - `06-acceptance-process-map.md`: post-offer acceptance gateway, evidence status,
   unresolved transition and future capture checklist
+- `07-acceptance-submission-observation.md`: sanitised live timeline from Documents
+  through Conditions, Signature, Submit and the pending-further-signature destination
 - `source-documents/`: point-in-time third-party PDF snapshots with provenance and
   integrity hashes
 - `walkthrough/`: static, non-submitting HTML process map and captured-screen replicas,
