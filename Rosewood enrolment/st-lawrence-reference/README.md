@@ -99,6 +99,8 @@ neutral Rosewood reference styling.
   unresolved transition and future capture checklist
 - `07-acceptance-submission-observation.md`: sanitised live timeline from Documents
   through Conditions, Signature, Submit and the pending-further-signature destination
+- `08-decline-process-map.md`: decline gateway, email verification, OTP transition and
+  untouched decline-record selection screen
 - `source-documents/`: point-in-time third-party PDF snapshots with provenance and
   integrity hashes
 - `walkthrough/`: static, non-submitting HTML process map and captured-screen replicas,
