@@ -81,10 +81,11 @@ document.querySelectorAll('[data-guardian-sign-reference]').forEach((form) => {
   const clear = form.querySelector('[data-clear-remote-signature]');
   const date = form.querySelector('.signing-date input');
   const next = form.querySelector('[data-sign-next]');
-  const feedback = form.querySelector('.static-feedback');
+  const signatureError = form.querySelector('[data-signature-error]');
   const context = canvas.getContext('2d');
   let drawing = false;
   let hasSignature = false;
+  let validationActive = false;
 
   context.strokeStyle = '#4f5963';
   context.lineWidth = 2;
@@ -94,7 +95,14 @@ document.querySelectorAll('[data-guardian-sign-reference]').forEach((form) => {
   const update = () => {
     const accepted = termsAccepted();
     canvas.classList.toggle('is-enabled', accepted);
+    canvas.classList.toggle('is-invalid', validationActive && !hasSignature);
+    date.classList.toggle('is-invalid', validationActive && !date.value);
     lock.hidden = accepted;
+    signatureError.hidden = !validationActive || hasSignature;
+    declarations.forEach((checkbox) => {
+      const error = checkbox.closest('.signing-declaration').querySelector('.signing-error');
+      error.hidden = !validationActive || checkbox.checked;
+    });
     clear.disabled = !accepted || !hasSignature;
     next.disabled = !accepted || !hasSignature;
   };
@@ -104,7 +112,11 @@ document.querySelectorAll('[data-guardian-sign-reference]').forEach((form) => {
   };
 
   comments.addEventListener('input', () => { count.textContent = comments.value.length; });
-  declarations.forEach((checkbox) => checkbox.addEventListener('change', update));
+  declarations.forEach((checkbox) => checkbox.addEventListener('change', () => {
+    if (!checkbox.checked && checkbox.dataset.wasChecked === 'true') validationActive = true;
+    checkbox.dataset.wasChecked = String(checkbox.checked);
+    update();
+  }));
   canvas.addEventListener('pointerdown', (event) => {
     if (!termsAccepted()) return;
     drawing = true;
@@ -127,12 +139,10 @@ document.querySelectorAll('[data-guardian-sign-reference]').forEach((form) => {
     context.clearRect(0, 0, canvas.width, canvas.height);
     hasSignature = false;
     date.value = '';
+    validationActive = true;
     update();
   });
-  next.addEventListener('click', () => {
-    feedback.textContent = 'Reference only. The Thank You stage has not yet been captured, and nothing is submitted.';
-    feedback.hidden = false;
-  });
+  next.addEventListener('click', () => { window.location.href = 'guardian-signing-thank-you.html'; });
   update();
 });
 

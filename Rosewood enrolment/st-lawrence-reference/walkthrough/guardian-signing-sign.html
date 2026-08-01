@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="gateway-page remote-signing-page">
-  <nav class="reference-nav" aria-label="Reference navigation"><a href="guardian-signing-review.html">Previous: review</a><a href="index.html">Process map</a><span>Thank You not yet captured</span></nav>
+  <nav class="reference-nav" aria-label="Reference navigation"><a href="guardian-signing-review.html">Previous: review</a><a href="index.html">Process map</a><a href="guardian-signing-thank-you.html">Next: thank you</a></nav>
   <header class="gateway-header"><a href="index.html" class="gateway-logo-link" aria-label="Return to process map"><img src="assets/slb-gateway-logo.png" alt="St Lawrence of Brindisi Catholic Primary School"></a><div class="gateway-contact"><p>St Lawrence of Brindisi Catholic Primary School</p><p>31 Waterway Boulevard<br>Weir Views VIC 3338</p><p>office@slweirviews.catholic.edu.au<br>8099 6699<br>www.slweirviews.catholic.edu.au</p><p>ABN 44 357 311 791</p></div></header>
 
   <main class="remote-signing-shell">
@@ -23,10 +23,10 @@
         <p>If you have any feedback or concerns about the form, please add your comments below. These will be included with your signature.</p>
         <label class="signing-comments">Comments (optional)<textarea maxlength="1000" placeholder="Add any comments you would like to include with your signature" data-sign-comments></textarea><small><span data-sign-count>0</span>/1000</small></label>
 
-        <label class="signing-declaration"><input type="checkbox" data-sign-declaration> <span>I acknowledge and agree that, at the time of signing this form, my IP address will be recorded and stored by the School for administrative, security and legal compliance purposes. <b>*</b></span></label>
-        <label class="signing-declaration"><input type="checkbox" data-sign-declaration> <span>As the parent/guardian of my child, I declare I have read, understood and given consent to all matters contained in this form which includes Parent Code of Conduct and Student Code of Conduct. I understand all MACS and school policies and procedures which are reviewed regularly, may be subject to change at the school's discretion. I understand that my consent will remain valid while my child continues enrolment at St Lawrence of Brindisi Catholic Primary School. <b>*</b></span></label>
+        <label class="signing-declaration"><input type="checkbox" data-sign-declaration data-error="You must acknowledge the IP address recording to continue"> <span>I acknowledge and agree that, at the time of signing this form, my IP address will be recorded and stored by the School for administrative, security and legal compliance purposes. <b>*</b><small class="signing-error" hidden>You must acknowledge the IP address recording to continue</small></span></label>
+        <label class="signing-declaration"><input type="checkbox" data-sign-declaration data-error="You must agree to the terms to continue"> <span>As the parent/guardian of my child, I declare I have read, understood and given consent to all matters contained in this form which includes Parent Code of Conduct and Student Code of Conduct. I understand all MACS and school policies and procedures which are reviewed regularly, may be subject to change at the school's discretion. I understand that my consent will remain valid while my child continues enrolment at St Lawrence of Brindisi Catholic Primary School. <b>*</b><small class="signing-error" hidden>You must agree to the terms to continue</small></span></label>
 
-        <label class="signature-label signing-remote-canvas">Signature <b>*</b><canvas width="900" height="190" data-remote-signature aria-label="Reference signature drawing area"></canvas><span data-signature-lock>Please agree to the terms above to enable signing</span></label>
+        <label class="signature-label signing-remote-canvas">Signature <b>*</b><canvas width="900" height="190" data-remote-signature aria-label="Reference signature drawing area"></canvas><span data-signature-lock>Please agree to the terms above to enable signing</span><small class="signing-error" data-signature-error hidden>Please provide your signature</small></label>
         <button type="button" class="secondary-action" data-clear-remote-signature disabled>Clear Signature</button>
         <label class="signing-date">Date <b>*</b><input aria-label="Date" readonly><small>Automatically set to today's date</small></label>
         <button type="button" class="signing-next" data-sign-next disabled>Next</button>

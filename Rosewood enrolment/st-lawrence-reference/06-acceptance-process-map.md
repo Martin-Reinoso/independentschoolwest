@@ -5,8 +5,9 @@
 **Status:** Capture in progress. The acceptance gateway, matched-contact/student
 selection screen, Continue transition, five-step agreement, current-guardian submission
 and the resulting additional-guardian signature request, identity gateway, OTP screen,
-signing Introduction, Your Details, Review and Sign stages have been observed. No live
-signature control was changed. Thank You and final completion outputs remain unopened.
+signing Introduction, Your Details, Review, Sign, Thank You and submitted signed-form
+view have been observed. The user completed the live signature; the repository excludes
+the signature image, personal values, timestamps and private route.
 
 This record maps the workflow after a family selects Accept in an offer email. It does
 not authorise accepting the place, completing an OTP, signing an agreement or
@@ -41,9 +42,10 @@ details and application identifiers are excluded from this public repository.
 | 12 | ACC-09 | Additional guardian verifies and opens signing task | User-completed OTP opens a distinct five-stage Sign Form route on Introduction | Captured | SLB-018 |
 | 13 | ACC-10 | Additional guardian reviews their details | One authorised Next opens prefilled editable contact details; school-contact permission is locked and explicit confirmation gates the next action | Captured | SLB-018 |
 | 14 | ACC-11 | Save details and review the submitted agreement | Confirmation enables Next; Next saves through the API, then renders the complete agreement read-only with another required confirmation | Captured | SLB-019 |
-| 15 | ACC-12 | Additional guardian prepares to sign | Review confirmation enables Next; the dedicated Sign stage provides comments, declarations, locked canvas and automatic date | Captured read-only | SLB-020 |
-| 16 | ACC-13 | Additional guardian signs and completes | No declaration, signature or final Next action has been changed; the historical application establishes the later individual acknowledgement and all-signatures-complete emails | Partially evidenced | SLB-EMAIL-017, SLB-EMAIL-018 |
-| 17 | ACC-EMAIL | Send final acceptance receipt/onboarding communication | Unknown | To capture | |
+| 15 | ACC-12 | Additional guardian prepares to sign | Review confirmation enables Next; the dedicated Sign stage provides comments, declarations, terms-gated canvas, automatic date and reactive validation | Captured | SLB-020, SLB-021 |
+| 16 | ACC-13 | Additional guardian signs and completes | User completes declarations, signature and Next; Thank You confirms Signing Complete and offers View Signed Form | Captured | SLB-021, SLB-EMAIL-017, SLB-EMAIL-018 |
+| 17 | ACC-14 | Additional guardian views completed agreement | View Signed Form opens an immutable Submitted record with server Last Updated, Print/Logout and both guardian signatures complete | Captured | SLB-021 |
+| 18 | ACC-EMAIL | Send final acceptance receipt/onboarding communication | Signature confirmation pattern is historically evidenced; current onboarding remains unknown | Partially captured | SLB-EMAIL-017, SLB-EMAIL-018 |
 
 ## ACC-00 Acceptance Gateway
 
@@ -412,14 +414,45 @@ dedicated page contains:
 - required Date with `Automatically set to today's date`
 - disabled Next until the required declarations and signature are complete
 
-The live session was deliberately left on Sign. No comments were entered; neither
-declaration was checked; the canvas, date, Clear Signature and Next remained untouched.
-Thank You and the current completion behavior remain unopened.
+User-provided captures confirmed the remaining validation behavior:
+
+- the canvas cannot accept a signature until both declarations are checked
+- unchecking the first declaration after interaction shows
+  `You must acknowledge the IP address recording to continue`
+- unchecking the second shows `You must agree to the terms to continue`
+- missing signature state adds a red canvas outline and `Please provide your signature`
+- the empty required date receives a red outline
+- after both declarations and a signature are present, Clear Signature is enabled, the
+  date is populated automatically and Next changes to green
+
+## ACC-13 And ACC-14 Completion And Signed Form
+
+The user completed the declarations, signature and final Next action. The fifth wizard
+stage showed a green completion icon, `Signing Complete`, thanks for signing the
+Enrolment Agreement Form and this `What happens next?` guidance:
+
+- a confirmation message will arrive shortly
+- the guardian can safely log out and close the browser tab
+
+The screen provides one `View Signed Form` action. One authorised click opened a distinct
+read-only view after a loading state. The resulting record:
+
+- is titled for the school and Enrolment Agreement Form
+- reports `Status: Submitted`
+- displays a server `Last Updated` timestamp
+- provides Print and Logout
+- renders Student, Parent/Guardian, Documents, Conditions and Signature in one long page
+- disables all agreement controls
+- shows both guardian declarations checked, both signatures recorded and both dates set
+
+This confirms that completion is not merely a client-side Thank You state. The aggregate
+agreement record transitions from Pending Signatures to Submitted and exposes a durable
+immutable representation after the required signature set is complete.
 
 ## Questions For The Next Authorised Observation
 
-- Does the signature canvas enable only after both declarations, and exactly when is the
-  automatic date populated?
+- Does the date populate at the first signature stroke, pointer release or final canvas
+  validity event?
 - Does confirming or editing Your Details update only the signed task/contact snapshot,
   or a reusable contact record?
 - Why were three student records eligible to start an agreement, and does every row
@@ -435,7 +468,8 @@ Thank You and the current completion behavior remain unopened.
   intended to create marketing consent from required contact fields?
 - Does changing an actual Your Details field use the same blocking save, and is any
   persistent Saved/Unsaved marker shown?
-- What receipt, reference and onboarding message follows all required signatures?
+- What current acceptance emails, downloadable artifact or onboarding message follows
+  all required signatures?
 - What happens after OTP expiry, email mismatch, duplicate access or a stalled Sending state?
 
 ## Capture Checklist
@@ -462,7 +496,9 @@ Thank You and the current completion behavior remain unopened.
 - [x] Current additional-guardian identity gateway and Turnstile transition
 - [x] Current additional-guardian OTP email and verification screen
 - [x] Current additional-guardian signing Introduction, Your Details, Review and Sign stages
-- [ ] Current additional-guardian Thank You stage and completed-signature behavior
+- [x] Sign validation, automatic-date and button-enable frames
+- [x] Current additional-guardian Thank You and View Signed Form behavior
+- [x] Immutable Submitted agreement with both signatures complete
 - [ ] Acceptance receipt and onboarding communications
 - [x] Decline gateway, OTP and record-selection entry
 - [x] Decline Start/Continue transition and three-step form
@@ -484,13 +520,13 @@ process.
   SLB-DOC-009. The public HTML walkthrough still paraphrases the full third-party legal
   text pending redistribution review.
 - **Second-guardian signing package:** the current signature-request email, identity
-  gateway, OTP screen, Introduction, Your Details, full read-only Review and dedicated
-  Sign interface are captured, and the historical application proves the platform's
-  completion-email pattern. The current Thank You and completed-signature behavior have
-  not been observed.
-- **Completion outputs:** the current guardian's post-submit state is captured, but the
-  all-signatures-complete confirmation, acceptance receipt, onboarding communications
-  and any downloadable completed agreement have not been reached.
+  gateway, OTP screen, Introduction, Your Details, full read-only Review, Sign validation,
+  Thank You and immutable submitted-form view are captured. The historical application
+  proves the platform's completion-email pattern.
+- **Completion outputs:** both the current guardian's pending-signature destination and
+  the additional guardian's Signing Complete and Submitted views are captured. Current
+  all-signatures-complete email wording, onboarding communications and any downloadable
+  artifact beyond browser Print have not been reached.
 - **Alternative and failure paths:** the decline gateway, OTP and record-selection
   entry are captured as SLB-015, and the unsubmitted form as SLB-016. Final decline
   confirmation and completion are not captured. Expired offer, invalid or expired OTP,

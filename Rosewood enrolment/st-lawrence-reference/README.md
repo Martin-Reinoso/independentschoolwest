@@ -103,6 +103,8 @@ neutral Rosewood reference styling.
   decline-record selection screen
 - `09-decline-form-map.md`: Start-to-Continue transition and read-only map of the
   three-step decline form
+- `10-signature-architecture.md`: observed guardian-signing state machine and proposed
+  Rosewood backend entities, API boundaries, validation, audit and security requirements
 - `source-documents/`: point-in-time third-party PDF snapshots with provenance and
   integrity hashes
 - `walkthrough/`: static, non-submitting HTML process map and captured-screen replicas,

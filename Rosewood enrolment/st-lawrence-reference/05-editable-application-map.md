@@ -229,7 +229,9 @@ screen, email sequence, signing Introduction, prefilled-details save checkpoint 
 complete read-only Review are captured. Review misleadingly shows the additional
 guardian's disabled `Pending Signature` block even though the actual declarations,
 canvas and date are on the next dedicated Sign stage. That Sign interface is captured
-read-only; Thank You and completed-signature behavior remain pending.
+with its declaration-specific, canvas and date validation. The user completed the live
+signature; Thank You and the immutable Submitted agreement with both guardian signatures
+are captured. Signature images, personal values and timestamps are excluded.
 
 ## Replica Fidelity Boundary
 
