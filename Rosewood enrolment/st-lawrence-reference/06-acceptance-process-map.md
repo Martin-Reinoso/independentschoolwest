@@ -4,9 +4,9 @@
 
 **Status:** Capture in progress. The acceptance gateway, matched-contact/student
 selection screen, Continue transition, five-step agreement, current-guardian submission
-and the resulting additional-guardian signature request, identity gateway and OTP screen
-have been observed. The additional guardian has not entered the current code or opened
-the signing form.
+and the resulting additional-guardian signature request, identity gateway, OTP screen,
+signing Introduction, Your Details and Review stages have been observed. Sign, Thank You
+and final completion outputs have not been opened.
 
 This record maps the workflow after a family selects Accept in an offer email. It does
 not authorise accepting the place, completing an OTP, signing an agreement or
@@ -38,8 +38,11 @@ details and application identifiers are excluded from this public repository.
 | 9 | ACC-06 | Send additional-guardian signature request | A dedicated Enrolment Agreement email says the guardian's signature is required and supplies a unique signed Contact Portal task link | Captured | SLB-EMAIL-014 |
 | 10 | ACC-07 | Additional guardian opens the signing task | Personalised Contact Portal identity page names the guardian, form, student and school; the email is prefilled and Next is enabled | Captured | SLB-017 |
 | 11 | ACC-08 | Additional guardian requests verification | Next changes to disabled `Sending...`, invisible Turnstile runs, the Australian verification API returns success and the same URL displays the OTP screen; a current 30-minute login code is emailed | Captured | SLB-017, SLB-EMAIL-019 |
-| 12 | ACC-09 | Additional guardian verifies and signs | Current code has not been entered; the historical application establishes the later individual acknowledgement and all-signatures-complete emails | Partially evidenced | SLB-EMAIL-017, SLB-EMAIL-018 |
-| 13 | ACC-EMAIL | Send final acceptance receipt/onboarding communication | Unknown | To capture | |
+| 12 | ACC-09 | Additional guardian verifies and opens signing task | User-completed OTP opens a distinct five-stage Sign Form route on Introduction | Captured | SLB-018 |
+| 13 | ACC-10 | Additional guardian reviews their details | One authorised Next opens prefilled editable contact details; school-contact permission is locked and explicit confirmation gates the next action | Captured | SLB-018 |
+| 14 | ACC-11 | Save details and review the submitted agreement | Confirmation enables Next; Next saves through the API, then renders the complete agreement read-only with another required confirmation | Captured | SLB-019 |
+| 15 | ACC-12 | Additional guardian signs | Sign and Thank You have not been opened; the historical application establishes the later individual acknowledgement and all-signatures-complete emails | Partially evidenced | SLB-EMAIL-017, SLB-EMAIL-018 |
+| 16 | ACC-EMAIL | Send final acceptance receipt/onboarding communication | Unknown | To capture | |
 
 ## ACC-00 Acceptance Gateway
 
@@ -317,15 +320,74 @@ One authorised Next click produced this directly observed transition:
    six-digit code expires after 30 minutes
 
 The OTP screen contains one required Verification Code field, disabled Verify until a
-value is entered, Resend code and Change email. No code was read into the repository or
-entered into the live page.
+value is entered, Resend code and Change email. The user entered the current code; no
+code was read into the repository or retained in the capture.
+
+## ACC-09 And ACC-10 Signing Introduction And Details
+
+Successful OTP verification navigated to a distinct private signing route headed
+`Sign Form`. The page retained the school branding and contact block, provided Logout,
+and introduced a separate five-stage wizard:
+
+1. Introduction
+2. Your Details
+3. Review
+4. Sign
+5. Thank You
+
+Introduction identifies the `Enrolment Agreement Form` and associated student, explains
+that the guardian will check their details, review the submitted form and provide an
+electronic signature, estimates approximately five minutes and provides Next.
+
+One authorised Next click moved to Your Details. No substantive backend mutation was
+observed during that transition; the client loaded the stage and rendered a prefilled
+contact panel. The panel contains:
+
+- a required share-details choice, defaulted to `Yes, share them`
+- editable required first name, last name, email and mobile phone fields
+- the same promotional/informational messaging notice used elsewhere in the agreement
+- editable required Relationship to Student and Contact Type controls
+- required school-contact permission with `Yes` selected, but both radio choices disabled
+- a required `I confirm my details are correct` checkbox
+- Next disabled until that confirmation is checked
+- Back to Introduction and the same five-stage progress indicator
+
+No contact value was edited. With explicit authorisation, the details confirmation was
+checked and Next was pressed once. The page displayed a blocking `Saving your details...`
+dialog, sent a successful authenticated POST to the Enquiry Tracker Australian API and
+only then opened Review. This is a stronger identity-and-intent checkpoint than a direct
+signature canvas, but it also means the remote signer can apparently update contact data
+immediately before reviewing and signing. Whether edits update only the signature task
+snapshot or a reusable contact record remains unknown.
+
+## ACC-11 Read-Only Agreement Review
+
+Review is not a short summary. It renders the complete submitted Enrolment Agreement in
+one long, read-only page, including:
+
+- Student details and the accepted offer declaration
+- all recorded Parent/Guardian contact panels and the no-more-guardians attestation
+- both required conduct-document entries with uploaded filename and size metadata
+- the complete sixteen-part Terms and Conditions of Enrolment
+- Acceptance of enrolment commitments and privacy disclaimer
+- Consent to Transfer of Information, Photography and Recording Permission, and ICT
+  Acceptable Usage Policy state
+- both guardian signature blocks, with the first guardian's completed acknowledgements,
+  signature and date and the additional guardian's pending signature fields
+- Comments and Additional Information
+
+The page explicitly says the form is read-only and cannot be changed. It tells the
+guardian that comments can be added in the next step before signing. At the bottom,
+`I have reviewed the form and am ready to proceed` is required and Next remains disabled
+until it is checked. The live session was deliberately left there without checking it;
+Sign and Thank You remain unopened.
 
 ## Questions For The Next Authorised Observation
 
-- What exact agreement or signature-only view appears after the additional guardian's
-  OTP succeeds?
-- Does OTP verification bind only the signed task/contact, or re-evaluate the student,
-  submitted application and offer before showing the signing view?
+- What exact comments, acknowledgements, drawing/date controls and error states appear
+  in Sign?
+- Does confirming or editing Your Details update only the signed task/contact snapshot,
+  or a reusable contact record?
 - Why were three student records eligible to start an agreement, and does every row
   represent an active offer?
 - Is the offer response deadline rechecked after verification?
@@ -337,7 +399,8 @@ entered into the live page.
 - Is there a one-signature explanation or court-order branch?
 - Is the bundled promotional/informational messaging notice legally and operationally
   intended to create marketing consent from required contact fields?
-- What save/autosave states appear?
+- Does changing an actual Your Details field use the same blocking save, and is any
+  persistent Saved/Unsaved marker shown?
 - What receipt, reference and onboarding message follows all required signatures?
 - What happens after OTP expiry, email mismatch, duplicate access or a stalled Sending state?
 
@@ -347,8 +410,8 @@ entered into the live page.
 - [x] Privacy links
 - [x] Email field and disabled/enabled Next state
 - [x] First click state (`Sending...`)
-- [ ] Successful verification screen
-- [ ] Verification email template
+- [x] Successful verification and post-OTP Introduction screen
+- [x] Verification email template
 - [ ] Error, retry, resend and change-email behavior
 - [x] Contact/student matching screen and acceptance-specific status
 - [x] Acceptance agreement content and five-step structure
@@ -364,7 +427,8 @@ entered into the live page.
 - [x] Historical Contact Portal OTP and signature-confirmation email sequence
 - [x] Current additional-guardian identity gateway and Turnstile transition
 - [x] Current additional-guardian OTP email and verification screen
-- [ ] Current additional-guardian post-OTP signing screen
+- [x] Current additional-guardian signing Introduction, Your Details and Review stages
+- [ ] Current additional-guardian Sign and Thank You stages
 - [ ] Acceptance receipt and onboarding communications
 - [x] Decline gateway, OTP and record-selection entry
 - [x] Decline Start/Continue transition and three-step form
@@ -385,10 +449,10 @@ process.
   and control, and the exact source School Enrolment Agreement is archived as
   SLB-DOC-009. The public HTML walkthrough still paraphrases the full third-party legal
   text pending redistribution review.
-- **Second-guardian signing package:** the current signature-request email is captured,
-  the current identity gateway and OTP screen are captured, and the historical
-  application proves the platform's completion-email pattern. The current acceptance
-  post-OTP signing view and completion behavior have not been observed.
+- **Second-guardian signing package:** the current signature-request email, identity
+  gateway, OTP screen, Introduction, Your Details and full read-only Review are captured,
+  and the historical application proves the platform's completion-email pattern. The
+  current acceptance Sign, Thank You and completion behavior have not been observed.
 - **Completion outputs:** the current guardian's post-submit state is captured, but the
   all-signatures-complete confirmation, acceptance receipt, onboarding communications
   and any downloadable completed agreement have not been reached.

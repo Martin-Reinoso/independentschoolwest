@@ -47,6 +47,35 @@ document.querySelectorAll('[data-print]').forEach((button) => {
   button.addEventListener('click', () => window.print());
 });
 
+document.querySelectorAll('[data-guardian-details-reference]').forEach((form) => {
+  const confirmation = form.querySelector('[data-details-confirm]');
+  const next = form.querySelector('[data-details-next]');
+  const saving = document.querySelector('[data-details-saving]');
+  const update = () => { next.disabled = !confirmation.checked; };
+
+  confirmation.addEventListener('change', update);
+  next.addEventListener('click', () => {
+    next.disabled = true;
+    saving.hidden = false;
+    window.setTimeout(() => { window.location.href = 'guardian-signing-review.html'; }, 900);
+  });
+  update();
+});
+
+document.querySelectorAll('[data-guardian-review-reference]').forEach((form) => {
+  const confirmation = form.querySelector('[data-review-confirm]');
+  const next = form.querySelector('[data-review-next]');
+  const feedback = form.querySelector('.static-feedback');
+  const update = () => { next.disabled = !confirmation.checked; };
+
+  confirmation.addEventListener('change', update);
+  next.addEventListener('click', () => {
+    feedback.textContent = 'Reference only. The Sign step has not yet been captured, so this replica stops here.';
+    feedback.hidden = false;
+  });
+  update();
+});
+
 document.querySelectorAll('[data-loading-link]').forEach((link) => {
   link.addEventListener('click', (event) => {
     event.preventDefault();

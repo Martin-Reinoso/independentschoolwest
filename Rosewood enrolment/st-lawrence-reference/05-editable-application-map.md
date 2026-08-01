@@ -225,7 +225,9 @@ contactable guardian receives a separate signed Contact Portal task; the guardia
 confirms the prefilled email, passes an invisible Turnstile check, verifies with a
 30-minute OTP and receives an individual acknowledgement after signing; the application
 remains pending until the required signature set is complete. The identity gateway, OTP
-screen and email sequence are captured, but the remote guardian's signing screen is not.
+screen, email sequence, signing Introduction, prefilled-details save checkpoint and
+complete read-only Review are captured. The remote guardian's Sign and Thank You stages
+remain pending.
 
 ## Replica Fidelity Boundary
 

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Guardian Signing Details - St Lawrence Process Reference</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="gateway-page remote-signing-page">
+  <nav class="reference-nav" aria-label="Reference navigation">
+    <a href="guardian-signing-introduction.html">Previous: introduction</a>
+    <a href="index.html">Process map</a>
+    <a href="guardian-signing-review.html">Next: review</a>
+  </nav>
+
+  <header class="gateway-header">
+    <a href="index.html" class="gateway-logo-link" aria-label="Return to process map"><img src="assets/slb-gateway-logo.png" alt="St Lawrence of Brindisi Catholic Primary School"></a>
+    <div class="gateway-contact"><p>St Lawrence of Brindisi Catholic Primary School</p><p>31 Waterway Boulevard<br>Weir Views VIC 3338</p><p>office@slweirviews.catholic.edu.au<br>8099 6699<br>www.slweirviews.catholic.edu.au</p><p>ABN 44 357 311 791</p></div>
+  </header>
+
+  <main class="remote-signing-shell">
+    <header class="remote-signing-titlebar"><div><span class="remote-signing-icon" aria-hidden="true">&#9998;</span><h1>Sign Form</h1></div><button type="button" data-static-action="Reference only. This replica has no authenticated session."><span aria-hidden="true">&#9211;</span> Logout</button></header>
+    <nav class="signing-stepper has-back" aria-label="Wizard progress">
+      <a class="signing-back" href="guardian-signing-introduction.html">&#8592; Back</a>
+      <ol>
+        <li class="is-complete"><span>&#10003;</span><strong>Introduction</strong></li>
+        <li class="is-current" aria-current="step"><span>2</span><strong>Your Details</strong></li>
+        <li><span>3</span><strong>Review</strong></li>
+        <li><span>4</span><strong>Sign</strong></li>
+        <li><span>5</span><strong>Thank You</strong></li>
+      </ol>
+    </nav>
+
+    <section class="signing-stage signing-details-stage">
+      <h2>Your Details</h2>
+      <p>Please check your contact details below and update them if anything has changed.</p>
+      <form class="signing-details-form" data-guardian-details-reference>
+        <details open>
+          <summary>Your Details</summary>
+          <fieldset>
+            <legend>Primary Information</legend>
+            <div class="signing-choice-card"><span class="choice-icon" aria-hidden="true">&#11041;</span><div><strong>Share these details? <b>*</b></strong><small>Show the contact details with other people associated with the student on this form.</small><label><input type="radio" name="details-sharing" checked> Yes, share them</label><label><input type="radio" name="details-sharing"> No, keep them private</label></div></div>
+            <div class="signing-fields three">
+              <label>First Name <b>*</b><input value="Additional" required></label>
+              <label>Last Name <b>*</b><input value="Guardian" required></label>
+              <label>Email <b>*</b><input type="email" value="guardian@example.invalid" required></label>
+            </div>
+            <div class="signing-fields mobile-field">
+              <label>Mobile Phone <b>*</b><span class="phone-input"><span>Australia +61</span><input type="tel" value="412 345 678" required></span></label>
+            </div>
+            <p class="signing-communication-notice">By providing your email address and/or mobile phone number, you agree to receive messages of both promotional and informational nature. Message frequency varies. Msg &amp; data rates may apply. You can opt out of promotional communications at any time by using the unsubscribe link in our emails and/or by replying STOP to our text messages.</p>
+            <div class="signing-fields two">
+              <label>Relationship to Student <b>*</b><select required><option selected>Mother</option><option>Father</option><option>Guardian</option></select></label>
+              <label>Contact Type <b>*</b><select required><option selected>Primary</option><option>Secondary</option></select></label>
+            </div>
+            <div class="signing-choice-card is-locked"><span class="choice-icon" aria-hidden="true">&#8854;</span><div><strong>Can the school contact this person about the student on this form? <b>*</b></strong><small>If No, the school will not communicate with this person, nor send any email requesting a signature. Not sure? Please contact our office before submitting.</small><label><input type="radio" name="school-contact" checked disabled> Yes</label><label><input type="radio" name="school-contact" disabled> No, do not contact them</label></div></div>
+          </fieldset>
+        </details>
+        <label class="details-confirm"><input type="checkbox" data-details-confirm> I confirm my details are correct <b>*</b></label>
+        <button type="button" class="signing-next" data-details-next disabled>Next</button>
+        <p class="static-feedback" role="status" hidden></p>
+      </form>
+    </section>
+    <div class="signing-save-dialog" data-details-saving hidden role="alertdialog" aria-label="Saving your details"><span></span><p>Saving your details...</p></div>
+  </main>
+
+  <footer class="gateway-footer"><img src="assets/slb-gateway-footer.jpg" alt="A light to the mind and a fire to the will"></footer>
+  <script src="walkthrough.js"></script>
+</body>
+</html>

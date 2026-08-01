@@ -158,6 +158,20 @@
   submission.
 - No value, file, signature or submission action was changed during capture.
 
+### ACC-09 To ACC-11 Remote Signing Observations
+
+- Successful OTP opens a separate five-stage Sign Form wizard: Introduction, Your
+  Details, Review, Sign and Thank You.
+- Your Details prefills editable required identity and contact controls. School-contact
+  permission is displayed but locked; a required details-correct confirmation gates Next.
+- Next displays `Saving your details...`, persists through an authenticated API request
+  and opens Review only after success.
+- Review renders Student, all guardians, required-document metadata, the complete
+  Conditions and both signature blocks read-only.
+- Review explains that comments can be added in Sign and requires a separate
+  reviewed-and-ready confirmation before Next. That confirmation and later stages were
+  not opened during capture.
+
 ### APP-03 Interface Observations
 
 - The submitted record is presented as one very long, read-only page rather than a
@@ -281,7 +295,7 @@
 | APP-01 | Verification code is empty | Verification Code is marked required and Verify remains disabled | Yes | Enter the emailed code, resend the code or change the email | SLB-004 |
 | APP-01 | One-time passcode is more than 30 minutes old | Passcode expires after 30 minutes | Yes | Use Resend code; the exact expired-code message has not been captured | SLB-004, SLB-EMAIL-005, SLB-EMAIL-013 |
 | APP-02 | New-student first or last name is empty | Start remains disabled | Yes | Complete both required name fields | SLB-005 |
-| APP-03 | Required guardian signature is incomplete | Form status remains Pending Signatures and the additional guardian receives a signed Contact Portal task link | Yes for completed submission, based on observed state and confirmation emails | Required guardian confirms the prefilled email, passes invisible Turnstile, verifies with a 30-minute OTP, completes the electronic signature and receives an individual acknowledgement | SLB-003, SLB-017, SLB-EMAIL-015 to SLB-EMAIL-019 |
+| APP-03 | Required guardian signature is incomplete | Form status remains Pending Signatures and the additional guardian receives a signed Contact Portal task link | Yes for completed submission, based on observed state and confirmation emails | Required guardian confirms the prefilled email, passes invisible Turnstile, verifies with a 30-minute OTP, confirms prefilled details, reviews the complete read-only form, completes the electronic signature and receives an individual acknowledgement | SLB-003, SLB-017 to SLB-019, SLB-EMAIL-015 to SLB-EMAIL-019 |
 | APP-03E | Family leaves an incomplete step | `Missing required fields.` appears under that top marker | No for step navigation; final Submit remained disabled | Return to the marked step and complete its required controls | SLB-006 |
 | APP-03E | A custom multi-select has no answer | `Please select a minimum of 1 items.` | No for step navigation; contributes to incomplete state | Select at least one item | SLB-006 |
 | APP-03E | More than three survey influences are selected | No maximum-selection warning appeared; four choices were accepted | No | The live implementation does not match the instruction asking for three | SLB-006 |
@@ -315,8 +329,10 @@ live screens before being treated as a complete specification.
 | SLB-RULE-018 | Inherited contact Given Name, Surname, Email and Mobile values are editable in a new application. | Prefill reduces re-entry but Rosewood must decide whether a correction updates the reusable contact record, application snapshot or both. | SLB-006 |
 | SLB-RULE-019 | Incomplete steps do not block Next, Back or direct marker navigation. | The departed marker displays a red error and `Missing required fields.` while the family may continue reviewing later steps. | SLB-006 |
 | SLB-RULE-020 | Added guardians have a contact-permission choice. | `No, do not contact them` suppresses school communication and the separate signature-request email. | SLB-006 |
-| SLB-RULE-021 | The active guardian signs on one local canvas. A second contactable guardian removes the one-signature explanation but does not add a second local canvas. | A dedicated signed Contact Portal task, prefilled identity check, invisible Turnstile, 30-minute OTP and individual acknowledgement directly confirm staged remote signing rather than simultaneous local signatures. | SLB-003, SLB-006, SLB-017, SLB-EMAIL-014 to SLB-EMAIL-019 |
+| SLB-RULE-021 | The active guardian signs on one local canvas. A second contactable guardian removes the one-signature explanation but does not add a second local canvas. | A dedicated signed Contact Portal task, prefilled identity check, invisible Turnstile, 30-minute OTP, details confirmation, full read-only review and individual acknowledgement directly confirm staged remote signing rather than simultaneous local signatures. | SLB-003, SLB-006, SLB-017 to SLB-019, SLB-EMAIL-014 to SLB-EMAIL-019 |
 | SLB-RULE-022 | Uploads accept multiple files up to 10.0 MB in the documented office-document, image and video formats. | Client and server validation would both be needed in a Rosewood implementation. | SLB-006 |
 | SLB-RULE-023 | Fee cards are independent checkboxes and survey influences enforce a minimum of one despite wording that asks for three. | The observed validation can accept internally inconsistent answers; Rosewood should not copy these defects. | SLB-006 |
 | SLB-RULE-024 | Start from the separate new-student fields opens a distinct application route after a transient loader, without an interim confirmation screen. | The typed first and last names seed the new Student step; the remaining fields begin blank and the draft reports Saved. | SLB-007 |
 | SLB-RULE-025 | Continue and Start are different paths. | Continue resumes an existing In Progress record; Start creates or opens a distinct new-draft route from the names entered below the records table. | SLB-005, SLB-007 |
+| SLB-RULE-026 | The remote guardian cannot advance from Your Details until confirming the prefilled details; Next performs a blocking authenticated save before Review. | Contact state is persisted before the submitted agreement is disclosed for final review. | SLB-018, SLB-019 |
+| SLB-RULE-027 | Remote Review renders the complete agreement read-only and requires a second reviewed-and-ready confirmation before Sign. | The signer sees the student, contacts, documents, conditions, permissions and existing signature state but cannot alter them in Review. | SLB-019 |
