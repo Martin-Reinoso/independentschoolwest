@@ -4,8 +4,8 @@
 
 This record covers the decline branch observed on 2026-08-01 through its first verified
 record-selection screen. The authorised family email was entered to request an OTP,
-and the user completed verification. The observer stopped when the next stage became
-stable and did not click any Start control.
+and the user completed verification. A later authorised observation started one record
+and mapped the form separately as `SLB-016` in `09-decline-form-map.md`.
 
 No OTP, contact value, student name, address, phone number, email address, timestamp,
 private route or record identifier is retained here. Source ID: `SLB-015`.
@@ -60,9 +60,9 @@ The helper sentence above the student table still says `Please select a student 
 continue or start a new application.` This is misleading because the route creates a
 decline record, not an application.
 
-No existing-row Start action and no blank-entry Start action was clicked. The actual
-decline form, reason fields, declarations, confirmation behavior and communications
-remain uncaptured.
+During this capture no Start action was clicked. A later authorised capture confirmed
+that Start creates an `In Progress` record and Continue opens a three-step decline form.
+The blank-entry Start path, final confirmation and communications remain uncaptured.
 
 ## Working Architecture Inference
 
@@ -83,9 +83,8 @@ schema.
 
 ## Next Authorised Capture
 
-- Start one matched decline record.
-- Map reason fields, mandatory/optional choices and free-text limits.
-- Map any warning, declaration, final confirmation and reversal period.
+- Confirm hidden dropdown option catalogues without changing the stored draft.
+- Map any final warning, confirmation and reversal period.
 - Capture the completion screen and automatic email without retaining personal data.
 - Check whether declining one offer changes the other student rows or the accepted
   agreement state.

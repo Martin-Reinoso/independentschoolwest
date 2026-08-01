@@ -297,7 +297,8 @@ records have not been inspected.
 - [x] Current-guardian submission confirmation and pending-further-signature state
 - [ ] Acceptance receipt and onboarding communications
 - [x] Decline gateway, OTP and record-selection entry
-- [ ] Decline form, confirmation and completion outputs
+- [x] Decline Start/Continue transition and three-step form
+- [ ] Decline confirmation and completion outputs
 - [ ] Expired-offer path
 
 ## Outstanding Artifact Gaps
@@ -321,8 +322,9 @@ process.
   all-signatures-complete confirmation, acceptance receipt, onboarding communications
   and any downloadable completed agreement have not been reached.
 - **Alternative and failure paths:** the decline gateway, OTP and record-selection
-  entry are captured as SLB-015, but the decline form and completion are not. Expired
-  offer, invalid or expired OTP, resend, change-email, duplicate access, server error
-  and retry behavior remain uncaptured.
+  entry are captured as SLB-015, and the unsubmitted form as SLB-016. Final decline
+  confirmation and completion are not captured. Expired offer, invalid or expired OTP,
+  resend, change-email, duplicate access, server error and retry behavior remain
+  uncaptured.
 - **Guardian removal:** the Remove control is visible, but its confirmation, autosave,
   validation and signature consequences have not been tested.

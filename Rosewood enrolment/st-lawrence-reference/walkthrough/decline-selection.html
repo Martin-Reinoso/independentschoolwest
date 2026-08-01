@@ -26,9 +26,9 @@
       <div class="table-scroll"><table class="record-table"><thead><tr><th>Name</th><th>Last Updated</th><th>Address</th><th>Email</th><th>Mobile Phone</th></tr></thead><tbody><tr><td>Matched contact</td><td>Removed</td><td>Removed</td><td>synthetic@example.invalid</td><td>0400 000 000</td></tr></tbody></table></div>
       <p>Please select a student to continue or start a new application.</p>
       <div class="table-scroll"><table class="record-table"><thead><tr><th>Student Name</th><th>Last Updated</th><th>Form Status</th><th>Action</th></tr></thead><tbody>
-        <tr><td>Associated student record</td><td>Removed</td><td><span class="status-chip">Not Started</span></td><td><button type="button" class="table-action">Start</button></td></tr>
-        <tr><td>Associated student record</td><td>Removed</td><td><span class="status-chip">Not Started</span></td><td><button type="button" class="table-action">Start</button></td></tr>
-        <tr><td>Associated student record</td><td>Removed</td><td><span class="status-chip">Not Started</span></td><td><button type="button" class="table-action">Start</button></td></tr>
+        <tr><td>Associated student record</td><td>Removed</td><td><span class="status-chip">Not Started</span></td><td><a class="table-action muted" href="decline-form.html" data-loading-link>Start</a></td></tr>
+        <tr><td>Associated student record</td><td>Removed</td><td><span class="status-chip">Not Started</span></td><td><a class="table-action muted" href="decline-form.html" data-loading-link>Start</a></td></tr>
+        <tr><td>Selected decline record</td><td>Removed</td><td><span class="status-chip in-progress">In Progress</span></td><td><a class="table-action" href="decline-form.html" data-loading-link>Continue</a></td></tr>
       </tbody></table></div>
     </section>
     <section class="selection-panel new-student-panel">
@@ -37,6 +37,7 @@
       <form class="selection-form" data-static-form data-message="Reference only. The next decline form has not been opened or captured."><label>Student First Name <span>*</span><input name="student-first-name" required></label><label>Student Last Name <span>*</span><input name="student-last-name" required></label><button type="submit" class="gateway-next" disabled>Start</button><p class="static-feedback" role="status" hidden></p></form>
     </section>
   </main>
+  <div class="route-loader" data-route-loader hidden><div></div><p>Loading decline form...</p></div>
   <footer class="gateway-footer"><img src="assets/slb-gateway-footer.jpg" alt="A light to the mind and a fire to the will"></footer>
   <script src="walkthrough.js"></script>
 </body>
