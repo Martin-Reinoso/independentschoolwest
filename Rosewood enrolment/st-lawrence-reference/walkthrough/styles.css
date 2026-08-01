@@ -97,6 +97,10 @@ a { color: inherit; }
 .otp-verify { margin-top: 56px; }
 .otp-actions { display: flex; gap: 26px; align-items: center; width: 300px; margin: 34px 0 0 8px; }
 .otp-actions button, .otp-actions a { padding: 0; color: #999; background: none; border: 0; font: 12px/1 Roboto, Helvetica, Arial, sans-serif; text-decoration: none; text-transform: uppercase; }
+.signing-main { margin-top: 70px; }
+.signing-copy > p { max-width: 460px; }
+.signing-form { margin-top: 24px; }
+.signing-otp-main { margin-top: 70px; }
 
 /* Sanitised verification email */
 .email-page { min-height: 100vh; color: #202124; background: #f4f7f8; font-family: Roboto, Helvetica, Arial, sans-serif; }

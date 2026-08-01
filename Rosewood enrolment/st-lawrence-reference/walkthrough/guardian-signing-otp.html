@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Guardian Signature Verification - St Lawrence Process Reference</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="gateway-page otp-page signing-page">
+  <nav class="reference-nav" aria-label="Reference navigation">
+    <a href="guardian-signing-login.html">Previous: identity gateway</a>
+    <a href="index.html">Process map</a>
+    <a href="email-guardian-signing.html">View email sequence</a>
+  </nav>
+
+  <header class="gateway-header">
+    <a href="index.html" class="gateway-logo-link" aria-label="Return to process map"><img src="assets/slb-gateway-logo.png" alt="St Lawrence of Brindisi Catholic Primary School"></a>
+    <div class="gateway-contact"><p>St Lawrence of Brindisi Catholic Primary School</p><p>31 Waterway Boulevard<br>Weir Views VIC 3338</p><p>office@slweirviews.catholic.edu.au<br>8099 6699<br>www.slweirviews.catholic.edu.au</p><p>ABN 44 357 311 791</p></div>
+  </header>
+
+  <main class="gateway-main otp-main signing-main signing-otp-main">
+    <section class="otp-copy">
+      <p>A code has been sent to your email address</p>
+      <p>Enter the code to continue</p>
+      <form class="otp-form" data-static-form data-message="Reference only: no code is checked and the live signing screen has not yet been captured.">
+        <label for="guardian-verification-code">Verification Code <span>*</span></label>
+        <input id="guardian-verification-code" name="verification-code" inputmode="numeric" autocomplete="one-time-code" required>
+        <button type="submit" class="gateway-next otp-verify" disabled>Verify</button>
+        <div class="otp-actions"><button type="button" data-static-action="Reference only. No new code is sent.">Resend code</button><a href="guardian-signing-login.html">Change email</a></div>
+        <p class="static-feedback" role="status" hidden></p>
+      </form>
+    </section>
+  </main>
+
+  <footer class="gateway-footer"><img src="assets/slb-gateway-footer.jpg" alt="A light to the mind and a fire to the will"></footer>
+  <script src="walkthrough.js"></script>
+</body>
+</html>

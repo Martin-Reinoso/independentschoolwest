@@ -40,7 +40,9 @@ behaviour from staff activity and family activity.
 | 25D | Complete decline form | Parent or guardian | Decline draft is open | Student decline reason and destination school, guardian details and signed declaration | SLB-016 | Form mapped read-only; final confirmation and completion not captured |
 | 24 | Start or continue an enrolment agreement | Family | A matched student is selected | A separate acceptance record changes from `Not Started`/Start to `In Progress`/Continue; Continue briefly shows a progress bar then opens a distinct private agreement route | SLB-009, SLB-010 | Captured; source wording incorrectly calls this a new application |
 | 25 | Complete acceptance conditions and signatures | All parents or guardians recorded on application | Five-step agreement is completed | Acceptance declaration, signed conduct documents, conditions, permissions and staged guardian signatures | SLB-EMAIL-012, SLB-010, SLB-014 | Current guardian submission and pending-further-signature state captured |
-| 25A | Request additional acceptance signature | Enquiry Tracker | Current guardian submits while another signature is required | Dedicated Enrolment Agreement signature-request email with a unique Contact Portal task link | SLB-EMAIL-014 | Email captured; link not opened and current acceptance signing view remains to capture |
+| 25A | Request additional acceptance signature | Enquiry Tracker | Current guardian submits while another signature is required | Dedicated Enrolment Agreement signature-request email with a unique Contact Portal task link | SLB-EMAIL-014 | Email captured and link opened under authorisation; signing view remains to capture |
+| 25B | Verify additional acceptance guardian | Enquiry Tracker and additional guardian | Guardian opens the signed task link, confirms the prefilled email and selects Next | Invisible Turnstile validation and a successful verification API request replace the identity form with an OTP field on the same URL; a six-digit code valid for 30 minutes is emailed | SLB-017, SLB-EMAIL-019 | Identity gateway, transition, current email and OTP screen captured; code excluded and not entered |
+| 25C | Complete additional acceptance signature | Additional guardian | OTP verification succeeds | Guardian signing view and completion outcome | | To capture |
 | 26 | Complete post-acceptance onboarding | School and family | Acceptance is complete | Onboarding communications and school-readiness tasks | | To capture |
 
 ## Conditional Branches
@@ -65,7 +67,7 @@ behaviour from staff activity and family activity.
 - Do edits to inherited contact values update the reusable contact master record, only the application snapshot or both?
 - Does the observed autosaved draft reliably resume after expiry, logout or a new
   browser session, and what support recovery is available?
-- What exact access, verification and signing screens follow the captured second-guardian Contact Portal task link?
+- What exact signing screen follows successful verification of the additional guardian's Contact Portal task?
 - Which create-draft API request is made by Start, and when does the new route become a visible In Progress row? Chrome exposed the route transition but not its low-level network event stream during this capture.
 - What is displayed after OTP expiry, failed verification or an interrupted session?
 - What security challenge is shown when Cloudflare Turnstile or invisible reCAPTCHA requires user interaction?
@@ -73,7 +75,7 @@ behaviour from staff activity and family activity.
 - What criteria and staff actions determine interview shortlisting and the final offer?
 - What appears on the acceptance and decline pages before a family commits?
 - Does the acceptance guardian receive the full agreement, a signature-only view or a
-  different view after the now-confirmed Contact Portal verification step?
+  different view after the now-captured Contact Portal OTP step?
 - Why does the acceptance selector expose three student records with Start actions, and
   are all three backed by active offers or merely associated with the matched contact?
 - Does the acceptance screen's Last Updated value come from the student, application,

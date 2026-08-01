@@ -4,8 +4,9 @@
 
 **Status:** Capture in progress. The acceptance gateway, matched-contact/student
 selection screen, Continue transition, five-step agreement, current-guardian submission
-and the resulting additional-guardian signature-request email have been observed. The
-additional guardian has not opened or completed the current acceptance signing task.
+and the resulting additional-guardian signature request, identity gateway and OTP screen
+have been observed. The additional guardian has not entered the current code or opened
+the signing form.
 
 This record maps the workflow after a family selects Accept in an offer email. It does
 not authorise accepting the place, completing an OTP, signing an agreement or
@@ -35,8 +36,10 @@ details and application identifiers are excluded from this public repository.
 | 7 | ACC-04 | Review agreement conditions, contacts and signatures | Student, Parent/Guardian, Documents, Conditions and Signature steps were inspected; the second-contact accordion was expanded without changing any value | Captured | SLB-010, SLB-011 |
 | 8 | ACC-05 | Current guardian submits the agreement | The post-submit state says the form is complete for the current guardian but remains pending while another guardian is contacted | Captured | SLB-014 |
 | 9 | ACC-06 | Send additional-guardian signature request | A dedicated Enrolment Agreement email says the guardian's signature is required and supplies a unique signed Contact Portal task link | Captured | SLB-EMAIL-014 |
-| 10 | ACC-07 | Additional guardian verifies and signs | Current acceptance route not opened; the historical application establishes a Contact Portal OTP, signature acknowledgement and all-signatures-complete sequence | Partially evidenced | SLB-EMAIL-015 to SLB-EMAIL-018 |
-| 11 | ACC-EMAIL | Send final acceptance receipt/onboarding communication | Unknown | To capture | |
+| 10 | ACC-07 | Additional guardian opens the signing task | Personalised Contact Portal identity page names the guardian, form, student and school; the email is prefilled and Next is enabled | Captured | SLB-017 |
+| 11 | ACC-08 | Additional guardian requests verification | Next changes to disabled `Sending...`, invisible Turnstile runs, the Australian verification API returns success and the same URL displays the OTP screen; a current 30-minute login code is emailed | Captured | SLB-017, SLB-EMAIL-019 |
+| 12 | ACC-09 | Additional guardian verifies and signs | Current code has not been entered; the historical application establishes the later individual acknowledgement and all-signatures-complete emails | Partially evidenced | SLB-EMAIL-017, SLB-EMAIL-018 |
+| 13 | ACC-EMAIL | Send final acceptance receipt/onboarding communication | Unknown | To capture | |
 
 ## ACC-00 Acceptance Gateway
 
@@ -269,9 +272,9 @@ uses a Contact Portal login route and a signed, expiring task envelope. Its obse
 parameter names bind the signing task, form instance, form template, contact, expiry,
 version and signature; all values and the active URL remain restricted.
 
-The current acceptance link has not been opened. A directly observed historical Online
-Enrolment Form sequence in the same guardian mailbox nevertheless confirms the platform
-pattern:
+The current acceptance link now confirms the same Contact Portal identity and OTP
+pattern. A directly observed historical Online Enrolment Form sequence in the same
+guardian mailbox additionally establishes the later notification pattern:
 
 1. the additional guardian receives a unique signature-required message
 2. opening the task leads to a Contact Portal login-code request
@@ -283,10 +286,46 @@ pattern:
 This historical sequence is evidence of Enquiry Tracker's guardian-signing architecture,
 not proof that the unfinished acceptance will have identical screens or completion copy.
 
+## ACC-07 And ACC-08 Contact Portal Verification
+
+The current additional guardian opened the unique signing link directly from the email.
+The sparse identity page retained the school header and displayed:
+
+- a personalised greeting naming the guardian
+- the exact form title `Enrolment Agreement Form`
+- the student and school associated with the requested signature
+- the instruction `Please verify your identity to continue.`
+- one required, prefilled Email field
+- one enabled Next button
+
+No language control, privacy link or alternative mobile field was visible. The source
+page showed the school contact block at upper right, the identity form in a narrow column
+below and a green uppercase action. The school and footer image requests did not render
+in the observed Chrome session; the text content and controls remained usable.
+
+One authorised Next click produced this directly observed transition:
+
+1. the client loaded and executed invisible Cloudflare Turnstile
+2. the button changed to disabled `Sending...`
+3. the client sent a verification request to Enquiry Tracker's Australian API containing
+   the entered email, a blank mobile value, school identifier, CAPTCHA type and Turnstile
+   token; all values and the token remain restricted
+4. the verification endpoint and its CORS preflight returned HTTP 200
+5. without changing the URL, the page replaced the identity form with `A code has been
+   sent to your email address` and `Enter the code to continue`
+6. the current Contact Portal login-code email arrived immediately and states that its
+   six-digit code expires after 30 minutes
+
+The OTP screen contains one required Verification Code field, disabled Verify until a
+value is entered, Resend code and Change email. No code was read into the repository or
+entered into the live page.
+
 ## Questions For The Next Authorised Observation
 
-- Does Next send a six-digit OTP using the same 30-minute template as application access?
-- Does it match the contact, student, submitted application or offer before showing data?
+- What exact agreement or signature-only view appears after the additional guardian's
+  OTP succeeds?
+- Does OTP verification bind only the signed task/contact, or re-evaluate the student,
+  submitted application and offer before showing the signing view?
 - Why were three student records eligible to start an agreement, and does every row
   represent an active offer?
 - Is the offer response deadline rechecked after verification?
@@ -323,7 +362,9 @@ not proof that the unfinished acceptance will have identical screens or completi
 - [x] Current-guardian submission confirmation and pending-further-signature state
 - [x] Additional-guardian Enrolment Agreement signature-request email
 - [x] Historical Contact Portal OTP and signature-confirmation email sequence
-- [ ] Current additional-guardian access, verification and signing screens
+- [x] Current additional-guardian identity gateway and Turnstile transition
+- [x] Current additional-guardian OTP email and verification screen
+- [ ] Current additional-guardian post-OTP signing screen
 - [ ] Acceptance receipt and onboarding communications
 - [x] Decline gateway, OTP and record-selection entry
 - [x] Decline Start/Continue transition and three-step form
@@ -345,9 +386,9 @@ process.
   SLB-DOC-009. The public HTML walkthrough still paraphrases the full third-party legal
   text pending redistribution review.
 - **Second-guardian signing package:** the current signature-request email is captured,
-  and the historical application proves the platform's OTP and completion-email pattern.
-  The current acceptance access screen, verification, signing view and completion
-  behavior have not been observed.
+  the current identity gateway and OTP screen are captured, and the historical
+  application proves the platform's completion-email pattern. The current acceptance
+  post-OTP signing view and completion behavior have not been observed.
 - **Completion outputs:** the current guardian's post-submit state is captured, but the
   all-signatures-complete confirmation, acceptance receipt, onboarding communications
   and any downloadable completed agreement have not been reached.
