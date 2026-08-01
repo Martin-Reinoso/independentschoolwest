@@ -405,6 +405,31 @@ a { color: inherit; }
 .review-document:first-of-type { margin-top: 20px; }
 .review-document strong, .review-document small { display: block; }
 .review-document code { padding: 9px; background: #f3f3f3; overflow-wrap: anywhere; }
+.review-signature-declarations { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
+.review-signature-declarations label { display: flex; gap: 10px; align-items: flex-start; font-size: 12px; line-height: 1.5; }
+.review-signature-declarations input { flex: 0 0 auto; width: 18px; height: 18px; }
+.review-pending-canvas { display: grid; place-items: center; width: min(720px, 100%); height: 220px; color: #aaa; border: 1px solid #999; font-size: clamp(38px, 6vw, 68px); }
+.review-pending-date { display: block; width: 300px; margin-top: 20px; color: #666; font-size: 12px; }
+.review-pending-date input { display: block; width: 100%; margin-top: 5px; padding: 8px 0; background: transparent; border: 0; border-bottom: 1px solid #999; }
+.signing-action-stage { width: min(800px, 100%); margin: 0 auto; }
+.signing-action-stage h3 { margin: 30px 0 8px; font-size: 18px; }
+.signing-action-stage form > p { color: #666; font-size: 13px; }
+.signing-comments { display: block; margin: 25px 0 35px; color: #666; font-size: 12px; }
+.signing-comments textarea { display: block; width: 100%; min-height: 110px; margin-top: 6px; padding: 15px; border: 1px solid #ddd; resize: vertical; font: 14px Roboto, sans-serif; }
+.signing-comments small { display: block; margin-top: 4px; }
+.signing-declaration { display: flex; gap: 13px; align-items: flex-start; margin: 22px 0; padding: 17px 15px; background: #f2f2f2; font-size: 13px; line-height: 1.45; }
+.signing-declaration input { flex: 0 0 auto; width: 20px; height: 20px; margin-top: 1px; }
+.signing-declaration b, .signing-remote-canvas b, .signing-date b { color: #e14c43; font-weight: 400; }
+.signing-remote-canvas { position: relative; display: block; margin-top: 26px; color: #666; font-size: 12px; }
+.signing-remote-canvas canvas { display: block; width: 100%; height: 200px; margin-top: 6px; background: #fff; border: 1px solid #aaa; opacity: .58; pointer-events: none; }
+.signing-remote-canvas canvas.is-enabled { opacity: 1; pointer-events: auto; cursor: crosshair; }
+.signing-remote-canvas > span { position: absolute; inset: 50% 0 auto; color: #bbb; text-align: center; font-style: italic; }
+.signing-action-stage .secondary-action { margin-top: 15px; padding: 10px 18px; color: #666; background: #fff; border: 1px solid #bbb; }
+.signing-action-stage .secondary-action:disabled { opacity: .45; }
+.signing-date { display: block; width: 200px; margin-top: 25px; color: #666; font-size: 12px; }
+.signing-date input { display: block; width: 100%; margin-top: 5px; padding: 8px 2px; border: 0; border-bottom: 1px solid #999; }
+.signing-date small { display: block; margin-top: 6px; }
+.signing-action-stage .signing-next { display: block; margin-top: 42px; }
 
 @media (max-width: 900px) {
   .reference-nav { position: relative; flex-wrap: wrap; gap: 9px 22px; }
@@ -496,4 +521,5 @@ a { color: inherit; }
   .review-section details fieldset { margin: 0 8px 12px; }
   .review-document { grid-template-columns: 1fr; }
   .review-document code { grid-column: auto; }
+  .review-signature-declarations { grid-template-columns: 1fr; }
 }

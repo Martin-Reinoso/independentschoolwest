@@ -226,8 +226,10 @@ confirms the prefilled email, passes an invisible Turnstile check, verifies with
 30-minute OTP and receives an individual acknowledgement after signing; the application
 remains pending until the required signature set is complete. The identity gateway, OTP
 screen, email sequence, signing Introduction, prefilled-details save checkpoint and
-complete read-only Review are captured. The remote guardian's Sign and Thank You stages
-remain pending.
+complete read-only Review are captured. Review misleadingly shows the additional
+guardian's disabled `Pending Signature` block even though the actual declarations,
+canvas and date are on the next dedicated Sign stage. That Sign interface is captured
+read-only; Thank You and completed-signature behavior remain pending.
 
 ## Replica Fidelity Boundary
 

@@ -65,12 +65,72 @@ document.querySelectorAll('[data-guardian-details-reference]').forEach((form) =>
 document.querySelectorAll('[data-guardian-review-reference]').forEach((form) => {
   const confirmation = form.querySelector('[data-review-confirm]');
   const next = form.querySelector('[data-review-next]');
-  const feedback = form.querySelector('.static-feedback');
   const update = () => { next.disabled = !confirmation.checked; };
 
   confirmation.addEventListener('change', update);
+  next.addEventListener('click', () => { window.location.href = 'guardian-signing-sign.html'; });
+  update();
+});
+
+document.querySelectorAll('[data-guardian-sign-reference]').forEach((form) => {
+  const comments = form.querySelector('[data-sign-comments]');
+  const count = form.querySelector('[data-sign-count]');
+  const declarations = Array.from(form.querySelectorAll('[data-sign-declaration]'));
+  const canvas = form.querySelector('[data-remote-signature]');
+  const lock = form.querySelector('[data-signature-lock]');
+  const clear = form.querySelector('[data-clear-remote-signature]');
+  const date = form.querySelector('.signing-date input');
+  const next = form.querySelector('[data-sign-next]');
+  const feedback = form.querySelector('.static-feedback');
+  const context = canvas.getContext('2d');
+  let drawing = false;
+  let hasSignature = false;
+
+  context.strokeStyle = '#4f5963';
+  context.lineWidth = 2;
+  context.lineCap = 'round';
+
+  const termsAccepted = () => declarations.every((checkbox) => checkbox.checked);
+  const update = () => {
+    const accepted = termsAccepted();
+    canvas.classList.toggle('is-enabled', accepted);
+    lock.hidden = accepted;
+    clear.disabled = !accepted || !hasSignature;
+    next.disabled = !accepted || !hasSignature;
+  };
+  const point = (event) => {
+    const rect = canvas.getBoundingClientRect();
+    return { x: (event.clientX - rect.left) * canvas.width / rect.width, y: (event.clientY - rect.top) * canvas.height / rect.height };
+  };
+
+  comments.addEventListener('input', () => { count.textContent = comments.value.length; });
+  declarations.forEach((checkbox) => checkbox.addEventListener('change', update));
+  canvas.addEventListener('pointerdown', (event) => {
+    if (!termsAccepted()) return;
+    drawing = true;
+    const current = point(event);
+    context.beginPath();
+    context.moveTo(current.x, current.y);
+    canvas.setPointerCapture(event.pointerId);
+  });
+  canvas.addEventListener('pointermove', (event) => {
+    if (!drawing) return;
+    const current = point(event);
+    context.lineTo(current.x, current.y);
+    context.stroke();
+    hasSignature = true;
+    date.value = new Date().toLocaleDateString('en-AU');
+    update();
+  });
+  canvas.addEventListener('pointerup', () => { drawing = false; });
+  clear.addEventListener('click', () => {
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    hasSignature = false;
+    date.value = '';
+    update();
+  });
   next.addEventListener('click', () => {
-    feedback.textContent = 'Reference only. The Sign step has not yet been captured, so this replica stops here.';
+    feedback.textContent = 'Reference only. The Thank You stage has not yet been captured, and nothing is submitted.';
     feedback.hidden = false;
   });
   update();

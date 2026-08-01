@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Guardian Signing Form - St Lawrence Process Reference</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="gateway-page remote-signing-page">
+  <nav class="reference-nav" aria-label="Reference navigation"><a href="guardian-signing-review.html">Previous: review</a><a href="index.html">Process map</a><span>Thank You not yet captured</span></nav>
+  <header class="gateway-header"><a href="index.html" class="gateway-logo-link" aria-label="Return to process map"><img src="assets/slb-gateway-logo.png" alt="St Lawrence of Brindisi Catholic Primary School"></a><div class="gateway-contact"><p>St Lawrence of Brindisi Catholic Primary School</p><p>31 Waterway Boulevard<br>Weir Views VIC 3338</p><p>office@slweirviews.catholic.edu.au<br>8099 6699<br>www.slweirviews.catholic.edu.au</p><p>ABN 44 357 311 791</p></div></header>
+
+  <main class="remote-signing-shell">
+    <header class="remote-signing-titlebar"><div><span class="remote-signing-icon" aria-hidden="true">&#9998;</span><h1>Sign Form</h1></div><button type="button"><span aria-hidden="true">&#9211;</span> Logout</button></header>
+    <nav class="signing-stepper has-back" aria-label="Wizard progress"><a class="signing-back" href="guardian-signing-review.html">&#8592; Back</a><ol><li class="is-complete"><span>&#10003;</span><strong>Introduction</strong></li><li class="is-complete"><span>&#10003;</span><strong>Your Details</strong></li><li class="is-complete"><span>&#10003;</span><strong>Review</strong></li><li class="is-current" aria-current="step"><span>4</span><strong>Sign</strong></li><li><span>5</span><strong>Thank You</strong></li></ol></nav>
+
+    <section class="signing-stage signing-action-stage">
+      <h2>Sign the Form</h2>
+      <p>If you have any comments or feedback about this form, please add them below before signing. Then, agree to the terms and provide your electronic signature to complete.</p>
+      <form data-guardian-sign-reference>
+        <h3>Comments for the School</h3>
+        <p>If you have any feedback or concerns about the form, please add your comments below. These will be included with your signature.</p>
+        <label class="signing-comments">Comments (optional)<textarea maxlength="1000" placeholder="Add any comments you would like to include with your signature" data-sign-comments></textarea><small><span data-sign-count>0</span>/1000</small></label>
+
+        <label class="signing-declaration"><input type="checkbox" data-sign-declaration> <span>I acknowledge and agree that, at the time of signing this form, my IP address will be recorded and stored by the School for administrative, security and legal compliance purposes. <b>*</b></span></label>
+        <label class="signing-declaration"><input type="checkbox" data-sign-declaration> <span>As the parent/guardian of my child, I declare I have read, understood and given consent to all matters contained in this form which includes Parent Code of Conduct and Student Code of Conduct. I understand all MACS and school policies and procedures which are reviewed regularly, may be subject to change at the school's discretion. I understand that my consent will remain valid while my child continues enrolment at St Lawrence of Brindisi Catholic Primary School. <b>*</b></span></label>
+
+        <label class="signature-label signing-remote-canvas">Signature <b>*</b><canvas width="900" height="190" data-remote-signature aria-label="Reference signature drawing area"></canvas><span data-signature-lock>Please agree to the terms above to enable signing</span></label>
+        <button type="button" class="secondary-action" data-clear-remote-signature disabled>Clear Signature</button>
+        <label class="signing-date">Date <b>*</b><input aria-label="Date" readonly><small>Automatically set to today's date</small></label>
+        <button type="button" class="signing-next" data-sign-next disabled>Next</button>
+        <p class="static-feedback" role="status" hidden></p>
+      </form>
+    </section>
+  </main>
+  <footer class="gateway-footer"><img src="assets/slb-gateway-footer.jpg" alt="A light to the mind and a fire to the will"></footer>
+  <script src="walkthrough.js"></script>
+</body>
+</html>

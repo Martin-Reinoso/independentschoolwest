@@ -5,8 +5,8 @@
 **Status:** Capture in progress. The acceptance gateway, matched-contact/student
 selection screen, Continue transition, five-step agreement, current-guardian submission
 and the resulting additional-guardian signature request, identity gateway, OTP screen,
-signing Introduction, Your Details and Review stages have been observed. Sign, Thank You
-and final completion outputs have not been opened.
+signing Introduction, Your Details, Review and Sign stages have been observed. No live
+signature control was changed. Thank You and final completion outputs remain unopened.
 
 This record maps the workflow after a family selects Accept in an offer email. It does
 not authorise accepting the place, completing an OTP, signing an agreement or
@@ -41,8 +41,9 @@ details and application identifiers are excluded from this public repository.
 | 12 | ACC-09 | Additional guardian verifies and opens signing task | User-completed OTP opens a distinct five-stage Sign Form route on Introduction | Captured | SLB-018 |
 | 13 | ACC-10 | Additional guardian reviews their details | One authorised Next opens prefilled editable contact details; school-contact permission is locked and explicit confirmation gates the next action | Captured | SLB-018 |
 | 14 | ACC-11 | Save details and review the submitted agreement | Confirmation enables Next; Next saves through the API, then renders the complete agreement read-only with another required confirmation | Captured | SLB-019 |
-| 15 | ACC-12 | Additional guardian signs | Sign and Thank You have not been opened; the historical application establishes the later individual acknowledgement and all-signatures-complete emails | Partially evidenced | SLB-EMAIL-017, SLB-EMAIL-018 |
-| 16 | ACC-EMAIL | Send final acceptance receipt/onboarding communication | Unknown | To capture | |
+| 15 | ACC-12 | Additional guardian prepares to sign | Review confirmation enables Next; the dedicated Sign stage provides comments, declarations, locked canvas and automatic date | Captured read-only | SLB-020 |
+| 16 | ACC-13 | Additional guardian signs and completes | No declaration, signature or final Next action has been changed; the historical application establishes the later individual acknowledgement and all-signatures-complete emails | Partially evidenced | SLB-EMAIL-017, SLB-EMAIL-018 |
+| 17 | ACC-EMAIL | Send final acceptance receipt/onboarding communication | Unknown | To capture | |
 
 ## ACC-00 Acceptance Gateway
 
@@ -379,13 +380,46 @@ one long, read-only page, including:
 The page explicitly says the form is read-only and cannot be changed. It tells the
 guardian that comments can be added in the next step before signing. At the bottom,
 `I have reviewed the form and am ready to proceed` is required and Next remains disabled
-until it is checked. The live session was deliberately left there without checking it;
-Sign and Thank You remain unopened.
+until it is checked.
+
+### Review Usability Defect
+
+The embedded additional-guardian signature block displays empty declarations, a large
+`Pending Signature` canvas and an empty date. All are disabled and cannot be clicked,
+but the page does not clearly label the entire block as a read-only preview or say beside
+it that signing occurs on the next page. The actual transition is only explained near
+the bottom of a very long agreement, where the guardian must check the reviewed-and-ready
+confirmation; only then does a grey Next button turn green.
+
+This is likely to make a guardian repeatedly attempt the disabled checkboxes or canvas.
+Rosewood should label the block `Signature status: Pending - read-only preview`, provide
+an explanation and an anchored `Continue to sign` action, and avoid using a generic Next
+label for this consequential transition.
+
+## ACC-12 Dedicated Sign Stage
+
+With explicit authorisation, the reviewed-and-ready confirmation was checked and Next
+changed from grey/disabled to green/enabled. One authorised Next click opened Sign. The
+dedicated page contains:
+
+- heading `Sign the Form` and instructions to add feedback before signing
+- optional `Comments for the School` textarea with a 0/1000 counter
+- required IP-address recording/storage acknowledgement
+- required parent/guardian declaration covering the form, Codes of Conduct, MACS and
+  school policies, and consent validity during enrolment
+- signature canvas displaying `Please agree to the terms above to enable signing`
+- disabled Clear Signature until signing is enabled and a mark exists
+- required Date with `Automatically set to today's date`
+- disabled Next until the required declarations and signature are complete
+
+The live session was deliberately left on Sign. No comments were entered; neither
+declaration was checked; the canvas, date, Clear Signature and Next remained untouched.
+Thank You and the current completion behavior remain unopened.
 
 ## Questions For The Next Authorised Observation
 
-- What exact comments, acknowledgements, drawing/date controls and error states appear
-  in Sign?
+- Does the signature canvas enable only after both declarations, and exactly when is the
+  automatic date populated?
 - Does confirming or editing Your Details update only the signed task/contact snapshot,
   or a reusable contact record?
 - Why were three student records eligible to start an agreement, and does every row
@@ -427,8 +461,8 @@ Sign and Thank You remain unopened.
 - [x] Historical Contact Portal OTP and signature-confirmation email sequence
 - [x] Current additional-guardian identity gateway and Turnstile transition
 - [x] Current additional-guardian OTP email and verification screen
-- [x] Current additional-guardian signing Introduction, Your Details and Review stages
-- [ ] Current additional-guardian Sign and Thank You stages
+- [x] Current additional-guardian signing Introduction, Your Details, Review and Sign stages
+- [ ] Current additional-guardian Thank You stage and completed-signature behavior
 - [ ] Acceptance receipt and onboarding communications
 - [x] Decline gateway, OTP and record-selection entry
 - [x] Decline Start/Continue transition and three-step form
@@ -450,9 +484,10 @@ process.
   SLB-DOC-009. The public HTML walkthrough still paraphrases the full third-party legal
   text pending redistribution review.
 - **Second-guardian signing package:** the current signature-request email, identity
-  gateway, OTP screen, Introduction, Your Details and full read-only Review are captured,
-  and the historical application proves the platform's completion-email pattern. The
-  current acceptance Sign, Thank You and completion behavior have not been observed.
+  gateway, OTP screen, Introduction, Your Details, full read-only Review and dedicated
+  Sign interface are captured, and the historical application proves the platform's
+  completion-email pattern. The current Thank You and completed-signature behavior have
+  not been observed.
 - **Completion outputs:** the current guardian's post-submit state is captured, but the
   all-signatures-complete confirmation, acceptance receipt, onboarding communications
   and any downloadable completed agreement have not been reached.
