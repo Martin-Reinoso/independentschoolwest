@@ -15,7 +15,7 @@
   </nav>
 
   <main class="email-shell">
-    <p class="email-context">Sanitised structural replicas of the additional-guardian emails. The current acceptance is captured only through the first message; the remaining sequence was observed during the earlier application.</p>
+    <p class="email-context">Sanitised structural replicas of the complete additional-guardian sequence. Current Enrolment Agreement messages are shown first; the earlier application messages remain below for comparison.</p>
 
     <article class="email-card guardian-email" aria-labelledby="signature-request-subject">
       <header class="email-heading">
@@ -33,10 +33,10 @@
       <footer class="email-safety">The live signed Contact Portal URL, recipient, student, identifiers, expiry and tracking data have been removed.</footer>
     </article>
 
-    <div class="email-flow-marker"><span>Historical application evidence continues the platform sequence</span></div>
+    <div class="email-flow-marker"><span>Identity verification</span></div>
 
     <article class="email-card guardian-email" aria-labelledby="portal-code-subject">
-      <header class="email-heading"><p class="email-stage">Earlier application - directly observed</p><h2 id="portal-code-subject">Your St Lawrence of Brindisi Catholic Primary School Contact Portal login code</h2></header>
+      <header class="email-heading"><p class="email-stage">Current acceptance - directly observed</p><h2 id="portal-code-subject">Your St Lawrence of Brindisi Catholic Primary School Contact Portal login code</h2></header>
       <div class="email-body">
         <p>Use the code below to log in to the school's Contact Portal:</p>
         <div class="email-code" aria-label="One-time passcode removed">&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;</div>
@@ -45,16 +45,42 @@
       <footer class="email-safety">The expired code and recipient have been removed.</footer>
     </article>
 
+    <div class="email-flow-marker"><span>Signature committed</span></div>
+
     <article class="email-card guardian-email" aria-labelledby="signed-subject">
-      <header class="email-heading"><p class="email-stage">Earlier application - directly observed</p><h2 id="signed-subject">Thank you for signing [Student]'s Online Enrolment Form</h2></header>
-      <div class="email-body"><p>The guardian is thanked for signing and told that their signature was successfully recorded.</p></div>
-      <footer class="email-safety">No attachment or further family action was observed.</footer>
+      <header class="email-heading"><p class="email-stage">Current acceptance - directly observed</p><h2 id="signed-subject">Thank you for signing [Student]'s Enrolment Agreement Form</h2></header>
+      <div class="email-body">
+        <p>Dear Parent / Guardian,</p>
+        <p>Thank you for signing [Student]'s Enrolment Agreement Form.</p>
+        <p>Your signature has been successfully recorded.</p>
+        <p>If you have any questions, please contact the school directly.</p>
+      </div>
+      <footer class="email-safety">No attachment, private action link or further family action was included.</footer>
     </article>
 
     <article class="email-card guardian-email" aria-labelledby="complete-subject">
-      <header class="email-heading"><p class="email-stage">Earlier application - directly observed</p><h2 id="complete-subject">All signatures complete for [Student]'s Online Enrolment Form</h2></header>
-      <div class="email-body"><p>The guardian is told that all required signatures have been received, the application has been submitted, and the school will now process it.</p></div>
-      <footer class="email-safety">This historical completion message does not prove that the unfinished acceptance uses identical final wording.</footer>
+      <header class="email-heading"><p class="email-stage">Current acceptance - directly observed one second later</p><h2 id="complete-subject">All signatures complete for [Student]'s Enrolment Agreement Form</h2></header>
+      <div class="email-body">
+        <p>Dear Parent / Guardian,</p>
+        <p>All required signatures for [Student]'s Enrolment Agreement Form have been received.</p>
+        <p>The application has been submitted and the school will now process it.</p>
+        <p>If you have any questions, please contact the school directly.</p>
+      </div>
+      <footer class="email-safety">This is a separate aggregate-completion message. It has no attachment or private action link.</footer>
+    </article>
+
+    <div class="email-flow-marker"><span>Earlier application - same platform pattern</span></div>
+
+    <article class="email-card guardian-email" aria-labelledby="historical-signed-subject">
+      <header class="email-heading"><p class="email-stage">Earlier application - directly observed</p><h2 id="historical-signed-subject">Thank you for signing [Student]'s Online Enrolment Form</h2></header>
+      <div class="email-body"><p>The guardian was thanked for signing and told that their signature was successfully recorded.</p></div>
+      <footer class="email-safety">Historical comparison only; family identifiers are removed.</footer>
+    </article>
+
+    <article class="email-card guardian-email" aria-labelledby="historical-complete-subject">
+      <header class="email-heading"><p class="email-stage">Earlier application - directly observed</p><h2 id="historical-complete-subject">All signatures complete for [Student]'s Online Enrolment Form</h2></header>
+      <div class="email-body"><p>The guardian was told that all required signatures had been received, the application had been submitted, and the school would process it.</p></div>
+      <footer class="email-safety">The current agreement sequence now independently confirms the same two-event pattern.</footer>
     </article>
   </main>
 </body>

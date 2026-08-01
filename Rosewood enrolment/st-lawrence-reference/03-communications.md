@@ -24,6 +24,8 @@ paraphrased unless publication rights have been confirmed.
 | SLB-COM-016 | Additional guardian opens a signing task and passes the invisible bot check | Enquiry Tracker automation | Additional guardian | Contact Portal login code | Verify access before exposing the signing task | Six-digit one-time code; ignore if not requested; expires after 30 minutes | No link; guardian returns to the open Contact Portal | SLB-EMAIL-016, SLB-EMAIL-019 |
 | SLB-COM-017 | Additional guardian signs the historical application | Enquiry Tracker automation | Additional guardian | Thank you for signing | Confirm that the individual signature was stored | States that the signature was successfully recorded | None observed | SLB-EMAIL-017 |
 | SLB-COM-018 | Last historical application signature is received | Enquiry Tracker automation | Additional guardian | All signatures complete | Confirm completion of the required signature set | States that all signatures were received and the application was submitted for school processing | None observed | SLB-EMAIL-006, SLB-EMAIL-018 |
+| SLB-COM-019 | Additional guardian signs the current Enrolment Agreement | Enquiry Tracker automation | Additional guardian | Thank you for signing the Enrolment Agreement Form | Confirm that the individual guardian signature was committed | States that the signature was successfully recorded; no further action is requested | School website only | SLB-EMAIL-020 |
+| SLB-COM-020 | Last current Enrolment Agreement signature is received | Enquiry Tracker automation | Additional guardian | All signatures complete for the Enrolment Agreement Form | Confirm the aggregate completion transition | States that all required signatures were received, the application was submitted and the school will now process it | School website only | SLB-EMAIL-021 |
 
 ## Sequence
 
@@ -47,6 +49,8 @@ paraphrased unless publication rights have been confirmed.
 | 16 | SLB-COM-016 | Guardian signing link opened and Next succeeds | Automatic | Enter the code within 30 minutes |
 | 17 | SLB-COM-017 | Historical guardian signature recorded | Automatic | No immediate action stated |
 | 18 | SLB-COM-018 | Historical required-signature set completed | Automatic | No immediate action stated |
+| 19 | SLB-COM-019 | Current agreement guardian signature recorded | Automatic | No immediate action stated |
+| 20 | SLB-COM-020 | Current agreement required-signature set completed | Automatic, one second after the individual acknowledgement | No immediate action stated |
 
 ## Delivery Details
 
@@ -65,12 +69,16 @@ paraphrased unless publication rights have been confirmed.
 - Second-guardian delivery: the signature request contains a unique, signed Contact
   Portal task URL. Its observed query structure binds a signing task, form instance,
   form template, contact, expiry, version and signature. All values are restricted.
-- Historical signing outcome: the guardian received both an individual signature
-  acknowledgement and a separate all-signatures-complete message at the same recorded
-  time. The current acceptance has reached the OTP screen but has not been verified or
-  signed by the additional guardian.
+- Paired signing outcome: both the historical application and current Enrolment
+  Agreement generated an individual-signature acknowledgement followed by a separate
+  all-signatures-complete message. In the current agreement, the second message arrived
+  one second after the first. This exposes separate per-signatory and aggregate workflow
+  events.
 - Current verification delivery: the Contact Portal generated the current login-code
   message immediately after a successful invisible Turnstile check and verification API
   response. This confirms that the current agreement also requires OTP verification.
+- Current completion delivery: neither completion message included an attachment or
+  family-specific action link. Both used the school identity and contact footer; the
+  website link was wrapped by the outbound email tracking service.
 - Footer behaviour: system emails include an unsubscribe footer. Staff Google Group
   messages include confidentiality and cloud-service privacy wording.

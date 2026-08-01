@@ -12,7 +12,8 @@ vendor's private implementation.
 **High confidence, directly observed:** unique guardian task link, prefilled identity,
 invisible Turnstile, email OTP, authenticated signing wizard, details save, immutable
 review, declaration-gated canvas, automatic date, per-guardian completion, Thank You,
-confirmation messages, aggregate Submitted state and immutable signed-form view.
+paired per-signatory and aggregate completion messages, aggregate Submitted state and
+immutable signed-form view.
 
 **Inferred:** exact tables, transaction boundaries, token hashing, signature encoding,
 document hashing and notification queue design. These are engineering requirements for a
@@ -30,6 +31,21 @@ safe Rosewood implementation, not reverse-engineered vendor facts.
 | Sign | Capture final intent and evidence | Reviewed revision | Optional comments, two declarations, signature | Atomic signature creation |
 | Thank You | Confirm the individual signature | Signature record committed | View Signed Form or Logout | Immutable submitted view |
 | Signed Form | Durable family receipt | Required signature set complete | Print or Logout | No mutation |
+
+## Observed Completion Events
+
+The final guardian action produced two family-visible notifications with separate
+subjects and meanings:
+
+1. `signatory.completed`: confirms that this guardian's signature was successfully
+   recorded.
+2. `agreement.completed`: confirms that all required signatures are present, the
+   application is submitted and school processing can begin.
+
+The aggregate message arrived one second after the individual acknowledgement. Rosewood
+should preserve these as separate idempotent outbox events. The signature transaction
+must not be rolled back if email delivery fails, and retries must not emit duplicate
+family messages.
 
 ## Validation State Machine
 

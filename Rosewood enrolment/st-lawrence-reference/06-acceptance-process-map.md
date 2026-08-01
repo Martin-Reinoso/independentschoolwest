@@ -449,6 +449,13 @@ This confirms that completion is not merely a client-side Thank You state. The a
 agreement record transitions from Pending Signatures to Submitted and exposes a durable
 immutable representation after the required signature set is complete.
 
+Two automatic emails then arrived one second apart. The first confirms only that the
+current guardian's signature was successfully recorded. The second confirms that all
+required signatures were received, the application was submitted and the school will
+now process it. Neither message contained an attachment or private action link. The
+separate subjects and timing confirm distinct per-signatory completion and aggregate
+agreement-completion events rather than one generic notification.
+
 ## Questions For The Next Authorised Observation
 
 - Does the date populate at the first signature stroke, pointer release or final canvas
@@ -468,8 +475,9 @@ immutable representation after the required signature set is complete.
   intended to create marketing consent from required contact fields?
 - Does changing an actual Your Details field use the same blocking save, and is any
   persistent Saved/Unsaved marker shown?
-- What current acceptance emails, downloadable artifact or onboarding message follows
-  all required signatures?
+- Does the initiating guardian receive the same completion pair, or only the additional
+  guardian who supplied the final signature?
+- What onboarding message or downloadable artifact follows school processing?
 - What happens after OTP expiry, email mismatch, duplicate access or a stalled Sending state?
 
 ## Capture Checklist
@@ -499,7 +507,8 @@ immutable representation after the required signature set is complete.
 - [x] Sign validation, automatic-date and button-enable frames
 - [x] Current additional-guardian Thank You and View Signed Form behavior
 - [x] Immutable Submitted agreement with both signatures complete
-- [ ] Acceptance receipt and onboarding communications
+- [x] Current acceptance individual-signature and all-signatures-complete emails
+- [ ] Post-processing acceptance receipt and onboarding communications
 - [x] Decline gateway, OTP and record-selection entry
 - [x] Decline Start/Continue transition and three-step form
 - [ ] Decline confirmation and completion outputs
@@ -523,10 +532,11 @@ process.
   gateway, OTP screen, Introduction, Your Details, full read-only Review, Sign validation,
   Thank You and immutable submitted-form view are captured. The historical application
   proves the platform's completion-email pattern.
-- **Completion outputs:** both the current guardian's pending-signature destination and
-  the additional guardian's Signing Complete and Submitted views are captured. Current
-  all-signatures-complete email wording, onboarding communications and any downloadable
-  artifact beyond browser Print have not been reached.
+- **Completion outputs:** the current guardian's pending-signature destination, the
+  additional guardian's Signing Complete and Submitted views, and the paired current
+  individual-signature/all-signatures-complete emails are captured. Onboarding
+  communications and any downloadable artifact beyond browser Print have not been
+  reached.
 - **Alternative and failure paths:** the decline gateway, OTP and record-selection
   entry are captured as SLB-015, and the unsubmitted form as SLB-016. Final decline
   confirmation and completion are not captured. Expired offer, invalid or expired OTP,
