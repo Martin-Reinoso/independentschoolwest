@@ -24,6 +24,7 @@ Resources:
     Type: AWS::DynamoDB::Table
     Properties:
       BillingMode: PAY_PER_REQUEST
+      DeletionProtectionEnabled: true
       AttributeDefinitions:
         - AttributeName: PK
           AttributeType: S
@@ -68,7 +69,10 @@ Resources:
                 Resource: !GetAtt RosewoodTable.Arn
               - Effect: Allow
                 Action: secretsmanager:GetSecretValue
-                Resource: !Ref ConfigSecretArn
+                # The supplied ARN includes Secrets Manager's random suffix. The
+                # trailing wildcard preserves single-secret scope while supporting
+                # Secrets Manager's ARN matching during version retrieval.
+                Resource: !Sub "${ConfigSecretArn}*"
               - Effect: Allow
                 Action: ses:SendEmail
                 Resource: !Sub arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/${OtpFromEmail}
@@ -87,7 +91,7 @@ Resources:
       Role: !GetAtt RosewoodFunctionRole.Arn
       Timeout: 30
       MemorySize: 512
-      Code: lambda/
+      Code: lambda-dist/
       Environment:
         Variables:
           ROSEWOOD_TABLE_NAME: !Ref RosewoodTable
@@ -106,20 +110,6 @@ Resources:
     Properties:
       TargetFunctionArn: !Ref RosewoodFunction
       AuthType: NONE
-      Cors:
-        AllowOrigins:
-          - https://ffe.org.au
-        AllowHeaders:
-          - authorization
-          - content-type
-          - idempotency-key
-          - x-client-version
-        AllowMethods:
-          - GET
-          - POST
-          - PUT
-          - PATCH
-        MaxAge: 300
 
   RosewoodFunctionUrlPermission:
     Type: AWS::Lambda::Permission
@@ -128,6 +118,14 @@ Resources:
       Action: lambda:InvokeFunctionUrl
       Principal: "*"
       FunctionUrlAuthType: NONE
+
+  RosewoodFunctionUrlInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref RosewoodFunction
+      Action: lambda:InvokeFunction
+      Principal: "*"
+      InvokedViaFunctionUrl: true
 
   RosewoodOutboxSchedule:
     Type: AWS::Events::Rule

@@ -22,6 +22,9 @@ AWS Lambda
 
 ## API Contract
 
+The Lambda response layer owns CORS, including OPTIONS requests. Function URL CORS is
+left unset to prevent duplicate `Access-Control-Allow-Origin` headers.
+
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `POST` | `/v2/access/request-otp` | Validate invitation/email and issue a bounded challenge |
@@ -100,7 +103,10 @@ domain configuration.
 
 ## Google Drive Interim Storage
 
-- A service account receives minimum access to one restricted folder.
+- A service account receives editor access to one restricted folder. Its OAuth token
+  uses the full Drive API scope because `drive.file` cannot discover a folder shared
+  manually through Drive. The Google ACL remains the resource boundary: only the
+  restricted folder is shared with the account.
 - The backend creates scoped resumable uploads with fixed type, name, size and application
   metadata.
 - After upload, `/documents/confirm` reads Drive metadata and verifies ownership, parent,

@@ -28,6 +28,7 @@ stripe-donations-recent.csv
 
 # Rosewood V2 local dependencies and browser-test artifacts
 Rosewood enrolment/v2/**/node_modules/
+Rosewood enrolment/v2/lambda-dist/
 Rosewood enrolment/v2/test-results/
 Rosewood enrolment/v2/playwright-report/
 Rosewood enrolment/v2/packaged.yaml

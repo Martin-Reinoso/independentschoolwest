@@ -24,6 +24,9 @@ test("Drive upload sessions pin parent, ownership, MIME type and size", async ()
   const adapter = new GoogleDriveAdapter({ serviceAccountEmail: "service@example.test", privateKey: signingKey(), folderId: "folder-1", fetchImpl: async (url, options) => { calls.push({ url: String(url), options }); return responses.shift(); } });
   const session = await adapter.createUploadSession({ applicationId: "app-1", category: "birth_certificate", fileName: "Birth Certificate.pdf", mimeType: "application/pdf", size: 1234 });
   assert.equal(session.uploadUrl, "https://upload.example/session");
+  const oauthAssertion = new URLSearchParams(calls[0].options.body).get("assertion");
+  const oauthClaims = JSON.parse(Buffer.from(oauthAssertion.split(".")[1], "base64url").toString("utf8"));
+  assert.equal(oauthClaims.scope, "https://www.googleapis.com/auth/drive");
   const metadata = JSON.parse(calls[1].options.body);
   assert.deepEqual(metadata.parents, ["folder-1"]);
   assert.equal(metadata.appProperties.rosewoodApplicationId, "app-1");
@@ -273,9 +276,26 @@ test("deployment preflight fails closed before making cloud calls", () => {
   assert.match(`${result.stdout}${result.stderr}`, /Missing required environment variable: EXPECTED_AWS_ACCOUNT_ID/);
 });
 
-test("deployment template includes the receipt page and scheduled outbox retry", () => {
+test("invitation utility fails closed without explicit synthetic controls", () => {
+  const lambdaDirectory = fileURLToPath(new URL("..", import.meta.url));
+  const result = spawnSync(process.execPath, ["scripts/create-invitation.mjs"], {
+    cwd: lambdaDirectory,
+    env: { PATH: process.env.PATH || "" },
+    encoding: "utf8"
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(`${result.stdout}${result.stderr}`, /Synthetic invitations require/);
+});
+
+test("deployment template includes URL-only public invocation and scheduled outbox retry", () => {
   const template = readFileSync(new URL("../../template.yaml", import.meta.url), "utf8");
+  assert.match(template, /Code: lambda-dist\//);
+  assert.match(template, /DeletionProtectionEnabled: true/);
+  assert.match(template, /Resource: !Sub "\$\{ConfigSecretArn\}\*"/);
+  assert.doesNotMatch(template, /^\s+Cors:/m);
   assert.match(template, /RECEIPT_PAGE_URL: https:\/\/ffe\.org\.au\/pages\/rosewood-receipt-v2\.html/);
+  assert.match(template, /Action: lambda:InvokeFunctionUrl/);
+  assert.match(template, /Action: lambda:InvokeFunction\n\s+Principal: "\*"\n\s+InvokedViaFunctionUrl: true/);
   assert.match(template, /RosewoodOutboxSchedule:/);
   assert.match(template, /ScheduleExpression: rate\(1 minute\)/);
   assert.match(template, /Principal: events\.amazonaws\.com/);

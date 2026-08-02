@@ -12,6 +12,10 @@ pnpm test
 pnpm run test:api:coverage
 ```
 
+Before every cloud package, run `pnpm --dir lambda run build:deployment`. It must finish
+with no symbolic links and a successful handler import; packaging `lambda/` directly is
+not a supported deployment path.
+
 The API suite covers OTP generic responses, enforced resend cooldown, expiry, single use,
 attempts/rates, scoped-session expiry, signature-task expiry at every gate, draft
 idempotency/revisions, bounded engagement, Drive ownership, forged-document rejection,

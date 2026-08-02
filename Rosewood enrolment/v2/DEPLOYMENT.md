@@ -13,6 +13,10 @@ while policy files remain marked `DRAFT PLACEHOLDER - NOT APPROVED FOR PRODUCTIO
 - a Secrets Manager JSON object containing `OTP_HMAC_SECRET`, `IP_HASH_SALT`,
   `GOOGLE_SERVICE_ACCOUNT_EMAIL` and `GOOGLE_PRIVATE_KEY`
 
+Use a dedicated Rosewood service account in production. The Drive adapter requires the
+full Drive API OAuth scope so it can discover a folder shared manually through Drive;
+limit its effective access by sharing only the enrolment folder with that identity.
+
 Never place those values, the temporary sender address, folder IDs, Sheet IDs, tokens or
 real family details in Git.
 
@@ -48,7 +52,8 @@ secret tool:
 
 ```bash
 cd "Rosewood enrolment/v2/lambda"
-pnpm install --prod --frozen-lockfile
+pnpm install --frozen-lockfile
+pnpm run build:deployment
 cd ..
 aws cloudformation package \
   --template-file template.yaml \
@@ -69,6 +74,9 @@ aws cloudformation deploy \
 ```
 
 `packaged.yaml` is generated deployment output and must not be committed.
+`lambda-dist/` is also generated and ignored. The deployment builder creates a minimal
+runtime bundle, uses a hoisted dependency layout that survives ZIP packaging, rejects
+symbolic links and smoke-imports the Lambda handler before upload.
 
 ## Connect The Static Pages
 
@@ -81,6 +89,26 @@ plus mailbox OTP.
 The stack also enables `RosewoodOutboxSchedule`, an EventBridge rule that invokes the
 same Lambda every minute to retry leased outbox messages. Confirm the rule is enabled
 and perform one synthetic failed-send/retry canary before issuing test invitations.
+
+Create only approved synthetic invitations while policies are drafts. The invitation
+utility fails closed unless the AWS account, draft-policy flag, explicit synthetic flag
+and recipient mailbox all match:
+
+```bash
+cd "Rosewood enrolment/v2/lambda"
+EXPECTED_AWS_ACCOUNT_ID="$APPROVED_AWS_ACCOUNT_ID" \
+ALLOW_DRAFT_POLICY_TEST=true \
+SYNTHETIC_RECIPIENT_EMAIL="$TEST_RECIPIENT_EMAIL" \
+ROSEWOOD_TABLE_NAME="$ROSEWOOD_TABLE_NAME" \
+node scripts/create-invitation.mjs \
+  --synthetic true \
+  --email "$TEST_RECIPIENT_EMAIL" \
+  --student "Synthetic Student" \
+  --family "Synthetic test family"
+```
+
+The command prints one private capability URL. Do not place that URL in Git, logs,
+shared chat or analytics.
 
 ## Temporary Sender Swap
 

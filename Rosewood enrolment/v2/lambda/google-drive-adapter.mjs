@@ -1,6 +1,8 @@
 import crypto from "node:crypto";
 
-const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+// drive.file cannot discover a restricted folder shared manually with a service
+// account. The account's Drive ACL remains the effective resource boundary.
+const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive";
 
 function required(name, value) {
   if (!value) throw new Error(`Missing required Google Drive setting: ${name}`);

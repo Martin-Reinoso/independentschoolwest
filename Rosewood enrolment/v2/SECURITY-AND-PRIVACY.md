@@ -18,6 +18,9 @@ all application content and metadata as restricted.
 - browser and backend independently validate every field/file rule
 - DynamoDB conditional writes enforce revisions, challenge use and signature uniqueness
 - Drive and Sheets are private and shared only with named staff/service accounts
+- the Drive adapter uses the full Drive API OAuth scope because `drive.file` cannot
+  discover a manually shared folder; effective access is constrained by the Drive ACL,
+  and production must use a dedicated Rosewood service account shared only to that folder
 - Google and AWS credentials live in Secrets Manager or deployment configuration, not Git
 - production runtime startup fails closed on weak/missing secrets, missing schema/email
   configuration, non-HTTPS origins or non-HTTPS signature/receipt page URLs
