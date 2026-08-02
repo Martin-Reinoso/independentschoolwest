@@ -31,7 +31,8 @@ all application content and metadata as restricted.
   and the adapter separately enforces the configured folder target
 - preferred storage uses a dedicated Rosewood service account and non-University Shared
   Drive; the supported fallback uses a dedicated organisation-user OAuth refresh token
-  with explicit mode selection, MFA, rotation, revocation and offboarding controls
+  with explicit mode selection, exact mailbox verification, MFA, rotation, revocation
+  and offboarding controls
 - deployment preflight proves Drive writes with a create/delete probe; `canAddChildren`
   alone is insufficient because service accounts have no personal My Drive quota
 - Google service-account keys or OAuth client/refresh credentials and AWS credentials

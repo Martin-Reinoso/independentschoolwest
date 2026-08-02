@@ -39,7 +39,7 @@ been provisioned.
 
 ## Verified
 
-- 49 API tests pass
+- 51 API tests pass
 - 35 browser tests pass across desktop and mobile Chromium
 - serious/critical Axe checks pass on the main and receipt experiences under the CSP
 - Lambda deployment bundle builds without symbolic links and imports its handler

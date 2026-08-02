@@ -43,14 +43,42 @@ GOOGLE_AUTH_MODE=user_oauth
 GOOGLE_OAUTH_CLIENT_ID=
 GOOGLE_OAUTH_CLIENT_SECRET=
 GOOGLE_OAUTH_REFRESH_TOKEN=
+GOOGLE_OAUTH_EXPECTED_EMAIL=
 ```
 
 The user grant must be issued to the dedicated Rosewood organisation account with only
 the Drive and Sheets scopes used by this application. Store the refresh token only in
 Secrets Manager, keep MFA and account recovery current, keep unrelated data out of that
 account, document the OAuth client owner, and test revocation/rotation before real
-intake. If both credential sets are retained for rollback, `GOOGLE_AUTH_MODE` is
-mandatory so a deployment cannot switch identity silently.
+intake. Every preflight rechecks the refresh token against `GOOGLE_OAUTH_EXPECTED_EMAIL`.
+If both credential sets are retained for rollback, `GOOGLE_AUTH_MODE` is mandatory so a
+deployment cannot switch identity silently.
+
+### One-Time User OAuth Bootstrap
+
+After creating a Google OAuth **Desktop app** client, download its client JSON to a
+temporary local path outside the repository. The bootstrap utility uses a loopback
+callback, PKCE and an exact mailbox check. It proves a create/delete in Drive and a Sheet
+read before writing the OAuth client and refresh token directly to Secrets Manager. It
+does not print the refresh token or place it in Git.
+
+```bash
+cd "Rosewood enrolment/v2/lambda"
+EXPECTED_AWS_ACCOUNT_ID="$APPROVED_AWS_ACCOUNT_ID" \
+ROSEWOOD_CONFIG_SECRET_ARN="$ROSEWOOD_CONFIG_SECRET_ARN" \
+GOOGLE_OAUTH_EXPECTED_EMAIL="$ORGANISATION_GOOGLE_EMAIL" \
+GOOGLE_OAUTH_CLIENT_CONFIG="/private/path/client_secret.json" \
+GOOGLE_DRIVE_FOLDER_ID="$GOOGLE_DRIVE_FOLDER_ID" \
+GOOGLE_SHEETS_SPREADSHEET_ID="$GOOGLE_SHEETS_SPREADSHEET_ID" \
+ROSEWOOD_OAUTH_URL_FILE="/private/path/rosewood-oauth-url" \
+node scripts/authorize-google-user.mjs --apply
+```
+
+While the command waits, open the protected URL file in the browser, approve only the
+dedicated organisation account, and complete Google consent. Delete the downloaded
+client JSON after the secret update and record its OAuth client owner outside Git. If
+mailbox verification, Drive creation or Sheet access fails, Secrets Manager is not
+changed.
 
 Never place those values, the temporary sender address, folder IDs, Sheet IDs, tokens or
 real family details in Git.

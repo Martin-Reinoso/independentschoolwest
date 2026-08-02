@@ -39,6 +39,9 @@ email addresses, medical answers, OTPs, tokens and signatures.
   token through Secrets Manager without placing it in shell history or Git.
 - Switching modes or Google users requires a successful create/delete probe, Sheet read,
   synthetic upload, canonical snapshot and signature-artifact canary before use.
+- Use `scripts/authorize-google-user.mjs --apply` for initial authorisation or token
+  rotation. It verifies the exact mailbox and storage before changing Secrets Manager;
+  never paste the refresh token into a shell, task, document or message.
 
 ## Daily Checks
 

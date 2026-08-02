@@ -10,6 +10,7 @@ import { GoogleSheetsTracker } from "../google-sheets-tracker.mjs";
 import { SesMailer } from "../ses-mailer.mjs";
 import { DynamoStore } from "../dynamo-store.mjs";
 import { accessOtpEmail, signatureInvitationEmail } from "../email-templates.mjs";
+import { createAuthorizationUrl, mergeOAuthSecret } from "../scripts/authorize-google-user.mjs";
 
 function signingKey() {
   return crypto.generateKeyPairSync("rsa", { modulusLength: 2048, privateKeyEncoding: { type: "pkcs8", format: "pem" }, publicKeyEncoding: { type: "spki", format: "pem" } }).privateKey;
@@ -96,6 +97,25 @@ test("Google auth fails closed on ambiguous or incomplete credential sets", () =
   }), /Set GOOGLE_AUTH_MODE/);
   assert.throws(() => new GoogleAccessTokenProvider({ authMode: "user_oauth", oauthClientId: "client-id", scope: "scope" }), /incomplete/);
   assert.throws(() => new GoogleAccessTokenProvider({ authMode: "unsupported", scope: "scope" }), /GOOGLE_AUTH_MODE/);
+});
+
+test("OAuth bootstrap uses PKCE and merges credentials without dropping existing secrets", () => {
+  const url = new URL(createAuthorizationUrl({ clientId: "client-id", redirectUri: "http://127.0.0.1:12345/callback", state: "state-token", verifier: "verifier-token" }));
+  assert.equal(url.searchParams.get("access_type"), "offline");
+  assert.equal(url.searchParams.get("prompt"), "consent");
+  assert.equal(url.searchParams.get("code_challenge_method"), "S256");
+  assert.ok(url.searchParams.get("code_challenge"));
+  assert.match(url.searchParams.get("scope"), /openid/);
+  assert.match(url.searchParams.get("scope"), /googleapis\.com\/auth\/drive/);
+  assert.match(url.searchParams.get("scope"), /googleapis\.com\/auth\/spreadsheets/);
+  assert.equal(url.toString().includes("client-secret"), false);
+
+  const merged = mergeOAuthSecret({ OTP_HMAC_SECRET: "preserved", GOOGLE_PRIVATE_KEY: "rollback-key" }, { clientId: "client-id", clientSecret: "client-secret", refreshToken: "refresh-token", expectedEmail: "operations@example.test" });
+  assert.equal(merged.OTP_HMAC_SECRET, "preserved");
+  assert.equal(merged.GOOGLE_PRIVATE_KEY, "rollback-key");
+  assert.equal(merged.GOOGLE_AUTH_MODE, "user_oauth");
+  assert.equal(merged.GOOGLE_OAUTH_REFRESH_TOKEN, "refresh-token");
+  assert.equal(merged.GOOGLE_OAUTH_EXPECTED_EMAIL, "operations@example.test");
 });
 
 test("Sheets tracker writes only the documented operational columns", async () => {
@@ -385,6 +405,17 @@ test("invitation utility fails closed without explicit synthetic controls", () =
   });
   assert.notEqual(result.status, 0);
   assert.match(`${result.stdout}${result.stderr}`, /Synthetic invitations require/);
+});
+
+test("OAuth bootstrap refuses secret changes without explicit apply controls", () => {
+  const lambdaDirectory = fileURLToPath(new URL("..", import.meta.url));
+  const result = spawnSync(process.execPath, ["scripts/authorize-google-user.mjs"], {
+    cwd: lambdaDirectory,
+    env: { PATH: process.env.PATH || "" },
+    encoding: "utf8"
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(`${result.stdout}${result.stderr}`, /without --apply/);
 });
 
 test("deployment template includes URL-only public invocation and scheduled outbox retry", () => {

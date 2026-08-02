@@ -51,6 +51,15 @@ const googleCredentials = {
   oauthRefreshToken: config.GOOGLE_OAUTH_REFRESH_TOKEN
 };
 const drive = new GoogleDriveAdapter({ ...googleCredentials, folderId: driveFolderId });
+if (drive.authMode === "user_oauth") {
+  assertSecret(config, "GOOGLE_OAUTH_EXPECTED_EMAIL");
+  const profileResponse = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", { headers: { Authorization: `Bearer ${await drive.accessToken()}` } });
+  if (!profileResponse.ok) throw new Error(`Google could not verify the selected organisation mailbox (${profileResponse.status}).`);
+  const profile = await profileResponse.json();
+  if (!profile.email_verified || String(profile.email || "").toLowerCase() !== String(config.GOOGLE_OAUTH_EXPECTED_EMAIL).toLowerCase()) {
+    throw new Error("The selected Google OAuth credential does not belong to the approved organisation mailbox.");
+  }
+}
 const folderResponse = await drive.driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(driveFolderId)}?supportsAllDrives=true&fields=id,mimeType,trashed,capabilities(canAddChildren)`);
 const folder = await folderResponse.json();
 if (folder.trashed || folder.mimeType !== "application/vnd.google-apps.folder" || !folder.capabilities?.canAddChildren) {
@@ -81,6 +90,7 @@ process.stdout.write(JSON.stringify({
   sesSenderVerified: true,
   googleSecretComplete: true,
   googleAuthMode: drive.authMode,
+  googleUserMailboxVerified: drive.authMode === "user_oauth",
   restrictedDriveWritable: true,
   privateSheetReadable: true,
   sesProductionAccessEnabled: Boolean(sesAccount.ProductionAccessEnabled)
