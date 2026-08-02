@@ -1,0 +1,136 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Rosewood College invitation-only enrolment V2 test service
+
+Parameters:
+  ConfigSecretArn:
+    Type: String
+    Description: Secrets Manager JSON containing OTP salts and Google service-account credentials
+  OtpFromEmail:
+    Type: String
+    Description: Externally verified SES sender; temporary test identity only
+  ReplyToEmail:
+    Type: String
+  GoogleDriveFolderId:
+    Type: String
+  GoogleSheetsSpreadsheetId:
+    Type: String
+    Default: ""
+  AllowedOrigins:
+    Type: String
+    Default: https://ffe.org.au
+
+Resources:
+  RosewoodTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+
+  RosewoodFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: RosewoodV2Runtime
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Query
+                  - dynamodb:TransactWriteItems
+                Resource: !GetAtt RosewoodTable.Arn
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !Ref ConfigSecretArn
+              - Effect: Allow
+                Action: ses:SendEmail
+                Resource: !Sub arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/${OtpFromEmail}
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:*
+
+  RosewoodFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: nodejs22.x
+      Handler: index.handler
+      Role: !GetAtt RosewoodFunctionRole.Arn
+      Timeout: 30
+      MemorySize: 512
+      Code: lambda/
+      Environment:
+        Variables:
+          ROSEWOOD_TABLE_NAME: !Ref RosewoodTable
+          ROSEWOOD_CONFIG_SECRET_ARN: !Ref ConfigSecretArn
+          OTP_FROM_EMAIL: !Ref OtpFromEmail
+          REPLY_TO_EMAIL: !Ref ReplyToEmail
+          GOOGLE_DRIVE_FOLDER_ID: !Ref GoogleDriveFolderId
+          GOOGLE_SHEETS_SPREADSHEET_ID: !Ref GoogleSheetsSpreadsheetId
+          ALLOWED_ORIGINS: !Ref AllowedOrigins
+          SCHEMA_VERSION: rosewood-v2-2026-08-02
+          SIGNING_PAGE_URL: https://ffe.org.au/pages/rosewood-sign-v2.html
+          RECEIPT_PAGE_URL: https://ffe.org.au/pages/rosewood-enrolment-v2.html
+
+  RosewoodFunctionUrl:
+    Type: AWS::Lambda::Url
+    Properties:
+      TargetFunctionArn: !Ref RosewoodFunction
+      AuthType: NONE
+      Cors:
+        AllowOrigins:
+          - https://ffe.org.au
+        AllowHeaders:
+          - authorization
+          - content-type
+          - idempotency-key
+          - x-client-version
+        AllowMethods:
+          - GET
+          - POST
+          - PUT
+          - PATCH
+        MaxAge: 300
+
+  RosewoodFunctionUrlPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref RosewoodFunction
+      Action: lambda:InvokeFunctionUrl
+      Principal: "*"
+      FunctionUrlAuthType: NONE
+
+Outputs:
+  FunctionUrl:
+    Value: !GetAtt RosewoodFunctionUrl.FunctionUrl
+  TableName:
+    Value: !Ref RosewoodTable

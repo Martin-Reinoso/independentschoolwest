@@ -1,0 +1,17 @@
+{
+  "name": "rosewood-enrolment-v2",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "pnpm run test:api && pnpm run test:browser",
+    "test:api": "node --test lambda/tests/*.test.mjs",
+    "test:api:coverage": "node --experimental-test-coverage --test lambda/tests/*.test.mjs",
+    "test:browser": "playwright test",
+    "test:browser:mobile": "playwright test --project=mobile-chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "axe-core": "^4.10.3"
+  }
+}

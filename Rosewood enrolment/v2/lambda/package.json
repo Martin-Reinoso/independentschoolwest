@@ -1,0 +1,20 @@
+{
+  "name": "rosewood-enrolment-v2-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "test:coverage": "node --experimental-test-coverage --test tests/*.test.mjs",
+    "serve": "node scripts/local-server.mjs"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.883.0",
+    "@aws-sdk/client-sesv2": "^3.883.0",
+    "@aws-sdk/client-secrets-manager": "^3.883.0",
+    "@aws-sdk/lib-dynamodb": "^3.883.0"
+  }
+}

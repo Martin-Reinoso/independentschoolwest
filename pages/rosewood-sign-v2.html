@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <title>Review And Sign | Rosewood College</title>
+  <link rel="stylesheet" href="rosewood-enrolment-v2.css">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to signing</a>
+  <div class="draft-banner">V2 development preview - placeholder agreement - not for real signatures</div>
+  <header class="site-header"><a class="brand" href="../index.html"><img src="../img/rosewood-emblem-corrected-transparent.png" alt=""><span><strong>Rosewood College</strong><span>Independent guardian signature</span></span></a><div class="header-help">Private, task-specific access</div></header>
+  <main id="main-content">
+    <section class="access-page" id="sign-access-view">
+      <div class="access-story"><div><p class="eyebrow">Your independent review</p><h1>Review the same record.<br><em>Sign in your own session.</em></h1><p class="access-lead">Rosewood asks every required guardian to verify their own mailbox, review the frozen application and create an attributable signature.</p></div><div class="access-principles"><div><strong>One task</strong><span>Scoped only to this student and revision.</span></div><div><strong>One review</strong><span>No hidden edits while signatures are pending.</span></div><div><strong>One signature</strong><span>Recorded independently.</span></div></div></div>
+      <div class="access-panel">
+        <div class="access-card" id="sign-email-card">
+          <p class="eyebrow">Identity check</p><h2>Confirm your email</h2><p>Use the address to which this signature request was sent.</p>
+          <form id="sign-request-form" novalidate><label class="form-field"><span>Email address <b class="required-mark">*</b></span><input id="sign-email" type="email" autocomplete="email" required></label><div class="error-summary" id="sign-access-error" role="alert" hidden></div><button class="button button-primary button-wide" type="submit">Send my secure code</button></form>
+          <button class="button button-secondary button-wide" id="sign-preview-entry" type="button" hidden>Enter synthetic signer preview</button>
+        </div>
+        <div class="access-card" id="sign-otp-card" hidden>
+          <p class="eyebrow">One-time code</p><h2>Check your inbox</h2><p>Enter the six-digit code sent to <strong id="sign-masked-email">your email</strong>.</p>
+          <form id="sign-verify-form" novalidate><label class="form-field"><span>Six-digit code <b class="required-mark">*</b></span><input class="otp-code" id="sign-otp" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label><div class="error-summary" id="sign-otp-error" role="alert" hidden></div><button class="button button-primary button-wide" id="sign-verify-button" type="submit" disabled>Verify and review</button></form>
+        </div>
+      </div>
+    </section>
+
+    <section class="app-shell" id="sign-application-view" hidden>
+      <aside class="journey-panel"><p class="eyebrow">Signature task</p><h2>Know exactly what you sign.</h2><p class="journey-student" id="sign-student-label">Invited guardian</p><nav class="journey-nav"><button class="journey-step" data-sign-stage="0" type="button" aria-current="step"><span>1</span><span><strong>Your details</strong><small>Confirm identity</small></span></button><button class="journey-step" data-sign-stage="1" type="button"><span>2</span><span><strong>Review</strong><small>Frozen revision</small></span></button><button class="journey-step" data-sign-stage="2" type="button"><span>3</span><span><strong>Sign</strong><small>Declarations</small></span></button><button class="journey-step" data-sign-stage="3" type="button"><span>4</span><span><strong>Complete</strong><small>Receipt status</small></span></button></nav><div class="save-panel"><div class="save-state" data-state="saved"><span class="save-dot"></span><strong id="sign-session-state">Secure task verified</strong></div><p class="save-detail">This session is limited to one guardian and one frozen revision.</p></div></aside>
+      <div class="mobile-progress"><div class="mobile-progress-row"><span id="sign-mobile-name">Your details</span><span id="sign-mobile-count">1 of 4</span></div><div class="mobile-progress-track"><span id="sign-mobile-bar" style="width:25%"></span></div></div>
+      <form class="form-main" id="sign-form" novalidate>
+        <div class="error-summary" id="sign-errors" role="alert" tabindex="-1" hidden><h3>Please review this step</h3><ul></ul></div>
+        <section class="stage" data-sign-panel="0">
+          <div class="stage-intro"><p class="eyebrow">Your details</p><h1>First, confirm who is signing.</h1><p class="lead">Corrections are recorded in this signature task. They do not silently rewrite another guardian's application answers.</p></div>
+          <div class="form-card"><h3>Signer information</h3><div class="field-grid"><label class="form-field"><span>First name <b class="required-mark">*</b></span><input name="firstName" maxlength="80" required></label><label class="form-field"><span>Family name <b class="required-mark">*</b></span><input name="lastName" maxlength="80" required></label><label class="form-field"><span>Email <b class="required-mark">*</b></span><input name="email" type="email" required></label><label class="form-field"><span>Mobile <b class="required-mark">*</b></span><input name="mobile" type="tel" maxlength="30" required></label><label class="form-field"><span>Relationship <b class="required-mark">*</b></span><input name="relationship" maxlength="80" required readonly></label></div><label class="check-row"><input type="checkbox" name="detailsConfirmed" value="Yes" required><span><strong>I confirm these details identify me as the person completing this signature task. <b class="required-mark">*</b></strong><small>Contact the school before signing if the relationship or authority shown is incorrect.</small></span></label></div>
+          <div class="stage-actions"><span></span><button class="button button-primary" data-sign-next type="button">Save details and review</button></div>
+        </section>
+        <section class="stage" data-sign-panel="1" hidden>
+          <div class="stage-intro"><p class="eyebrow">Review</p><h2>One frozen revision, arranged for reading.</h2><p class="lead">The application is grouped below. It cannot be edited in this task. If something is wrong, stop and contact Rosewood.</p></div>
+          <div id="sign-review-content"></div>
+          <div class="form-card"><h3>Ready to sign?</h3><label class="check-row"><input type="checkbox" name="reviewConfirmed" value="Yes" required><span><strong>I have reviewed the application revision and am ready to continue to the signature stage. <b class="required-mark">*</b></strong><small>The actual signature area is on the next page.</small></span></label></div>
+          <div class="stage-actions"><button class="button button-secondary" data-sign-back type="button">Back</button><button class="button button-primary" data-sign-next type="button">Continue to my signature</button></div>
+        </section>
+        <section class="stage" data-sign-panel="2" hidden>
+          <div class="stage-intro"><p class="eyebrow">Sign</p><h2>Make your intention explicit.</h2><p class="lead">The canvas unlocks only after both declarations are accepted.</p></div>
+          <div class="form-card"><label class="check-row"><input id="remote-audit" type="checkbox" name="auditDeclaration" value="Yes" required><span><strong>I understand Rosewood will record this signature with a server timestamp and approved security metadata. <b class="required-mark">*</b></strong></span></label><label class="check-row"><input id="remote-intent" type="checkbox" name="intentDeclaration" value="Yes" required><span><strong>I have reviewed the frozen revision and intend to sign this enrolment application. <b class="required-mark">*</b></strong></span></label><label class="form-field"><span>Type your full legal name <b class="required-mark">*</b></span><input name="signerName" maxlength="160" required></label><span class="field-label">Draw your signature <b class="required-mark">*</b></span><div class="signature-lock" id="remote-signature-box"><canvas id="remote-signature-canvas" width="1000" height="240" aria-label="Signature drawing area"></canvas><div class="signature-overlay" id="remote-signature-overlay">Agree to both declarations above to enable signing.</div></div><p class="field-error" id="remote-signature-error" hidden>Please provide your signature.</p><div class="signature-actions"><button class="button button-secondary" id="remote-clear-signature" type="button" disabled>Clear signature</button><span class="signature-date" id="remote-signature-date">The server will set the signing date.</span></div><label class="form-field"><span>Comments for Rosewood</span><textarea name="comments" maxlength="1500"></textarea></label></div>
+          <div class="stage-actions"><button class="button button-secondary" data-sign-back type="button">Back to review</button><button class="button button-primary" type="submit">Submit my signature</button></div>
+        </section>
+        <section class="stage" data-sign-panel="3" hidden>
+          <div class="success-card"><div class="success-mark">✓</div><p class="eyebrow">Signature recorded</p><h1>Your signature is complete.</h1><p class="lead" id="sign-complete-lead">Rosewood has recorded your signature against the reviewed revision.</p><ol class="status-timeline"><li class="is-complete"><strong>Mailbox verified</strong><span>Your OTP challenge was consumed.</span></li><li class="is-complete"><strong>Revision reviewed</strong><span>The application remained frozen while you signed.</span></li><li class="is-complete"><strong>Signature recorded</strong><span>A confirmation email will be sent independently.</span></li><li id="aggregate-sign-status"><strong>All required signatures</strong><span>Rosewood will confirm when the complete set is received.</span></li></ol><button class="button button-secondary" type="button" onclick="window.print()">Print this confirmation</button></div>
+        </section>
+      </form>
+    </section>
+  </main>
+  <div class="toast-region" id="toast-region" aria-live="polite"></div>
+  <script>window.ROSEWOOD_V2_CONFIG={apiEndpoint:"",schemaVersion:"rosewood-v2-2026-08-02",policyVersion:"draft-2026-08-02",...(window.ROSEWOOD_V2_RUNTIME_CONFIG||{})};</script>
+  <script src="rosewood-sign-v2.js" defer></script>
+</body>
+</html>

@@ -25,3 +25,8 @@ Rosewood enrolment/st-lawrence-reference/raw/
 # Stripe export / reconciliation data containing donor or payout details
 outputs/stripe-reconciliation-20*/
 stripe-donations-recent.csv
+
+# Rosewood V2 local dependencies and browser-test artifacts
+Rosewood enrolment/v2/**/node_modules/
+Rosewood enrolment/v2/test-results/
+Rosewood enrolment/v2/playwright-report/

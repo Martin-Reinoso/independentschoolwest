@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <title>Private Enrolment Application | Rosewood College</title>
+  <meta name="description" content="Private invitation-only Rosewood College enrolment application.">
+  <link rel="stylesheet" href="rosewood-enrolment-v2.css">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to the application</a>
+  <div class="draft-banner">V2 development preview - placeholder policies - not open for real applications</div>
+
+  <header class="site-header">
+    <a class="brand" href="../index.html" aria-label="Rosewood College home">
+      <img src="../img/rosewood-emblem-corrected-transparent.png" alt="">
+      <span><strong>Rosewood College</strong><span>Private enrolment portal</span></span>
+    </a>
+    <div class="header-help">Need help? Contact the enrolment team</div>
+  </header>
+
+  <main id="main-content">
+    <section class="access-page" id="access-view" aria-labelledby="access-title">
+      <div class="access-story">
+        <div>
+          <p class="eyebrow">A considered beginning</p>
+          <h1 id="access-title">Your family’s<br><em>Rosewood journey.</em></h1>
+          <p class="access-lead">This private application helps us understand your child, your family and the support that will help them flourish.</p>
+        </div>
+        <div class="access-principles" aria-label="Rosewood principles">
+          <div><strong>Faith &amp; character</strong><span>Formation of the whole person.</span></div>
+          <div><strong>Academic excellence</strong><span>High expectations with individual care.</span></div>
+          <div><strong>Parent partnership</strong><span>Home and school working together.</span></div>
+        </div>
+      </div>
+
+      <div class="access-panel">
+        <div class="access-card" id="email-card">
+          <p class="eyebrow">Step 1 of 2</p>
+          <h2>Confirm your invitation</h2>
+          <p>Use the email address to which Rosewood sent this private application.</p>
+          <div class="secure-note"><strong>Why we verify</strong>The invitation link identifies the application. A one-time code confirms access to the invited mailbox before any family information is shown.</div>
+          <form id="request-otp-form" novalidate>
+            <label class="form-field">
+              <span>Email address <b class="required-mark">*</b></span>
+              <input id="access-email" name="email" type="email" autocomplete="email" required>
+              <small>We will send a six-digit code. It expires after 10 minutes.</small>
+            </label>
+            <div class="error-summary" id="access-error" role="alert" hidden></div>
+            <button class="button button-primary button-wide" type="submit">Send my secure code</button>
+          </form>
+          <button class="button button-secondary button-wide" id="preview-entry" type="button" hidden>Enter synthetic content preview</button>
+          <p class="field-help">Before continuing, read our <a href="rosewood-policy-drafts-v2.html#privacy-collection" target="_blank" rel="noopener">draft Privacy Collection Notice</a>. No password is required.</p>
+        </div>
+
+        <div class="access-card" id="otp-card" hidden>
+          <p class="eyebrow">Step 2 of 2</p>
+          <h2>Check your inbox</h2>
+          <p>Enter the code sent to <strong id="masked-email">your invited email</strong>.</p>
+          <form id="verify-otp-form" novalidate>
+            <label class="form-field">
+              <span>Six-digit code <b class="required-mark">*</b></span>
+              <input class="otp-code" id="otp-code" name="otp" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required aria-describedby="otp-help">
+              <small id="otp-help">The code can be used once and expires after 10 minutes.</small>
+            </label>
+            <div class="error-summary" id="otp-error" role="alert" hidden></div>
+            <button class="button button-primary button-wide" id="verify-otp-button" type="submit" disabled>Verify and open application</button>
+          </form>
+          <div class="otp-actions">
+            <button class="text-button" id="change-email" type="button">Use a different email</button>
+            <button class="text-button" id="resend-otp" type="button" disabled>Resend code</button>
+            <span class="countdown" id="resend-countdown" aria-live="polite"></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="app-shell" id="application-view" hidden>
+      <aside class="journey-panel" aria-label="Application progress">
+        <p class="eyebrow">Your application</p>
+        <h2>One thoughtful step at a time.</h2>
+        <p class="journey-student" id="journey-student">Invited family</p>
+        <nav class="journey-nav" id="journey-nav">
+          <button class="journey-step" type="button" data-go-stage="0" aria-current="step"><span>1</span><span><strong>Prepare</strong><small>Before you begin</small></span></button>
+          <button class="journey-step" type="button" data-go-stage="1"><span>2</span><span><strong>Student</strong><small>Identity &amp; entry</small></span></button>
+          <button class="journey-step" type="button" data-go-stage="2"><span>3</span><span><strong>Family</strong><small>Care &amp; authority</small></span></button>
+          <button class="journey-step" type="button" data-go-stage="3"><span>4</span><span><strong>Care</strong><small>Learning &amp; wellbeing</small></span></button>
+          <button class="journey-step" type="button" data-go-stage="4"><span>5</span><span><strong>Choices</strong><small>Permissions &amp; fees</small></span></button>
+          <button class="journey-step" type="button" data-go-stage="5"><span>6</span><span><strong>Documents</strong><small>Evidence checklist</small></span></button>
+          <button class="journey-step" type="button" data-go-stage="6"><span>7</span><span><strong>Review</strong><small>Check every answer</small></span></button>
+          <button class="journey-step" type="button" data-go-stage="7"><span>8</span><span><strong>Sign</strong><small>Submit your signature</small></span></button>
+        </nav>
+        <div class="save-panel">
+          <div class="save-state" id="save-state" data-state="local" role="status" aria-live="polite"><span class="save-dot"></span><strong>Ready to begin</strong></div>
+          <p class="save-detail" id="save-detail">No application answers have been saved yet.</p>
+        </div>
+      </aside>
+
+      <div class="mobile-progress" aria-live="polite">
+        <div class="mobile-progress-row"><span id="mobile-step-name">Prepare</span><span id="mobile-step-count">1 of 8</span></div>
+        <div class="mobile-progress-track"><span id="mobile-progress-bar" style="width:12.5%"></span></div>
+      </div>
+
+      <form class="form-main" id="enrolment-form" novalidate>
+        <div class="error-summary" id="global-errors" role="alert" tabindex="-1" hidden><h3>Please review this step</h3><ul></ul></div>
+
+        <section class="stage" data-stage="0" aria-labelledby="prepare-title">
+          <div class="stage-intro">
+            <p class="eyebrow">Prepare</p>
+            <h1 id="prepare-title">Everything you need, before you begin.</h1>
+            <p class="lead">Most families take 25–35 minutes. You can leave and return using the same invitation and verified email.</p>
+          </div>
+          <div class="form-card">
+            <h3>Your application compass</h3>
+            <p class="card-intro">V2 separates saving, completeness and submission so you always know what has happened.</p>
+            <div class="choice-grid three">
+              <div class="choice-card"><span><strong>Saved on this device</strong><small>An immediate fallback in this browser.</small></span></div>
+              <div class="choice-card"><span><strong>Saved securely</strong><small>The Rosewood service acknowledged the displayed revision.</small></span></div>
+              <div class="choice-card"><span><strong>Submitted</strong><small>Required signatures are complete and a receipt exists.</small></span></div>
+            </div>
+          </div>
+          <div class="form-card">
+            <h3>Have these nearby</h3>
+            <p class="card-intro">You can explain if a required document is not yet available.</p>
+            <div class="choice-grid">
+              <div class="choice-card"><span><strong>Birth certificate</strong><small>PDF, JPG or PNG.</small></span></div>
+              <div class="choice-card"><span><strong>Immunisation statement</strong><small>Current Australian Immunisation Register statement.</small></span></div>
+              <div class="choice-card"><span><strong>Proof of address</strong><small>A recent utility or council document.</small></span></div>
+              <div class="choice-card"><span><strong>Relevant plans or orders</strong><small>Only where they affect safety, care or authority.</small></span></div>
+            </div>
+          </div>
+          <div class="form-card">
+            <h3>Draft policy library</h3>
+            <p class="policy-warning"><strong>Testing notice:</strong> these are original Rosewood placeholders, not approved policies or binding enrolment terms.</p>
+            <div class="policy-list">
+              <a class="policy-link" href="rosewood-policy-drafts-v2.html#enrolment-policy" target="_blank" rel="noopener"><span>Draft Enrolment Policy</span><span>Open ↗</span></a>
+              <a class="policy-link" href="rosewood-policy-drafts-v2.html#enrolment-procedure" target="_blank" rel="noopener"><span>Draft Enrolment Procedure</span><span>Open ↗</span></a>
+              <a class="policy-link" href="rosewood-policy-drafts-v2.html#privacy-collection" target="_blank" rel="noopener"><span>Draft Privacy Collection Notice</span><span>Open ↗</span></a>
+              <a class="policy-link" href="rosewood-policy-drafts-v2.html#child-safety" target="_blank" rel="noopener"><span>Draft Child Safety Commitment</span><span>Open ↗</span></a>
+              <a class="policy-link" href="rosewood-policy-drafts-v2.html#signing-guidance" target="_blank" rel="noopener"><span>Draft Admission And Signing Guidance</span><span>Open ↗</span></a>
+            </div>
+            <label class="check-row"><input type="checkbox" name="readiness_acknowledgement" value="Yes" required><span><strong>I understand this is a detailed application and the current policy documents are placeholders. <b class="required-mark">*</b></strong><small>No application or invitation guarantees enrolment. Opening remains subject to regulatory approval.</small></span></label>
+          </div>
+          <div class="stage-actions"><span></span><button class="button button-primary" type="button" data-next>Tell us about your child</button></div>
+        </section>
+
+        <section class="stage" data-stage="1" aria-labelledby="student-title" hidden>
+          <div class="stage-intro"><p class="eyebrow">Student</p><h2 id="student-title">Begin with the person, not the paperwork.</h2><p class="lead">Tell us who your child is, where they are coming from and the Rosewood year you are seeking.</p></div>
+          <div class="form-card">
+            <h3>Student identity</h3>
+            <p class="card-intro">Use the legal names shown on the birth certificate. Preferred name is how we should address your child.</p>
+            <div class="field-grid three">
+              <label class="form-field"><span>Legal first name <b class="required-mark">*</b></span><input name="student_first_name" autocomplete="given-name" maxlength="80" required></label>
+              <label class="form-field"><span>Middle name(s)</span><input name="student_middle_names" maxlength="100"></label>
+              <label class="form-field"><span>Legal family name <b class="required-mark">*</b></span><input name="student_last_name" autocomplete="family-name" maxlength="80" required></label>
+              <label class="form-field"><span>Preferred name</span><input name="student_preferred_name" maxlength="80"></label>
+              <label class="form-field"><span>Date of birth <b class="required-mark">*</b></span><input name="student_date_of_birth" type="date" required></label>
+              <label class="form-field"><span>Gender</span><select name="student_gender"><option value="">Select if you wish</option><option>Female</option><option>Male</option><option>Another term</option><option>Prefer not to answer</option></select></label>
+            </div>
+          </div>
+          <div class="form-card">
+            <h3>Proposed entry</h3>
+            <div class="field-grid">
+              <label class="form-field"><span>Commencement year <b class="required-mark">*</b></span><select name="entry_year" required><option value="">Select year</option><option>2027</option><option>2028</option><option>2029</option></select></label>
+              <label class="form-field"><span>Year level <b class="required-mark">*</b></span><select name="entry_year_level" required><option value="">Select level</option><option>Prep</option><option>Grade 1</option><option>Grade 2</option><option>Grade 3</option><option>Grade 4</option><option>Grade 5</option></select></label>
+              <label class="form-field"><span>Current kindergarten or school <b class="required-mark">*</b></span><input name="current_school" maxlength="160" required></label>
+              <label class="form-field"><span>Current level <b class="required-mark">*</b></span><select name="current_year_level" required><option value="">Select current level</option><option>Not yet attending</option><option>3-year-old kindergarten</option><option>4-year-old kindergarten</option><option>Prep</option><option>Grade 1</option><option>Grade 2</option><option>Grade 3</option><option>Grade 4</option><option>Grade 5</option></select></label>
+            </div>
+          </div>
+          <div class="form-card">
+            <h3>Home and language</h3>
+            <div class="field-grid">
+              <label class="form-field field-span"><span>Residential street address <b class="required-mark">*</b></span><input name="student_address" autocomplete="street-address" maxlength="180" required></label>
+              <label class="form-field"><span>Suburb <b class="required-mark">*</b></span><input name="student_suburb" autocomplete="address-level2" maxlength="80" required></label>
+              <label class="form-field"><span>Postcode <b class="required-mark">*</b></span><input name="student_postcode" autocomplete="postal-code" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required></label>
+              <label class="form-field"><span>Country of birth <b class="required-mark">*</b></span><input name="country_of_birth" maxlength="80" required></label>
+              <label class="form-field"><span>Citizenship or residency <b class="required-mark">*</b></span><select name="residency_status" required><option value="">Select status</option><option>Australian citizen</option><option>Permanent resident</option><option>Temporary resident</option><option>Other / seeking advice</option></select></label>
+              <label class="form-field"><span>Main language spoken at home <b class="required-mark">*</b></span><input name="home_language" maxlength="80" required></label>
+              <label class="form-field"><span>Interpreter helpful?</span><select name="interpreter_required"><option>No</option><option>Yes</option><option>Unsure</option></select></label>
+            </div>
+            <div class="conditional" data-show-when="residency_status:Temporary resident|Other / seeking advice" hidden>
+              <div class="field-grid"><label class="form-field"><span>Visa subclass or status <b class="required-mark">*</b></span><input name="visa_subclass" data-required-when-visible maxlength="80"></label><label class="form-field"><span>Visa expiry, if applicable</span><input name="visa_expiry" type="date"></label></div>
+            </div>
+          </div>
+          <div class="form-card">
+            <h3>Faith and family connection</h3>
+            <p class="card-intro">These questions help us understand family connection and pastoral context. Religion and sacramental details are optional at application.</p>
+            <div class="field-grid">
+              <label class="form-field"><span>Faith tradition</span><select name="religion"><option value="">Select if you wish</option><option>Catholic</option><option>Other Christian tradition</option><option>Other faith tradition</option><option>No religion</option><option>Prefer not to answer</option></select></label>
+              <label class="form-field"><span>Parish or faith community</span><input name="parish" maxlength="120"></label>
+              <label class="form-field"><span>Family connection to Rosewood <b class="required-mark">*</b></span><select name="family_connection" required><option value="">Select one</option><option>Founding / current family</option><option>Sibling application</option><option>Previous expression of interest</option><option>New family</option></select></label>
+              <label class="form-field"><span>Other children who may attend?</span><select name="future_siblings"><option>No</option><option>Yes</option><option>Unsure</option></select></label>
+            </div>
+            <div class="conditional" data-show-when="future_siblings:Yes" hidden><label class="form-field"><span>Names, ages and likely entry years</span><textarea name="future_sibling_details" maxlength="800"></textarea></label></div>
+          </div>
+          <div class="stage-actions"><button class="button button-secondary" type="button" data-back>Back</button><button class="button button-primary" type="button" data-next>Continue to family</button></div>
+        </section>
+
+        <section class="stage" data-stage="2" aria-labelledby="family-title" hidden>
+          <div class="stage-intro"><p class="eyebrow">Family</p><h2 id="family-title">The people who know this child best.</h2><p class="lead">Contact preferences, legal responsibility and signing authority are separate so that complex families are handled safely.</p></div>
+          <div class="form-card guardian-card" data-guardian="a">
+            <div class="guardian-heading"><div><p class="eyebrow">Guardian 1</p><h3>Primary parent, guardian or carer</h3></div><span class="guardian-badge">Application owner</span></div>
+            <div class="field-grid three">
+              <label class="form-field"><span>First name <b class="required-mark">*</b></span><input name="guardian_a_first_name" autocomplete="given-name" maxlength="80" required></label>
+              <label class="form-field"><span>Family name <b class="required-mark">*</b></span><input name="guardian_a_last_name" autocomplete="family-name" maxlength="80" required></label>
+              <label class="form-field"><span>Relationship <b class="required-mark">*</b></span><select name="guardian_a_relationship" required><option value="">Select</option><option>Mother</option><option>Father</option><option>Step-parent</option><option>Guardian</option><option>Kinship carer</option><option>Foster carer</option><option>Other carer</option></select></label>
+              <label class="form-field"><span>Email <b class="required-mark">*</b></span><input name="guardian_a_email" type="email" autocomplete="email" required></label>
+              <label class="form-field"><span>Mobile <b class="required-mark">*</b></span><input name="guardian_a_mobile" type="tel" autocomplete="tel" maxlength="30" required></label>
+              <label class="form-field"><span>Contact role <b class="required-mark">*</b></span><select name="guardian_a_contact_role" required><option>Primary contact</option><option>Secondary contact</option></select></label>
+            </div>
+            <div class="choice-grid three">
+              <label class="choice-card"><input type="checkbox" name="guardian_a_lives_with_student" value="Yes"><span><strong>Lives with student</strong><small>At the primary address.</small></span></label>
+              <label class="choice-card"><input type="checkbox" name="guardian_a_legal_responsibility" value="Yes" required><span><strong>Legal responsibility <b class="required-mark">*</b></strong><small>I have authority or will explain below.</small></span></label>
+              <label class="choice-card"><input type="checkbox" name="guardian_a_required_signer" value="Yes" checked><span><strong>Required signer</strong><small>This guardian signs the application.</small></span></label>
+            </div>
+          </div>
+          <div id="additional-guardians"></div>
+          <button class="button button-secondary" id="add-guardian" type="button">Add another parent, guardian or carer</button>
+
+          <div class="form-card">
+            <h3>Care and authority</h3>
+            <div class="field-grid">
+              <label class="form-field"><span>Primary care arrangement <b class="required-mark">*</b></span><select name="care_arrangement" required><option value="">Select arrangement</option><option>Both parents together</option><option>Shared care across households</option><option>Mother only</option><option>Father only</option><option>Guardian or kinship care</option><option>Out-of-home / foster care</option><option>Other</option></select></label>
+              <label class="form-field"><span>Are there court or parenting orders? <b class="required-mark">*</b></span><select name="court_orders" required><option value="">Select</option><option>No</option><option>Yes</option><option>Unsure / seeking advice</option></select></label>
+            </div>
+            <div class="conditional" data-show-when="care_arrangement:Shared care across households|Other" hidden><label class="form-field"><span>Care schedule or arrangement <b class="required-mark">*</b></span><textarea name="care_arrangement_details" data-required-when-visible maxlength="1200"></textarea></label></div>
+            <div class="conditional" data-show-when="court_orders:Yes|Unsure / seeking advice" hidden><label class="form-field"><span>What should Rosewood know now? <b class="required-mark">*</b></span><textarea name="court_order_summary" data-required-when-visible maxlength="1200"></textarea></label><p class="field-help">Upload orders only in Documents. Do not email them. Staff must not infer contact or signing authority from this summary alone.</p></div>
+            <label class="form-field"><span>Informal carer or statutory declaration relevant?</span><select name="informal_carer"><option>No</option><option>Yes</option><option>Unsure / need support</option></select></label>
+          </div>
+
+          <div class="form-card">
+            <h3>Emergency contact</h3>
+            <p class="card-intro">Please nominate someone other than the primary guardian where possible.</p>
+            <div class="field-grid three">
+              <label class="form-field"><span>First name <b class="required-mark">*</b></span><input name="emergency_first_name" maxlength="80" required></label>
+              <label class="form-field"><span>Family name <b class="required-mark">*</b></span><input name="emergency_last_name" maxlength="80" required></label>
+              <label class="form-field"><span>Relationship <b class="required-mark">*</b></span><input name="emergency_relationship" maxlength="80" required></label>
+              <label class="form-field"><span>Mobile <b class="required-mark">*</b></span><input name="emergency_mobile" type="tel" maxlength="30" required></label>
+              <label class="form-field"><span>Email</span><input name="emergency_email" type="email" maxlength="180"></label>
+              <label class="form-field"><span>May collect student?</span><select name="emergency_may_collect"><option>Yes</option><option>No</option><option>Discuss with family</option></select></label>
+            </div>
+          </div>
+
+          <div class="form-card attestation">
+            <label class="check-row"><input type="checkbox" id="guardian-complete" name="guardian_completeness" value="Yes" required><span><strong>I have included every person whose legal responsibility or authority may affect this application. <b class="required-mark">*</b></strong><small>Adding or removing a guardian clears this confirmation so you can check it again.</small></span></label>
+          </div>
+          <div class="stage-actions"><button class="button button-secondary" type="button" data-back>Back</button><button class="button button-primary" type="button" data-next>Continue to care</button></div>
+        </section>
+
+        <section class="stage" data-stage="3" aria-labelledby="care-title" hidden>
+          <div class="stage-intro"><p class="eyebrow">Care</p><h2 id="care-title">Strengths first. Support without assumptions.</h2><p class="lead">We ask only what may help Rosewood plan a safe transition and appropriate learning support.</p></div>
+          <div class="form-card">
+            <h3>Learning and participation</h3>
+            <label class="form-field"><span>What does your child enjoy and do well?</span><textarea name="student_strengths" maxlength="1500" placeholder="Interests, strengths, motivations and ways they learn well"></textarea></label>
+            <fieldset><legend>Does your child currently receive adjustments or specialist support? <b class="required-mark">*</b></legend><div class="choice-grid"><label class="choice-card"><input type="radio" name="additional_needs" value="No" required><span><strong>No current support</strong><small>Nothing additional to describe now.</small></span></label><label class="choice-card"><input type="radio" name="additional_needs" value="Yes" required><span><strong>Yes / planning may help</strong><small>Show relevant support questions.</small></span></label></div></fieldset>
+            <div class="conditional" data-show-when="additional_needs:Yes" hidden>
+              <fieldset><legend>Relevant areas <b class="required-mark">*</b></legend><div class="choice-grid three" data-min-checked="1"><label class="check-row"><input type="checkbox" name="support_areas" value="Communication and language"><span>Communication &amp; language</span></label><label class="check-row"><input type="checkbox" name="support_areas" value="Learning and cognition"><span>Learning &amp; cognition</span></label><label class="check-row"><input type="checkbox" name="support_areas" value="Social and emotional"><span>Social &amp; emotional</span></label><label class="check-row"><input type="checkbox" name="support_areas" value="Sensory"><span>Sensory</span></label><label class="check-row"><input type="checkbox" name="support_areas" value="Physical or mobility"><span>Physical or mobility</span></label><label class="check-row"><input type="checkbox" name="support_areas" value="Gifted or advanced learning"><span>Gifted / advanced learning</span></label><label class="check-row"><input type="checkbox" name="support_areas" value="Attention or executive function"><span>Attention / executive function</span></label><label class="check-row"><input type="checkbox" name="support_areas" value="Other"><span>Other</span></label></div></fieldset>
+              <label class="form-field"><span>Current strategies, adjustments or professionals <b class="required-mark">*</b></span><textarea name="support_details" data-required-when-visible maxlength="2200"></textarea></label>
+              <label class="form-field"><span>NDIS participant?</span><select name="ndis_status"><option>No</option><option>Yes</option><option>Application in progress</option><option>Prefer not to answer</option></select></label>
+            </div>
+          </div>
+          <div class="form-card">
+            <h3>Health and emergency planning</h3>
+            <fieldset><legend>Does your child have a medical condition, allergy or regular medication? <b class="required-mark">*</b></legend><div class="choice-grid"><label class="choice-card"><input type="radio" name="medical_needs" value="No" required><span><strong>No</strong><small>No current condition, allergy or regular medication.</small></span></label><label class="choice-card"><input type="radio" name="medical_needs" value="Yes" required><span><strong>Yes</strong><small>Provide the information needed for safe planning.</small></span></label></div></fieldset>
+            <div class="conditional" data-show-when="medical_needs:Yes" hidden>
+              <div class="field-grid">
+                <label class="form-field"><span>Conditions or allergies <b class="required-mark">*</b></span><textarea name="medical_conditions" data-required-when-visible maxlength="1500"></textarea></label>
+                <label class="form-field"><span>Medication and emergency instructions <b class="required-mark">*</b></span><textarea name="medication_details" data-required-when-visible maxlength="1500"></textarea></label>
+              </div>
+              <fieldset><legend>Anaphylaxis risk?</legend><div class="choice-grid"><label class="choice-card"><input type="radio" name="anaphylaxis" value="No"><span>No</span></label><label class="choice-card"><input type="radio" name="anaphylaxis" value="Yes"><span>Yes</span></label></div></fieldset>
+            </div>
+            <div class="field-grid">
+              <label class="form-field"><span>Immunisation statement status <b class="required-mark">*</b></span><select name="immunisation_status" required><option value="">Select status</option><option>Up to date and available</option><option>Available but not up to date</option><option>Requested / not yet available</option><option>Seeking advice</option></select></label>
+              <label class="form-field"><span>Doctor or medical practice</span><input name="doctor_practice" maxlength="160"></label>
+              <label class="form-field"><span>Practice phone</span><input name="doctor_phone" type="tel" maxlength="30"></label>
+              <label class="form-field"><span>Ambulance cover</span><select name="ambulance_cover"><option value="">Select if known</option><option>Yes</option><option>No</option><option>Unsure</option></select></label>
+            </div>
+          </div>
+          <details class="why-card"><summary>Why Rosewood asks before an offer</summary><p>Early, accurate information helps the school plan conversations and reasonable adjustments. A support need is not an automatic refusal. Final wording and decision rules require governance approval.</p></details>
+          <div class="stage-actions"><button class="button button-secondary" type="button" data-back>Back</button><button class="button button-primary" type="button" data-next>Continue to choices</button></div>
+        </section>
+
+        <section class="stage" data-stage="4" aria-labelledby="choices-title" hidden>
+          <div class="stage-intro"><p class="eyebrow">Choices</p><h2 id="choices-title">Clear choices, never bundled consent.</h2><p class="lead">Required school communication is explained separately from optional community updates and media permissions.</p></div>
+          <div class="form-card">
+            <h3>Previous education setting</h3>
+            <label class="check-row"><input type="checkbox" name="previous_school_permission" value="Yes" required><span><strong>I authorise Rosewood to request relevant educational and transition information from the current setting. <b class="required-mark">*</b></strong><small>Rosewood will use it only for enrolment assessment, transition and educational planning.</small></span></label>
+            <div class="field-grid"><label class="form-field"><span>Setting name <b class="required-mark">*</b></span><input name="previous_school_name" maxlength="160" required></label><label class="form-field"><span>Contact email or phone</span><input name="previous_school_contact" maxlength="180"></label></div>
+          </div>
+          <div class="form-card">
+            <h3>Image, name and recording permissions</h3>
+            <p class="card-intro">Choose each use independently. Leaving an optional box unchecked means permission is not given for that use.</p>
+            <div class="choice-grid">
+              <label class="check-row"><input type="checkbox" name="media_permissions" value="Internal learning and school publications"><span><strong>Internal learning and school publications</strong><small>Classroom displays, yearbooks and family-only platforms.</small></span></label>
+              <label class="check-row"><input type="checkbox" name="media_permissions" value="Public school website"><span><strong>Public school website</strong><small>Publicly accessible Rosewood web pages.</small></span></label>
+              <label class="check-row"><input type="checkbox" name="media_permissions" value="Official social media"><span><strong>Official social media</strong><small>Rosewood-managed social channels.</small></span></label>
+              <label class="check-row"><input type="checkbox" name="media_permissions" value="External media and publicity"><span><strong>External media and publicity</strong><small>News, campaign or community partner material.</small></span></label>
+            </div>
+            <fieldset><legend>May the student's first name accompany approved images? <b class="required-mark">*</b></legend><div class="choice-grid"><label class="choice-card"><input type="radio" name="student_name_permission" value="No" required><span><strong>No</strong><small>Do not publish the student's name.</small></span></label><label class="choice-card"><input type="radio" name="student_name_permission" value="First name only" required><span><strong>First name only</strong><small>No family name.</small></span></label></div></fieldset>
+          </div>
+          <div class="form-card">
+            <h3>Communication</h3>
+            <div class="secure-note"><strong>Required operational communication</strong>Rosewood will use guardian contact details for this application, safety, enrolment administration and essential school communication.</div>
+            <label class="check-row"><input type="checkbox" name="community_updates" value="Yes"><span><strong>Optional Rosewood community news</strong><small>I would also like invitations, project updates and community stories. This is optional and can be withdrawn.</small></span></label>
+          </div>
+          <div class="form-card">
+            <h3>Fee account responsibility</h3>
+            <p class="card-intro">This nomination does not create a debt or replace the final fee schedule and enrolment agreement.</p>
+            <fieldset><legend>Proposed account arrangement <b class="required-mark">*</b></legend><div class="choice-grid three"><label class="choice-card"><input type="radio" name="fee_responsibility" value="Joint" required><span><strong>Joint</strong><small>Guardians jointly receive fee-account information.</small></span></label><label class="choice-card"><input type="radio" name="fee_responsibility" value="Single account holder" required><span><strong>One account holder</strong><small>Nominate one person below.</small></span></label><label class="choice-card"><input type="radio" name="fee_responsibility" value="Proposed split" required><span><strong>Proposed split</strong><small>Requires written school approval.</small></span></label></div></fieldset>
+            <div class="conditional" data-show-when="fee_responsibility:Single account holder|Proposed split" hidden><label class="form-field"><span>Proposed arrangement <b class="required-mark">*</b></span><textarea name="fee_arrangement_details" data-required-when-visible maxlength="700"></textarea></label></div>
+          </div>
+          <div class="form-card">
+            <h3>What brought you to Rosewood?</h3>
+            <div class="field-grid"><label class="form-field"><span>How did you first hear about Rosewood? <b class="required-mark">*</b></span><select name="referral_source" required><option value="">Select one</option><option>Current or founding family</option><option>Friend or family</option><option>Parish or church</option><option>Kindergarten or school</option><option>Information evening</option><option>School website</option><option>Social media</option><option>Internet search</option><option>Local community</option><option>Other</option></select></label></div>
+            <fieldset><legend>Choose up to three factors that matter most <b class="required-mark">*</b></legend><div class="choice-grid three" data-min-checked="1" data-max-checked="3"><label class="check-row"><input type="checkbox" name="decision_factors" value="Faith and character"><span>Faith &amp; character</span></label><label class="check-row"><input type="checkbox" name="decision_factors" value="Academic approach"><span>Academic approach</span></label><label class="check-row"><input type="checkbox" name="decision_factors" value="Parent partnership"><span>Parent partnership</span></label><label class="check-row"><input type="checkbox" name="decision_factors" value="Mentoring"><span>Mentoring</span></label><label class="check-row"><input type="checkbox" name="decision_factors" value="Location"><span>Location</span></label><label class="check-row"><input type="checkbox" name="decision_factors" value="Community"><span>Community</span></label></div></fieldset>
+          </div>
+          <div class="stage-actions"><button class="button button-secondary" type="button" data-back>Back</button><button class="button button-primary" type="button" data-next>Continue to documents</button></div>
+        </section>
+
+        <section class="stage" data-stage="5" aria-labelledby="documents-title" hidden>
+          <div class="stage-intro"><p class="eyebrow">Documents</p><h2 id="documents-title">Only the evidence this application needs.</h2><p class="lead">Files go to restricted project storage, not email. PDF, JPG and PNG only, up to 8 MB each.</p></div>
+          <div class="form-card">
+            <h3>Required now</h3>
+            <div class="document-grid">
+              <div class="document-card" data-document-card="birth_certificate"><span class="document-icon">BC</span><div><h4>Birth certificate <b class="required-mark">*</b></h4><p>Student identity and legal name.</p><div class="upload-progress" hidden><span></span></div></div><div class="document-state"><span data-document-status>Not uploaded</span><label class="button button-quiet file-button">Choose file<input type="file" accept="application/pdf,image/jpeg,image/png" data-document-category="birth_certificate"></label></div></div>
+              <div class="document-card" data-document-card="immunisation"><span class="document-icon">IH</span><div><h4>Immunisation History Statement <b class="required-mark">*</b></h4><p>Current AIR statement, or explain below if pending.</p><div class="upload-progress" hidden><span></span></div></div><div class="document-state"><span data-document-status>Not uploaded</span><label class="button button-quiet file-button">Choose file<input type="file" accept="application/pdf,image/jpeg,image/png" data-document-category="immunisation"></label></div></div>
+              <div class="document-card" data-document-card="proof_of_address"><span class="document-icon">PA</span><div><h4>Proof of address <b class="required-mark">*</b></h4><p>Recent utility, rates or equivalent address evidence.</p><div class="upload-progress" hidden><span></span></div></div><div class="document-state"><span data-document-status>Not uploaded</span><label class="button button-quiet file-button">Choose file<input type="file" accept="application/pdf,image/jpeg,image/png" data-document-category="proof_of_address"></label></div></div>
+            </div>
+            <label class="check-row"><input type="checkbox" name="required_documents_pending" value="Yes"><span><strong>One or more required documents are not yet available</strong><small>Explain what is pending and when you expect to provide it.</small></span></label>
+            <div class="conditional" data-show-when="required_documents_pending:Yes" hidden><label class="form-field"><span>Pending document explanation <b class="required-mark">*</b></span><textarea name="pending_document_explanation" data-required-when-visible maxlength="1200"></textarea></label></div>
+          </div>
+          <div class="form-card">
+            <h3>Conditional and supporting</h3>
+            <div class="document-grid">
+              <div class="document-card" data-document-card="school_report"><span class="document-icon">SR</span><div><h4>Recent school report</h4><p>Helpful for students already attending school.</p><div class="upload-progress" hidden><span></span></div></div><div class="document-state"><span data-document-status>Optional</span><label class="button button-quiet file-button">Choose file<input type="file" accept="application/pdf,image/jpeg,image/png" data-document-category="school_report"></label></div></div>
+              <div class="document-card" data-document-card="medical_plan"><span class="document-icon">MP</span><div><h4>Medical or support plan</h4><p>Where relevant to safe planning and adjustments.</p><div class="upload-progress" hidden><span></span></div></div><div class="document-state"><span data-document-status>Conditional</span><label class="button button-quiet file-button">Choose file<input type="file" accept="application/pdf,image/jpeg,image/png" data-document-category="medical_plan"></label></div></div>
+              <div class="document-card" data-document-card="court_order"><span class="document-icon">CO</span><div><h4>Court or parenting order</h4><p>Restricted handling where authority/contact is affected.</p><div class="upload-progress" hidden><span></span></div></div><div class="document-state"><span data-document-status>Conditional</span><label class="button button-quiet file-button">Choose file<input type="file" accept="application/pdf,image/jpeg,image/png" data-document-category="court_order"></label></div></div>
+              <div class="document-card" data-document-card="residency"><span class="document-icon">VE</span><div><h4>Visa or residency evidence</h4><p>For temporary or other residency status.</p><div class="upload-progress" hidden><span></span></div></div><div class="document-state"><span data-document-status>Conditional</span><label class="button button-quiet file-button">Choose file<input type="file" accept="application/pdf,image/jpeg,image/png" data-document-category="residency"></label></div></div>
+              <div class="document-card" data-document-card="sacramental"><span class="document-icon">SC</span><div><h4>Sacramental certificate</h4><p>Optional pastoral record.</p><div class="upload-progress" hidden><span></span></div></div><div class="document-state"><span data-document-status>Optional</span><label class="button button-quiet file-button">Choose file<input type="file" accept="application/pdf,image/jpeg,image/png" data-document-category="sacramental"></label></div></div>
+            </div>
+          </div>
+          <div class="stage-actions"><button class="button button-secondary" type="button" data-back>Back</button><button class="button button-primary" type="button" data-next>Review the application</button></div>
+        </section>
+
+        <section class="stage" data-stage="6" aria-labelledby="review-title" hidden>
+          <div class="stage-intro"><p class="eyebrow">Review</p><h2 id="review-title">A clear view of what you are submitting.</h2><p class="lead">Use the section links to review and edit. Your signature is on the next stage, not hidden inside this preview.</p></div>
+          <nav class="review-nav" aria-label="Review sections"><a href="#review-student">Student</a><a href="#review-family">Family</a><a href="#review-care">Care</a><a href="#review-choices">Choices</a><a href="#review-documents">Documents</a></nav>
+          <div id="review-content"></div>
+          <div class="form-card">
+            <h3>Policies and declarations</h3>
+            <p class="policy-warning">All linked policies are draft placeholders and must be replaced or approved before real applications.</p>
+            <div class="policy-list"><a class="policy-link" href="rosewood-policy-drafts-v2.html" target="_blank" rel="noopener"><span>Open complete draft policy pack</span><span>Open ↗</span></a></div>
+            <label class="check-row"><input type="checkbox" name="information_declaration" value="Yes" required><span><strong>I confirm the information is complete and accurate to the best of my knowledge. <b class="required-mark">*</b></strong><small>I will tell Rosewood if material information changes.</small></span></label>
+            <label class="check-row"><input type="checkbox" name="privacy_acknowledgement" value="Yes" required><span><strong>I have read the draft Privacy Collection Notice and understand the proposed handling described there. <b class="required-mark">*</b></strong><small>This acknowledgement will be replaced by final approved wording.</small></span></label>
+            <label class="check-row"><input type="checkbox" name="authority_declaration" value="Yes" required><span><strong>I am authorised to provide this application and have identified every relevant guardian, carer or order. <b class="required-mark">*</b></strong><small>OTP verifies mailbox access; this declaration records the claimed authority.</small></span></label>
+            <label class="check-row"><input type="checkbox" name="review_ready" value="Yes" required><span><strong>I have reviewed the complete application and am ready to continue to my signature. <b class="required-mark">*</b></strong><small>The next stage contains the actual signature control.</small></span></label>
+          </div>
+          <div class="stage-actions"><button class="button button-secondary" type="button" data-back>Back</button><button class="button button-primary" type="button" data-next>Continue to my signature</button></div>
+        </section>
+
+        <section class="stage" data-stage="7" aria-labelledby="sign-title" hidden>
+          <div class="stage-intro"><p class="eyebrow">Sign</p><h2 id="sign-title">Your signature, with the terms in view.</h2><p class="lead">You are signing the reviewed revision shown on the previous stage. Additional required guardians will receive their own private task.</p></div>
+          <div class="form-card">
+            <h3>What this signature means</h3>
+            <p class="card-intro">This V2 development text is not final legal wording.</p>
+            <label class="check-row"><input type="checkbox" id="signature-record-declaration" name="signature_record_declaration" value="Yes" required><span><strong>I understand Rosewood will record a server timestamp, security audit metadata and this signature against the reviewed application revision. <b class="required-mark">*</b></strong><small>The production notice must state the approved metadata and retention period.</small></span></label>
+            <label class="check-row"><input type="checkbox" id="signature-consent-declaration" name="signature_consent_declaration" value="Yes" required><span><strong>I intend to sign and submit this enrolment application for consideration. <b class="required-mark">*</b></strong><small>An application does not guarantee an offer or final enrolment.</small></span></label>
+            <label class="form-field"><span>Type your full legal name <b class="required-mark">*</b></span><input id="signature-name" name="signature_name" maxlength="160" autocomplete="name" required></label>
+            <span class="field-label">Draw your signature <b class="required-mark">*</b></span>
+            <div class="signature-lock" id="signature-box">
+              <canvas id="signature-canvas" width="1000" height="240" aria-label="Signature drawing area"></canvas>
+              <div class="signature-overlay" id="signature-overlay">Agree to both declarations above to enable signing.</div>
+            </div>
+            <p class="field-error" id="signature-error" hidden>Please provide your signature.</p>
+            <div class="signature-actions"><button class="button button-secondary" id="clear-signature" type="button" disabled>Clear signature</button><span class="signature-date" id="signature-date">Date will be set by the Rosewood service when submitted.</span></div>
+            <label class="form-field"><span>Additional information for the enrolment team</span><textarea name="final_comments" maxlength="2000"></textarea></label>
+          </div>
+          <div class="stage-actions"><button class="button button-secondary" type="button" data-back>Back to review</button><button class="button button-primary" id="submit-application" type="submit">Submit my signature</button></div>
+        </section>
+
+        <section class="stage" data-stage="8" aria-labelledby="complete-title" hidden>
+          <div class="success-card">
+            <div class="success-mark" aria-hidden="true">✓</div>
+            <p class="eyebrow">Application received</p>
+            <h1 id="complete-title">Your part is complete.</h1>
+            <p class="lead" id="complete-lead">Your signature was recorded. We will email any additional required guardian independently.</p>
+            <ol class="status-timeline" id="completion-timeline">
+              <li class="is-complete"><strong>Application revision frozen</strong><span>Your reviewed answers cannot be silently changed.</span></li>
+              <li class="is-complete"><strong>Your signature recorded</strong><span>A confirmation message will be sent.</span></li>
+              <li id="additional-signature-status"><strong>Additional signatures</strong><span>Pending only where another guardian is required.</span></li>
+              <li id="receipt-status"><strong>Final receipt</strong><span>Available when the required signature set is complete.</span></li>
+            </ol>
+            <p><strong>Reference:</strong> <span id="application-reference">Preview reference</span></p>
+            <a class="button button-secondary" href="../index.html">Close and return home</a>
+          </div>
+        </section>
+      </form>
+    </section>
+  </main>
+
+  <template id="guardian-template">
+    <div class="form-card guardian-card additional-guardian">
+      <div class="guardian-heading"><div><p class="eyebrow">Additional guardian</p><h3>Parent, guardian or carer</h3></div><button class="button button-danger remove-guardian" type="button">Remove</button></div>
+      <div class="field-grid three">
+        <label class="form-field"><span>First name <b class="required-mark">*</b></span><input data-guardian-field="first_name" maxlength="80" required></label>
+        <label class="form-field"><span>Family name <b class="required-mark">*</b></span><input data-guardian-field="last_name" maxlength="80" required></label>
+        <label class="form-field"><span>Relationship <b class="required-mark">*</b></span><select data-guardian-field="relationship" required><option value="">Select</option><option>Mother</option><option>Father</option><option>Step-parent</option><option>Guardian</option><option>Kinship carer</option><option>Foster carer</option><option>Other carer</option></select></label>
+        <label class="form-field"><span>Email <b class="required-mark">*</b></span><input data-guardian-field="email" type="email" required></label>
+        <label class="form-field"><span>Mobile <b class="required-mark">*</b></span><input data-guardian-field="mobile" type="tel" maxlength="30" required></label>
+        <label class="form-field"><span>Contact role <b class="required-mark">*</b></span><select data-guardian-field="contact_role" required><option>Secondary contact</option><option>Primary contact</option></select></label>
+      </div>
+      <div class="choice-grid three">
+        <label class="choice-card"><input type="checkbox" data-guardian-field="lives_with_student" value="Yes"><span><strong>Lives with student</strong></span></label>
+        <label class="choice-card"><input type="checkbox" data-guardian-field="legal_responsibility" value="Yes"><span><strong>Legal responsibility</strong></span></label>
+        <label class="choice-card"><input type="checkbox" data-guardian-field="required_signer" value="Yes" checked><span><strong>Required independent signer</strong><small>A unique OTP task will be emailed.</small></span></label>
+      </div>
+      <fieldset><legend>May Rosewood contact this person about the application? <b class="required-mark">*</b></legend><div class="choice-grid"><label class="choice-card"><input type="radio" data-guardian-field="contact_permission" value="Yes" required><span><strong>Yes</strong></span></label><label class="choice-card"><input type="radio" data-guardian-field="contact_permission" value="Restricted" required><span><strong>Restricted / discuss first</strong><small>This does not decide legal signing authority.</small></span></label></div></fieldset>
+    </div>
+  </template>
+
+  <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
+  <script>
+    window.ROSEWOOD_V2_CONFIG = {
+      apiEndpoint: "",
+      schemaVersion: "rosewood-v2-2026-08-02",
+      policyVersion: "draft-2026-08-02",
+      ...(window.ROSEWOOD_V2_RUNTIME_CONFIG || {})
+    };
+  </script>
+  <script src="rosewood-enrolment-v2.js" defer></script>
+</body>
+</html>
