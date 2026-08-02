@@ -4,7 +4,9 @@
   const params = new URLSearchParams(location.search);
   const preview = params.get("preview") === "1";
   const apiEndpoint = String(config.apiEndpoint || "").replace(/\/+$/, "");
-  const taskToken = params.get("task") || sessionStorage.getItem("rosewood_v2_task") || "";
+  const incomingTaskToken = params.get("task") || "";
+  const storedTaskToken = sessionStorage.getItem("rosewood_v2_task") || "";
+  const taskToken = incomingTaskToken || storedTaskToken;
   let sessionToken = sessionStorage.getItem("rosewood_v2_sign_session") || "";
   let challengeId = "";
   let context = null;
@@ -14,6 +16,17 @@
   let lastPoint = null;
   const form = document.getElementById("sign-form");
   const errors = document.getElementById("sign-errors");
+
+  if (!preview && incomingTaskToken) {
+    if (storedTaskToken && storedTaskToken !== incomingTaskToken) {
+      sessionStorage.removeItem("rosewood_v2_sign_session");
+      sessionToken = "";
+    }
+    sessionStorage.setItem("rosewood_v2_task", incomingTaskToken);
+    params.delete("task");
+    const query = params.toString();
+    history.replaceState(null, "", `${location.pathname}${query ? `?${query}` : ""}${location.hash}`);
+  }
 
   function showError(target, message) { target.textContent = message; target.hidden = !message; }
   function toast(message) { const item=document.createElement("div"); item.className="toast"; item.textContent=message; document.getElementById("toast-region").append(item); setTimeout(()=>item.remove(),4000); }

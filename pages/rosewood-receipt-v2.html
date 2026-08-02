@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <title>Application Receipt | Rosewood College</title>
+  <link rel="stylesheet" href="rosewood-enrolment-v2.css">
+</head>
+<body class="receipt-page-body">
+  <a class="skip-link" href="#main-content">Skip to receipt</a>
+  <div class="draft-banner">V2 development preview - placeholder policies - not a live enrolment service</div>
+  <header class="site-header">
+    <a class="brand" href="../index.html"><img src="../img/rosewood-emblem-corrected-transparent.png" alt=""><span><strong>Rosewood College</strong><span>Secure application receipt</span></span></a>
+    <div class="header-help">Private, recipient-specific access</div>
+  </header>
+
+  <main id="main-content">
+    <section class="access-page" id="receipt-access-view">
+      <div class="access-story receipt-access-story">
+        <div>
+          <p class="eyebrow">Application receipt</p>
+          <h1>Proof of completion.<br><em>Without reopening the file.</em></h1>
+          <p class="access-lead">This page confirms what was submitted and who completed each required signature. It deliberately does not reveal the application answers or uploaded documents.</p>
+        </div>
+        <div class="access-principles">
+          <div><strong>Private link</strong><span>Unique to one receipt recipient.</span></div>
+          <div><strong>Mailbox check</strong><span>A fresh code is required before viewing.</span></div>
+          <div><strong>Limited record</strong><span>No health, address or document data appears here.</span></div>
+        </div>
+      </div>
+      <div class="access-panel">
+        <div class="access-card" id="receipt-email-card">
+          <p class="eyebrow">Identity check</p>
+          <h2>Confirm your email</h2>
+          <p>Use the address that received the completed-application message.</p>
+          <div class="secure-note"><strong>Why another code?</strong>The receipt link identifies the task, while the one-time code confirms current access to the invited mailbox.</div>
+          <form id="receipt-request-form" novalidate>
+            <label class="form-field"><span>Email address <b class="required-mark">*</b></span><input id="receipt-email" type="email" autocomplete="email" required></label>
+            <div class="error-summary" id="receipt-access-error" role="alert" hidden></div>
+            <button class="button button-primary button-wide" type="submit">Send my receipt code</button>
+          </form>
+          <button class="button button-secondary button-wide" id="receipt-preview-entry" type="button" hidden>Open synthetic receipt preview</button>
+        </div>
+
+        <div class="access-card" id="receipt-otp-card" hidden>
+          <p class="eyebrow">One-time code</p>
+          <h2>Check your inbox</h2>
+          <p>Enter the six-digit code sent to <strong id="receipt-masked-email">your email</strong>.</p>
+          <form id="receipt-verify-form" novalidate>
+            <label class="form-field"><span>Six-digit code <b class="required-mark">*</b></span><input class="otp-code" id="receipt-otp" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label>
+            <div class="error-summary" id="receipt-otp-error" role="alert" hidden></div>
+            <button class="button button-primary button-wide" id="receipt-verify-button" type="submit" disabled>Verify and open receipt</button>
+          </form>
+          <button class="text-button receipt-back-button" id="receipt-change-email" type="button">Use a different email</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="receipt-view" id="receipt-view" hidden>
+      <div class="receipt-hero">
+        <div>
+          <p class="eyebrow">Recorded by Rosewood</p>
+          <h1>Application complete.</h1>
+          <p id="receipt-welcome">This receipt confirms the completed submission and signature status.</p>
+        </div>
+        <div class="receipt-seal" aria-label="Verified receipt"><span aria-hidden="true">✓</span><strong>Verified</strong><small>Mailbox + private link</small></div>
+      </div>
+
+      <div class="receipt-layout">
+        <article class="receipt-sheet" aria-labelledby="receipt-title">
+          <header class="receipt-sheet-header">
+            <div><p class="eyebrow">Rosewood College enrolment</p><h2 id="receipt-title" tabindex="-1">Application receipt</h2></div>
+            <span class="receipt-reference" id="receipt-reference">RW-PREVIEW</span>
+          </header>
+
+          <div class="receipt-summary-grid">
+            <div><span>Student</span><strong id="receipt-student">Ava Example</strong></div>
+            <div><span>Application status</span><strong class="status-pill">Complete</strong></div>
+            <div><span>First submitted</span><strong id="receipt-submitted">2 August 2026</strong></div>
+            <div><span>All signatures complete</span><strong id="receipt-completed">2 August 2026</strong></div>
+            <div><span>Application revision</span><strong id="receipt-revision">4</strong></div>
+            <div><span>Policy set recorded</span><strong id="receipt-policy">draft-2026-08-02</strong></div>
+          </div>
+
+          <section class="receipt-signatures" aria-labelledby="receipt-signatures-title">
+            <div class="receipt-section-heading"><div><p class="eyebrow">Signature register</p><h3 id="receipt-signatures-title">Required guardians</h3></div><span id="receipt-signature-count">2 of 2 complete</span></div>
+            <ol class="receipt-signer-list" id="receipt-signer-list"></ol>
+          </section>
+
+          <div class="receipt-integrity-note">
+            <strong>What this receipt proves</strong>
+            <p>It identifies the application reference, frozen revision and recorded completion times. It is not a copy of the application, an enrolment offer or confirmation of admission.</p>
+          </div>
+
+          <footer class="receipt-sheet-footer">
+            <span>Generated from the Rosewood secure enrolment record</span>
+            <span id="receipt-viewed-at"></span>
+          </footer>
+        </article>
+
+        <aside class="receipt-next-steps">
+          <p class="eyebrow">What happens next</p>
+          <h2>Now Rosewood reviews the application.</h2>
+          <ol class="status-timeline">
+            <li class="is-complete"><strong>Application received</strong><span>The reviewed revision and required signatures are complete.</span></li>
+            <li><strong>Administrative review</strong><span>The enrolment team checks completeness and may contact the family.</span></li>
+            <li><strong>Enrolment decision</strong><span>Any next step or offer is communicated separately.</span></li>
+          </ol>
+          <div class="why-card"><strong>Keep the reference handy.</strong><p>Use it when contacting the enrolment team. Do not email sensitive documents unless Rosewood provides an approved secure method.</p></div>
+          <div class="receipt-actions"><button class="button button-primary" id="receipt-print" type="button">Print receipt</button><a class="button button-secondary" href="../index.html">Close</a></div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast-region" id="toast-region" aria-live="polite"></div>
+  <script src="rosewood-enrolment-v2-config.js"></script>
+  <script>window.ROSEWOOD_V2_CONFIG={apiEndpoint:"",schemaVersion:"rosewood-v2-2026-08-02",policyVersion:"draft-2026-08-02",...(window.ROSEWOOD_V2_RUNTIME_CONFIG||{})};</script>
+  <script src="rosewood-receipt-v2.js" defer></script>
+</body>
+</html>

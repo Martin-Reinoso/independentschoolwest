@@ -27,7 +27,9 @@
   const otpInput = document.getElementById("otp-code");
   const verifyOtpButton = document.getElementById("verify-otp-button");
 
-  let invitationToken = params.get("invite") || sessionStorage.getItem("rosewood_v2_invite") || "";
+  const incomingInvitationToken = params.get("invite") || "";
+  const storedInvitationToken = sessionStorage.getItem("rosewood_v2_invite") || "";
+  let invitationToken = incomingInvitationToken || storedInvitationToken;
   let sessionToken = sessionStorage.getItem("rosewood_v2_session") || "";
   let sessionContext = null;
   let currentStage = 0;
@@ -46,6 +48,17 @@
   let lastPoint = null;
   const journeyStartedAt = Date.now();
   let stageStartedAt = journeyStartedAt;
+
+  if (!previewMode && incomingInvitationToken) {
+    if (storedInvitationToken && storedInvitationToken !== incomingInvitationToken) {
+      sessionStorage.removeItem("rosewood_v2_session");
+      sessionToken = "";
+    }
+    sessionStorage.setItem("rosewood_v2_invite", incomingInvitationToken);
+    params.delete("invite");
+    const query = params.toString();
+    history.replaceState(null, "", `${location.pathname}${query ? `?${query}` : ""}${location.hash}`);
+  }
 
   function setError(container, message) {
     container.textContent = message || "";

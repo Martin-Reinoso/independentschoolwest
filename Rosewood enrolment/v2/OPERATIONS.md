@@ -35,6 +35,7 @@ email addresses, medical answers, OTPs, tokens and signatures.
 - DynamoDB throttles and conditional-write anomalies
 - SES bounces, complaints and suppression state
 - pending outbox records
+- EventBridge outbox rule invocations and records whose lease repeatedly releases
 - Drive folder membership and unexpected sharing changes
 - Sheet headers and sharing configuration
 - invitations or signature tasks nearing expiry
@@ -48,9 +49,31 @@ email addresses, medical answers, OTPs, tokens and signatures.
 - `Pending signatures` means the primary signature is recorded but another required
   guardian has not completed their independent task.
 - `Submitted` means every required signature is attached to the frozen revision.
+- `Receipt verified` means one receipt recipient used their private link and a fresh OTP;
+  it does not reopen the application or establish an enrolment offer.
 
 Never ask a family to send an OTP, private task link, medical plan, identity document or
 court order through ordinary email.
+
+## Receipt Support
+
+- Each required signer receives a different receipt link after the final signature.
+- A receipt link expires after 30 days in the test configuration; the authenticated view
+  expires after 30 minutes.
+- If a family loses or forwards a link, do not disclose the token or bypass OTP. Revoke
+  the receipt task and issue a new controlled task through an approved operator process.
+- The receipt intentionally omits application answers and documents. Staff must use the
+  restricted canonical record, not ask the family to email a copy.
+- A receipt proves recorded submission metadata only. It is not an admission decision,
+  fee agreement, offer or enrolment confirmation.
+
+## Email Delivery
+
+Interactive operations attempt immediate outbox delivery. The `RosewoodOutboxSchedule`
+EventBridge rule retries unsent records every minute. Each worker must claim a 60-second
+lease before sending; sent records retain `sentAt`. Investigate rather than repeatedly
+manually invoking the function if the same item remains unsent. SES bounce/complaint
+handling and operational alarms remain launch blockers.
 
 ## Incident Boundaries
 

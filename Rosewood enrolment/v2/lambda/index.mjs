@@ -39,5 +39,8 @@ export async function handler(event, context) {
   context.callbackWaitsForEmptyEventLoop = false;
   servicePromise ||= buildService();
   const service = await servicePromise;
+  if (event?.source === "aws.events" && event?.["detail-type"] === "Scheduled Event") {
+    return service.dispatchOutbox();
+  }
   return service(event);
 }

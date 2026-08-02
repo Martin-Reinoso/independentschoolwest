@@ -96,7 +96,8 @@ function createFixture({ now = 1_800_000_000_000 } = {}) {
     REPLY_TO_EMAIL: "reply@example.test",
     SCHEMA_VERSION: schemaVersion,
     TEST_MODE: "true",
-    SIGNING_PAGE_URL: `${origin}/pages/rosewood-sign-v2.html`
+    SIGNING_PAGE_URL: `${origin}/pages/rosewood-sign-v2.html`,
+    RECEIPT_PAGE_URL: `${origin}/pages/rosewood-receipt-v2.html`
   } });
   return { store, drive, mailer, tracker, service, advance(ms) { current += ms; } };
 }
@@ -133,6 +134,20 @@ async function saveCompleteDraft(fixture, token, data = application()) {
   return saved.body.revision;
 }
 
+function privateLinkToken(message, parameter) {
+  const href = message.html.match(/href="([^"]+)"/)?.[1].replaceAll("&amp;", "&");
+  assert.ok(href, `Expected ${parameter} link in email`);
+  return new URL(href).searchParams.get(parameter);
+}
+
+async function submitSingleGuardian(fixture) {
+  const token = await accessSession(fixture);
+  const revision = await saveCompleteDraft(fixture, token);
+  const submitted = await request(fixture, "POST", "/v2/applications/submit", { token, body: { expectedRevision: revision, declarations: { information: "Yes", privacy: "Yes", authority: "Yes", audit: "Yes", intent: "Yes" }, signerName: "Morgan Example", signatureDataUrl: pngDataUrl() } });
+  assert.equal(submitted.status, 200);
+  return { token, revision, submitted };
+}
+
 test("health and CORS responses are non-cacheable", async () => {
   const fixture = createFixture();
   const response = await request(fixture, "GET", "/v2/health");
@@ -140,6 +155,40 @@ test("health and CORS responses are non-cacheable", async () => {
   assert.equal(response.body.version, schemaVersion);
   assert.equal(response.headers["Cache-Control"], "no-store, max-age=0");
   assert.equal(response.headers["Access-Control-Allow-Origin"], origin);
+});
+
+test("non-test service refuses local fallbacks and insecure runtime URLs", () => {
+  const store = new MemoryStore();
+  const drive = new MemoryDrive();
+  const mailer = new MemoryMailer();
+  assert.throws(() => createService({ store, drive, mailer, env: {} }), /secrets are missing or too short/);
+  assert.throws(() => createService({ store, drive, mailer, env: {
+    OTP_HMAC_SECRET: "a".repeat(32),
+    IP_HASH_SALT: "b".repeat(32),
+    SCHEMA_VERSION: schemaVersion,
+    OTP_FROM_EMAIL: "sender@example.test",
+    REPLY_TO_EMAIL: "reply@example.test",
+    ALLOWED_ORIGINS: "http://insecure.example.test",
+    SIGNING_PAGE_URL: "https://ffe.org.au/pages/rosewood-sign-v2.html",
+    RECEIPT_PAGE_URL: "https://ffe.org.au/pages/rosewood-receipt-v2.html"
+  } }), /origins must use HTTPS/);
+});
+
+test("outbox leases prevent duplicate delivery and release failed messages for retry", async () => {
+  const fixture = createFixture();
+  const event = { id: "outbox-test", type: "test.message", to: invitedEmail, message: { subject: "Test", text: "Test", html: "<p>Test</p>" }, createdAt: new Date().toISOString() };
+  await fixture.store.enqueueOutbox(event);
+  const originalSend = fixture.mailer.send.bind(fixture.mailer);
+  fixture.mailer.send = async () => { throw new Error("Synthetic SES interruption"); };
+  const failed = await fixture.service.dispatchOutbox();
+  assert.equal(failed.sent, 0);
+  assert.equal(fixture.store.outbox[0].leaseUntil, undefined);
+
+  fixture.mailer.send = originalSend;
+  const [first, overlapping] = await Promise.all([fixture.service.dispatchOutbox(), fixture.service.dispatchOutbox()]);
+  assert.equal(first.sent + overlapping.sent, 1);
+  assert.equal(fixture.mailer.messages.length, 1);
+  assert.ok(fixture.store.outbox[0].sentAt);
 });
 
 test("OTP request is generic and valid codes are single use", async () => {
@@ -166,6 +215,17 @@ test("replaying one OTP request operation returns one challenge and sends one em
   const replay = await request(fixture, "POST", "/v2/access/request-otp", { idempotencyKey, body: { invitationToken, email: invitedEmail } });
   assert.deepEqual(replay.body, first.body);
   assert.equal(fixture.mailer.messages.length, 1);
+});
+
+test("OTP resend cooldown is enforced by the service", async () => {
+  const fixture = createFixture();
+  const first = await request(fixture, "POST", "/v2/access/request-otp", { body: { invitationToken, email: invitedEmail } });
+  assert.equal(first.status, 200);
+  const tooSoon = await request(fixture, "POST", "/v2/access/request-otp", { body: { invitationToken, email: invitedEmail } });
+  assert.equal(tooSoon.status, 429);
+  fixture.advance(60_001);
+  const allowed = await request(fixture, "POST", "/v2/access/request-otp", { body: { invitationToken, email: invitedEmail } });
+  assert.equal(allowed.status, 200);
 });
 
 test("expired OTP and expired sessions are rejected", async () => {
@@ -246,18 +306,74 @@ test("submission rejects forged documents, negative acknowledgements and fake PN
 
 test("single-guardian application completes atomically and returns a receipt", async () => {
   const fixture = createFixture();
-  const token = await accessSession(fixture);
-  const revision = await saveCompleteDraft(fixture, token);
-  const submitted = await request(fixture, "POST", "/v2/applications/submit", { token, body: { expectedRevision: revision, declarations: { information: "Yes", privacy: "Yes", authority: "Yes", audit: "Yes", intent: "Yes" }, signerName: "Morgan Example", signatureDataUrl: pngDataUrl() } });
-  assert.equal(submitted.status, 200);
+  const { token, submitted } = await submitSingleGuardian(fixture);
   assert.equal(submitted.body.status, "submitted");
   assert.match(submitted.body.reference, /^RW-/);
   const app = await fixture.store.getApplication("application-test");
   assert.equal(app.status, "submitted");
   assert.equal(app.signatures.length, 1);
+  assert.equal(app.completedAt, app.submittedAt);
+  assert.equal(fixture.store.receipts.size, 1);
+  assert.equal(fixture.store.outbox.filter((item) => item.type === "application.completed").length, 1);
   const receipt = await request(fixture, "GET", "/v2/receipt", { token });
   assert.equal(receipt.status, 200);
   assert.equal(receipt.body.signers[0].status, "signed");
+});
+
+test("emailed receipt requires its own generic, single-use OTP flow", async () => {
+  const fixture = createFixture();
+  const { token: applicationToken, submitted } = await submitSingleGuardian(fixture);
+  const completeMessage = fixture.mailer.messages.find((message) => message.subject.includes("All signatures complete"));
+  const receiptToken = privateLinkToken(completeMessage, "receipt");
+  assert.ok(receiptToken);
+
+  const wrongMailbox = await request(fixture, "POST", "/v2/receipts/request-otp", { body: { receiptToken, email: "wrong@example.test" }, sourceIp: "203.0.113.31" });
+  assert.equal(wrongMailbox.status, 200);
+  assert.equal(wrongMailbox.body.maskedEmail, "the invited mailbox");
+  assert.equal(wrongMailbox.body.testCode, undefined);
+
+  const issued = await request(fixture, "POST", "/v2/receipts/request-otp", { body: { receiptToken, email: invitedEmail }, sourceIp: "203.0.113.32" });
+  assert.match(issued.body.testCode, /^\d{6}$/);
+  assert.match(fixture.mailer.messages.at(-1).subject, /receipt verification code/i);
+  const wrongCode = await request(fixture, "POST", "/v2/receipts/verify-otp", { body: { receiptToken, challengeId: issued.body.challengeId, code: "000000" } });
+  assert.equal(wrongCode.status, 401);
+  const verified = await request(fixture, "POST", "/v2/receipts/verify-otp", { body: { receiptToken, challengeId: issued.body.challengeId, code: issued.body.testCode } });
+  assert.equal(verified.status, 200);
+  assert.equal(verified.body.receipt.reference, submitted.body.reference);
+  const reused = await request(fixture, "POST", "/v2/receipts/verify-otp", { body: { receiptToken, challengeId: issued.body.challengeId, code: issued.body.testCode } });
+  assert.equal(reused.status, 401);
+
+  const wrongScope = await request(fixture, "GET", "/v2/receipts/context", { token: applicationToken });
+  assert.equal(wrongScope.status, 401);
+  const context = await request(fixture, "GET", "/v2/receipts/context", { token: verified.body.sessionToken });
+  assert.equal(context.status, 200);
+  assert.equal(context.body.signers[0].status, "signed");
+  const serialized = JSON.stringify(context.body);
+  for (const privateField of ["student_address", "student_date_of_birth", "medical_needs", "networkFingerprint", "artifactId", invitedEmail, receiptToken]) {
+    assert.equal(serialized.includes(privateField), false, `Receipt leaked ${privateField}`);
+  }
+});
+
+test("receipt OTP, private link and scoped session expire independently", async () => {
+  const fixture = createFixture();
+  await submitSingleGuardian(fixture);
+  const receiptToken = privateLinkToken(fixture.mailer.messages.find((message) => message.subject.includes("All signatures complete")), "receipt");
+  const issued = await request(fixture, "POST", "/v2/receipts/request-otp", { body: { receiptToken, email: invitedEmail } });
+  fixture.advance(10 * 60_000 + 1);
+  const expiredOtp = await request(fixture, "POST", "/v2/receipts/verify-otp", { body: { receiptToken, challengeId: issued.body.challengeId, code: issued.body.testCode } });
+  assert.equal(expiredOtp.status, 401);
+
+  const issuedAgain = await request(fixture, "POST", "/v2/receipts/request-otp", { body: { receiptToken, email: invitedEmail }, sourceIp: "203.0.113.40" });
+  const verified = await request(fixture, "POST", "/v2/receipts/verify-otp", { body: { receiptToken, challengeId: issuedAgain.body.challengeId, code: issuedAgain.body.testCode } });
+  fixture.advance(30 * 60_000 + 1);
+  const expiredSession = await request(fixture, "GET", "/v2/receipts/context", { token: verified.body.sessionToken });
+  assert.equal(expiredSession.status, 401);
+
+  fixture.advance(30 * 24 * 60 * 60_000);
+  const expiredLink = await request(fixture, "POST", "/v2/receipts/request-otp", { body: { receiptToken, email: invitedEmail }, sourceIp: "203.0.113.41" });
+  assert.equal(expiredLink.status, 200);
+  assert.equal(expiredLink.body.testCode, undefined);
+  assert.equal(expiredLink.body.maskedEmail, "the invited mailbox");
 });
 
 test("additional guardian independently verifies, reviews and signs the frozen revision", async () => {
@@ -297,6 +413,49 @@ test("additional guardian independently verifies, reviews and signs the frozen r
   const app = await fixture.store.getApplication("application-test");
   assert.equal(app.signatures.length, 2);
   assert.ok(app.completedAt);
+  assert.equal(fixture.store.receipts.size, 2);
+  const completionMessages = fixture.mailer.messages.filter((message) => message.subject.includes("All signatures complete"));
+  assert.equal(completionMessages.length, 2);
+  assert.equal(new Set(completionMessages.map((message) => privateLinkToken(message, "receipt"))).size, 2);
+});
+
+test("signature task expiry is rechecked at OTP verification, review and submission", async () => {
+  const now = 1_800_000_000_000;
+  const fixture = createFixture({ now });
+  const rawTask = "signature-task-expiry-test-token";
+  const taskHash = hash(rawTask);
+  const app = await fixture.store.getApplication("application-test");
+  app.status = "pending_signatures";
+  app.frozen = { hash: "frozen-hash", application: application(), revision: 1 };
+  app.signers = [{ id: "signer-b", required: true }];
+  fixture.store.applications.set(app.id, app);
+  fixture.store.tasks.set(taskHash, {
+    tokenHash: taskHash,
+    applicationId: app.id,
+    signerId: "signer-b",
+    signer: { id: "signer-b", firstName: "Jordan", lastName: "Example", email: "second@example.test", mobile: "0422000000", relationship: "Parent" },
+    status: "invited",
+    revision: 1,
+    revisionHash: "frozen-hash",
+    expiresAt: now + 60_000
+  });
+  const expiringOtp = await request(fixture, "POST", "/v2/signatures/request-otp", { body: { taskToken: rawTask, email: "second@example.test" } });
+  fixture.advance(60_001);
+  const rejectedVerification = await request(fixture, "POST", "/v2/signatures/verify-otp", { body: { taskToken: rawTask, challengeId: expiringOtp.body.challengeId, code: expiringOtp.body.testCode } });
+  assert.equal(rejectedVerification.status, 401);
+
+  const currentTask = fixture.store.tasks.get(taskHash);
+  currentTask.expiresAt = now + 10 * 60_000;
+  fixture.store.tasks.set(taskHash, currentTask);
+  const freshOtp = await request(fixture, "POST", "/v2/signatures/request-otp", { body: { taskToken: rawTask, email: "second@example.test" }, sourceIp: "203.0.113.51" });
+  const verified = await request(fixture, "POST", "/v2/signatures/verify-otp", { body: { taskToken: rawTask, challengeId: freshOtp.body.challengeId, code: freshOtp.body.testCode } });
+  assert.equal(verified.status, 200);
+  fixture.store.tasks.get(taskHash).expiresAt = now + 60_002;
+  fixture.advance(2);
+  const expiredContext = await request(fixture, "GET", "/v2/signatures/context", { token: verified.body.sessionToken });
+  assert.equal(expiredContext.status, 410);
+  const expiredSubmission = await request(fixture, "POST", "/v2/signatures/submit", { token: verified.body.sessionToken, body: { revision: 1 } });
+  assert.equal(expiredSubmission.status, 409);
 });
 
 test("rate limits OTP requests by network, invitation and mailbox", async () => {
@@ -304,6 +463,7 @@ test("rate limits OTP requests by network, invitation and mailbox", async () => 
   for (let index = 0; index < 5; index += 1) {
     const response = await request(fixture, "POST", "/v2/access/request-otp", { body: { invitationToken, email: invitedEmail } });
     assert.equal(response.status, 200);
+    fixture.advance(60_001);
   }
   const blocked = await request(fixture, "POST", "/v2/access/request-otp", { body: { invitationToken, email: invitedEmail } });
   assert.equal(blocked.status, 429);

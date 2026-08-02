@@ -11,6 +11,75 @@ async function openPreview(page) {
   await expect(page.locator("#application-view")).toBeVisible();
 }
 
+function browserApplication() {
+  return {
+    readiness_acknowledgement: "Yes",
+    student_first_name: "Ava",
+    student_last_name: "Example",
+    student_date_of_birth: "2021-03-04",
+    entry_year: "2027",
+    entry_year_level: "Prep",
+    current_school: "Example Early Learning",
+    current_year_level: "Kindergarten",
+    student_address: "1 Example Street",
+    student_suburb: "Melton",
+    student_postcode: "3337",
+    country_of_birth: "Australia",
+    residency_status: "Australian citizen",
+    home_language: "English",
+    family_connection: "New family",
+    guardian_a_first_name: "Morgan",
+    guardian_a_last_name: "Example",
+    guardian_a_relationship: "Parent",
+    guardian_a_email: "guardian@example.test",
+    guardian_a_mobile: "0400000000",
+    guardian_a_contact_role: "Primary contact",
+    guardian_a_legal_responsibility: "Yes",
+    care_arrangement: "Both parents together",
+    court_orders: "No",
+    emergency_first_name: "Taylor",
+    emergency_last_name: "Example",
+    emergency_relationship: "Aunt",
+    emergency_mobile: "0411000000",
+    guardian_completeness: "Yes",
+    additional_needs: "No",
+    medical_needs: "No",
+    immunisation_status: "Current",
+    previous_school_permission: "Yes",
+    previous_school_name: "Example Early Learning",
+    student_name_permission: "Yes",
+    fee_responsibility: "Joint responsibility",
+    referral_source: "Invited by Rosewood",
+    decision_factors: ["Faith and character", "Academic excellence"],
+    information_declaration: "Yes",
+    privacy_acknowledgement: "Yes",
+    authority_declaration: "Yes",
+    review_ready: "Yes",
+    required_documents_pending: "No"
+  };
+}
+
+function pngDataUrl() {
+  const bytes = Buffer.alloc(220, 1);
+  Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(bytes);
+  return `data:image/png;base64,${bytes.toString("base64")}`;
+}
+
+async function api(request, method, path, body, token) {
+  const response = await request.fetch(path, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      "Idempotency-Key": `browser-${crypto.randomUUID()}`,
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    data: body
+  });
+  const payload = await response.json();
+  expect(response.ok(), `${method} ${path}: ${JSON.stringify(payload)}`).toBe(true);
+  return payload;
+}
+
 test("preview is visibly synthetic and performs no service writes", async ({ page }) => {
   const serviceRequests = [];
   page.on("request", (request) => {
@@ -133,8 +202,85 @@ test("remote guardian review and signature stages are unambiguous", async ({ pag
   await expect(page.locator("#remote-signature-canvas")).toHaveAttribute("aria-disabled", "false");
 });
 
-test("real local OTP opens the invited record and acknowledges a secure revision", async ({ page }) => {
-  await page.goto("/pages/rosewood-enrolment-v2.html?invite=playwright-v2-invitation-token");
+test("receipt preview is minimal, responsive and performs no service writes", async ({ page }) => {
+  const serviceRequests = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname.startsWith("/v2/")) serviceRequests.push(request.url());
+  });
+  await page.goto("/pages/rosewood-receipt-v2.html?preview=1");
+  await page.getByRole("button", { name: "Open synthetic receipt preview" }).click();
+  await expect(page.getByRole("heading", { name: "Application complete." })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
+  await expect(page.locator("#receipt-title")).toBeFocused();
+  await expect(page.locator("#receipt-reference")).toHaveText("RW-2026-PREVIEW");
+  await expect(page.locator("#receipt-signature-count")).toHaveText("2 of 2 complete");
+  await expect(page.locator("body")).not.toContainText("1 Example Street");
+  await expect(page.locator("body")).not.toContainText("Date of birth");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+  expect(serviceRequests).toEqual([]);
+});
+
+test("receipt preview has no serious or critical accessibility findings", async ({ page }) => {
+  await page.goto("/pages/rosewood-receipt-v2.html?preview=1");
+  await page.getByRole("button", { name: "Open synthetic receipt preview" }).click();
+  await page.addScriptTag({ content: axeSource });
+  const results = await page.evaluate(async () => window.axe.run(document, { resultTypes: ["violations"] }));
+  const severe = results.violations.filter((violation) => ["serious", "critical"].includes(violation.impact));
+  expect(severe, severe.map((item) => `${item.id}: ${item.help}`).join("\n")).toEqual([]);
+});
+
+test("real local completion email opens an OTP-protected receipt", async ({ page, request }, testInfo) => {
+  test.skip(testInfo.project.name.includes("mobile"), "One full backend canary is sufficient; mobile receipt layout is covered by preview.");
+  const invitationToken = "playwright-v2-receipt-invitation-token";
+  const email = "guardian@example.test";
+  const otp = await api(request, "POST", "/v2/access/request-otp", { invitationToken, email });
+  const access = await api(request, "POST", "/v2/access/verify-otp", { invitationToken, challengeId: otp.challengeId, code: otp.testCode });
+  const sessionToken = access.sessionToken;
+  const saved = await api(request, "PUT", "/v2/draft", { schemaVersion: "rosewood-v2-2026-08-02", policyVersion: "draft-2026-08-02", baseRevision: 0, clientRevision: 1, currentStage: 7, application: browserApplication() }, sessionToken);
+
+  for (const category of ["birth_certificate", "immunisation", "proof_of_address"]) {
+    const upload = await api(request, "POST", "/v2/documents/session", { category, fileName: `${category}.pdf`, mimeType: "application/pdf", size: 1000 }, sessionToken);
+    const uploaded = await request.put(upload.uploadUrl, { headers: { "Content-Type": "application/pdf" }, data: Buffer.alloc(1000, 1) });
+    expect(uploaded.ok()).toBe(true);
+    const file = await uploaded.json();
+    await api(request, "POST", "/v2/documents/confirm", { category, documentId: file.id }, sessionToken);
+  }
+
+  const submitted = await api(request, "POST", "/v2/applications/submit", {
+    expectedRevision: saved.revision,
+    declarations: { information: "Yes", privacy: "Yes", authority: "Yes", audit: "Yes", intent: "Yes" },
+    signerName: "Morgan Example",
+    signatureDataUrl: pngDataUrl()
+  }, sessionToken);
+  expect(submitted.status).toBe("submitted");
+
+  const messagesResponse = await request.get("/__test/messages");
+  const messages = await messagesResponse.json();
+  const completion = messages.findLast((message) => message.subject.includes("All signatures complete") && message.to === email);
+  expect(completion).toBeTruthy();
+  const href = completion.html.match(/href="([^"]+)"/)[1].replaceAll("&amp;", "&");
+  const privateReceiptToken = new URL(href).searchParams.get("receipt");
+  expect(privateReceiptToken).toBeTruthy();
+
+  await page.goto(href);
+  await expect(page).not.toHaveURL(/receipt=/);
+  await page.locator("#receipt-email").fill(email);
+  const receiptOtpResponse = page.waitForResponse((response) => response.url().endsWith("/v2/receipts/request-otp"));
+  await page.getByRole("button", { name: "Send my receipt code" }).click();
+  const receiptOtp = await (await receiptOtpResponse).json();
+  expect(receiptOtp.testCode).toMatch(/^\d{6}$/);
+  await page.locator("#receipt-otp").fill(receiptOtp.testCode);
+  await page.getByRole("button", { name: "Verify and open receipt" }).click();
+  await expect(page.locator("#receipt-view")).toBeVisible();
+  await expect(page.locator("#receipt-reference")).toHaveText(submitted.reference);
+  await expect(page.locator("#receipt-student")).toHaveText("Ava Example");
+  await expect(page.locator("#receipt-signature-count")).toHaveText("1 of 1 complete");
+  await expect(page.locator("body")).not.toContainText("1 Example Street");
+});
+
+test("real local OTP opens the invited record and acknowledges a secure revision", async ({ page }, testInfo) => {
+  const invitation = testInfo.project.name.includes("mobile") ? "playwright-v2-mobile-invitation-token" : "playwright-v2-invitation-token";
+  await page.goto(`/pages/rosewood-enrolment-v2.html?invite=${invitation}`);
   await page.locator("#access-email").fill("guardian@example.test");
   const otpResponsePromise = page.waitForResponse((response) => response.url().endsWith("/v2/access/request-otp"));
   await page.getByRole("button", { name: "Send my secure code" }).click();

@@ -10,7 +10,8 @@ GitHub Pages family UI
     -> frozen review revision
     -> primary signature
     -> independent guardian tasks
-    -> immutable completed receipt
+    -> recipient-specific receipt link + fresh email OTP
+    -> minimal completed receipt view
 
 AWS Lambda
     -> DynamoDB: invitations, challenges, sessions, drafts, assignments, audit/outbox
@@ -36,7 +37,9 @@ AWS Lambda
 | `GET` | `/v2/signatures/context` | Return signer details and frozen revision summary |
 | `PATCH` | `/v2/signatures/details` | Save signer-specific contact corrections with audit history |
 | `POST` | `/v2/signatures/submit` | Atomically commit one immutable signature |
-| `GET` | `/v2/receipt` | Return the authorised immutable receipt |
+| `POST` | `/v2/receipts/request-otp` | Validate a receipt capability/mailbox pair and issue a bounded challenge |
+| `POST` | `/v2/receipts/verify-otp` | Consume the receipt challenge and create a receipt-scoped session |
+| `GET` | `/v2/receipts/context` | Return the minimal completed receipt to its scoped session |
 
 Every write uses an idempotency key. Revision writes use an expected base revision.
 Repeated accepted operations return the original result rather than creating duplicates.
@@ -48,12 +51,13 @@ Repeated accepted operations return the original result rather than creating dup
 | `INVITE#<sha256>` / `META` | Hashed invitation, recipient, expiry, status and application ID |
 | `CHALLENGE#<id>` / `META` | HMAC code, purpose, subject, attempt/resend limits and TTL |
 | `SESSION#<sha256>` / `META` | Hashed bearer session, scope, subject, expiry and revocation |
-| `APP#<id>` / `CURRENT` | Current draft/application state and revision |
-| `APP#<id>` / `REV#<n>` | Canonical immutable revision snapshot/hash |
-| `APP#<id>` / `SIGNER#<id>` | Required signatory assignment and task-token hash |
-| `APP#<id>` / `SIGNATURE#<id>` | Immutable signature metadata and private Drive reference |
+| `APP#<id>` / `CURRENT` | Current draft or submitted state, revision, signer register and signature metadata |
+| `TASK#<sha256>` / `META` | Required signatory assignment, frozen revision hash and task expiry |
+| `RECEIPT#<sha256>` / `META` | Recipient-specific receipt capability, mailbox, signer and explicit expiry |
 | `APP#<id>` / `EVENT#<timestamp>#<id>` | Append-only audit event |
 | `OUTBOX` / `<timestamp>#<id>` | Idempotent pending/sent notification event |
+| `IDEMPOTENCY#<key>` / `META` | Pending/completed operation result with TTL |
+| `RATE#<dimension>#<bucket>` / `META` | Atomic abuse-control counter with TTL |
 
 DynamoDB TTL is cleanup assistance, not authorisation. Every read validates the stored
 expiry explicitly because physical TTL deletion is asynchronous.
@@ -65,9 +69,15 @@ expiry explicitly because physical TTL deletion is asynchronous.
 3. Generate six digits with a cryptographically secure random source.
 4. Store only `HMAC-SHA256(server secret, challenge id + code)`.
 5. Expire after 10 minutes; limit to five verification attempts.
-6. Enforce 60-second resend cooldown and bounded per-task/per-address/per-network rates.
+6. Enforce a server-side 60-second resend cooldown and bounded per-task, per-mailbox and
+   per-network rates.
 7. Consume the challenge with a conditional write and rotate to a 30-minute session.
 8. Never log OTP, bearer session, invitation or signing task values.
+
+Application and signature task links have their own explicit expiries. Those expiries
+are rechecked at OTP request, verification, context read and signature submission, not
+only when the email is first sent. Receipt links last 30 days in the test design and a
+receipt session lasts 30 minutes.
 
 For development, the SES sender is configured externally as a verified temporary email
 identity. Production changes only `OTP_FROM_EMAIL`, `REPLY_TO_EMAIL` and the verified SES
@@ -90,21 +100,33 @@ domain configuration.
   metadata.
 - After upload, `/documents/confirm` reads Drive metadata and verifies ownership, parent,
   size, MIME type and application marker.
-- Submitted canonical JSON, rendered receipt and signature artifacts are written to
-  application-specific restricted subfolders.
-- The tracking Sheet stores opaque Drive IDs/status only; no OTP or signature image.
+- Submitted canonical JSON and signature artifacts are written to the restricted Drive
+  folder. The receipt is a minimal API projection, not a second copy of the application.
+- The tracking Sheet stores only bounded engagement rows; no family answers, Drive IDs,
+  OTPs, receipt links or signature images.
 - Drive and Sheet access is reviewed using the interim guidelines before deployment.
 
 ## Email Events
 
-- `access.otp_requested`
 - `signature.invited`
-- `signature.otp_requested`
 - `signature.completed`
-- `application.pending_signatures`
 - `application.completed`
-- `application.receipt`
 
-Messages are dispatched from an outbox after the state transaction commits. Delivery
-failure never rolls back a valid signature. Bounce and complaint events must suppress
-unsafe retries and alert the operational owner.
+OTP messages are sent directly after a challenge is durably created and use a generic
+HTTP response whether the capability/mailbox pair is valid or not. Signature invitations,
+signature confirmations, recipient-specific receipt tasks and completion messages are
+written in the same DynamoDB transaction as the associated application/signature state.
+They are dispatched through leased outbox records immediately and by a one-minute
+EventBridge retry schedule. A delivery failure therefore never rolls back a valid
+signature or loses the notification record. Bounce and complaint events must suppress
+unsafe retries and alert the operational owner before production.
+
+## Receipt Boundary
+
+The emailed receipt URL contains a high-entropy capability whose hash is stored in
+DynamoDB. Opening the URL removes the capability from the address bar and keeps it only
+in tab-scoped session storage. A fresh OTP creates a separate `receipt` session. The
+response includes reference, student name, revision, policy version, submission and
+completion timestamps, and required-signer names/status/timestamps. It excludes DOB,
+address, email, health/support answers, uploaded documents, signature images, network
+fingerprints and every raw token.

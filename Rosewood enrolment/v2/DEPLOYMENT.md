@@ -16,6 +16,31 @@ while policy files remain marked `DRAFT PLACEHOLDER - NOT APPROVED FOR PRODUCTIO
 Never place those values, the temporary sender address, folder IDs, Sheet IDs, tokens or
 real family details in Git.
 
+## Mandatory Preflight
+
+Set `EXPECTED_AWS_ACCOUNT_ID` to the explicitly approved non-University account. The
+preflight fails closed if the active credentials point anywhere else. It also checks the
+secret shape and strength, SES account and sender, Drive write access and Sheet read
+access without printing credentials or external identifiers.
+
+```bash
+cd "Rosewood enrolment/v2/lambda"
+EXPECTED_AWS_ACCOUNT_ID="$APPROVED_AWS_ACCOUNT_ID" \
+ROSEWOOD_CONFIG_SECRET_ARN="$ROSEWOOD_CONFIG_SECRET_ARN" \
+OTP_FROM_EMAIL="$OTP_FROM_EMAIL" \
+GOOGLE_DRIVE_FOLDER_ID="$GOOGLE_DRIVE_FOLDER_ID" \
+GOOGLE_SHEETS_SPREADSHEET_ID="$GOOGLE_SHEETS_SPREADSHEET_ID" \
+ALLOW_DRAFT_POLICY_TEST=true \
+node scripts/deployment-preflight.mjs
+cd ..
+```
+
+Do not package or deploy unless every reported check is `true`. SES sandbox status is
+reported separately; sandbox testing requires a verified recipient as well as sender.
+The Lambda also validates these boundaries at startup and refuses non-test operation
+with weak secrets, missing schema/sender settings, non-HTTPS origins or non-HTTPS task
+pages. The preflight and runtime gate are intentionally independent.
+
 ## Package And Deploy
 
 Run from the repository root, supplying identifiers through the shell or an approved
@@ -47,9 +72,15 @@ aws cloudformation deploy \
 
 ## Connect The Static Pages
 
-Read the `FunctionUrl` stack output. Set it as `apiEndpoint` in the V2 runtime config in
-both static pages, then run the full test suite before publishing. The pages are
-`noindex`, but privacy still depends on the invitation token plus mailbox OTP.
+Read the `FunctionUrl` stack output. Set it as `apiEndpoint` in
+`pages/rosewood-enrolment-v2-config.js`, then run the full test suite before publishing.
+That one runtime file configures the application, independent-signature and receipt
+pages. All three pages are `noindex`, but privacy still depends on a private capability
+plus mailbox OTP.
+
+The stack also enables `RosewoodOutboxSchedule`, an EventBridge rule that invokes the
+same Lambda every minute to retry leased outbox messages. Confirm the rule is enabled
+and perform one synthetic failed-send/retry canary before issuing test invitations.
 
 ## Temporary Sender Swap
 
@@ -61,8 +92,9 @@ the temporary test identity:
 2. update the stack parameters `OtpFromEmail` and `ReplyToEmail`
 3. update the Lambda role's SES identity resource through the same stack deployment
 4. send access-OTP, signature-OTP, invitation and confirmation canaries
-5. check delivery, reply handling, bounce and complaint paths
-6. remove the temporary identity only after the canary passes
+5. open the recipient-specific receipt link and verify its separate receipt OTP
+6. check delivery, reply handling, bounce and complaint paths
+7. remove the temporary identity only after the canary passes
 
 No frontend, challenge, session or signature code changes are required.
 

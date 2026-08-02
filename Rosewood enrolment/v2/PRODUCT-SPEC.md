@@ -31,6 +31,7 @@
 | Review | Present a concise, navigable summary and policy versions | Accuracy, privacy and authority declarations |
 | Sign | Capture terms-gated signature and server date | Declarations, typed name, signature and revision match |
 | Complete | Explain pending additional signatures or show final receipt | All required signatories complete the frozen revision |
+| Receipt | Verify the recipient again and show only completion evidence | Private receipt link, current OTP and receipt-scoped session |
 
 ## Core Fields
 
@@ -106,6 +107,10 @@ Drive metadata and task ownership.
   prior signatures.
 - Aggregate completion is calculated from required assignments, not a mutable count.
 - Families receive separate individual-signature and all-signatures-complete messages.
+- Every required signer receives a different 30-day receipt capability after aggregate
+  completion and must use a new OTP to open the minimal receipt.
+- Receipt access never returns the complete application, uploaded files or signature
+  image; it is evidence of recorded completion, not an offer.
 
 ## Deliberate Improvements Over The Reference
 

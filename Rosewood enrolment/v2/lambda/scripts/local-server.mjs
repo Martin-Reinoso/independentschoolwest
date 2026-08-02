@@ -11,6 +11,10 @@ const root = resolve(fileURLToPath(new URL("../../../../", import.meta.url)));
 const origin = `http://127.0.0.1:${port}`;
 const invitationToken = process.env.TEST_INVITATION_TOKEN || crypto.randomBytes(32).toString("base64url");
 const tokenHash = crypto.createHash("sha256").update(invitationToken).digest("hex");
+const receiptInvitationToken = process.env.TEST_RECEIPT_INVITATION_TOKEN || "playwright-v2-receipt-invitation-token";
+const receiptTokenHash = crypto.createHash("sha256").update(receiptInvitationToken).digest("hex");
+const mobileInvitationToken = process.env.TEST_MOBILE_INVITATION_TOKEN || "playwright-v2-mobile-invitation-token";
+const mobileTokenHash = crypto.createHash("sha256").update(mobileInvitationToken).digest("hex");
 const store = new MemoryStore();
 const drive = new MemoryDrive({ uploadBaseUrl: `${origin}/__memory-upload/` });
 const mailer = new MemoryMailer();
@@ -24,6 +28,26 @@ store.seedInvitation({
   status: "active",
   expiresAt: Date.now() + 86_400_000
 });
+store.seedInvitation({
+  tokenHash: mobileTokenHash,
+  inviteId: "invite-local-mobile-v2",
+  applicationId: "application-local-mobile-v2",
+  recipientEmail: process.env.TEST_RECIPIENT_EMAIL || "guardian@example.test",
+  familyLabel: "Mobile test family",
+  studentName: "Ava Example",
+  status: "active",
+  expiresAt: Date.now() + 86_400_000
+});
+store.seedInvitation({
+  tokenHash: receiptTokenHash,
+  inviteId: "invite-local-receipt-v2",
+  applicationId: "application-local-receipt-v2",
+  recipientEmail: process.env.TEST_RECIPIENT_EMAIL || "guardian@example.test",
+  familyLabel: "Receipt test family",
+  studentName: "Ava Example",
+  status: "active",
+  expiresAt: Date.now() + 86_400_000
+});
 const service = createService({ store, drive, mailer, env: {
   ALLOWED_ORIGINS: origin,
   OTP_HMAC_SECRET: "local-otp-secret",
@@ -31,7 +55,8 @@ const service = createService({ store, drive, mailer, env: {
   OTP_FROM_EMAIL: "local@example.test",
   SCHEMA_VERSION: "rosewood-v2-2026-08-02",
   TEST_MODE: "true",
-  SIGNING_PAGE_URL: `${origin}/pages/rosewood-sign-v2.html`
+  SIGNING_PAGE_URL: `${origin}/pages/rosewood-sign-v2.html`,
+  RECEIPT_PAGE_URL: `${origin}/pages/rosewood-receipt-v2.html`
 } });
 
 const contentTypes = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".svg": "image/svg+xml" };
@@ -55,6 +80,10 @@ const server = http.createServer(async (request, response) => {
       });
       response.writeHead(result.statusCode, result.headers);
       return response.end(result.body);
+    }
+    if (url.pathname === "/__test/messages" && request.method === "GET") {
+      response.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+      return response.end(JSON.stringify(mailer.messages));
     }
     if (url.pathname.startsWith("/__memory-upload/") && request.method === "PUT") {
       const uploadId = url.pathname.split("/").pop();
@@ -85,5 +114,7 @@ const server = http.createServer(async (request, response) => {
 
 server.listen(port, "127.0.0.1", () => {
   process.stdout.write(`Rosewood V2 local server: ${origin}/pages/rosewood-enrolment-v2.html?invite=${invitationToken}\n`);
+  process.stdout.write(`Receipt E2E invitation: ${receiptInvitationToken}\n`);
+  process.stdout.write(`Mobile E2E invitation: ${mobileInvitationToken}\n`);
   process.stdout.write(`Synthetic invited email: ${store.invitations.get(tokenHash).recipientEmail}\n`);
 });

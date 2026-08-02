@@ -27,8 +27,10 @@ The family journey is:
 9. additional guardian OTP/signature tasks where required
 10. immutable receipt when the required signature set is complete
 
-The interface is served from `pages/rosewood-enrolment-v2.html`. A separate remote
-signer experience is served from `pages/rosewood-sign-v2.html`.
+The interface is served from `pages/rosewood-enrolment-v2.html`. Separate remote-signer
+and OTP-protected receipt experiences are served from `pages/rosewood-sign-v2.html` and
+`pages/rosewood-receipt-v2.html`. All three read one deployment endpoint from
+`pages/rosewood-enrolment-v2-config.js`.
 
 ## Operating Model
 
@@ -40,8 +42,10 @@ signer experience is served from `pages/rosewood-sign-v2.html`.
 - Amazon SES sends transactional OTP, signature and receipt messages.
 - A restricted Google Drive folder stores submitted application snapshots, signature
   artifacts and uploaded documents during the approved interim period.
-- A private Google Sheet stores operational status and opaque Drive references, not
-  OTPs, active tokens or signature images.
+- A private Google Sheet stores bounded engagement events only, not family answers,
+  Drive references, OTPs, active tokens or signature images.
+- DynamoDB atomically stores completion state, recipient-specific receipt capabilities
+  and notification outbox records; a scheduled worker retries unsent messages.
 
 The temporary sender identity is configured through `OTP_FROM_EMAIL`; no personal
 mailbox address or password is committed. The temporary test identity will be replaced

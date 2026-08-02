@@ -3,6 +3,7 @@ import {
   accessOtpEmail,
   applicationCompleteEmail,
   individualSignatureEmail,
+  receiptOtpEmail,
   signatureInvitationEmail,
   signatureOtpEmail
 } from "./email-templates.mjs";
@@ -198,14 +199,22 @@ function reviewGroups(application) {
 }
 
 export function createService({ store, drive, mailer, tracker = { record: async () => {} }, env = {}, clock = () => Date.now() }) {
+  const testMode = env.TEST_MODE === "true";
   const allowedOrigins = new Set((env.ALLOWED_ORIGINS || "http://localhost:8000,http://127.0.0.1:8000").split(",").map((value) => value.trim()).filter(Boolean));
   const otpSecret = env.OTP_HMAC_SECRET || "local-development-secret-change-me";
   const ipSecret = env.IP_HASH_SALT || "local-development-ip-secret";
   const fromEmail = env.OTP_FROM_EMAIL || "test@example.invalid";
   const replyToEmail = env.REPLY_TO_EMAIL || fromEmail;
   const signingPageUrl = env.SIGNING_PAGE_URL || "http://localhost:8000/pages/rosewood-sign-v2.html";
-  const receiptPageUrl = env.RECEIPT_PAGE_URL || "";
-  const testMode = env.TEST_MODE === "true";
+  const receiptPageUrl = env.RECEIPT_PAGE_URL || "http://localhost:8000/pages/rosewood-receipt-v2.html";
+  if(!testMode){
+    if(String(env.OTP_HMAC_SECRET||"").length<32||String(env.IP_HASH_SALT||"").length<32)throw new Error("Rosewood production secrets are missing or too short.");
+    if(!env.SCHEMA_VERSION)throw new Error("Rosewood production schema version is required.");
+    if(!/^\S+@\S+\.\S+$/.test(fromEmail)||!/^\S+@\S+\.\S+$/.test(replyToEmail))throw new Error("Rosewood production email configuration is invalid.");
+    if(!allowedOrigins.size)throw new Error("Rosewood production origins are required.");
+    for(const origin of allowedOrigins)if(new URL(origin).protocol!=="https:")throw new Error("Rosewood production origins must use HTTPS.");
+    for(const pageUrl of [signingPageUrl,receiptPageUrl])if(new URL(pageUrl).protocol!=="https:")throw new Error("Rosewood production task pages must use HTTPS.");
+  }
 
   function nowIso() { return new Date(clock()).toISOString(); }
   function sourceFingerprint(event) { const ip=event.requestContext?.http?.sourceIp||event.requestContext?.identity?.sourceIp||"unknown";return hmac(ipSecret,ip); }
@@ -215,11 +224,35 @@ export function createService({ store, drive, mailer, tracker = { record: async 
   function requireIdempotency(event) { const key=safeText(eventHeaders(event)["idempotency-key"],160);if(!key||key.length<12)throw appError(400,"IDEMPOTENCY_REQUIRED","A valid operation identifier is required.");return key; }
   async function limited(keys, limit, seconds) { for(const key of keys){if(!await store.checkRateLimit(key,limit,seconds))throw appError(429,"RATE_LIMITED","Too many requests. Wait before trying again.");} }
   async function send(to, template) { return mailer.send({from:fromEmail,replyTo:replyToEmail,to,subject:template.subject,text:template.text,html:template.html}); }
-  async function dispatchOutbox() { const pending=await store.listOutbox();for(const item of pending){const claimed=await store.claimOutbox(item,clock(),clock()+60_000);if(!claimed)continue;try{await send(item.to,item.message);await store.markOutboxSent(item,nowIso());}catch{await store.releaseOutbox(item).catch(()=>{});break;}} }
+  function outboxEvent(type, to, message) { return {id:`out-${randomToken(10)}`,type,to,message,createdAt:nowIso()}; }
+  async function dispatchOutbox() { const pending=await store.listOutbox();let sent=0;for(const item of pending){const claimed=await store.claimOutbox(item,clock(),clock()+60_000);if(!claimed)continue;try{await send(item.to,item.message);await store.markOutboxSent(item,nowIso());sent+=1;}catch{await store.releaseOutbox(item).catch(()=>{});break;}}return {examined:pending.length,sent}; }
+
+  function receiptArtifacts(application) {
+    const studentName=`${application.frozen.application.student_first_name} ${application.frozen.application.student_last_name}`;
+    const receiptTasks=[];
+    const outboxEvents=[];
+    for(const signer of application.signers.filter(item=>item.required)){
+      const rawToken=randomToken();
+      receiptTasks.push({
+        tokenHash:sha256(rawToken),
+        applicationId:application.id,
+        signerId:signer.id,
+        email:signer.email,
+        status:"active",
+        createdAt:clock(),
+        expiresAt:clock()+30*24*60*60_000,
+        ttl:Math.floor((clock()+45*24*60*60_000)/1000)
+      });
+      const receiptUrl=`${receiptPageUrl}${receiptPageUrl.includes("?")?"&":"?"}receipt=${encodeURIComponent(rawToken)}`;
+      outboxEvents.push(outboxEvent("application.completed",signer.email,applicationCompleteEmail({guardianName:signer.firstName,studentName,reference:application.reference,receiptUrl})));
+    }
+    return {receiptTasks,outboxEvents};
+  }
 
   async function requestAccessOtp(event) {
     const key=requireIdempotency(event);
     return store.idempotent(key,async()=>{const body=parseBody(event,20_000),token=safeText(body.invitationToken,500),email=normalizeEmail(body.email),tokenHash=sha256(token),invitation=await store.getInvitation(tokenHash),fingerprint=sourceFingerprint(event);
+      await limited([`otp-cooldown:${tokenHash}:${sha256(email)}`],1,60);
       await limited([`otp-ip:${fingerprint}`,`otp-invite:${tokenHash}`,`otp-email:${sha256(email)}`],5,900);
       const valid=validInvitation(invitation,email,clock());
       const challengeId=randomToken(24), code=randomCode();
@@ -261,26 +294,73 @@ export function createService({ store, drive, mailer, tracker = { record: async 
     const {session}=await requireSession(event,"application"),key=requireIdempotency(event),body=parseBody(event),app=await store.getApplication(session.applicationId);if(!app?.draft?.application)throw appError(422,"DRAFT_REQUIRED","Save the application before signing.");if(Number(body.expectedRevision)!==Number(app.revision))throw appError(409,"REVISION_CONFLICT","The application changed after review. Review the latest revision before signing.");
     const application={...app.draft.application,documents:Object.values(app.documents||{})};validateApplication(application);const declarations=body.declarations||{};for(const name of ["information","privacy","authority","audit","intent"])if(declarations[name]!=="Yes")throw appError(422,"DECLARATION_REQUIRED","Every submission declaration must be accepted.");const signerName=safeText(body.signerName,160);if(!signerName)throw appError(422,"SIGNER_NAME_REQUIRED","Type the signer's full legal name.");const signatureBytes=signingData(body.signatureDataUrl);const primarySignerId=`signer-a-${randomToken(8)}`,signers=signerRecords(application,primarySignerId),frozenPayload={schemaVersion:app.draft.schemaVersion,policyVersion:app.draft.policyVersion,revision:app.revision,application};const frozenHash=sha256(stableStringify(frozenPayload));
     return store.idempotent(key,async()=>{const snapshot=await drive.storeJson({applicationId:app.id,name:`${app.id}-revision-${app.revision}.json`,value:frozenPayload}),signatureArtifact=await drive.storeSignature({applicationId:app.id,signerId:primarySignerId,data:signatureBytes});const primarySignature={id:`sig-${randomToken(10)}`,signerId:primarySignerId,signerName,revision:app.revision,revisionHash:frozenHash,artifactId:signatureArtifact.documentId,declarations,completedAt:nowIso(),networkFingerprint:sourceFingerprint(event)};const tasks=[];for(const signer of signers.filter(item=>item.required&&!item.primary)){const rawTask=randomToken(),task={tokenHash:sha256(rawTask),applicationId:app.id,signerId:signer.id,signer,status:"invited",revision:app.revision,revisionHash:frozenHash,createdAt:clock(),expiresAt:clock()+14*24*60*60_000,ttl:Math.floor((clock()+30*24*60*60_000)/1000)};tasks.push({rawTask,task});}
-      const status=tasks.length?"pending_signatures":"submitted",reference=`RW-${new Date(clock()).getUTCFullYear()}-${randomToken(6).toUpperCase()}`,result=await store.submitApplication({applicationId:app.id,expectedRevision:app.revision,frozen:{...frozenPayload,hash:frozenHash,snapshotId:snapshot.documentId},primarySignature,signers,signatureTasks:tasks.map(({task})=>task),submittedAt:nowIso(),status,reference});
-      await store.enqueueOutbox({id:`out-${randomToken(10)}`,type:"signature.completed",to:signers[0].email,message:individualSignatureEmail({guardianName:signers[0].firstName,studentName:`${application.student_first_name} ${application.student_last_name}`}),createdAt:nowIso()});
-      for(const {rawTask,task} of tasks){const taskUrl=`${signingPageUrl}${signingPageUrl.includes("?")?"&":"?"}task=${encodeURIComponent(rawTask)}`;await store.enqueueOutbox({id:`out-${randomToken(10)}`,type:"signature.invited",to:task.signer.email,message:signatureInvitationEmail({guardianName:task.signer.firstName,studentName:`${application.student_first_name} ${application.student_last_name}`,taskUrl}),createdAt:nowIso()});}
-      if(status==="submitted")await enqueueCompleteMessages(result);
+      const status=tasks.length?"pending_signatures":"submitted",reference=`RW-${new Date(clock()).getUTCFullYear()}-${randomToken(6).toUpperCase()}`,submittedAt=nowIso(),frozen={...frozenPayload,hash:frozenHash,snapshotId:snapshot.documentId},studentName=`${application.student_first_name} ${application.student_last_name}`,outboxEvents=[outboxEvent("signature.completed",signers[0].email,individualSignatureEmail({guardianName:signers[0].firstName,studentName}))];
+      for(const {rawTask,task} of tasks){const taskUrl=`${signingPageUrl}${signingPageUrl.includes("?")?"&":"?"}task=${encodeURIComponent(rawTask)}`;outboxEvents.push(outboxEvent("signature.invited",task.signer.email,signatureInvitationEmail({guardianName:task.signer.firstName,studentName,taskUrl})));}
+      let receiptTasks=[];
+      if(status==="submitted"){
+        const complete=receiptArtifacts({...app,status,reference,submittedAt,completedAt:submittedAt,frozen,signers,signatures:[primarySignature]});
+        receiptTasks=complete.receiptTasks;
+        outboxEvents.push(...complete.outboxEvents);
+      }
+      await store.submitApplication({applicationId:app.id,expectedRevision:app.revision,frozen,primarySignature,signers,signatureTasks:tasks.map(({task})=>task),receiptTasks,outboxEvents,submittedAt,status,reference});
       await dispatchOutbox();return {status,reference,requiredSignatures:signers.filter(item=>item.required).length,completedSignatures:1};});
   }
 
-  async function enqueueCompleteMessages(application) { const studentName=`${application.frozen.application.student_first_name} ${application.frozen.application.student_last_name}`;for(const signer of application.signers.filter(item=>item.required)){await store.enqueueOutbox({id:`out-${randomToken(10)}`,type:"application.completed",to:signer.email,message:applicationCompleteEmail({guardianName:signer.firstName,studentName,reference:application.reference,receiptUrl:receiptPageUrl}),createdAt:nowIso()});} }
+  async function requestSignatureOtp(event) { const key=requireIdempotency(event);return store.idempotent(key,async()=>{const body=parseBody(event,20_000),rawTask=safeText(body.taskToken,500),email=normalizeEmail(body.email),taskHash=sha256(rawTask),task=await store.getSignatureTask(taskHash),fingerprint=sourceFingerprint(event);await limited([`sign-otp-cooldown:${taskHash}:${sha256(email)}`],1,60);await limited([`sign-otp-ip:${fingerprint}`,`sign-otp-task:${taskHash}`,`sign-otp-email:${sha256(email)}`],5,900);const valid=task&&task.status==="invited"&&task.expiresAt>clock()&&normalizeEmail(task.signer.email)===email;const challengeId=randomToken(24),code=randomCode();if(valid){const challenge={id:challengeId,purpose:"signature",subjectHash:taskHash,email,applicationId:task.applicationId,signerId:task.signerId,codeHmac:hmac(otpSecret,`${challengeId}:${code}`),attempts:0,maxAttempts:5,createdAt:clock(),expiresAt:clock()+10*60_000,ttl:Math.floor((clock()+24*60*60_000)/1000)};await store.putChallenge(challenge);const app=await store.getApplication(task.applicationId);await send(email,signatureOtpEmail({code,studentName:`${app.frozen.application.student_first_name} ${app.frozen.application.student_last_name}`})).catch(()=>{});}const result={challengeId,maskedEmail:valid?maskEmail(email):"the invited mailbox",expiresInSeconds:600,resendAfterSeconds:60};if(testMode&&valid)result.testCode=code;return result;}); }
 
-  async function requestSignatureOtp(event) { const key=requireIdempotency(event);return store.idempotent(key,async()=>{const body=parseBody(event,20_000),rawTask=safeText(body.taskToken,500),email=normalizeEmail(body.email),taskHash=sha256(rawTask),task=await store.getSignatureTask(taskHash),fingerprint=sourceFingerprint(event);await limited([`sign-otp-ip:${fingerprint}`,`sign-otp-task:${taskHash}`,`sign-otp-email:${sha256(email)}`],5,900);const valid=task&&task.status==="invited"&&task.expiresAt>clock()&&normalizeEmail(task.signer.email)===email;const challengeId=randomToken(24),code=randomCode();if(valid){const challenge={id:challengeId,purpose:"signature",subjectHash:taskHash,email,applicationId:task.applicationId,signerId:task.signerId,codeHmac:hmac(otpSecret,`${challengeId}:${code}`),attempts:0,maxAttempts:5,createdAt:clock(),expiresAt:clock()+10*60_000,ttl:Math.floor((clock()+24*60*60_000)/1000)};await store.putChallenge(challenge);const app=await store.getApplication(task.applicationId);await send(email,signatureOtpEmail({code,studentName:`${app.frozen.application.student_first_name} ${app.frozen.application.student_last_name}`})).catch(()=>{});}const result={challengeId,maskedEmail:valid?maskEmail(email):"the invited mailbox",expiresInSeconds:600,resendAfterSeconds:60};if(testMode&&valid)result.testCode=code;return result;}); }
+  async function verifySignatureOtp(event) { const key=requireIdempotency(event);return store.idempotent(key,async()=>{const body=parseBody(event,20_000),rawTask=safeText(body.taskToken,500),taskHash=sha256(rawTask),challengeId=safeText(body.challengeId,200),code=safeText(body.code,12),challenge=await store.getChallenge(challengeId),task=await store.getSignatureTask(taskHash);if(!challenge||challenge.subjectHash!==taskHash||challenge.purpose!=="signature"||!task||task.status!=="invited"||task.expiresAt<=clock())throw appError(401,"OTP_INVALID","The code is invalid or expired. Request a new code.");const consumed=await store.consumeChallenge(challengeId,hmac(otpSecret,`${challengeId}:${code}`),clock());if(!consumed){await store.failChallenge(challengeId);throw appError(401,"OTP_INVALID","The code is invalid or expired. Request a new code.");}const raw=randomToken(),session={tokenHash:sha256(raw),scope:"signature",applicationId:task.applicationId,taskTokenHash:taskHash,signerId:task.signerId,email:task.signer.email,createdAt:clock(),expiresAt:clock()+30*60_000,ttl:Math.floor((clock()+24*60*60_000)/1000)};await store.putSession(session);return {sessionToken:raw,expiresInSeconds:1800,context:await signatureContext(session)};}); }
 
-  async function verifySignatureOtp(event) { const key=requireIdempotency(event);return store.idempotent(key,async()=>{const body=parseBody(event,20_000),rawTask=safeText(body.taskToken,500),taskHash=sha256(rawTask),challengeId=safeText(body.challengeId,200),code=safeText(body.code,12),challenge=await store.getChallenge(challengeId),task=await store.getSignatureTask(taskHash);if(!challenge||challenge.subjectHash!==taskHash||challenge.purpose!=="signature"||!task||task.status!=="invited")throw appError(401,"OTP_INVALID","The code is invalid or expired. Request a new code.");const consumed=await store.consumeChallenge(challengeId,hmac(otpSecret,`${challengeId}:${code}`),clock());if(!consumed){await store.failChallenge(challengeId);throw appError(401,"OTP_INVALID","The code is invalid or expired. Request a new code.");}const raw=randomToken(),session={tokenHash:sha256(raw),scope:"signature",applicationId:task.applicationId,taskTokenHash:taskHash,signerId:task.signerId,email:task.signer.email,createdAt:clock(),expiresAt:clock()+30*60_000,ttl:Math.floor((clock()+24*60*60_000)/1000)};await store.putSession(session);return {sessionToken:raw,expiresInSeconds:1800,context:await signatureContext(session)};}); }
-
-  async function signatureContext(session) { const task=await store.getSignatureTask(session.taskTokenHash),app=await store.getApplication(session.applicationId);if(!task||!app?.frozen||task.revisionHash!==app.frozen.hash)throw appError(409,"REVISION_UNAVAILABLE","The application revision is no longer available for signing.");return {studentName:`${app.frozen.application.student_first_name} ${app.frozen.application.student_last_name}`,revision:task.revision,revisionHash:task.revisionHash,signer:task.signer,reviewGroups:reviewGroups(app.frozen.application),status:task.status}; }
+  async function signatureContext(session) { const task=await store.getSignatureTask(session.taskTokenHash),app=await store.getApplication(session.applicationId);if(!task||task.expiresAt<=clock())throw appError(410,"TASK_EXPIRED","This signature task has expired. Contact Rosewood for a new request.");if(!app?.frozen||task.revisionHash!==app.frozen.hash)throw appError(409,"REVISION_UNAVAILABLE","The application revision is no longer available for signing.");return {studentName:`${app.frozen.application.student_first_name} ${app.frozen.application.student_last_name}`,revision:task.revision,revisionHash:task.revisionHash,signer:task.signer,reviewGroups:reviewGroups(app.frozen.application),status:task.status}; }
   async function getSignatureContext(event) { const {session}=await requireSession(event,"signature");return signatureContext(session); }
   async function updateSignatureDetails(event) { const {session}=await requireSession(event,"signature"),key=requireIdempotency(event),body=parseBody(event,30_000);for(const field of ["firstName","lastName","email","mobile"])if(!safeText(body[field],254))throw appError(422,"DETAILS_INCOMPLETE","Confirm all required signer details.");if(normalizeEmail(body.email)!==normalizeEmail(session.email))throw appError(422,"EMAIL_LOCKED","The verified email cannot be changed in this task. Contact Rosewood for help.");return store.idempotent(key,async()=>{await store.updateSignatureDetails(session.taskTokenHash,{firstName:safeText(body.firstName,80),lastName:safeText(body.lastName,80),email:normalizeEmail(body.email),mobile:safeText(body.mobile,30)});return signatureContext(session);}); }
 
-  async function submitSignature(event) { const {session}=await requireSession(event,"signature"),key=requireIdempotency(event);return store.idempotent(key,async()=>{const body=parseBody(event),task=await store.getSignatureTask(session.taskTokenHash),app=await store.getApplication(session.applicationId);if(!task||task.status!=="invited"||!app?.frozen)throw appError(409,"TASK_UNAVAILABLE","This signature task is no longer available.");if(Number(body.revision)!==Number(task.revision)||task.revisionHash!==app.frozen.hash)throw appError(409,"REVISION_CONFLICT","The application revision changed. Do not sign until Rosewood issues a new task.");if(body.auditDeclaration!==true||body.intentDeclaration!==true)throw appError(422,"DECLARATION_REQUIRED","Accept both declarations before signing.");const signerName=safeText(body.signerName,160);if(!signerName)throw appError(422,"SIGNER_NAME_REQUIRED","Type your full legal name.");const bytes=signingData(body.signatureDataUrl),artifact=await drive.storeSignature({applicationId:app.id,signerId:task.signerId,data:bytes}),signature={id:`sig-${randomToken(10)}`,signerId:task.signerId,signerName,revision:task.revision,revisionHash:task.revisionHash,artifactId:artifact.documentId,declarations:{audit:true,intent:true},comments:safeText(body.comments,1500),completedAt:nowIso(),networkFingerprint:sourceFingerprint(event)},completed=await store.completeSignature({tokenHash:session.taskTokenHash,signature,at:nowIso()});if(!completed)throw appError(409,"SIGNATURE_ALREADY_COMPLETE","This signature has already been recorded.");const studentName=`${completed.application.frozen.application.student_first_name} ${completed.application.frozen.application.student_last_name}`;await store.enqueueOutbox({id:`out-${randomToken(10)}`,type:"signature.completed",to:completed.task.signer.email,message:individualSignatureEmail({guardianName:completed.task.signer.firstName,studentName}),createdAt:nowIso()});if(completed.application.status==="submitted")await enqueueCompleteMessages(completed.application);await dispatchOutbox();return {status:completed.application.status,reference:completed.application.reference};}); }
+  async function submitSignature(event) {
+    const {session}=await requireSession(event,"signature"),key=requireIdempotency(event);
+    return store.idempotent(key,async()=>{
+      const body=parseBody(event),task=await store.getSignatureTask(session.taskTokenHash),app=await store.getApplication(session.applicationId);
+      if(!task||task.status!=="invited"||task.expiresAt<=clock()||!app?.frozen)throw appError(409,"TASK_UNAVAILABLE","This signature task is no longer available.");
+      if(Number(body.revision)!==Number(task.revision)||task.revisionHash!==app.frozen.hash)throw appError(409,"REVISION_CONFLICT","The application revision changed. Do not sign until Rosewood issues a new task.");
+      if(body.auditDeclaration!==true||body.intentDeclaration!==true)throw appError(422,"DECLARATION_REQUIRED","Accept both declarations before signing.");
+      const signerName=safeText(body.signerName,160);
+      if(!signerName)throw appError(422,"SIGNER_NAME_REQUIRED","Type your full legal name.");
+      const bytes=signingData(body.signatureDataUrl),artifact=await drive.storeSignature({applicationId:app.id,signerId:task.signerId,data:bytes}),completedAt=nowIso(),signature={id:`sig-${randomToken(10)}`,signerId:task.signerId,signerName,revision:task.revision,revisionHash:task.revisionHash,artifactId:artifact.documentId,declarations:{audit:true,intent:true},comments:safeText(body.comments,1500),completedAt,networkFingerprint:sourceFingerprint(event)},signers=app.signers.map(item=>item.id===task.signerId?{...item,...task.signer}:item),signatures=[...(app.signatures||[]),signature],willComplete=signers.filter(item=>item.required).every(item=>signatures.some(record=>record.signerId===item.id)),studentName=`${app.frozen.application.student_first_name} ${app.frozen.application.student_last_name}`,outboxEvents=[outboxEvent("signature.completed",task.signer.email,individualSignatureEmail({guardianName:task.signer.firstName,studentName}))];
+      let receiptTasks=[];
+      if(willComplete){const complete=receiptArtifacts({...app,status:"submitted",completedAt,signers,signatures});receiptTasks=complete.receiptTasks;outboxEvents.push(...complete.outboxEvents);}
+      const completed=await store.completeSignature({tokenHash:session.taskTokenHash,signature,at:completedAt,receiptTasks,outboxEvents});
+      if(!completed)throw appError(409,"SIGNATURE_ALREADY_COMPLETE","This signature has already been recorded.");
+      await dispatchOutbox();
+      return {status:completed.application.status,reference:completed.application.reference};
+    });
+  }
 
   async function getReceipt(event) { const {session}=await requireSession(event,"application"),app=await store.getApplication(session.applicationId);if(!app||!["pending_signatures","submitted"].includes(app.status))throw appError(404,"RECEIPT_UNAVAILABLE","No submitted application receipt is available.");return {reference:app.reference,status:app.status,submittedAt:app.submittedAt,completedAt:app.completedAt||null,revision:app.frozen.revision,policyVersion:app.frozen.policyVersion,studentName:`${app.frozen.application.student_first_name} ${app.frozen.application.student_last_name}`,signers:app.signers.filter(item=>item.required).map(signer=>({name:`${signer.firstName} ${signer.lastName}`,relationship:signer.relationship,status:app.signatures.some(signature=>signature.signerId===signer.id)?"signed":"pending"}))}; }
+
+  async function requestReceiptOtp(event) {
+    const key=requireIdempotency(event);
+    return store.idempotent(key,async()=>{
+      const body=parseBody(event,20_000),rawReceipt=safeText(body.receiptToken,500),email=normalizeEmail(body.email),receiptHash=sha256(rawReceipt),task=await store.getReceiptTask(receiptHash),fingerprint=sourceFingerprint(event);
+      await limited([`receipt-otp-cooldown:${receiptHash}:${sha256(email)}`],1,60);
+      await limited([`receipt-otp-ip:${fingerprint}`,`receipt-otp-task:${receiptHash}`,`receipt-otp-email:${sha256(email)}`],5,900);
+      const candidate=task&&task.status==="active"&&task.expiresAt>clock()&&normalizeEmail(task.email)===email;
+      const app=candidate?await store.getApplication(task.applicationId):null;
+      const valid=Boolean(candidate&&app?.status==="submitted");
+      const challengeId=randomToken(24),code=randomCode();
+      if(valid){const challenge={id:challengeId,purpose:"receipt",subjectHash:receiptHash,email,applicationId:task.applicationId,signerId:task.signerId,codeHmac:hmac(otpSecret,`${challengeId}:${code}`),attempts:0,maxAttempts:5,createdAt:clock(),expiresAt:clock()+10*60_000,ttl:Math.floor((clock()+24*60*60_000)/1000)};await store.putChallenge(challenge);await send(email,receiptOtpEmail({code,studentName:`${app.frozen.application.student_first_name} ${app.frozen.application.student_last_name}`})).catch(()=>{});}
+      const result={challengeId,maskedEmail:valid?maskEmail(email):"the invited mailbox",expiresInSeconds:600,resendAfterSeconds:60};
+      if(testMode&&valid)result.testCode=code;
+      return result;
+    });
+  }
+
+  async function verifyReceiptOtp(event) { const key=requireIdempotency(event);return store.idempotent(key,async()=>{const body=parseBody(event,20_000),rawReceipt=safeText(body.receiptToken,500),receiptHash=sha256(rawReceipt),challengeId=safeText(body.challengeId,200),code=safeText(body.code,12),challenge=await store.getChallenge(challengeId),task=await store.getReceiptTask(receiptHash);if(!challenge||challenge.subjectHash!==receiptHash||challenge.purpose!=="receipt"||!task||task.status!=="active"||task.expiresAt<=clock())throw appError(401,"OTP_INVALID","The code is invalid or expired. Request a new code.");const consumed=await store.consumeChallenge(challengeId,hmac(otpSecret,`${challengeId}:${code}`),clock());if(!consumed){await store.failChallenge(challengeId);throw appError(401,"OTP_INVALID","The code is invalid or expired. Request a new code.");}const raw=randomToken(),session={tokenHash:sha256(raw),scope:"receipt",applicationId:task.applicationId,receiptTokenHash:receiptHash,signerId:task.signerId,email:task.email,createdAt:clock(),expiresAt:clock()+30*60_000,ttl:Math.floor((clock()+24*60*60_000)/1000)};await store.putSession(session);return {sessionToken:raw,expiresInSeconds:1800,receipt:await receiptContext(session)};}); }
+
+  async function receiptContext(session) {
+    const task=await store.getReceiptTask(session.receiptTokenHash),app=await store.getApplication(session.applicationId);
+    if(!task||task.status!=="active"||task.expiresAt<=clock()||!app||app.status!=="submitted")throw appError(404,"RECEIPT_UNAVAILABLE","This receipt is no longer available through this link.");
+    const recipient=app.signers.find(item=>item.id===task.signerId);
+    return {reference:app.reference,status:app.status,submittedAt:app.submittedAt,completedAt:app.completedAt||app.submittedAt,revision:app.frozen.revision,policyVersion:app.frozen.policyVersion,studentName:`${app.frozen.application.student_first_name} ${app.frozen.application.student_last_name}`,recipientName:recipient?.firstName||"Guardian",signers:app.signers.filter(item=>item.required).map(signer=>{const signature=app.signatures.find(item=>item.signerId===signer.id);return {name:`${signer.firstName} ${signer.lastName}`,relationship:signer.relationship,status:signature?"signed":"pending",signedAt:signature?.completedAt||null};})};
+  }
+  async function getReceiptContext(event) { const {session}=await requireSession(event,"receipt");return receiptContext(session); }
 
   const routes = new Map([
     ["POST /v2/access/request-otp", requestAccessOtp],
@@ -296,10 +376,13 @@ export function createService({ store, drive, mailer, tracker = { record: async 
     ["GET /v2/signatures/context", getSignatureContext],
     ["PATCH /v2/signatures/details", updateSignatureDetails],
     ["POST /v2/signatures/submit", submitSignature],
-    ["GET /v2/receipt", getReceipt]
+    ["GET /v2/receipt", getReceipt],
+    ["POST /v2/receipts/request-otp", requestReceiptOtp],
+    ["POST /v2/receipts/verify-otp", verifyReceiptOtp],
+    ["GET /v2/receipts/context", getReceiptContext]
   ]);
 
-  return async function handler(event) {
+  async function handler(event) {
     let origin;
     try {
       origin = resolveOrigin(event);
@@ -312,7 +395,9 @@ export function createService({ store, drive, mailer, tracker = { record: async 
       const message=status>=500?"The Rosewood service could not complete the request. Try again or contact the enrolment team.":error.message;
       return jsonResponse(status,{code,message,...(error.details?{details:error.details}:{})},origin||[...allowedOrigins][0]||"http://localhost:8000");
     }
-  };
+  }
+  handler.dispatchOutbox=dispatchOutbox;
+  return handler;
 }
 
 function schemaVersionForResponse(env) {

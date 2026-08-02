@@ -61,6 +61,18 @@ export function signatureOtpEmail({ code, studentName, expiresMinutes = 10 }) {
   };
 }
 
+export function receiptOtpEmail({ code, studentName, expiresMinutes = 10 }) {
+  return {
+    subject: "Your Rosewood College receipt verification code",
+    text: `Your verification code to view the completed application receipt for ${studentName} is ${code}. It expires in ${expiresMinutes} minutes and can be used once.`,
+    html: shell({
+      preheader: "Your application-receipt verification code",
+      heading: "Open your application receipt",
+      body: `${paragraph(`Use this code to open the completed application receipt for ${studentName}.`)}<div style="margin:28px 0;padding:22px;background:#f1e8d9;border-left:4px solid #9f3447;text-align:center;font-size:34px;font-weight:bold;letter-spacing:8px">${escapeHtml(code)}</div>${paragraph(`It expires in ${expiresMinutes} minutes and can be used once.`)}`
+    })
+  };
+}
+
 export function individualSignatureEmail({ guardianName, studentName }) {
   return {
     subject: `Thank you for signing ${studentName}'s Rosewood application`,

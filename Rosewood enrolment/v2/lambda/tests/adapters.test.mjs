@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import crypto from "node:crypto";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { GoogleDriveAdapter } from "../google-drive-adapter.mjs";
 import { GoogleSheetsTracker } from "../google-sheets-tracker.mjs";
 import { SesMailer } from "../ses-mailer.mjs";
+import { DynamoStore } from "../dynamo-store.mjs";
 import { accessOtpEmail, signatureInvitationEmail } from "../email-templates.mjs";
 
 function signingKey() {
@@ -66,4 +70,82 @@ test("email templates escape names and private task URLs", () => {
   assert.equal(template.html.includes("<script>alert"), false);
   assert.match(template.html, /&lt;script&gt;/);
   assert.match(template.html, /task=a&amp;next=b/);
+});
+
+test("Dynamo submission transaction includes state, tasks, receipts and outbox", async () => {
+  const calls = [];
+  const app = { id: "app-1", status: "draft", revision: 3, signatures: [], signers: [], events: [] };
+  const client = { async send(command) {
+    calls.push(command.input);
+    if (command.input.Key?.PK === "APP#app-1") return { Item: { data: app } };
+    return {};
+  } };
+  const store = new DynamoStore({ tableName: "table", client });
+  await store.submitApplication({
+    applicationId: "app-1",
+    expectedRevision: 3,
+    frozen: { hash: "revision-hash" },
+    primarySignature: { signerId: "signer-a" },
+    signers: [{ id: "signer-a", required: true }],
+    signatureTasks: [{ tokenHash: "signature-hash", ttl: 100 }],
+    receiptTasks: [{ tokenHash: "receipt-hash", ttl: 200 }],
+    outboxEvents: [{ id: "email-1", createdAt: "2026-08-02T00:00:00.000Z", to: "guardian@example.test" }],
+    submittedAt: "2026-08-02T00:00:00.000Z",
+    status: "submitted",
+    reference: "RW-2026-TEST"
+  });
+  const transaction = calls.find((input) => input.TransactItems);
+  const keys = transaction.TransactItems.map((item) => item.Put.Item).map((item) => `${item.PK}|${item.SK}`);
+  assert.deepEqual(keys, [
+    "APP#app-1|CURRENT",
+    "TASK#signature-hash|META",
+    "RECEIPT#receipt-hash|META",
+    "OUTBOX|2026-08-02T00:00:00.000Z#email-1"
+  ]);
+  assert.equal(transaction.TransactItems[0].Put.Item.data.completedAt, "2026-08-02T00:00:00.000Z");
+});
+
+test("Dynamo final-signature transaction updates confirmed signer details with receipt delivery", async () => {
+  const calls = [];
+  const task = { applicationId: "app-1", signerId: "signer-b", status: "invited", revisionHash: "revision-hash", ttl: 100, signer: { id: "signer-b", firstName: "Jordan", lastName: "Confirmed", email: "second@example.test", mobile: "0422000000" } };
+  const app = { id: "app-1", status: "pending_signatures", frozen: { hash: "revision-hash" }, signatures: [{ signerId: "signer-a" }], signers: [{ id: "signer-a", required: true }, { id: "signer-b", required: true, lastName: "Old" }] };
+  const client = { async send(command) {
+    calls.push(command.input);
+    if (command.input.Key?.PK === "TASK#task-hash") return { Item: { data: task } };
+    if (command.input.Key?.PK === "APP#app-1") return { Item: { data: app } };
+    return {};
+  } };
+  const store = new DynamoStore({ tableName: "table", client });
+  const result = await store.completeSignature({
+    tokenHash: "task-hash",
+    signature: { signerId: "signer-b", revisionHash: "revision-hash" },
+    at: "2026-08-02T01:00:00.000Z",
+    receiptTasks: [{ tokenHash: "receipt-hash", ttl: 200 }],
+    outboxEvents: [{ id: "email-1", createdAt: "2026-08-02T01:00:00.000Z", to: "second@example.test" }]
+  });
+  assert.equal(result.application.status, "submitted");
+  assert.equal(result.application.signers[1].lastName, "Confirmed");
+  const transaction = calls.find((input) => input.TransactItems);
+  assert.equal(transaction.TransactItems.length, 4);
+  assert.equal(transaction.TransactItems[2].Put.Item.PK, "RECEIPT#receipt-hash");
+  assert.equal(transaction.TransactItems[3].Put.Item.PK, "OUTBOX");
+});
+
+test("deployment preflight fails closed before making cloud calls", () => {
+  const lambdaDirectory = fileURLToPath(new URL("..", import.meta.url));
+  const result = spawnSync(process.execPath, ["scripts/deployment-preflight.mjs"], {
+    cwd: lambdaDirectory,
+    env: { PATH: process.env.PATH || "" },
+    encoding: "utf8"
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(`${result.stdout}${result.stderr}`, /Missing required environment variable: EXPECTED_AWS_ACCOUNT_ID/);
+});
+
+test("deployment template includes the receipt page and scheduled outbox retry", () => {
+  const template = readFileSync(new URL("../../template.yaml", import.meta.url), "utf8");
+  assert.match(template, /RECEIPT_PAGE_URL: https:\/\/ffe\.org\.au\/pages\/rosewood-receipt-v2\.html/);
+  assert.match(template, /RosewoodOutboxSchedule:/);
+  assert.match(template, /ScheduleExpression: rate\(1 minute\)/);
+  assert.match(template, /Principal: events\.amazonaws\.com/);
 });

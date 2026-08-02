@@ -40,6 +40,7 @@ export class DynamoStore {
   async getSession(tokenHash) { return clone((await this.get(`SESSION#${tokenHash}`)).Item?.data); }
   async getApplication(id) { return clone((await this.get(`APP#${id}`, "CURRENT")).Item?.data); }
   async getSignatureTask(tokenHash) { return clone((await this.get(`TASK#${tokenHash}`)).Item?.data); }
+  async getReceiptTask(tokenHash) { return clone((await this.get(`RECEIPT#${tokenHash}`)).Item?.data); }
 
   async putChallenge(challenge) {
     await this.client.send(new PutCommand({
@@ -198,7 +199,7 @@ export class DynamoStore {
     }
   }
 
-  async submitApplication({ applicationId, expectedRevision, frozen, primarySignature, signers, signatureTasks = [], submittedAt, status, reference }) {
+  async submitApplication({ applicationId, expectedRevision, frozen, primarySignature, signers, signatureTasks = [], receiptTasks = [], outboxEvents = [], submittedAt, status, reference }) {
     const app = await this.getApplication(applicationId);
     if (!app || app.status !== "draft" || Number(app.revision) !== Number(expectedRevision)) throw conflict();
     const next = {
@@ -209,6 +210,7 @@ export class DynamoStore {
       signers: clone(signers),
       submittedAt,
       reference,
+      ...(status === "submitted" ? { completedAt: submittedAt } : {}),
       events: [...(app.events || []), { type: "signature.completed", at: submittedAt, signerId: primarySignature.signerId }]
     };
     const actions = [{
@@ -223,6 +225,12 @@ export class DynamoStore {
     for (const task of signatureTasks) {
       actions.push({ Put: { TableName: this.tableName, Item: { ...this.key(`TASK#${task.tokenHash}`), entity: "signatureTask", ttl: task.ttl, data: clone(task) }, ConditionExpression: "attribute_not_exists(PK)" } });
     }
+    for (const task of receiptTasks) {
+      actions.push({ Put: { TableName: this.tableName, Item: { ...this.key(`RECEIPT#${task.tokenHash}`), entity: "receiptTask", ttl: task.ttl, data: clone(task) }, ConditionExpression: "attribute_not_exists(PK)" } });
+    }
+    for (const event of outboxEvents) {
+      actions.push({ Put: { TableName: this.tableName, Item: { ...this.key("OUTBOX", `${event.createdAt}#${event.id}`), entity: "outbox", data: clone(event) }, ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)" } });
+    }
     try {
       await this.client.send(new TransactWriteCommand({ TransactItems: actions }));
       return clone(next);
@@ -235,6 +243,18 @@ export class DynamoStore {
   async putSignatureTask(task) {
     await this.client.send(new PutCommand({ TableName: this.tableName, Item: { ...this.key(`TASK#${task.tokenHash}`), entity: "signatureTask", ttl: task.ttl, data: clone(task) }, ConditionExpression: "attribute_not_exists(PK)" }));
     return clone(task);
+  }
+
+  async putReceiptTasks(tasks) {
+    if (!tasks.length) return [];
+    await this.client.send(new TransactWriteCommand({ TransactItems: tasks.map((task) => ({
+      Put: {
+        TableName: this.tableName,
+        Item: { ...this.key(`RECEIPT#${task.tokenHash}`), entity: "receiptTask", ttl: task.ttl, data: clone(task) },
+        ConditionExpression: "attribute_not_exists(PK)"
+      }
+    })) }));
+    return clone(tasks);
   }
 
   async updateSignatureDetails(tokenHash, details) {
@@ -256,7 +276,7 @@ export class DynamoStore {
     }
   }
 
-  async completeSignature({ tokenHash, signature, at }) {
+  async completeSignature({ tokenHash, signature, at, receiptTasks = [], outboxEvents = [] }) {
     const task = await this.getSignatureTask(tokenHash);
     if (!task || task.status !== "invited") return null;
     const app = await this.getApplication(task.applicationId);
@@ -264,12 +284,20 @@ export class DynamoStore {
     const signatures = [...(app.signatures || []), clone(signature)];
     const pending = app.signers.filter((signer) => signer.required).some((signer) => !signatures.some((item) => item.signerId === signer.id));
     const nextTask = { ...task, status: "signed", signedAt: at };
-    const nextApp = { ...app, signatures, status: pending ? "pending_signatures" : "submitted", ...(pending ? {} : { completedAt: at }) };
+    const signers = app.signers.map((signer) => signer.id === task.signerId ? { ...signer, ...clone(task.signer) } : signer);
+    const nextApp = { ...app, signers, signatures, status: pending ? "pending_signatures" : "submitted", ...(pending ? {} : { completedAt: at }) };
     try {
-      await this.client.send(new TransactWriteCommand({ TransactItems: [
+      const actions = [
         { Put: { TableName: this.tableName, Item: { ...this.key(`TASK#${tokenHash}`), entity: "signatureTask", ttl: task.ttl, data: nextTask }, ConditionExpression: "#data.#status = :invited AND #data.#revisionHash = :hash", ExpressionAttributeNames: { "#data": "data", "#status": "status", "#revisionHash": "revisionHash" }, ExpressionAttributeValues: { ":invited": "invited", ":hash": task.revisionHash } } },
         { Put: { TableName: this.tableName, Item: { ...this.key(`APP#${app.id}`, "CURRENT"), entity: "application", data: nextApp }, ConditionExpression: "#data.#status = :pending AND size(#data.#signatures) = :signatureCount", ExpressionAttributeNames: { "#data": "data", "#status": "status", "#signatures": "signatures" }, ExpressionAttributeValues: { ":pending": "pending_signatures", ":signatureCount": app.signatures.length } } }
-      ] }));
+      ];
+      for (const receiptTask of receiptTasks) {
+        actions.push({ Put: { TableName: this.tableName, Item: { ...this.key(`RECEIPT#${receiptTask.tokenHash}`), entity: "receiptTask", ttl: receiptTask.ttl, data: clone(receiptTask) }, ConditionExpression: "attribute_not_exists(PK)" } });
+      }
+      for (const event of outboxEvents) {
+        actions.push({ Put: { TableName: this.tableName, Item: { ...this.key("OUTBOX", `${event.createdAt}#${event.id}`), entity: "outbox", data: clone(event) }, ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)" } });
+      }
+      await this.client.send(new TransactWriteCommand({ TransactItems: actions }));
       return { task: clone(nextTask), application: clone(nextApp) };
     } catch (error) {
       if (isConditional(error)) return null;

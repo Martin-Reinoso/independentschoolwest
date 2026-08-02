@@ -12,6 +12,7 @@ export class MemoryStore {
     this.sessions = new Map();
     this.applications = new Map();
     this.tasks = new Map();
+    this.receipts = new Map();
     this.idempotency = new Map();
     this.rateLimits = new Map();
     this.outbox = [];
@@ -48,14 +49,16 @@ export class MemoryStore {
   async recordEngagement(record) { const item=this.applications.get(record.applicationId);if(!item)return null;item.events.push(clone(record));this.applications.set(record.applicationId,item);return clone(record); }
   async checkRateLimit(key, limit, windowSeconds) { const now=this.now(),start=now-windowSeconds*1000,recent=(this.rateLimits.get(key)||[]).filter(time=>time>start); if(recent.length>=limit)return false;recent.push(now);this.rateLimits.set(key,recent);return true; }
   async idempotent(key, operation) { if(this.idempotency.has(key))return clone(this.idempotency.get(key));const result=await operation();this.idempotency.set(key,clone(result));return result; }
-  async submitApplication({ applicationId, expectedRevision, frozen, primarySignature, signers, signatureTasks = [], submittedAt, status, reference }) {
+  async submitApplication({ applicationId, expectedRevision, frozen, primarySignature, signers, signatureTasks = [], receiptTasks = [], outboxEvents = [], submittedAt, status, reference }) {
     const item=this.applications.get(applicationId); if(!item||item.status!=="draft"||Number(item.revision)!==Number(expectedRevision))throw Object.assign(new Error("Revision conflict."),{code:"REVISION_CONFLICT"});
-    item.status=status;item.frozen=clone(frozen);item.signatures=[clone(primarySignature)];item.signers=clone(signers);item.submittedAt=submittedAt;item.reference=reference;item.events.push({type:"signature.completed",at:submittedAt,signerId:primarySignature.signerId});for(const task of signatureTasks)this.tasks.set(task.tokenHash,clone(task));this.applications.set(applicationId,item);return clone(item);
+    item.status=status;item.frozen=clone(frozen);item.signatures=[clone(primarySignature)];item.signers=clone(signers);item.submittedAt=submittedAt;item.reference=reference;if(status==="submitted")item.completedAt=submittedAt;item.events.push({type:"signature.completed",at:submittedAt,signerId:primarySignature.signerId});for(const task of signatureTasks)this.tasks.set(task.tokenHash,clone(task));for(const task of receiptTasks)this.receipts.set(task.tokenHash,clone(task));this.outbox.push(...clone(outboxEvents));this.applications.set(applicationId,item);return clone(item);
   }
   async putSignatureTask(task) { this.tasks.set(task.tokenHash,clone(task));return clone(task); }
   async getSignatureTask(tokenHash) { return clone(this.tasks.get(tokenHash)); }
+  async putReceiptTasks(tasks) { for(const task of tasks)this.receipts.set(task.tokenHash,clone(task));return clone(tasks); }
+  async getReceiptTask(tokenHash) { return clone(this.receipts.get(tokenHash)); }
   async updateSignatureDetails(tokenHash, details) { const task=this.tasks.get(tokenHash);if(!task) return null;task.signer={...task.signer,...clone(details)};task.detailsConfirmedAt=new Date(this.now()).toISOString();this.tasks.set(tokenHash,task);return clone(task); }
-  async completeSignature({ tokenHash, signature, at }) { const task=this.tasks.get(tokenHash);if(!task||task.status==="signed")return null;const app=this.applications.get(task.applicationId);if(!app||app.frozen.hash!==signature.revisionHash)return null;task.status="signed";task.signedAt=at;this.tasks.set(tokenHash,task);app.signatures.push(clone(signature));const pending=app.signers.filter(s=>s.required).some(s=>s.id!==signature.signerId&&!app.signatures.some(sig=>sig.signerId===s.id));if(!pending){app.status="submitted";app.completedAt=at;}this.applications.set(app.id,app);return {task:clone(task),application:clone(app)}; }
+  async completeSignature({ tokenHash, signature, at, receiptTasks = [], outboxEvents = [] }) { const task=this.tasks.get(tokenHash);if(!task||task.status==="signed")return null;const app=this.applications.get(task.applicationId);if(!app||app.frozen.hash!==signature.revisionHash)return null;task.status="signed";task.signedAt=at;this.tasks.set(tokenHash,task);app.signers=app.signers.map(item=>item.id===task.signerId?{...item,...clone(task.signer)}:item);app.signatures.push(clone(signature));const pending=app.signers.filter(s=>s.required).some(s=>!app.signatures.some(sig=>sig.signerId===s.id));if(!pending){app.status="submitted";app.completedAt=at;}for(const receiptTask of receiptTasks)this.receipts.set(receiptTask.tokenHash,clone(receiptTask));this.outbox.push(...clone(outboxEvents));this.applications.set(app.id,app);return {task:clone(task),application:clone(app)}; }
   async enqueueOutbox(event) { this.outbox.push(clone(event)); }
   async listOutbox() { return clone(this.outbox.filter(item=>!item.sentAt&&(!item.leaseUntil||item.leaseUntil<=this.now())).slice(0,25)); }
   async claimOutbox(event, nowMs, leaseUntil) { const item=this.outbox.find(entry=>entry.id===event.id);if(!item||item.sentAt||(item.leaseUntil&&item.leaseUntil>nowMs))return false;item.leaseUntil=leaseUntil;return true; }

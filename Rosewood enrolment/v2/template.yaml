@@ -99,7 +99,7 @@ Resources:
           ALLOWED_ORIGINS: !Ref AllowedOrigins
           SCHEMA_VERSION: rosewood-v2-2026-08-02
           SIGNING_PAGE_URL: https://ffe.org.au/pages/rosewood-sign-v2.html
-          RECEIPT_PAGE_URL: https://ffe.org.au/pages/rosewood-enrolment-v2.html
+          RECEIPT_PAGE_URL: https://ffe.org.au/pages/rosewood-receipt-v2.html
 
   RosewoodFunctionUrl:
     Type: AWS::Lambda::Url
@@ -128,6 +128,24 @@ Resources:
       Action: lambda:InvokeFunctionUrl
       Principal: "*"
       FunctionUrlAuthType: NONE
+
+  RosewoodOutboxSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Retry unsent Rosewood enrolment email outbox records
+      ScheduleExpression: rate(1 minute)
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt RosewoodFunction.Arn
+          Id: RosewoodOutboxDispatcher
+
+  RosewoodOutboxSchedulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref RosewoodFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt RosewoodOutboxSchedule.Arn
 
 Outputs:
   FunctionUrl:

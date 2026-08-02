@@ -30,3 +30,4 @@ stripe-donations-recent.csv
 Rosewood enrolment/v2/**/node_modules/
 Rosewood enrolment/v2/test-results/
 Rosewood enrolment/v2/playwright-report/
+Rosewood enrolment/v2/packaged.yaml
