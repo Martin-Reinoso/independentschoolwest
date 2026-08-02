@@ -54,6 +54,13 @@ intake. Every preflight rechecks the refresh token against `GOOGLE_OAUTH_EXPECTE
 If both credential sets are retained for rollback, `GOOGLE_AUTH_MODE` is mandatory so a
 deployment cannot switch identity silently.
 
+The 3 August 2026 synthetic test used organisation-user OAuth successfully and passed the
+create/delete, upload, snapshot, signature and Sheet checks. That account contains
+unrelated Drive data, so it is a test-only credential. The adapter enforces the configured
+folder for writes, but the refresh token's full Drive scope is account-wide. Replace it
+with a dedicated, data-empty organisation account or the preferred Shared Drive service
+account before any real-family invitation.
+
 ### One-Time User OAuth Bootstrap
 
 After creating a Google OAuth **Desktop app** client, download its client JSON to a
@@ -189,6 +196,12 @@ the temporary test identity:
 7. remove the temporary identity only after the canary passes
 
 No frontend, challenge, session or signature code changes are required.
+
+The 3 August 2026 canary confirmed that mail sent from the individually verified test
+mailbox was shown as arriving via `amazonses.com` and consistently classified as spam by
+Gmail. A technically successful SES API call is therefore not a deliverability pass.
+Production promotion requires the domain-authenticated sender and a repeated inbox,
+spam, bounce, complaint and reply-path canary.
 
 ## Rollback
 

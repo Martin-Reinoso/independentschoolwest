@@ -39,10 +39,10 @@ stages, receipt desktop/mobile layout and accessibility, a real local OTP-to-sec
 flow, a full local additional-guardian email/OTP/review/signature flow, and an
 application-to-email-to-receipt-OTP canary.
 
-The current verified baseline is 51 API tests and 35 browser tests passing. Seven browser
+The current verified baseline is 52 API tests and 35 browser tests passing. Seven browser
 cases are deliberately skipped where a desktop-only transaction canary or a device-
 specific layout assertion would duplicate coverage. See `COMPLETION-AUDIT.md` for the
-difference between this local evidence and the pending live cloud canary.
+difference between proven test-stack behaviour and production approval.
 
 ## Live Canary
 
@@ -64,3 +64,17 @@ After a test stack is deployed:
 11. revoke/delete synthetic access records according to the test cleanup procedure
 
 Do not use real child or family information for a canary.
+
+## 3 August 2026 Live Result
+
+The full test-stack sequence above passed with synthetic data, including PDF/JPEG/PNG
+uploads, a two-guardian frozen-revision signing flow, recipient-specific receipt OTP,
+restricted Drive and nine-column Sheet verification, DynamoDB lifecycle state, log
+privacy scans, and a deliberately failed EventBridge outbox delivery that was released,
+retried once, deduplicated and cleaned up.
+
+Every SES message landed in Gmail spam. This is a failed production-deliverability result,
+not an application-flow failure. Repeat the full canary after replacing the individually
+verified test mailbox with a Rosewood-controlled, authenticated sender domain. The active
+OAuth account also contains unrelated Drive data, so repeat storage preflight and canary
+with the final dedicated data-empty identity before production approval.

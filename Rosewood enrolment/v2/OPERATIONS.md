@@ -42,6 +42,14 @@ email addresses, medical answers, OTPs, tokens and signatures.
 - Use `scripts/authorize-google-user.mjs --apply` for initial authorisation or token
   rotation. It verifies the exact mailbox and storage before changing Secrets Manager;
   never paste the refresh token into a shell, task, document or message.
+- The 3 August 2026 test stack uses `user_oauth` successfully, but the selected account
+  also contains unrelated Drive data. This is acceptable only for the isolated synthetic
+  test. Do not issue a real-family invitation until the grant is moved to a dedicated,
+  data-empty organisation account or replaced by the preferred restricted Shared Drive
+  service account.
+- Folder enforcement limits where this application writes. It does not reduce the full
+  Drive scope held by the delegated-user refresh token, so account-level data separation
+  is a mandatory credential-compromise control.
 
 ## Daily Checks
 
@@ -95,6 +103,22 @@ EventBridge rule retries unsent records every minute. Each worker must claim a 6
 lease before sending; sent records retain `sentAt`. Investigate rather than repeatedly
 manually invoking the function if the same item remains unsent. SES bounce/complaint
 handling and operational alarms remain launch blockers.
+
+The individually verified test sender is not an acceptable production identity. In the
+3 August 2026 live canary Gmail displayed it as arriving via `amazonses.com` and placed
+all OTP, invitation, completion and retry messages in spam. Before family use, deploy a
+Rosewood-controlled domain with aligned SPF, DKIM and DMARC, leave SES sandbox, configure
+bounce/complaint handling, and repeat inbox-placement tests across common providers.
+
+## Synthetic Canary Evidence
+
+The 3 August 2026 synthetic application is intentionally retained in the isolated test
+stack while the implementation is reviewed. It includes six restricted Drive artifacts,
+one privacy-minimised Sheet row and the DynamoDB application/task/audit records. It is not
+authority to retain future test data indefinitely. Record an owner and deletion date,
+then remove the DynamoDB records, Drive artifacts and Sheet row together before any
+production-shaped deployment. Do not delete submitted real-family evidence through a
+test cleanup process.
 
 ## Incident Boundaries
 

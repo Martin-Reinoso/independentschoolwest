@@ -35,6 +35,13 @@ changing document storage.
 11. When a service account writes files, use a non-University Google Shared Drive.
     Sharing an ordinary My Drive folder is not sufficient because service accounts have
     no personal storage quota.
+12. When Shared Drives are unavailable, a delegated organisation-user OAuth identity is
+    an interim fallback only if the account is dedicated to Rosewood enrolment, protected
+    by MFA, has documented recovery/offboarding, and contains no unrelated Drive data.
+13. The current Drive adapter needs full Drive scope to discover and manage a pre-existing
+    restricted folder. Folder checks constrain application writes, but do not narrow the
+    account-wide access of a stolen refresh token. Store the token only in Secrets Manager
+    and document rotation and revocation.
 
 ## Deployment Checklist
 
@@ -55,6 +62,9 @@ Before each deployment:
 8. Test with synthetic data only before inviting a real family.
 9. Record the deployment date, owner and material data-flow changes in the project
    handover documentation.
+10. For delegated-user OAuth, verify the exact mailbox, confirm that the account contains
+    no unrelated files, and repeat the real create/delete, upload, snapshot, signature and
+    Sheet canary after every account, client or refresh-token change.
 
 ## Retention And Incident Handling
 

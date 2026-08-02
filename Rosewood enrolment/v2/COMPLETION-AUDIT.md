@@ -6,13 +6,12 @@
 for real family information and must not be promoted to production yet.**
 
 The frontend, API, persistence contract, OTP flows, co-signing flow and receipt flow are
-implemented and pass local automated end-to-end tests. The live cloud canary is paused
-because the current Google folder is in My Drive while the deployed credentials select a
-service account. A service account may have editor ACLs there but has no personal Drive
-storage quota, so real file creation fails. The deployment preflight detects this with a
-create/delete probe and fails closed. The backend now supports the approved
-organisation-user OAuth alternative, but its OAuth client and refresh token have not yet
-been provisioned.
+implemented and pass both local automated tests and a live synthetic test-stack canary.
+Organisation-user OAuth is configured and the mandatory AWS, SES, Drive create/delete
+and Sheet-read preflight passes. This proves the architecture, not production readiness:
+the current OAuth account contains unrelated Drive data and the temporary individually
+verified sender is consistently classified as spam by Gmail. Both are explicit launch
+blockers, alongside the unapproved policy placeholders and governance approvals below.
 
 ## Implemented
 
@@ -39,38 +38,66 @@ been provisioned.
 
 ## Verified
 
-- 51 API tests pass
+- 52 API tests pass
 - 35 browser tests pass across desktop and mobile Chromium
 - serious/critical Axe checks pass on the main and receipt experiences under the CSP
 - Lambda deployment bundle builds without symbolic links and imports its handler
 - API coverage is measured separately with `pnpm run test:api:coverage`
 - the Drive preflight performs a real create/delete probe rather than trusting ACL metadata
+- the test stack is `UPDATE_COMPLETE`, the outbox schedule is enabled and DynamoDB
+  point-in-time recovery is enabled
 
 Automated local flows include OTP-to-draft, conditional evidence, shared-care and health
 consent enforcement, emergency-contact independence, document removal, additional-
 guardian email/OTP/frozen review/signature, completion email, receipt OTP, idempotent
 replay and invitation invalidation after submission.
 
-## External Blocker
+## Live Synthetic Canary
 
-Configure one quota-bearing Google identity before deployment:
+Completed on 3 August 2026 using only synthetic family and document data and the approved
+test recipient:
 
-1. Preferred: a non-University Google Workspace Shared Drive with a dedicated Rosewood
-   service account and access only to the restricted enrolment folder.
-2. Currently actionable alternative: set up delegated-user OAuth for the dedicated
-   Rosewood organisation account, store the OAuth client and refresh token in Secrets
-   Manager, and document token rotation, revocation and account offboarding.
+- access OTP delivered through SES, remained absent from the API response and created a
+  short-lived application session
+- revisioned draft saved and three documents uploaded as PDF, JPEG and PNG
+- restricted Drive contained exactly the three uploads, one canonical JSON snapshot and
+  two PNG signature artifacts for the synthetic application; all six remained parented
+  to the configured folder
+- primary submission moved to `pending_signatures` with one of two signatures complete
+- the additional guardian used a separate task capability, OTP and scoped session to
+  review the six-section frozen revision and complete the second signature
+- two recipient-specific completion links were issued; one separate receipt OTP returned
+  only the reference, timestamps, policy/revision, student display name, recipient name
+  and two-entry signature register
+- DynamoDB finished at revision 1 with three documents, two required signers, two
+  signatures, one signed signature task, two active receipt tasks and one engagement row
+- the private Sheet held one nine-column `stage_viewed` row with no mailbox or phone
+- all five lifecycle outbox records were sent with no pending lease
+- a deliberately failing synthetic outbox record released its lease, was delivered once
+  by the next scheduled retry after its destination was corrected, remained unchanged on
+  a further schedule and was then removed
+- CloudWatch contained no known OTP, mailbox, capability link, bearer token, signature
+  payload or application-answer value
 
-Do not replace this requirement with public links, a personal service-account workaround
-or an undocumented S3 fallback. Do not deploy this branch until the mandatory preflight
-passes against the approved storage destination.
+The synthetic application remains in the isolated test stack as canary evidence. Remove
+its DynamoDB, Drive and Sheet records before any real-family launch or when the evidence
+retention decision is complete.
 
-## Live Canary Still Required
+## Test-Only Infrastructure Blockers
 
-After the Google decision, complete the exact live sequence in `TESTING.md`: temporary
-sender OTP, secure save/reload, real Drive uploads, primary submission, second guardian
-OTP/signature, completion outbox, receipt OTP, private Sheet rows and cleanup. Use only
-synthetic family and document data.
+- The active organisation-user OAuth grant has full Drive and Sheets scopes, as required
+  by the current adapter, but its account contains unrelated Drive data. The adapter
+  enforces the configured folder for Rosewood writes; that does not narrow what a stolen
+  refresh token could read. Production requires a data-empty dedicated organisation
+  account or the preferred dedicated service account in a non-University Shared Drive.
+- The current SES identity is an individually verified test mailbox. Gmail displayed the
+  sender as arriving via `amazonses.com` and placed every lifecycle and retry canary in
+  spam. Production requires a Rosewood-controlled sending domain with aligned SPF, DKIM
+  and DMARC, plus bounce/complaint handling and inbox-placement testing.
+- SES remains in sandbox and is suitable only for verified-recipient testing.
+
+Do not replace these requirements with public links, a personal service-account
+workaround or an undocumented S3 fallback.
 
 ## Launch Approvals Still Required
 
@@ -78,5 +105,9 @@ synthetic family and document data.
 - legal approval of authority, guardian, consent, fee and withdrawal wording
 - approved document necessity and retention/deletion schedule
 - named staff access, incident response and data-subject request procedures
-- Rosewood-controlled SES domain, support mailbox, bounce and complaint handling
-- final accessibility review and successful synthetic production canary
+- Rosewood-controlled SES domain, support mailbox, SPF/DKIM/DMARC alignment, bounce and
+  complaint handling
+- dedicated data-empty Google runtime identity and documented OAuth rotation/revocation,
+  or the preferred restricted Shared Drive service account
+- final human accessibility review and a fresh synthetic canary in the production-shaped
+  environment after the identity and sender changes

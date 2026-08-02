@@ -11,6 +11,7 @@ import { SesMailer } from "../ses-mailer.mjs";
 import { DynamoStore } from "../dynamo-store.mjs";
 import { accessOtpEmail, signatureInvitationEmail } from "../email-templates.mjs";
 import { createAuthorizationUrl, mergeOAuthSecret } from "../scripts/authorize-google-user.mjs";
+import { createEngagementSheetRequest } from "../scripts/init-google-sheet.mjs";
 
 function signingKey() {
   return crypto.generateKeyPairSync("rsa", { modulusLength: 2048, privateKeyEncoding: { type: "pkcs8", format: "pem" }, publicKeyEncoding: { type: "spki", format: "pem" } }).privateKey;
@@ -137,6 +138,19 @@ test("Sheets uses delegated-user OAuth without changing the privacy-minimised ro
   assert.equal(new URLSearchParams(calls[0].options.body).get("grant_type"), "refresh_token");
   assert.equal(JSON.parse(calls[1].options.body).values[0].length, 9);
   assert.equal(calls[1].options.headers.Authorization, "Bearer user-token");
+});
+
+test("Sheet initialisation freezes the engagement header through grid properties", () => {
+  assert.deepEqual(createEngagementSheetRequest("V2 Engagement"), {
+    requests: [{
+      addSheet: {
+        properties: {
+          title: "V2 Engagement",
+          gridProperties: { frozenRowCount: 1 }
+        }
+      }
+    }]
+  });
 });
 
 test("SES mailer sends branded HTML and text without mailbox credentials", async () => {

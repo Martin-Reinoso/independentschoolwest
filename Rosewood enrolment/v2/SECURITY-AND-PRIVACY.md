@@ -101,4 +101,8 @@ The application must remain preview/testing-only until approved owners sign off:
 - authorised staff/administrator access
 - data breach and incident response
 - SES sender domain and support mailbox
-- accessibility and end-to-end synthetic production test
+- SPF, DKIM and DMARC alignment, inbox placement, bounce and complaint handling
+- a dedicated data-empty organisation Google account or restricted Shared Drive service
+  account; the current broad-scope account with unrelated Drive data is test-only
+- human accessibility review and a fresh end-to-end synthetic canary after final sender
+  and storage identities are installed
