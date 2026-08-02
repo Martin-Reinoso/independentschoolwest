@@ -32,6 +32,9 @@ changing document storage.
    practical.
 10. Record who can access the enrolment folder and who is responsible for handling
     access requests, corrections, retention and deletion.
+11. When a service account writes files, use a non-University Google Shared Drive.
+    Sharing an ordinary My Drive folder is not sufficient because service accounts have
+    no personal storage quota.
 
 ## Deployment Checklist
 
@@ -41,14 +44,16 @@ Before each deployment:
    account.
 2. Confirm the Sheet is not publicly accessible and is shared only with authorised
    staff and the required service account.
-3. Confirm test records and test uploads have been removed.
-4. Confirm the current Privacy Collection Notice describes the information being
+3. Run an actual synthetic create/delete probe in the Drive destination. Do not treat
+   `canAddChildren` or an ACL read as proof that uploads work.
+4. Confirm test records and test uploads have been removed.
+5. Confirm the current Privacy Collection Notice describes the information being
    collected, its purpose, expected disclosures, storage arrangements and contact
    point.
-5. Confirm all new fields have an identified purpose and owner.
-6. Confirm support staff know how to correct or delete a record when authorised.
-7. Test with synthetic data only before inviting a real family.
-8. Record the deployment date, owner and material data-flow changes in the project
+6. Confirm all new fields have an identified purpose and owner.
+7. Confirm support staff know how to correct or delete a record when authorised.
+8. Test with synthetic data only before inviting a real family.
+9. Record the deployment date, owner and material data-flow changes in the project
    handover documentation.
 
 ## Retention And Incident Handling

@@ -8,14 +8,17 @@ while policy files remain marked `DRAFT PLACEHOLDER - NOT APPROVED FOR PRODUCTIO
 - AWS CLI logged into the approved account and region `ap-southeast-2`
 - a private deployment-artifact S3 bucket
 - an SES-verified test sender and recipient while the account remains in sandbox
-- one restricted Google Drive folder shared only with named staff and the service account
+- one restricted folder inside a non-University Google Shared Drive, shared only with
+  named staff and the service account; an ordinary My Drive folder is not sufficient
 - one private Google Sheet shared only with named staff and the service account
 - a Secrets Manager JSON object containing `OTP_HMAC_SECRET`, `IP_HASH_SALT`,
   `GOOGLE_SERVICE_ACCOUNT_EMAIL` and `GOOGLE_PRIVATE_KEY`
 
-Use a dedicated Rosewood service account in production. The Drive adapter requires the
-full Drive API OAuth scope so it can discover a folder shared manually through Drive;
-limit its effective access by sharing only the enrolment folder with that identity.
+Use a dedicated Rosewood service account in production. Service accounts have no My
+Drive storage quota, so the destination must be a Shared Drive unless an approved
+delegated-user OAuth design replaces the adapter. The Drive adapter requires the full
+Drive API OAuth scope so it can discover a folder shared manually through Drive; limit
+its effective access by sharing only the enrolment folder with that identity.
 
 Never place those values, the temporary sender address, folder IDs, Sheet IDs, tokens or
 real family details in Git.
@@ -24,8 +27,8 @@ real family details in Git.
 
 Set `EXPECTED_AWS_ACCOUNT_ID` to the explicitly approved non-University account. The
 preflight fails closed if the active credentials point anywhere else. It also checks the
-secret shape and strength, SES account and sender, Drive write access and Sheet read
-access without printing credentials or external identifiers.
+secret shape and strength, SES account and sender, an actual Drive create/delete probe
+and Sheet read access without printing credentials or external identifiers.
 
 ```bash
 cd "Rosewood enrolment/v2/lambda"

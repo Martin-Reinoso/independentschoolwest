@@ -48,6 +48,20 @@ const folder = await folderResponse.json();
 if (folder.trashed || folder.mimeType !== "application/vnd.google-apps.folder" || !folder.capabilities?.canAddChildren) {
   throw new Error("The Google service account cannot add files to the configured restricted Drive folder.");
 }
+let driveProbe;
+try {
+  driveProbe = await drive.createFile({
+    name: `rosewood-v2-deployment-preflight-${Date.now()}.txt`,
+    mimeType: "text/plain",
+    data: "Rosewood V2 synthetic deployment preflight. Safe to delete.",
+    applicationId: "deployment-preflight",
+    kind: "deployment_preflight"
+  });
+  await drive.deleteFile(driveProbe.documentId);
+} catch (error) {
+  if (driveProbe?.documentId) await drive.deleteFile(driveProbe.documentId).catch(() => {});
+  throw new Error("The configured Drive folder passed its ACL check but failed an actual create/delete probe. Use a non-University Shared Drive or an approved delegated-user OAuth design.", { cause: error });
+}
 
 const tracker = new GoogleSheetsTracker({ serviceAccountEmail: config.GOOGLE_SERVICE_ACCOUNT_EMAIL, privateKey: config.GOOGLE_PRIVATE_KEY, spreadsheetId });
 const sheetResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}?fields=spreadsheetId,sheets.properties.title`, { headers: { Authorization: `Bearer ${await tracker.accessToken()}` } });

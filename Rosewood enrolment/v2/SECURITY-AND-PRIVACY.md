@@ -20,7 +20,10 @@ all application content and metadata as restricted.
 - Drive and Sheets are private and shared only with named staff/service accounts
 - the Drive adapter uses the full Drive API OAuth scope because `drive.file` cannot
   discover a manually shared folder; effective access is constrained by the Drive ACL,
-  and production must use a dedicated Rosewood service account shared only to that folder
+  and production must use a dedicated Rosewood service account shared only to a folder
+  in a non-University Shared Drive
+- deployment preflight proves Drive writes with a create/delete probe; `canAddChildren`
+  alone is insufficient because service accounts have no personal My Drive quota
 - Google and AWS credentials live in Secrets Manager or deployment configuration, not Git
 - production runtime startup fails closed on weak/missing secrets, missing schema/email
   configuration, non-HTTPS origins or non-HTTPS signature/receipt page URLs

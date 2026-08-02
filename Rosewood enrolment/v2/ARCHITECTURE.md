@@ -103,10 +103,14 @@ domain configuration.
 
 ## Google Drive Interim Storage
 
-- A service account receives editor access to one restricted folder. Its OAuth token
-  uses the full Drive API scope because `drive.file` cannot discover a folder shared
-  manually through Drive. The Google ACL remains the resource boundary: only the
-  restricted folder is shared with the account.
+- A dedicated Rosewood service account receives editor access to one restricted folder
+  inside a non-University Google Shared Drive. A folder in an individual's My Drive is
+  not supported because service accounts have no personal storage quota, even when its
+  ACL reports `canAddChildren`.
+- The OAuth token uses the full Drive API scope because `drive.file` cannot discover a
+  folder shared manually through Drive. The Google ACL remains the resource boundary.
+- Deployment preflight creates and deletes a tiny probe file; an ACL-only read check is
+  not accepted as proof that binary uploads will work.
 - The backend creates scoped resumable uploads with fixed type, name, size and application
   metadata.
 - After upload, `/documents/confirm` reads Drive metadata and verifies ownership, parent,

@@ -131,6 +131,11 @@ export class GoogleDriveAdapter {
     return { documentId: file.id };
   }
 
+  async deleteFile(documentId) {
+    await this.driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(documentId)}?supportsAllDrives=true`, { method: "DELETE" });
+    return { deleted: true };
+  }
+
   storeJson({ applicationId, name, value }) {
     return this.createFile({ name, mimeType: "application/json", data: JSON.stringify(value, null, 2), applicationId, kind: "application_snapshot" });
   }

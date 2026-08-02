@@ -45,6 +45,21 @@ test("Drive rejects a file moved outside the restricted folder", async () => {
   await assert.rejects(() => adapter.confirmUpload({ documentId: "drive-file", expected: { applicationId: "app-1", category: "birth_certificate" } }), (error) => error.code === "DOCUMENT_MISMATCH" && error.status === 422);
 });
 
+test("Drive deployment probe creates and deletes a real file", async () => {
+  const calls = [];
+  const responses = [
+    new Response(JSON.stringify({ access_token: "google-token", expires_in: 3600 }), { status: 200 }),
+    new Response(JSON.stringify({ id: "probe-file" }), { status: 200 }),
+    new Response(null, { status: 204 })
+  ];
+  const adapter = new GoogleDriveAdapter({ serviceAccountEmail: "service@example.test", privateKey: signingKey(), folderId: "folder-1", fetchImpl: async (url, options) => { calls.push({ url: String(url), options }); return responses.shift(); } });
+  const probe = await adapter.createFile({ name: "probe.txt", mimeType: "text/plain", data: "probe", applicationId: "preflight", kind: "deployment_preflight" });
+  await adapter.deleteFile(probe.documentId);
+  assert.match(calls[1].url, /uploadType=multipart/);
+  assert.match(calls[2].url, /files\/probe-file/);
+  assert.equal(calls[2].options.method, "DELETE");
+});
+
 test("Sheets tracker writes only the documented operational columns", async () => {
   const calls = [];
   const responses = [new Response(JSON.stringify({ access_token: "token", expires_in: 3600 }), { status: 200 }), new Response(JSON.stringify({ updates: { updatedRows: 1 } }), { status: 200 })];
