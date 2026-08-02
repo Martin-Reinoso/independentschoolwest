@@ -23,7 +23,8 @@ the exact scope of health-provider contact and overseas-processing details are n
 approved in this placeholder.
 
 The V2 test architecture uses AWS services in the Sydney region and restricted Google
-Drive/Sheets. Access is intended to be limited to named staff and service accounts.
+Drive/Sheets. Access is intended to be limited to named staff and a selected,
+organisation-controlled runtime identity.
 
 If required information is not provided, Rosewood may be unable to assess or safely plan
 an application. Optional fields and optional community communications are identified.

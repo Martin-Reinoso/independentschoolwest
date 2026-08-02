@@ -8,17 +8,49 @@ while policy files remain marked `DRAFT PLACEHOLDER - NOT APPROVED FOR PRODUCTIO
 - AWS CLI logged into the approved account and region `ap-southeast-2`
 - a private deployment-artifact S3 bucket
 - an SES-verified test sender and recipient while the account remains in sandbox
-- one restricted folder inside a non-University Google Shared Drive, shared only with
-  named staff and the service account; an ordinary My Drive folder is not sufficient
-- one private Google Sheet shared only with named staff and the service account
-- a Secrets Manager JSON object containing `OTP_HMAC_SECRET`, `IP_HASH_SALT`,
-  `GOOGLE_SERVICE_ACCOUNT_EMAIL` and `GOOGLE_PRIVATE_KEY`
+- one restricted Google Drive folder and one private Google Sheet shared only with named
+  staff and the selected runtime identity
+- either a non-University Shared Drive with a dedicated service account, or a dedicated
+  organisation-controlled Google user whose own quota backs the restricted My Drive
+  folder
+- a Secrets Manager JSON object containing `OTP_HMAC_SECRET`, `IP_HASH_SALT`, an explicit
+  `GOOGLE_AUTH_MODE` when both credential sets are retained, and the selected Google
+  credentials
 
-Use a dedicated Rosewood service account in production. Service accounts have no My
-Drive storage quota, so the destination must be a Shared Drive unless an approved
-delegated-user OAuth design replaces the adapter. The Drive adapter requires the full
-Drive API OAuth scope so it can discover a folder shared manually through Drive; limit
-its effective access by sharing only the enrolment folder with that identity.
+`service_account` remains the preferred mode. Service accounts have no My Drive storage
+quota, so that mode requires a Shared Drive. `user_oauth` is the approved fallback for a
+dedicated organisation-controlled account when Shared Drives are unavailable. It uses
+that user's storage quota and must not use a personal family mailbox. The account must
+contain no unrelated organisational or personal Drive data. Both modes require the full
+Drive API scope because the runtime must discover and manage a pre-existing restricted
+folder. In `user_oauth` mode, the dedicated account itself is the credential boundary;
+the configured folder is the application's enforced storage target.
+
+## Google Credential Modes
+
+For `service_account`, store:
+
+```text
+GOOGLE_AUTH_MODE=service_account
+GOOGLE_SERVICE_ACCOUNT_EMAIL=
+GOOGLE_PRIVATE_KEY=
+```
+
+For `user_oauth`, store:
+
+```text
+GOOGLE_AUTH_MODE=user_oauth
+GOOGLE_OAUTH_CLIENT_ID=
+GOOGLE_OAUTH_CLIENT_SECRET=
+GOOGLE_OAUTH_REFRESH_TOKEN=
+```
+
+The user grant must be issued to the dedicated Rosewood organisation account with only
+the Drive and Sheets scopes used by this application. Store the refresh token only in
+Secrets Manager, keep MFA and account recovery current, keep unrelated data out of that
+account, document the OAuth client owner, and test revocation/rotation before real
+intake. If both credential sets are retained for rollback, `GOOGLE_AUTH_MODE` is
+mandatory so a deployment cannot switch identity silently.
 
 Never place those values, the temporary sender address, folder IDs, Sheet IDs, tokens or
 real family details in Git.
@@ -27,8 +59,9 @@ real family details in Git.
 
 Set `EXPECTED_AWS_ACCOUNT_ID` to the explicitly approved non-University account. The
 preflight fails closed if the active credentials point anywhere else. It also checks the
-secret shape and strength, SES account and sender, an actual Drive create/delete probe
-and Sheet read access without printing credentials or external identifiers.
+secret shape and strength, the explicitly selected Google authentication mode, SES
+account and sender, an actual Drive create/delete probe and Sheet read access without
+printing credentials or external identifiers.
 
 ```bash
 cd "Rosewood enrolment/v2/lambda"

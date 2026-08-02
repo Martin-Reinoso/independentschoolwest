@@ -4,7 +4,7 @@ Description: Rosewood College invitation-only enrolment V2 test service
 Parameters:
   ConfigSecretArn:
     Type: String
-    Description: Secrets Manager JSON containing OTP salts and Google service-account credentials
+    Description: Secrets Manager JSON containing OTP salts and one explicitly selected Google credential mode
   OtpFromEmail:
     Type: String
     Description: Externally verified SES sender; temporary test identity only

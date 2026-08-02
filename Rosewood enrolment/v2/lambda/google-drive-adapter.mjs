@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { GoogleAccessTokenProvider } from "./google-auth.mjs";
 
 // drive.file cannot discover a restricted folder shared manually with a service
 // account. The account's Drive ACL remains the effective resource boundary.
@@ -7,10 +8,6 @@ const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive";
 function required(name, value) {
   if (!value) throw new Error(`Missing required Google Drive setting: ${name}`);
   return value;
-}
-
-function base64Url(value) {
-  return Buffer.from(value).toString("base64url");
 }
 
 function safeName(value) {
@@ -23,38 +20,15 @@ function safeName(value) {
 }
 
 export class GoogleDriveAdapter {
-  constructor({ serviceAccountEmail, privateKey, folderId, fetchImpl = fetch, now = () => Date.now() }) {
-    this.serviceAccountEmail = required("serviceAccountEmail", serviceAccountEmail);
-    this.privateKey = required("privateKey", privateKey).replace(/\\n/g, "\n");
+  constructor({ authMode, serviceAccountEmail, privateKey, oauthClientId, oauthClientSecret, oauthRefreshToken, tokenProvider, folderId, fetchImpl = fetch, now = () => Date.now() }) {
     this.folderId = required("folderId", folderId);
     this.fetch = fetchImpl;
-    this.now = now;
-    this.token = null;
+    this.tokenProvider = tokenProvider || new GoogleAccessTokenProvider({ authMode, serviceAccountEmail, privateKey, oauthClientId, oauthClientSecret, oauthRefreshToken, scope: DRIVE_SCOPE, fetchImpl, now });
+    this.authMode = this.tokenProvider.mode;
   }
 
   async accessToken() {
-    if (this.token?.expiresAt > this.now() + 60_000) return this.token.value;
-    const issuedAt = Math.floor(this.now() / 1000);
-    const header = base64Url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
-    const claims = base64Url(JSON.stringify({
-      iss: this.serviceAccountEmail,
-      scope: DRIVE_SCOPE,
-      aud: "https://oauth2.googleapis.com/token",
-      iat: issuedAt,
-      exp: issuedAt + 3600
-    }));
-    const signingInput = `${header}.${claims}`;
-    const signature = crypto.createSign("RSA-SHA256").update(signingInput).end().sign(this.privateKey);
-    const assertion = `${signingInput}.${base64Url(signature)}`;
-    const response = await this.fetch("https://oauth2.googleapis.com/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion })
-    });
-    if (!response.ok) throw new Error(`Google OAuth failed with ${response.status}.`);
-    const payload = await response.json();
-    this.token = { value: payload.access_token, expiresAt: this.now() + Number(payload.expires_in || 3600) * 1000 };
-    return this.token.value;
+    return this.tokenProvider.accessToken();
   }
 
   async driveRequest(url, options = {}) {

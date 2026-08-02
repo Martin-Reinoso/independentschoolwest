@@ -25,7 +25,8 @@ document removal, forged-document rejection, declaration/signature validation,
 invitation consumption, primary/remote signatures, recipient-specific receipt OTP and
 data minimisation, outbox lease/retry behaviour, Dynamo transaction composition, atomic
 signature/idempotency completion, stale-claim recovery and expired-worker races, Google
-adapters, SES composition and HTML escaping.
+service-account and delegated-user OAuth adapters, explicit authentication-mode
+selection, SES composition and HTML escaping.
 
 The browser suite runs desktop Chromium and a Chromium mobile emulation. It covers
 comprehensive synthetic preview isolation, desktop panel clipping, mobile
@@ -38,7 +39,7 @@ stages, receipt desktop/mobile layout and accessibility, a real local OTP-to-sec
 flow, a full local additional-guardian email/OTP/review/signature flow, and an
 application-to-email-to-receipt-OTP canary.
 
-The current verified baseline is 46 API tests and 35 browser tests passing. Seven browser
+The current verified baseline is 49 API tests and 35 browser tests passing. Seven browser
 cases are deliberately skipped where a desktop-only transaction canary or a device-
 specific layout assertion would duplicate coverage. See `COMPLETION-AUDIT.md` for the
 difference between this local evidence and the pending live cloud canary.

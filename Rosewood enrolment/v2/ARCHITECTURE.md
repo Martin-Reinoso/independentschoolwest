@@ -108,12 +108,20 @@ domain configuration.
 
 ## Google Drive Interim Storage
 
-- A dedicated Rosewood service account receives editor access to one restricted folder
-  inside a non-University Google Shared Drive. A folder in an individual's My Drive is
-  not supported because service accounts have no personal storage quota, even when its
-  ACL reports `canAddChildren`.
-- The OAuth token uses the full Drive API scope because `drive.file` cannot discover a
-  folder shared manually through Drive. The Google ACL remains the resource boundary.
+- Preferred mode: a dedicated Rosewood service account receives editor access to one
+  restricted folder inside a non-University Google Shared Drive. A folder in My Drive is
+  not supported for service accounts because they have no personal storage quota, even
+  when its ACL reports `canAddChildren`.
+- Fallback mode: an explicitly selected `user_oauth` credential uses a dedicated
+  organisation-controlled Google user's quota. Its refresh token, OAuth client secret,
+  ownership and revocation procedure are controlled as production credentials.
+- The token uses the full Drive API scope because `drive.file` cannot discover and manage
+  the pre-existing restricted folder. In `service_account` mode, Shared Drive membership
+  and ACLs are the effective boundary. In `user_oauth` mode, the dedicated account is the
+  credential boundary and must contain no unrelated Drive data; the adapter enforces the
+  configured folder as the application target.
+- If service-account and user credentials coexist for rollback, the runtime fails closed
+  unless `GOOGLE_AUTH_MODE` explicitly selects one.
 - Deployment preflight creates and deletes a tiny probe file; an ACL-only read check is
   not accepted as proof that binary uploads will work.
 - The backend creates scoped resumable uploads with fixed type, name, size and application

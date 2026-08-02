@@ -22,13 +22,21 @@ async function buildService() {
   const config = { ...process.env, ...secret };
   const store = new DynamoStore({ tableName: config.ROSEWOOD_TABLE_NAME });
   const drive = new GoogleDriveAdapter({
+    authMode: config.GOOGLE_AUTH_MODE,
     serviceAccountEmail: config.GOOGLE_SERVICE_ACCOUNT_EMAIL,
     privateKey: config.GOOGLE_PRIVATE_KEY,
+    oauthClientId: config.GOOGLE_OAUTH_CLIENT_ID,
+    oauthClientSecret: config.GOOGLE_OAUTH_CLIENT_SECRET,
+    oauthRefreshToken: config.GOOGLE_OAUTH_REFRESH_TOKEN,
     folderId: config.GOOGLE_DRIVE_FOLDER_ID
   });
   const tracker = config.GOOGLE_SHEETS_SPREADSHEET_ID ? new GoogleSheetsTracker({
+    authMode: config.GOOGLE_AUTH_MODE,
     serviceAccountEmail: config.GOOGLE_SERVICE_ACCOUNT_EMAIL,
     privateKey: config.GOOGLE_PRIVATE_KEY,
+    oauthClientId: config.GOOGLE_OAUTH_CLIENT_ID,
+    oauthClientSecret: config.GOOGLE_OAUTH_CLIENT_SECRET,
+    oauthRefreshToken: config.GOOGLE_OAUTH_REFRESH_TOKEN,
     spreadsheetId: config.GOOGLE_SHEETS_SPREADSHEET_ID,
     sheetName: config.GOOGLE_SHEETS_V2_ENGAGEMENT_TAB || "V2 Engagement"
   }) : { record: async () => {} };

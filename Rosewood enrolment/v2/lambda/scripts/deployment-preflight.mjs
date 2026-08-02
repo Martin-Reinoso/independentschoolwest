@@ -31,7 +31,7 @@ if (identity.Account !== expectedAccountId) {
 const secretResult = await new SecretsManagerClient({}).send(new GetSecretValueCommand({ SecretId: secretArn }));
 const secretText = secretResult.SecretString || Buffer.from(secretResult.SecretBinary || "", "base64").toString("utf8");
 const config = JSON.parse(secretText || "{}");
-for (const name of ["OTP_HMAC_SECRET", "IP_HASH_SALT", "GOOGLE_SERVICE_ACCOUNT_EMAIL", "GOOGLE_PRIVATE_KEY"]) assertSecret(config, name);
+for (const name of ["OTP_HMAC_SECRET", "IP_HASH_SALT"]) assertSecret(config, name);
 if (config.OTP_HMAC_SECRET.length < 32 || config.IP_HASH_SALT.length < 32) throw new Error("OTP and network-fingerprint secrets must each contain at least 32 characters.");
 
 const ses = new SESv2Client({});
@@ -42,11 +42,19 @@ const [sesAccount, sesIdentity] = await Promise.all([
 if (!sesAccount.SendingEnabled) throw new Error("SES account sending is disabled.");
 if (!sesIdentity.VerifiedForSendingStatus) throw new Error("The configured SES sender is not verified for sending.");
 
-const drive = new GoogleDriveAdapter({ serviceAccountEmail: config.GOOGLE_SERVICE_ACCOUNT_EMAIL, privateKey: config.GOOGLE_PRIVATE_KEY, folderId: driveFolderId });
+const googleCredentials = {
+  authMode: config.GOOGLE_AUTH_MODE,
+  serviceAccountEmail: config.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+  privateKey: config.GOOGLE_PRIVATE_KEY,
+  oauthClientId: config.GOOGLE_OAUTH_CLIENT_ID,
+  oauthClientSecret: config.GOOGLE_OAUTH_CLIENT_SECRET,
+  oauthRefreshToken: config.GOOGLE_OAUTH_REFRESH_TOKEN
+};
+const drive = new GoogleDriveAdapter({ ...googleCredentials, folderId: driveFolderId });
 const folderResponse = await drive.driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(driveFolderId)}?supportsAllDrives=true&fields=id,mimeType,trashed,capabilities(canAddChildren)`);
 const folder = await folderResponse.json();
 if (folder.trashed || folder.mimeType !== "application/vnd.google-apps.folder" || !folder.capabilities?.canAddChildren) {
-  throw new Error("The Google service account cannot add files to the configured restricted Drive folder.");
+  throw new Error("The selected Google runtime identity cannot add files to the configured restricted Drive folder.");
 }
 let driveProbe;
 try {
@@ -60,18 +68,19 @@ try {
   await drive.deleteFile(driveProbe.documentId);
 } catch (error) {
   if (driveProbe?.documentId) await drive.deleteFile(driveProbe.documentId).catch(() => {});
-  throw new Error("The configured Drive folder passed its ACL check but failed an actual create/delete probe. Use a non-University Shared Drive or an approved delegated-user OAuth design.", { cause: error });
+  throw new Error("The configured Drive folder passed its ACL check but failed an actual create/delete probe. Use a non-University Shared Drive with service-account mode or a quota-bearing organisation user in user_oauth mode.", { cause: error });
 }
 
-const tracker = new GoogleSheetsTracker({ serviceAccountEmail: config.GOOGLE_SERVICE_ACCOUNT_EMAIL, privateKey: config.GOOGLE_PRIVATE_KEY, spreadsheetId });
+const tracker = new GoogleSheetsTracker({ ...googleCredentials, spreadsheetId });
 const sheetResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}?fields=spreadsheetId,sheets.properties.title`, { headers: { Authorization: `Bearer ${await tracker.accessToken()}` } });
-if (!sheetResponse.ok) throw new Error(`The Google service account cannot read the configured private Sheet (${sheetResponse.status}).`);
+if (!sheetResponse.ok) throw new Error(`The selected Google runtime identity cannot read the configured private Sheet (${sheetResponse.status}).`);
 
 process.stdout.write(JSON.stringify({
   awsAccountVerified: true,
   sesSendingEnabled: true,
   sesSenderVerified: true,
   googleSecretComplete: true,
+  googleAuthMode: drive.authMode,
   restrictedDriveWritable: true,
   privateSheetReadable: true,
   sesProductionAccessEnabled: Boolean(sesAccount.ProductionAccessEnabled)

@@ -1,23 +1,19 @@
-import crypto from "node:crypto";
+import { GoogleSheetsTracker } from "../google-sheets-tracker.mjs";
 
-function base64Url(value) {
-  return Buffer.from(value).toString("base64url");
-}
-
-const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || "";
-const privateKey = (process.env.GOOGLE_PRIVATE_KEY || "").replace(/\\n/g, "\n");
 const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID || "";
 const sheetName = process.env.GOOGLE_SHEETS_V2_ENGAGEMENT_TAB || "V2 Engagement";
-if (!email || !privateKey || !spreadsheetId) throw new Error("Set GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY and GOOGLE_SHEETS_SPREADSHEET_ID.");
-
-const issuedAt = Math.floor(Date.now() / 1000);
-const header = base64Url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
-const claims = base64Url(JSON.stringify({ iss: email, scope: "https://www.googleapis.com/auth/spreadsheets", aud: "https://oauth2.googleapis.com/token", iat: issuedAt, exp: issuedAt + 3600 }));
-const signingInput = `${header}.${claims}`;
-const signature = crypto.createSign("RSA-SHA256").update(signingInput).end().sign(privateKey);
-const tokenResponse = await fetch("https://oauth2.googleapis.com/token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion: `${signingInput}.${base64Url(signature)}` }) });
-if (!tokenResponse.ok) throw new Error(`Google OAuth failed with ${tokenResponse.status}.`);
-const accessToken = (await tokenResponse.json()).access_token;
+if (!spreadsheetId) throw new Error("Set GOOGLE_SHEETS_SPREADSHEET_ID and one complete supported Google credential set.");
+const tracker = new GoogleSheetsTracker({
+  authMode: process.env.GOOGLE_AUTH_MODE,
+  serviceAccountEmail: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+  privateKey: process.env.GOOGLE_PRIVATE_KEY,
+  oauthClientId: process.env.GOOGLE_OAUTH_CLIENT_ID,
+  oauthClientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
+  oauthRefreshToken: process.env.GOOGLE_OAUTH_REFRESH_TOKEN,
+  spreadsheetId,
+  sheetName
+});
+const accessToken = await tracker.accessToken();
 const auth = { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" };
 const metadataResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}?fields=sheets.properties`, { headers: auth });
 if (!metadataResponse.ok) throw new Error(`Could not read spreadsheet metadata (${metadataResponse.status}).`);

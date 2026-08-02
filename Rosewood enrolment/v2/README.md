@@ -42,6 +42,9 @@ and OTP-protected receipt experiences are served from `pages/rosewood-sign-v2.ht
 - Amazon SES sends transactional OTP, signature and receipt messages.
 - A restricted Google Drive folder stores submitted application snapshots, signature
   artifacts and uploaded documents during the approved interim period.
+- Google access is explicitly configured as either a service account backed by a Shared
+  Drive or delegated-user OAuth for a dedicated organisation-controlled account; the
+  mandatory create/delete preflight proves the selected identity has storage quota.
 - A private Google Sheet stores bounded engagement events only, not family answers,
   Drive references, OTPs, active tokens or signature images.
 - DynamoDB atomically stores completion state, recipient-specific receipt capabilities

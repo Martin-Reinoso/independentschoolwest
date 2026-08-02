@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import { GoogleAccessTokenProvider } from "../google-auth.mjs";
 import { GoogleDriveAdapter } from "../google-drive-adapter.mjs";
 import { GoogleSheetsTracker } from "../google-sheets-tracker.mjs";
 import { SesMailer } from "../ses-mailer.mjs";
@@ -60,6 +61,43 @@ test("Drive deployment probe creates and deletes a real file", async () => {
   assert.equal(calls[2].options.method, "DELETE");
 });
 
+test("Drive supports an explicitly selected delegated-user OAuth refresh token", async () => {
+  const calls = [];
+  const responses = [
+    new Response(JSON.stringify({ access_token: "user-token", expires_in: 3600 }), { status: 200 }),
+    new Response(JSON.stringify({ id: "user-drive-file" }), { status: 200 })
+  ];
+  const adapter = new GoogleDriveAdapter({
+    authMode: "user_oauth",
+    oauthClientId: "client-id",
+    oauthClientSecret: "client-secret",
+    oauthRefreshToken: "refresh-token",
+    folderId: "folder-1",
+    fetchImpl: async (url, options) => { calls.push({ url: String(url), options }); return responses.shift(); }
+  });
+  const result = await adapter.createFile({ name: "probe.txt", mimeType: "text/plain", data: "probe", applicationId: "preflight", kind: "deployment_preflight" });
+  const tokenParameters = new URLSearchParams(calls[0].options.body);
+  assert.equal(adapter.authMode, "user_oauth");
+  assert.equal(tokenParameters.get("grant_type"), "refresh_token");
+  assert.equal(tokenParameters.get("client_id"), "client-id");
+  assert.equal(tokenParameters.get("refresh_token"), "refresh-token");
+  assert.equal(calls[1].options.headers.Authorization, "Bearer user-token");
+  assert.equal(result.documentId, "user-drive-file");
+});
+
+test("Google auth fails closed on ambiguous or incomplete credential sets", () => {
+  assert.throws(() => new GoogleAccessTokenProvider({
+    serviceAccountEmail: "service@example.test",
+    privateKey: signingKey(),
+    oauthClientId: "client-id",
+    oauthClientSecret: "client-secret",
+    oauthRefreshToken: "refresh-token",
+    scope: "scope"
+  }), /Set GOOGLE_AUTH_MODE/);
+  assert.throws(() => new GoogleAccessTokenProvider({ authMode: "user_oauth", oauthClientId: "client-id", scope: "scope" }), /incomplete/);
+  assert.throws(() => new GoogleAccessTokenProvider({ authMode: "unsupported", scope: "scope" }), /GOOGLE_AUTH_MODE/);
+});
+
 test("Sheets tracker writes only the documented operational columns", async () => {
   const calls = [];
   const responses = [new Response(JSON.stringify({ access_token: "token", expires_in: 3600 }), { status: 200 }), new Response(JSON.stringify({ updates: { updatedRows: 1 } }), { status: 200 })];
@@ -69,6 +107,16 @@ test("Sheets tracker writes only the documented operational columns", async () =
   assert.equal(row.length, 9);
   assert.equal(row.includes("must not be written"), false);
   assert.match(calls[1].url, /values/);
+});
+
+test("Sheets uses delegated-user OAuth without changing the privacy-minimised row", async () => {
+  const calls = [];
+  const responses = [new Response(JSON.stringify({ access_token: "user-token", expires_in: 3600 }), { status: 200 }), new Response(JSON.stringify({ updates: { updatedRows: 1 } }), { status: 200 })];
+  const tracker = new GoogleSheetsTracker({ authMode: "user_oauth", oauthClientId: "client-id", oauthClientSecret: "client-secret", oauthRefreshToken: "refresh-token", spreadsheetId: "sheet-1", fetchImpl: async (url, options) => { calls.push({ url: String(url), options }); return responses.shift(); } });
+  await tracker.record({ occurredAt: "2026-08-03T00:00:00.000Z", eventName: "stage_viewed", applicationId: "app-1", inviteId: "invite-1", stage: 3, elapsedSeconds: 11, viewport: "1440x1000", schemaVersion: "v2", id: "event-2" });
+  assert.equal(new URLSearchParams(calls[0].options.body).get("grant_type"), "refresh_token");
+  assert.equal(JSON.parse(calls[1].options.body).values[0].length, 9);
+  assert.equal(calls[1].options.headers.Authorization, "Bearer user-token");
 });
 
 test("SES mailer sends branded HTML and text without mailbox credentials", async () => {
@@ -342,6 +390,7 @@ test("invitation utility fails closed without explicit synthetic controls", () =
 test("deployment template includes URL-only public invocation and scheduled outbox retry", () => {
   const template = readFileSync(new URL("../../template.yaml", import.meta.url), "utf8");
   assert.match(template, /Code: lambda-dist\//);
+  assert.match(readFileSync(new URL("../../lambda/scripts/build-deployment.mjs", import.meta.url), "utf8"), /"google-auth\.mjs"/);
   assert.match(template, /DeletionProtectionEnabled: true/);
   assert.match(template, /Resource: !Sub "\$\{ConfigSecretArn\}\*"/);
   assert.doesNotMatch(template, /^\s+Cors:/m);

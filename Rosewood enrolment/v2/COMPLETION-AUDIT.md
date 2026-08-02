@@ -7,9 +7,12 @@ for real family information and must not be promoted to production yet.**
 
 The frontend, API, persistence contract, OTP flows, co-signing flow and receipt flow are
 implemented and pass local automated end-to-end tests. The live cloud canary is paused
-because the current Google folder is in an individual's My Drive. A service account may
-have editor ACLs there but has no personal Drive storage quota, so real file creation
-fails. The deployment preflight detects this with a create/delete probe and fails closed.
+because the current Google folder is in My Drive while the deployed credentials select a
+service account. A service account may have editor ACLs there but has no personal Drive
+storage quota, so real file creation fails. The deployment preflight detects this with a
+create/delete probe and fails closed. The backend now supports the approved
+organisation-user OAuth alternative, but its OAuth client and refresh token have not yet
+been provisioned.
 
 ## Implemented
 
@@ -31,10 +34,12 @@ fails. The deployment preflight detects this with a create/delete probe and fail
 - recipient-specific minimal receipt with a fresh OTP and no sensitive application detail
 - strict static-page CSP, URL token scrubbing and browser capability cleanup
 - placeholder policy pack that is visibly unapproved and versioned
+- explicit Google authentication modes supporting both Shared Drive service accounts and
+  quota-bearing organisation-user OAuth, with fail-closed credential selection
 
 ## Verified
 
-- 46 API tests pass
+- 49 API tests pass
 - 35 browser tests pass across desktop and mobile Chromium
 - serious/critical Axe checks pass on the main and receipt experiences under the CSP
 - Lambda deployment bundle builds without symbolic links and imports its handler
@@ -48,12 +53,13 @@ replay and invitation invalidation after submission.
 
 ## External Blocker
 
-Choose and configure one quota-bearing Google identity before deployment:
+Configure one quota-bearing Google identity before deployment:
 
 1. Preferred: a non-University Google Workspace Shared Drive with a dedicated Rosewood
    service account and access only to the restricted enrolment folder.
-2. Alternative: delegated-user OAuth for a dedicated Rosewood Google account, with token
-   storage, rotation and offboarding controls documented before use.
+2. Currently actionable alternative: set up delegated-user OAuth for the dedicated
+   Rosewood organisation account, store the OAuth client and refresh token in Secrets
+   Manager, and document token rotation, revocation and account offboarding.
 
 Do not replace this requirement with public links, a personal service-account workaround
 or an undocumented S3 fallback. Do not deploy this branch until the mandatory preflight

@@ -9,6 +9,7 @@ const runtimeFiles = [
   "core.mjs",
   "dynamo-store.mjs",
   "email-templates.mjs",
+  "google-auth.mjs",
   "google-drive-adapter.mjs",
   "google-sheets-tracker.mjs",
   "index.mjs",

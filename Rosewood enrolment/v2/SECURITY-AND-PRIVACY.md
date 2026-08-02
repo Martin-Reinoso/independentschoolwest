@@ -23,14 +23,19 @@ all application content and metadata as restricted.
 - backend draft storage rejects unknown fields, out-of-contract values and client-supplied
   document references, and pins schema/policy versions to trusted runtime configuration
 - DynamoDB conditional writes enforce revisions, challenge use and signature uniqueness
-- Drive and Sheets are private and shared only with named staff/service accounts
+- Drive and Sheets are private and shared only with named staff and the selected,
+  organisation-controlled runtime identity
 - the Drive adapter uses the full Drive API OAuth scope because `drive.file` cannot
-  discover a manually shared folder; effective access is constrained by the Drive ACL,
-  and production must use a dedicated Rosewood service account shared only to a folder
-  in a non-University Shared Drive
+  discover and manage a pre-existing restricted folder; a user OAuth credential can
+  access that dedicated account's Drive, so the account must contain no unrelated data
+  and the adapter separately enforces the configured folder target
+- preferred storage uses a dedicated Rosewood service account and non-University Shared
+  Drive; the supported fallback uses a dedicated organisation-user OAuth refresh token
+  with explicit mode selection, MFA, rotation, revocation and offboarding controls
 - deployment preflight proves Drive writes with a create/delete probe; `canAddChildren`
   alone is insufficient because service accounts have no personal My Drive quota
-- Google and AWS credentials live in Secrets Manager or deployment configuration, not Git
+- Google service-account keys or OAuth client/refresh credentials and AWS credentials
+  live in Secrets Manager or deployment configuration, not Git
 - production runtime startup fails closed on weak/missing secrets, missing schema/email
   configuration, non-HTTPS origins or non-HTTPS signature/receipt page URLs
 - application, OTP, token, signature and document values are excluded from logs

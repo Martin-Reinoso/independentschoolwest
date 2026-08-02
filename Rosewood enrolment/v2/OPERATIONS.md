@@ -29,6 +29,17 @@ The tab contains only timestamp, event, opaque application/invitation IDs, stage
 elapsed time, viewport, schema version and event ID. It intentionally excludes names,
 email addresses, medical answers, OTPs, tokens and signatures.
 
+## Google Runtime Identity
+
+- Confirm `GOOGLE_AUTH_MODE` matches the approved identity before each deployment.
+- For `service_account`, confirm the destination remains inside the approved Shared
+  Drive and the service account has no access beyond the restricted folder/Sheet.
+- For `user_oauth`, confirm the dedicated organisation account remains active, protected
+  by MFA and owned through a documented recovery route; rotate or revoke the refresh
+  token through Secrets Manager without placing it in shell history or Git.
+- Switching modes or Google users requires a successful create/delete probe, Sheet read,
+  synthetic upload, canonical snapshot and signature-artifact canary before use.
+
 ## Daily Checks
 
 - Lambda errors and latency
@@ -37,6 +48,8 @@ email addresses, medical answers, OTPs, tokens and signatures.
 - pending outbox records
 - EventBridge outbox rule invocations and records whose lease repeatedly releases
 - Drive folder membership and unexpected sharing changes
+- OAuth client ownership, refresh-token validity and organisation-account recovery when
+  `user_oauth` is selected
 - Sheet headers and sharing configuration
 - invitations or signature tasks nearing expiry
 - applications remaining in `pending_signatures`
