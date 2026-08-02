@@ -170,36 +170,61 @@ export class DynamoStore {
 
   async idempotent(key, operation) {
     const pk = `IDEMPOTENCY#${key}`;
+    let claimAt = this.now();
     try {
       await this.client.send(new PutCommand({
         TableName: this.tableName,
-        Item: { ...this.key(pk), entity: "idempotency", status: "PENDING", createdAt: this.now(), ttl: Math.floor(this.now() / 1000) + 86_400 },
+        Item: { ...this.key(pk), entity: "idempotency", status: "PENDING", createdAt: claimAt, ttl: Math.floor(claimAt / 1000) + 86_400 },
         ConditionExpression: "attribute_not_exists(PK)"
       }));
     } catch (error) {
       if (!isConditional(error)) throw error;
       const existing = (await this.get(pk)).Item;
       if (existing?.status === "COMPLETED") return clone(existing.result);
-      throw Object.assign(new Error("This operation is already being processed. Retry shortly."), { status: 409, code: "OPERATION_IN_PROGRESS" });
+      const staleBefore = this.now() - 60_000;
+      if (existing?.status !== "PENDING" || Number(existing.createdAt) > staleBefore) {
+        throw Object.assign(new Error("This operation is already being processed. Retry shortly."), { status: 409, code: "OPERATION_IN_PROGRESS" });
+      }
+      claimAt = this.now();
+      try {
+        await this.client.send(new UpdateCommand({
+          TableName: this.tableName,
+          Key: this.key(pk),
+          UpdateExpression: "SET #createdAt = :claimAt, #ttl = :ttl",
+          ConditionExpression: "#status = :pending AND #createdAt = :previousClaim",
+          ExpressionAttributeNames: { "#status": "status", "#createdAt": "createdAt", "#ttl": "ttl" },
+          ExpressionAttributeValues: { ":pending": "PENDING", ":previousClaim": existing.createdAt, ":claimAt": claimAt, ":ttl": Math.floor(claimAt / 1000) + 86_400 }
+        }));
+      } catch (claimError) {
+        if (isConditional(claimError)) throw Object.assign(new Error("This operation is already being processed. Retry shortly."), { status: 409, code: "OPERATION_IN_PROGRESS" });
+        throw claimError;
+      }
     }
+    const transaction = {
+      committed: false,
+      completionAction: (result) => ({
+        Update: {
+          TableName: this.tableName,
+          Key: this.key(pk),
+          UpdateExpression: "SET #status = :completed, #result = :result, #completedAt = :now",
+          ConditionExpression: "#status = :pending AND #createdAt = :claimAt",
+          ExpressionAttributeNames: { "#status": "status", "#result": "result", "#completedAt": "completedAt", "#createdAt": "createdAt" },
+          ExpressionAttributeValues: { ":completed": "COMPLETED", ":pending": "PENDING", ":result": clone(result), ":now": this.now(), ":claimAt": claimAt }
+        }
+      }),
+      markCommitted() { this.committed = true; }
+    };
     try {
-      const result = await operation();
-      await this.client.send(new UpdateCommand({
-        TableName: this.tableName,
-        Key: this.key(pk),
-        UpdateExpression: "SET #status = :completed, #result = :result, #completedAt = :now",
-        ConditionExpression: "#status = :pending",
-        ExpressionAttributeNames: { "#status": "status", "#result": "result", "#completedAt": "completedAt" },
-        ExpressionAttributeValues: { ":completed": "COMPLETED", ":pending": "PENDING", ":result": clone(result), ":now": this.now() }
-      }));
+      const result = await operation(transaction);
+      if (!transaction.committed) await this.client.send(new UpdateCommand(transaction.completionAction(result).Update));
       return result;
     } catch (error) {
-      await this.client.send(new DeleteCommand({ TableName: this.tableName, Key: this.key(pk), ConditionExpression: "#status = :pending", ExpressionAttributeNames: { "#status": "status" }, ExpressionAttributeValues: { ":pending": "PENDING" } })).catch(() => {});
+      if (!transaction.committed) await this.client.send(new DeleteCommand({ TableName: this.tableName, Key: this.key(pk), ConditionExpression: "#status = :pending AND #createdAt = :claimAt", ExpressionAttributeNames: { "#status": "status", "#createdAt": "createdAt" }, ExpressionAttributeValues: { ":pending": "PENDING", ":claimAt": claimAt } })).catch(() => {});
       throw error;
     }
   }
 
-  async submitApplication({ applicationId, expectedRevision, frozen, primarySignature, signers, signatureTasks = [], receiptTasks = [], outboxEvents = [], submittedAt, status, reference }) {
+  async submitApplication({ applicationId, expectedRevision, frozen, primarySignature, signers, signatureTasks = [], receiptTasks = [], outboxEvents = [], submittedAt, status, reference, idempotency, idempotencyResult }) {
     const app = await this.getApplication(applicationId);
     if (!app || app.status !== "draft" || Number(app.revision) !== Number(expectedRevision)) throw conflict();
     const next = {
@@ -231,8 +256,10 @@ export class DynamoStore {
     for (const event of outboxEvents) {
       actions.push({ Put: { TableName: this.tableName, Item: { ...this.key("OUTBOX", `${event.createdAt}#${event.id}`), entity: "outbox", data: clone(event) }, ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)" } });
     }
+    if (idempotency) actions.push(idempotency.completionAction(idempotencyResult));
     try {
       await this.client.send(new TransactWriteCommand({ TransactItems: actions }));
+      idempotency?.markCommitted();
       return clone(next);
     } catch (error) {
       if (isConditional(error)) throw conflict();
@@ -276,7 +303,7 @@ export class DynamoStore {
     }
   }
 
-  async completeSignature({ tokenHash, signature, at, receiptTasks = [], outboxEvents = [] }) {
+  async completeSignature({ tokenHash, signature, at, receiptTasks = [], outboxEvents = [], idempotency, idempotencyResult }) {
     const task = await this.getSignatureTask(tokenHash);
     if (!task || task.status !== "invited") return null;
     const app = await this.getApplication(task.applicationId);
@@ -297,7 +324,9 @@ export class DynamoStore {
       for (const event of outboxEvents) {
         actions.push({ Put: { TableName: this.tableName, Item: { ...this.key("OUTBOX", `${event.createdAt}#${event.id}`), entity: "outbox", data: clone(event) }, ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)" } });
       }
+      if (idempotency) actions.push(idempotency.completionAction(idempotencyResult));
       await this.client.send(new TransactWriteCommand({ TransactItems: actions }));
+      idempotency?.markCommitted();
       return { task: clone(nextTask), application: clone(nextApp) };
     } catch (error) {
       if (isConditional(error)) return null;

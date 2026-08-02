@@ -43,6 +43,11 @@ AWS Lambda
 
 Every write uses an idempotency key. Revision writes use an expected base revision.
 Repeated accepted operations return the original result rather than creating duplicates.
+For primary submission and a remote signer's final submission, the completed idempotency
+result commits in the same DynamoDB transaction as the irreversible state transition.
+Pending claims are leased for 60 seconds: a later request may reclaim a genuinely stale
+claim, while claim timestamps prevent the expired worker from completing or deleting the
+replacement operation.
 
 ## DynamoDB Single-Table Records
 

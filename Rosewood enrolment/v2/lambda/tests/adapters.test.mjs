@@ -131,6 +131,137 @@ test("Dynamo final-signature transaction updates confirmed signer details with r
   assert.equal(transaction.TransactItems[3].Put.Item.PK, "OUTBOX");
 });
 
+test("critical Dynamo commit and idempotency result survive a post-commit interruption", async () => {
+  const markerKey = "IDEMPOTENCY#critical-operation";
+  let marker;
+  let deletes = 0;
+  const app = { id: "app-atomic", status: "draft", revision: 1, signatures: [], signers: [], events: [] };
+  const conditional = () => Object.assign(new Error("conditional"), { name: "ConditionalCheckFailedException" });
+  const client = { async send(command) {
+    const input = command.input;
+    if (input.Item?.entity === "idempotency") {
+      if (marker) throw conditional();
+      marker = structuredClone(input.Item);
+      return {};
+    }
+    if (input.Key?.PK === markerKey && input.ConsistentRead) return { Item: structuredClone(marker) };
+    if (input.Key?.PK === "APP#app-atomic") return { Item: { data: structuredClone(app) } };
+    if (input.TransactItems) {
+      const completion = input.TransactItems.find((item) => item.Update?.Key?.PK === markerKey)?.Update;
+      assert.ok(completion, "Application transaction must include idempotency completion");
+      marker.status = "COMPLETED";
+      marker.result = structuredClone(completion.ExpressionAttributeValues[":result"]);
+      marker.completedAt = completion.ExpressionAttributeValues[":now"];
+      return {};
+    }
+    if (input.Key?.PK === markerKey && input.ConditionExpression?.includes("#createdAt")) {
+      deletes += 1;
+      return {};
+    }
+    return {};
+  } };
+  const store = new DynamoStore({ tableName: "table", client, now: () => 1_000_000 });
+  const expected = { status: "submitted", reference: "RW-ATOMIC" };
+  await assert.rejects(() => store.idempotent("critical-operation", async (idempotency) => {
+    await store.submitApplication({
+      applicationId: "app-atomic",
+      expectedRevision: 1,
+      frozen: { hash: "hash" },
+      primarySignature: { signerId: "signer-a" },
+      signers: [{ id: "signer-a", required: true }],
+      submittedAt: "2026-08-02T00:00:00.000Z",
+      status: "submitted",
+      reference: "RW-ATOMIC",
+      idempotency,
+      idempotencyResult: expected
+    });
+    throw new Error("Synthetic interruption after transaction");
+  }), /Synthetic interruption/);
+  assert.equal(marker.status, "COMPLETED");
+  assert.equal(deletes, 0);
+
+  let replayedOperation = false;
+  const replay = await store.idempotent("critical-operation", async () => { replayedOperation = true; });
+  assert.deepEqual(replay, expected);
+  assert.equal(replayedOperation, false);
+});
+
+test("Dynamo idempotency reclaims only stale in-progress operations", async () => {
+  let now = 2_000_000;
+  let marker = { PK: "IDEMPOTENCY#stale-operation", SK: "META", entity: "idempotency", status: "PENDING", createdAt: now - 61_000 };
+  const conditional = () => Object.assign(new Error("conditional"), { name: "ConditionalCheckFailedException" });
+  const client = { async send(command) {
+    const input = command.input;
+    if (input.Item?.entity === "idempotency") throw conditional();
+    if (input.Key?.PK === marker.PK && input.ConsistentRead) return { Item: structuredClone(marker) };
+    if (input.Key?.PK === marker.PK && input.UpdateExpression?.includes("#createdAt = :claimAt")) {
+      assert.equal(input.ExpressionAttributeValues[":previousClaim"], marker.createdAt);
+      marker.createdAt = input.ExpressionAttributeValues[":claimAt"];
+      return {};
+    }
+    if (input.Key?.PK === marker.PK && input.UpdateExpression?.includes("#status = :completed")) {
+      marker.status = "COMPLETED";
+      marker.result = structuredClone(input.ExpressionAttributeValues[":result"]);
+      return {};
+    }
+    return {};
+  } };
+  const store = new DynamoStore({ tableName: "table", client, now: () => now });
+  const recovered = await store.idempotent("stale-operation", async () => ({ recovered: true }));
+  assert.deepEqual(recovered, { recovered: true });
+  assert.equal(marker.status, "COMPLETED");
+
+  marker = { PK: "IDEMPOTENCY#stale-operation", SK: "META", entity: "idempotency", status: "PENDING", createdAt: now };
+  await assert.rejects(() => store.idempotent("stale-operation", async () => ({ shouldNotRun: true })), (error) => error.code === "OPERATION_IN_PROGRESS");
+});
+
+test("a reclaimed Dynamo operation cannot be overwritten or deleted by its expired worker", async () => {
+  let now = 3_000_000;
+  let marker;
+  let releaseExpiredWorker;
+  const expiredWorkerGate = new Promise((resolve) => { releaseExpiredWorker = resolve; });
+  const conditional = () => Object.assign(new Error("conditional"), { name: "ConditionalCheckFailedException" });
+  const client = { async send(command) {
+    const input = command.input;
+    if (input.Item?.entity === "idempotency") {
+      if (marker) throw conditional();
+      marker = structuredClone(input.Item);
+      return {};
+    }
+    if (input.Key?.PK === marker.PK && input.ConsistentRead) return { Item: structuredClone(marker) };
+    if (input.Key?.PK === marker.PK && input.UpdateExpression?.includes("#createdAt = :claimAt")) {
+      if (marker.status !== "PENDING" || marker.createdAt !== input.ExpressionAttributeValues[":previousClaim"]) throw conditional();
+      marker.createdAt = input.ExpressionAttributeValues[":claimAt"];
+      return {};
+    }
+    if (input.Key?.PK === marker.PK && input.UpdateExpression?.includes("#status = :completed")) {
+      if (marker.status !== "PENDING" || marker.createdAt !== input.ExpressionAttributeValues[":claimAt"]) throw conditional();
+      marker.status = "COMPLETED";
+      marker.result = structuredClone(input.ExpressionAttributeValues[":result"]);
+      return {};
+    }
+    if (input.Key?.PK === marker.PK && input.ConditionExpression?.includes("#createdAt")) {
+      if (marker.status !== "PENDING" || marker.createdAt !== input.ExpressionAttributeValues[":claimAt"]) throw conditional();
+      marker = undefined;
+      return {};
+    }
+    return {};
+  } };
+  const store = new DynamoStore({ tableName: "table", client, now: () => now });
+  const expiredWorker = store.idempotent("race-operation", async () => {
+    await expiredWorkerGate;
+    return { worker: "expired" };
+  });
+
+  now += 61_000;
+  const replacementResult = await store.idempotent("race-operation", async () => ({ worker: "replacement" }));
+  assert.deepEqual(replacementResult, { worker: "replacement" });
+  releaseExpiredWorker();
+  await assert.rejects(expiredWorker, (error) => error.name === "ConditionalCheckFailedException");
+  assert.equal(marker.status, "COMPLETED");
+  assert.deepEqual(marker.result, { worker: "replacement" });
+});
+
 test("deployment preflight fails closed before making cloud calls", () => {
   const lambdaDirectory = fileURLToPath(new URL("..", import.meta.url));
   const result = spawnSync(process.execPath, ["scripts/deployment-preflight.mjs"], {

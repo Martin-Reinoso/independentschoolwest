@@ -31,6 +31,9 @@ all application content and metadata as restricted.
   address bar after capture and retained only in tab-scoped session storage
 - completion state, receipt capabilities and all related outbox records commit in the
   same DynamoDB transaction
+- primary and remote-final signature transitions atomically commit their replayable
+  idempotency result; 60-second claim leases and claim-specific conditions prevent an
+  expired concurrent worker from overwriting or deleting a replacement operation
 - receipt responses are explicit minimal projections and never return the frozen
   application, documents, signature artifacts, mailbox addresses or network fingerprints
 

@@ -17,6 +17,7 @@ attempts/rates, scoped-session expiry, signature-task expiry at every gate, draf
 idempotency/revisions, bounded engagement, Drive ownership, forged-document rejection,
 declaration/signature validation, primary/remote signatures, recipient-specific receipt
 OTP and data minimisation, outbox lease/retry behaviour, Dynamo transaction composition,
+atomic signature/idempotency completion, stale-claim recovery and expired-worker races,
 Google adapters, SES composition and HTML escaping.
 
 The browser suite runs desktop Chromium and a Chromium mobile emulation. It covers

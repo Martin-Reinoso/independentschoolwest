@@ -40,6 +40,8 @@ email addresses, medical answers, OTPs, tokens and signatures.
 - Sheet headers and sharing configuration
 - invitations or signature tasks nearing expiry
 - applications remaining in `pending_signatures`
+- idempotency records remaining `PENDING` for more than 60 seconds; a client retry may
+  reclaim one automatically, but repeated stale claims require Lambda/DynamoDB review
 
 ## Support Language
 
@@ -49,6 +51,9 @@ email addresses, medical answers, OTPs, tokens and signatures.
 - `Pending signatures` means the primary signature is recorded but another required
   guardian has not completed their independent task.
 - `Submitted` means every required signature is attached to the frozen revision.
+- Retrying a timed-out submission with the same idempotency key returns its original
+  result when the transaction committed; do not create a second application or ask the
+  family to sign again until that replay has been checked.
 - `Receipt verified` means one receipt recipient used their private link and a fresh OTP;
   it does not reopen the application or establish an enrolment offer.
 
