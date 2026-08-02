@@ -86,10 +86,11 @@
 - birth certificate: required
 - immunisation history statement: required or approved pending explanation
 - proof of address: required
-- recent school report: required when the student has attended school, otherwise hidden
+- recent school report: required when the current level is Prep to Grade 5, otherwise hidden
 - visa/residency evidence: conditional
 - court/parenting orders: conditional and restricted
-- medical/action plans and specialist reports: conditional
+- medical/action plan: required when anaphylaxis is indicated; otherwise relevant health
+  or specialist reports remain optional until final evidence rules are approved
 - baptism/sacramental evidence: optional
 
 Allowed production types are PDF, JPEG and PNG only. Default maximum size is 8 MB per

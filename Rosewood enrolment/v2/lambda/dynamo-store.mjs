@@ -140,6 +140,28 @@ export class DynamoStore {
     }
   }
 
+  async detachDocument(applicationId, category, documentId) {
+    const app = await this.getApplication(applicationId);
+    const document = app?.documents?.[category];
+    if (!app || app.status !== "draft" || !document || document.documentId !== documentId) throw conflict("The document is no longer attached to this draft.");
+    const documents = { ...(app.documents || {}) };
+    delete documents[category];
+    try {
+      await this.client.send(new UpdateCommand({
+        TableName: this.tableName,
+        Key: this.key(`APP#${applicationId}`, "CURRENT"),
+        UpdateExpression: "SET #data.#documents = :documents",
+        ConditionExpression: "#data.#status = :draftStatus AND #data.#revision = :revision AND #data.#documents.#category.#documentId = :documentId",
+        ExpressionAttributeNames: { "#data": "data", "#documents": "documents", "#status": "status", "#revision": "revision", "#category": category, "#documentId": "documentId" },
+        ExpressionAttributeValues: { ":documents": documents, ":draftStatus": "draft", ":revision": app.revision, ":documentId": documentId }
+      }));
+      return clone(document);
+    } catch (error) {
+      if (isConditional(error)) throw conflict("The document changed before it could be removed.");
+      throw error;
+    }
+  }
+
   async recordEngagement(record) {
     await this.client.send(new PutCommand({
       TableName: this.tableName,
@@ -224,7 +246,7 @@ export class DynamoStore {
     }
   }
 
-  async submitApplication({ applicationId, expectedRevision, frozen, primarySignature, signers, signatureTasks = [], receiptTasks = [], outboxEvents = [], submittedAt, status, reference, idempotency, idempotencyResult }) {
+  async submitApplication({ applicationId, invitationTokenHash, expectedRevision, frozen, primarySignature, signers, signatureTasks = [], receiptTasks = [], outboxEvents = [], submittedAt, status, reference, idempotency, idempotencyResult }) {
     const app = await this.getApplication(applicationId);
     if (!app || app.status !== "draft" || Number(app.revision) !== Number(expectedRevision)) throw conflict();
     const next = {
@@ -247,6 +269,16 @@ export class DynamoStore {
         ExpressionAttributeValues: { ":draftStatus": "draft", ":revision": Number(expectedRevision) }
       }
     }];
+    actions.push({
+      Update: {
+        TableName: this.tableName,
+        Key: this.key(`INVITE#${invitationTokenHash}`),
+        UpdateExpression: "SET #data.#status = :submitted, #data.#submittedAt = :submittedAt",
+        ConditionExpression: "#data.#status = :active AND #data.#applicationId = :applicationId",
+        ExpressionAttributeNames: { "#data": "data", "#status": "status", "#submittedAt": "submittedAt", "#applicationId": "applicationId" },
+        ExpressionAttributeValues: { ":submitted": "submitted", ":submittedAt": submittedAt, ":active": "active", ":applicationId": applicationId }
+      }
+    });
     for (const task of signatureTasks) {
       actions.push({ Put: { TableName: this.tableName, Item: { ...this.key(`TASK#${task.tokenHash}`), entity: "signatureTask", ttl: task.ttl, data: clone(task) }, ConditionExpression: "attribute_not_exists(PK)" } });
     }
@@ -287,15 +319,26 @@ export class DynamoStore {
   async updateSignatureDetails(tokenHash, details) {
     const task = await this.getSignatureTask(tokenHash);
     if (!task || task.status !== "invited") throw conflict("This signing task is no longer editable.");
-    const next = { ...task, signer: { ...task.signer, ...clone(details) }, detailsConfirmedAt: new Date(this.now()).toISOString() };
+    const confirmedAt = new Date(this.now()).toISOString();
+    const next = { ...task, signer: { ...task.signer, ...clone(details) }, detailsConfirmedAt: confirmedAt };
     try {
-      await this.client.send(new PutCommand({
-        TableName: this.tableName,
-        Item: { ...this.key(`TASK#${tokenHash}`), entity: "signatureTask", ttl: task.ttl, data: next },
-        ConditionExpression: "#data.#status = :invited AND #data.#revisionHash = :hash",
-        ExpressionAttributeNames: { "#data": "data", "#status": "status", "#revisionHash": "revisionHash" },
-        ExpressionAttributeValues: { ":invited": "invited", ":hash": task.revisionHash }
-      }));
+      await this.client.send(new TransactWriteCommand({ TransactItems: [
+        { Put: {
+          TableName: this.tableName,
+          Item: { ...this.key(`TASK#${tokenHash}`), entity: "signatureTask", ttl: task.ttl, data: next },
+          ConditionExpression: "#data.#status = :invited AND #data.#revisionHash = :hash",
+          ExpressionAttributeNames: { "#data": "data", "#status": "status", "#revisionHash": "revisionHash" },
+          ExpressionAttributeValues: { ":invited": "invited", ":hash": task.revisionHash }
+        } },
+        { Update: {
+          TableName: this.tableName,
+          Key: this.key(`APP#${task.applicationId}`, "CURRENT"),
+          UpdateExpression: "SET #data.#events = list_append(if_not_exists(#data.#events, :empty), :event)",
+          ConditionExpression: "#data.#status = :pending AND #data.#frozen.#hash = :hash",
+          ExpressionAttributeNames: { "#data": "data", "#events": "events", "#status": "status", "#frozen": "frozen", "#hash": "hash" },
+          ExpressionAttributeValues: { ":empty": [], ":event": [{ type: "signature.details_confirmed", at: confirmedAt, signerId: task.signerId }], ":pending": "pending_signatures", ":hash": task.revisionHash }
+        } }
+      ] }));
       return clone(next);
     } catch (error) {
       if (isConditional(error)) throw conflict();

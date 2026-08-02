@@ -6,6 +6,7 @@
   <meta name="robots" content="noindex, nofollow, noarchive">
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Cache-Control" content="no-store">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.lambda-url.ap-southeast-2.on.aws https://*.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'; worker-src 'none'">
   <title>Review And Sign | Rosewood College</title>
   <link rel="stylesheet" href="rosewood-enrolment-v2.css">
 </head>
@@ -40,7 +41,7 @@
           <div class="stage-actions"><span></span><button class="button button-primary" data-sign-next type="button">Save details and review</button></div>
         </section>
         <section class="stage" data-sign-panel="1" hidden>
-          <div class="stage-intro"><p class="eyebrow">Review</p><h2>One frozen revision, arranged for reading.</h2><p class="lead">The application is grouped below. It cannot be edited in this task. If something is wrong, stop and contact Rosewood.</p></div>
+          <div class="stage-intro"><p class="eyebrow">Review</p><h2>One frozen revision, arranged for reading.</h2><p class="lead">The application is grouped below. It cannot be edited in this task. If something is wrong, stop and contact Rosewood.</p><p class="card-intro">Policy pack recorded with this revision: <strong id="sign-policy-version">Loading</strong></p></div>
           <div id="sign-review-content"></div>
           <div class="form-card"><h3>Ready to sign?</h3><label class="check-row"><input type="checkbox" name="reviewConfirmed" value="Yes" required><span><strong>I have reviewed the application revision and am ready to continue to the signature stage. <b class="required-mark">*</b></strong><small>The actual signature area is on the next page.</small></span></label></div>
           <div class="stage-actions"><button class="button button-secondary" data-sign-back type="button">Back</button><button class="button button-primary" data-sign-next type="button">Continue to my signature</button></div>
@@ -51,14 +52,14 @@
           <div class="stage-actions"><button class="button button-secondary" data-sign-back type="button">Back to review</button><button class="button button-primary" type="submit">Submit my signature</button></div>
         </section>
         <section class="stage" data-sign-panel="3" hidden>
-          <div class="success-card"><div class="success-mark">✓</div><p class="eyebrow">Signature recorded</p><h1>Your signature is complete.</h1><p class="lead" id="sign-complete-lead">Rosewood has recorded your signature against the reviewed revision.</p><ol class="status-timeline"><li class="is-complete"><strong>Mailbox verified</strong><span>Your OTP challenge was consumed.</span></li><li class="is-complete"><strong>Revision reviewed</strong><span>The application remained frozen while you signed.</span></li><li class="is-complete"><strong>Signature recorded</strong><span>A confirmation email will be sent independently.</span></li><li id="aggregate-sign-status"><strong>All required signatures</strong><span>Rosewood will confirm when the complete set is received.</span></li></ol><button class="button button-secondary" type="button" onclick="window.print()">Print this confirmation</button></div>
+          <div class="success-card"><div class="success-mark">✓</div><p class="eyebrow">Signature recorded</p><h1>Your signature is complete.</h1><p class="lead" id="sign-complete-lead">Rosewood has recorded your signature against the reviewed revision.</p><ol class="status-timeline"><li class="is-complete"><strong>Mailbox verified</strong><span>Your OTP challenge was consumed.</span></li><li class="is-complete"><strong>Revision reviewed</strong><span>The application remained frozen while you signed.</span></li><li class="is-complete"><strong>Signature recorded</strong><span>A confirmation email will be sent independently.</span></li><li id="aggregate-sign-status"><strong>All required signatures</strong><span>Rosewood will confirm when the complete set is received.</span></li></ol><button class="button button-secondary" id="print-signature-confirmation" type="button">Print this confirmation</button></div>
         </section>
       </form>
     </section>
   </main>
   <div class="toast-region" id="toast-region" aria-live="polite"></div>
   <script src="rosewood-enrolment-v2-config.js"></script>
-  <script>window.ROSEWOOD_V2_CONFIG={apiEndpoint:"",schemaVersion:"rosewood-v2-2026-08-02",policyVersion:"draft-2026-08-02",...(window.ROSEWOOD_V2_RUNTIME_CONFIG||{})};</script>
+  <script src="rosewood-enrolment-v2-bootstrap.js"></script>
   <script src="rosewood-sign-v2.js" defer></script>
 </body>
 </html>

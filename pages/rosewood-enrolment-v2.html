@@ -6,6 +6,7 @@
   <meta name="robots" content="noindex, nofollow, noarchive">
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Cache-Control" content="no-store">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.lambda-url.ap-southeast-2.on.aws https://*.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'; worker-src 'none'">
   <title>Private Enrolment Application | Rosewood College</title>
   <meta name="description" content="Private invitation-only Rosewood College enrolment application.">
   <link rel="stylesheet" href="rosewood-enrolment-v2.css">
@@ -214,7 +215,7 @@
             <div class="choice-grid three">
               <label class="choice-card"><input type="checkbox" name="guardian_a_lives_with_student" value="Yes"><span><strong>Lives with student</strong><small>At the primary address.</small></span></label>
               <label class="choice-card"><input type="checkbox" name="guardian_a_legal_responsibility" value="Yes" required><span><strong>Legal responsibility <b class="required-mark">*</b></strong><small>I have authority or will explain below.</small></span></label>
-              <label class="choice-card"><input type="checkbox" name="guardian_a_required_signer" value="Yes" checked><span><strong>Required signer</strong><small>This guardian signs the application.</small></span></label>
+              <label class="choice-card"><input type="checkbox" value="Yes" checked disabled><input type="hidden" name="guardian_a_required_signer" value="Yes"><span><strong>Required signer</strong><small>The application owner signs this application in their verified session.</small></span></label>
             </div>
           </div>
           <div id="additional-guardians"></div>
@@ -352,6 +353,7 @@
           <div class="form-card">
             <h3>Policies and declarations</h3>
             <p class="policy-warning">All linked policies are draft placeholders and must be replaced or approved before real applications.</p>
+            <p class="card-intro">Policy pack recorded with this revision: <strong id="review-policy-version">draft-2026-08-02</strong></p>
             <div class="policy-list"><a class="policy-link" href="rosewood-policy-drafts-v2.html" target="_blank" rel="noopener"><span>Open complete draft policy pack</span><span>Open ↗</span></a></div>
             <label class="check-row"><input type="checkbox" name="information_declaration" value="Yes" required><span><strong>I confirm the information is complete and accurate to the best of my knowledge. <b class="required-mark">*</b></strong><small>I will tell Rosewood if material information changes.</small></span></label>
             <label class="check-row"><input type="checkbox" name="privacy_acknowledgement" value="Yes" required><span><strong>I have read the draft Privacy Collection Notice and understand the proposed handling described there. <b class="required-mark">*</b></strong><small>This acknowledgement will be replaced by final approved wording.</small></span></label>
@@ -423,14 +425,7 @@
 
   <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
   <script src="rosewood-enrolment-v2-config.js"></script>
-  <script>
-    window.ROSEWOOD_V2_CONFIG = {
-      apiEndpoint: "",
-      schemaVersion: "rosewood-v2-2026-08-02",
-      policyVersion: "draft-2026-08-02",
-      ...(window.ROSEWOOD_V2_RUNTIME_CONFIG || {})
-    };
-  </script>
+  <script src="rosewood-enrolment-v2-bootstrap.js"></script>
   <script src="rosewood-enrolment-v2.js" defer></script>
 </body>
 </html>

@@ -13,9 +13,13 @@ all application content and metadata as restricted.
 - bearer sessions are short-lived, scope-limited and hashed at rest; completed state
   prevents further mutation and the browser clears its session copy after submission
 - TLS is required; responses use `Cache-Control: no-store`
+- static V2 pages declare a restrictive meta Content Security Policy because GitHub
+  Pages cannot configure per-page response headers for this repository
 - CORS permits only the Rosewood site and explicit localhost development origins
 - all state-changing requests require an idempotency key
 - browser and backend independently validate every field/file rule
+- backend draft storage rejects unknown fields, out-of-contract values and client-supplied
+  document references, and pins schema/policy versions to trusted runtime configuration
 - DynamoDB conditional writes enforce revisions, challenge use and signature uniqueness
 - Drive and Sheets are private and shared only with named staff/service accounts
 - the Drive adapter uses the full Drive API OAuth scope because `drive.file` cannot

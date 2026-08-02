@@ -62,4 +62,4 @@ by a Rosewood-controlled domain identity without changing the OTP protocol.
   identity or parental authority.
 
 See `PRODUCT-SPEC.md`, `ARCHITECTURE.md`, `SECURITY-AND-PRIVACY.md`, `DEPLOYMENT.md`,
-`OPERATIONS.md`, `TESTING.md` and `policies/`.
+`OPERATIONS.md`, `TESTING.md`, `COMPLETION-AUDIT.md` and `policies/`.

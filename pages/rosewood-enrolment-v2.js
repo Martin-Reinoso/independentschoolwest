@@ -8,7 +8,9 @@
   const schemaVersion = config.schemaVersion || "rosewood-v2-2026-08-02";
   const policyVersion = config.policyVersion || "draft-2026-08-02";
   const stageNames = ["Prepare", "Student", "Family", "Care", "Choices", "Documents", "Review", "Sign"];
-  const requiredDocumentCategories = ["birth_certificate", "immunisation", "proof_of_address"];
+  const baselineDocumentCategories = ["birth_certificate", "immunisation", "proof_of_address"];
+  const schoolYearLevels = new Set(["Prep", "Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5"]);
+  const guardianLetters = ["b", "c", "d"];
   const allowedFileTypes = new Set(["application/pdf", "image/jpeg", "image/png"]);
   const maxFileBytes = 8 * 1024 * 1024;
 
@@ -41,7 +43,6 @@
   let localStorageKey = "";
   let challengeId = "";
   let resendTimer = null;
-  let guardianCount = 1;
   let uploadedDocuments = {};
   let signatureStarted = false;
   let drawing = false;
@@ -145,6 +146,9 @@
 
   function restoreFormData(data) {
     if (!data || typeof data !== "object") return;
+    guardianLetters.forEach((letter) => {
+      if (Object.keys(data).some((name) => name.startsWith(`guardian_${letter}_`))) addGuardian({ letter, focus: false, persist: false, announce: false });
+    });
     for (const [name, raw] of Object.entries(data)) {
       if (name === "documents" && Array.isArray(raw)) {
         uploadedDocuments = Object.fromEntries(raw.map((document) => [document.category, document]));
@@ -177,13 +181,14 @@
     }
   }
 
-  function restoreLocalDraft() {
+  function restoreLocalDraft({ newerThan = 0 } = {}) {
     if (previewMode || !localStorageKey) return false;
     try {
       const saved = JSON.parse(localStorage.getItem(localStorageKey) || "null");
       if (!saved || saved.schemaVersion !== schemaVersion || !saved.data) return false;
+      const localSavedAt = Date.parse(saved.savedAt || "") || 0;
+      if (newerThan && localSavedAt <= newerThan) return false;
       restoreFormData(saved.data);
-      baseRevision = Number(saved.baseRevision || baseRevision || 0);
       maxVisitedStage = Math.min(7, Math.max(0, Number(saved.stage || 0)));
       updateSaveStatus("local", "Recovered on this device", `Local fallback from ${new Date(saved.savedAt).toLocaleString("en-AU")}. Waiting for the next secure save.`);
       return true;
@@ -254,6 +259,15 @@
     return selected.map((control) => control.value).join(", ");
   }
 
+  function requiredDocumentCategories() {
+    const required = [...baselineDocumentCategories];
+    if (schoolYearLevels.has(fieldValue("current_year_level"))) required.push("school_report");
+    if (["Temporary resident", "Other / seeking advice"].includes(fieldValue("residency_status"))) required.push("residency");
+    if (fieldValue("court_orders") === "Yes") required.push("court_order");
+    if (fieldValue("anaphylaxis") === "Yes") required.push("medical_plan");
+    return required;
+  }
+
   function updateConditionals() {
     document.querySelectorAll("[data-show-when]").forEach((region) => {
       const [name, expectedValues = ""] = region.dataset.showWhen.split(":");
@@ -265,6 +279,7 @@
         if (control.dataset.requiredWhenVisible !== undefined) control.required = visible;
       });
     });
+    updateDocumentCards();
     updateSignatureLock();
   }
 
@@ -293,12 +308,10 @@
   function validateDocumentStage(errors) {
     const pending = fieldValue("required_documents_pending") === "Yes";
     if (!pending) {
-      requiredDocumentCategories.forEach((category) => {
+      requiredDocumentCategories().forEach((category) => {
         if (!uploadedDocuments[category]) errors.push(`Upload the required ${category.replaceAll("_", " ")} or explain why it is pending.`);
       });
     }
-    if (!pending && fieldValue("court_orders") === "Yes" && !uploadedDocuments.court_order) errors.push("Upload the relevant court or parenting order, or explain securely that it is pending.");
-    if (!pending && ["Temporary resident", "Other / seeking advice"].includes(fieldValue("residency_status")) && !uploadedDocuments.residency) errors.push("Upload residency evidence, or explain securely that it is pending.");
   }
 
   function validateStage(index, { focus = true } = {}) {
@@ -394,7 +407,7 @@
     return String(value || "Not provided");
   }
 
-  function createReviewSection(id, title, stage, fields) {
+  function createReviewValueSection(id, title, stage, items) {
     const card = document.createElement("section");
     card.className = "form-card review-section";
     card.id = id;
@@ -409,73 +422,151 @@
     heading.append(edit);
     const list = document.createElement("dl");
     list.className = "review-list";
-    fields.forEach(([label, name]) => {
+    items.forEach(([label, value]) => {
       const term = document.createElement("dt");
       const description = document.createElement("dd");
       term.textContent = label;
-      description.textContent = valueLabel(fieldValue(name));
+      description.textContent = valueLabel(value);
       list.append(term, description);
     });
     card.append(heading, list);
     return card;
   }
 
+  function createReviewSection(id, title, stage, fields) {
+    return createReviewValueSection(id, title, stage, fields.map(([label, name]) => [label, fieldValue(name)]));
+  }
+
+  function guardianReviewItems() {
+    const items = [
+      ["Guardian 1", `${fieldValue("guardian_a_first_name")} ${fieldValue("guardian_a_last_name")} · ${fieldValue("guardian_a_relationship")} · ${fieldValue("guardian_a_contact_role")} · required signer`],
+      ["Guardian 1 email", fieldValue("guardian_a_email")],
+      ["Guardian 1 mobile", fieldValue("guardian_a_mobile")],
+      ["Guardian 1 lives with student", fieldValue("guardian_a_lives_with_student")],
+      ["Guardian 1 legal responsibility", fieldValue("guardian_a_legal_responsibility")]
+    ];
+    guardianLetters.forEach((letter, index) => {
+      if (!fieldValue(`guardian_${letter}_first_name`)) return;
+      const required = fieldValue(`guardian_${letter}_required_signer`) === "Yes" ? "required signer" : "not a required signer";
+      const label = `Guardian ${index + 2}`;
+      items.push(
+        [label, `${fieldValue(`guardian_${letter}_first_name`)} ${fieldValue(`guardian_${letter}_last_name`)} · ${fieldValue(`guardian_${letter}_relationship`)} · ${fieldValue(`guardian_${letter}_contact_role`)} · ${required}`],
+        [`${label} email`, fieldValue(`guardian_${letter}_email`)],
+        [`${label} mobile`, fieldValue(`guardian_${letter}_mobile`)],
+        [`${label} lives with student`, fieldValue(`guardian_${letter}_lives_with_student`)],
+        [`${label} legal responsibility`, fieldValue(`guardian_${letter}_legal_responsibility`)],
+        [`${label} contact permission`, fieldValue(`guardian_${letter}_contact_permission`)]
+      );
+    });
+    return items;
+  }
+
   function buildReview() {
     const container = document.getElementById("review-content");
     container.replaceChildren(
-      createReviewSection("review-student", "Student", 1, [["Legal name", "student_first_name"], ["Family name", "student_last_name"], ["Date of birth", "student_date_of_birth"], ["Proposed entry", "entry_year_level"], ["Commencement year", "entry_year"], ["Current setting", "current_school"], ["Home language", "home_language"], ["Residency", "residency_status"]]),
-      createReviewSection("review-family", "Family and authority", 2, [["Primary guardian", "guardian_a_first_name"], ["Primary guardian family name", "guardian_a_last_name"], ["Relationship", "guardian_a_relationship"], ["Care arrangement", "care_arrangement"], ["Court or parenting orders", "court_orders"], ["Emergency contact", "emergency_first_name"], ["All guardians included", "guardian_completeness"]]),
-      createReviewSection("review-care", "Learning, wellbeing and health", 3, [["Strengths", "student_strengths"], ["Current support", "additional_needs"], ["Support areas", "support_areas"], ["Medical or allergy information", "medical_needs"], ["Immunisation status", "immunisation_status"]]),
-      createReviewSection("review-choices", "Choices and responsibilities", 4, [["Previous setting permission", "previous_school_permission"], ["Media permissions", "media_permissions"], ["Name permission", "student_name_permission"], ["Community updates", "community_updates"], ["Fee responsibility", "fee_responsibility"], ["Decision factors", "decision_factors"]]),
+      createReviewSection("review-student", "Student", 1, [["Legal first name", "student_first_name"], ["Middle names", "student_middle_names"], ["Legal family name", "student_last_name"], ["Preferred name", "student_preferred_name"], ["Date of birth", "student_date_of_birth"], ["Gender", "student_gender"], ["Proposed entry", "entry_year_level"], ["Commencement year", "entry_year"], ["Current setting", "current_school"], ["Current level", "current_year_level"], ["Residential address", "student_address"], ["Suburb", "student_suburb"], ["Postcode", "student_postcode"], ["Country of birth", "country_of_birth"], ["Residency", "residency_status"], ["Visa status", "visa_subclass"], ["Visa expiry", "visa_expiry"], ["Home language", "home_language"], ["Interpreter", "interpreter_required"], ["Faith tradition", "religion"], ["Parish or community", "parish"], ["Rosewood connection", "family_connection"], ["Future siblings", "future_siblings"], ["Future sibling details", "future_sibling_details"]]),
+      createReviewValueSection("review-family", "Family and authority", 2, [...guardianReviewItems(), ["Care arrangement", fieldValue("care_arrangement")], ["Care arrangement details", fieldValue("care_arrangement_details")], ["Court or parenting orders", fieldValue("court_orders")], ["Order summary", fieldValue("court_order_summary")], ["Informal carer", fieldValue("informal_carer")], ["Emergency contact", `${fieldValue("emergency_first_name")} ${fieldValue("emergency_last_name")} · ${fieldValue("emergency_relationship")} · ${fieldValue("emergency_mobile")}`], ["Emergency email", fieldValue("emergency_email")], ["Emergency collection", fieldValue("emergency_may_collect")], ["All guardians included", fieldValue("guardian_completeness")]]),
+      createReviewSection("review-care", "Learning, wellbeing and health", 3, [["Strengths", "student_strengths"], ["Current support", "additional_needs"], ["Support areas", "support_areas"], ["Support details", "support_details"], ["NDIS", "ndis_status"], ["Medical or allergy information", "medical_needs"], ["Conditions or allergies", "medical_conditions"], ["Medication and instructions", "medication_details"], ["Anaphylaxis", "anaphylaxis"], ["Immunisation status", "immunisation_status"], ["Doctor or practice", "doctor_practice"], ["Practice phone", "doctor_phone"], ["Ambulance cover", "ambulance_cover"]]),
+      createReviewSection("review-choices", "Choices and responsibilities", 4, [["Previous setting permission", "previous_school_permission"], ["Previous setting", "previous_school_name"], ["Previous setting contact", "previous_school_contact"], ["Media permissions", "media_permissions"], ["Name permission", "student_name_permission"], ["Community updates", "community_updates"], ["Fee responsibility", "fee_responsibility"], ["Fee arrangement details", "fee_arrangement_details"], ["Referral source", "referral_source"], ["Decision factors", "decision_factors"]]),
       createReviewSection("review-documents", "Documents", 5, [["Uploaded categories", "documents"], ["Required evidence pending", "required_documents_pending"], ["Pending explanation", "pending_document_explanation"]])
     );
+    document.getElementById("review-policy-version").textContent = policyVersion;
     const documentList = container.querySelector("#review-documents dd");
     if (documentList) documentList.textContent = Object.values(uploadedDocuments).map((document) => document.fileName).join(", ") || "No files uploaded";
   }
 
-  function addGuardian() {
-    if (guardianCount >= 4) {
-      toast("Please contact the enrolment team if more than four guardians or carers need to be recorded.");
-      return;
+  function addGuardian({ letter = "", focus = true, persist = true, announce = true } = {}) {
+    const active = new Set([...document.querySelectorAll("[data-guardian]")].map((card) => card.dataset.guardian));
+    const selectedLetter = letter || guardianLetters.find((candidate) => !active.has(candidate));
+    if (!guardianLetters.includes(selectedLetter) || active.has(selectedLetter)) {
+      if (announce && !letter) toast("Please contact the enrolment team if more than four guardians or carers need to be recorded.");
+      return null;
     }
-    guardianCount += 1;
-    const letter = String.fromCharCode(96 + guardianCount);
     const fragment = document.getElementById("guardian-template").content.cloneNode(true);
     const card = fragment.querySelector(".guardian-card");
-    card.dataset.guardian = letter;
-    card.querySelector(".eyebrow").textContent = `Guardian ${guardianCount}`;
+    card.dataset.guardian = selectedLetter;
+    card.querySelector(".eyebrow").textContent = `Guardian ${guardianLetters.indexOf(selectedLetter) + 2}`;
     card.querySelectorAll("[data-guardian-field]").forEach((control) => {
       const field = control.dataset.guardianField;
-      control.name = `guardian_${letter}_${field}`;
-      control.id = `guardian-${letter}-${field}-${crypto.randomUUID()}`;
+      control.name = `guardian_${selectedLetter}_${field}`;
+      control.id = `guardian-${selectedLetter}-${field}-${crypto.randomUUID()}`;
     });
     card.querySelector(".remove-guardian").addEventListener("click", () => {
       card.remove();
       document.getElementById("guardian-complete").checked = false;
-      guardianCount -= 1;
       saveDraft();
       toast("Guardian removed. Please confirm the guardian list again.");
     });
     document.getElementById("additional-guardians").append(fragment);
     document.getElementById("guardian-complete").checked = false;
     updateConditionals();
-    saveDraft();
-    card.querySelector("input")?.focus();
-    toast("Guardian added. The completeness confirmation has been cleared.");
+    if (persist) saveDraft();
+    if (focus) card.querySelector("input")?.focus();
+    if (announce) toast("Guardian added. The completeness confirmation has been cleared.");
+    return card;
   }
 
   function updateDocumentCards() {
+    const required = new Set(requiredDocumentCategories());
+    const visibility = {
+      school_report: schoolYearLevels.has(fieldValue("current_year_level")),
+      medical_plan: fieldValue("medical_needs") === "Yes" || fieldValue("additional_needs") === "Yes",
+      court_order: ["Yes", "Unsure / seeking advice"].includes(fieldValue("court_orders")),
+      residency: ["Temporary resident", "Other / seeking advice"].includes(fieldValue("residency_status")),
+      sacramental: true
+    };
     document.querySelectorAll("[data-document-card]").forEach((card) => {
       const category = card.dataset.documentCard;
       const document = uploadedDocuments[category];
       const status = card.querySelector("[data-document-status]");
+      const remove = card.querySelector("[data-remove-document]");
+      if (Object.prototype.hasOwnProperty.call(visibility, category)) card.hidden = !visibility[category] && !document;
       if (document) {
         status.textContent = document.fileName;
         card.dataset.uploaded = "true";
+        if (remove) remove.hidden = false;
       } else {
-        status.textContent = requiredDocumentCategories.includes(category) ? "Not uploaded" : "Optional / conditional";
+        status.textContent = required.has(category) ? "Required - not uploaded" : "Optional";
         delete card.dataset.uploaded;
+        if (remove) remove.hidden = true;
       }
+    });
+  }
+
+  async function removeDocument(category, button) {
+    const document = uploadedDocuments[category];
+    if (!document) return;
+    button.disabled = true;
+    try {
+      if (!previewMode) {
+        await apiRequest("/v2/documents/remove", {
+          method: "POST",
+          idempotencyKey: operationId("document-remove"),
+          body: { category, documentId: document.documentId }
+        });
+      }
+      delete uploadedDocuments[category];
+      updateDocumentCards();
+      if (!previewMode) await saveDraft({ immediate: true });
+      else saveLocalDraft();
+      toast(`${document.fileName} was removed.`);
+    } catch (error) {
+      toast(error.message || "The document could not be removed.");
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  function prepareDocumentControls() {
+    document.querySelectorAll("[data-document-card]").forEach((card) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "button button-danger document-remove";
+      button.dataset.removeDocument = card.dataset.documentCard;
+      button.textContent = "Remove";
+      button.hidden = true;
+      button.addEventListener("click", () => removeDocument(card.dataset.documentCard, button));
+      card.querySelector(".document-state").append(button);
     });
   }
 
@@ -487,6 +578,11 @@
     const status = card.querySelector("[data-document-status]");
     const progress = card.querySelector(".upload-progress");
     const bar = progress.querySelector("span");
+    if (uploadedDocuments[category]) {
+      input.value = "";
+      toast("Remove the existing file before choosing a replacement.");
+      return;
+    }
     if (!allowedFileTypes.has(file.type)) {
       input.value = "";
       toast("Use a PDF, JPG or PNG file.");
@@ -526,8 +622,7 @@
         uploadedDocuments[category] = confirmed.document;
         bar.style.width = "100%";
       }
-      status.textContent = file.name;
-      card.dataset.uploaded = "true";
+      updateDocumentCards();
       toast(`${file.name} is ready.`);
       saveDraft();
     } catch (error) {
@@ -687,13 +782,22 @@
       enrolmentForm.elements.student_first_name.value = parts.shift() || "";
       enrolmentForm.elements.student_last_name.value = parts.join(" ");
     }
-    if (sessionContext.draft?.application) restoreFormData(sessionContext.draft.application);
-    else restoreLocalDraft();
+    const serverDraft = sessionContext.draft?.application ? sessionContext.draft : null;
+    const recoveredLocal = restoreLocalDraft({ newerThan: Date.parse(serverDraft?.savedAt || "") || 0 });
+    if (!recoveredLocal && serverDraft) restoreFormData(serverDraft.application);
     accessView.hidden = true;
     applicationView.hidden = false;
     updateConditionals();
     setStage(0);
-    updateSaveStatus(previewMode ? "saved" : "local", previewMode ? "Preview only" : "Secure session verified", previewMode ? "Nothing entered here is saved or sent." : "Draft changes will be kept on this device and acknowledged by Rosewood after each pause.");
+    if (previewMode) {
+      updateSaveStatus("saved", "Preview only", "Nothing entered here is saved or sent.");
+    } else if (recoveredLocal) {
+      updateSaveStatus("local", "Recovered on this device", "This browser copy is newer than Rosewood's acknowledged revision. It will be saved securely after your next change.");
+    } else if (serverDraft) {
+      updateSaveStatus("saved", "Saved securely", `Revision ${baseRevision} recovered from Rosewood.`);
+    } else {
+      updateSaveStatus("local", "Secure session verified", "Draft changes will be kept on this device and acknowledged by Rosewood after each pause.");
+    }
   }
 
   async function submitApplication() {
@@ -742,6 +846,7 @@
         }
         if (localStorageKey) localStorage.removeItem(localStorageKey);
         sessionStorage.removeItem("rosewood_v2_session");
+        sessionStorage.removeItem("rosewood_v2_invite");
       }
       setStage(8);
     } catch (error) {
@@ -753,6 +858,7 @@
   }
 
   function bindEvents() {
+    prepareDocumentControls();
     requestOtpForm.addEventListener("submit", (event) => {
       event.preventDefault();
       const email = document.getElementById("access-email").value.trim();
@@ -789,7 +895,7 @@
     }));
     document.querySelectorAll("[data-back]").forEach((button) => button.addEventListener("click", () => setStage(currentStage - 1)));
     document.querySelectorAll("[data-go-stage]").forEach((button) => button.addEventListener("click", () => setStage(Number(button.dataset.goStage))));
-    document.getElementById("add-guardian").addEventListener("click", addGuardian);
+    document.getElementById("add-guardian").addEventListener("click", () => addGuardian());
     document.querySelectorAll("[data-document-category]").forEach((input) => input.addEventListener("change", () => uploadDocument(input)));
     enrolmentForm.addEventListener("input", (event) => {
       if (event.target.type !== "file") {

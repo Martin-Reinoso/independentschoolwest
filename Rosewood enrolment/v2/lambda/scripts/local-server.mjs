@@ -15,6 +15,12 @@ const receiptInvitationToken = process.env.TEST_RECEIPT_INVITATION_TOKEN || "pla
 const receiptTokenHash = crypto.createHash("sha256").update(receiptInvitationToken).digest("hex");
 const mobileInvitationToken = process.env.TEST_MOBILE_INVITATION_TOKEN || "playwright-v2-mobile-invitation-token";
 const mobileTokenHash = crypto.createHash("sha256").update(mobileInvitationToken).digest("hex");
+const guardianResumeInvitationToken = process.env.TEST_GUARDIAN_RESUME_INVITATION_TOKEN || "playwright-v2-guardian-resume-token";
+const guardianResumeTokenHash = crypto.createHash("sha256").update(guardianResumeInvitationToken).digest("hex");
+const localRecoveryInvitationToken = process.env.TEST_LOCAL_RECOVERY_INVITATION_TOKEN || "playwright-v2-local-recovery-token";
+const localRecoveryTokenHash = crypto.createHash("sha256").update(localRecoveryInvitationToken).digest("hex");
+const remoteSignerInvitationToken = process.env.TEST_REMOTE_SIGNER_INVITATION_TOKEN || "playwright-v2-remote-signer-token";
+const remoteSignerTokenHash = crypto.createHash("sha256").update(remoteSignerInvitationToken).digest("hex");
 const store = new MemoryStore();
 const drive = new MemoryDrive({ uploadBaseUrl: `${origin}/__memory-upload/` });
 const mailer = new MemoryMailer();
@@ -48,12 +54,43 @@ store.seedInvitation({
   status: "active",
   expiresAt: Date.now() + 86_400_000
 });
+store.seedInvitation({
+  tokenHash: guardianResumeTokenHash,
+  inviteId: "invite-local-guardian-resume-v2",
+  applicationId: "application-local-guardian-resume-v2",
+  recipientEmail: process.env.TEST_RECIPIENT_EMAIL || "guardian@example.test",
+  familyLabel: "Guardian resume test family",
+  studentName: "Ava Example",
+  status: "active",
+  expiresAt: Date.now() + 86_400_000
+});
+store.seedInvitation({
+  tokenHash: localRecoveryTokenHash,
+  inviteId: "invite-local-recovery-v2",
+  applicationId: "application-local-recovery-v2",
+  recipientEmail: process.env.TEST_RECIPIENT_EMAIL || "guardian@example.test",
+  familyLabel: "Local recovery test family",
+  studentName: "Ava Example",
+  status: "active",
+  expiresAt: Date.now() + 86_400_000
+});
+store.seedInvitation({
+  tokenHash: remoteSignerTokenHash,
+  inviteId: "invite-local-remote-signer-v2",
+  applicationId: "application-local-remote-signer-v2",
+  recipientEmail: process.env.TEST_RECIPIENT_EMAIL || "guardian@example.test",
+  familyLabel: "Remote signer test family",
+  studentName: "Ava Example",
+  status: "active",
+  expiresAt: Date.now() + 86_400_000
+});
 const service = createService({ store, drive, mailer, env: {
   ALLOWED_ORIGINS: origin,
   OTP_HMAC_SECRET: "local-otp-secret",
   IP_HASH_SALT: "local-ip-secret",
   OTP_FROM_EMAIL: "local@example.test",
   SCHEMA_VERSION: "rosewood-v2-2026-08-02",
+  POLICY_VERSION: "draft-2026-08-02",
   TEST_MODE: "true",
   SIGNING_PAGE_URL: `${origin}/pages/rosewood-sign-v2.html`,
   RECEIPT_PAGE_URL: `${origin}/pages/rosewood-receipt-v2.html`
@@ -116,5 +153,8 @@ server.listen(port, "127.0.0.1", () => {
   process.stdout.write(`Rosewood V2 local server: ${origin}/pages/rosewood-enrolment-v2.html?invite=${invitationToken}\n`);
   process.stdout.write(`Receipt E2E invitation: ${receiptInvitationToken}\n`);
   process.stdout.write(`Mobile E2E invitation: ${mobileInvitationToken}\n`);
+  process.stdout.write(`Guardian resume invitation: ${guardianResumeInvitationToken}\n`);
+  process.stdout.write(`Local recovery invitation: ${localRecoveryInvitationToken}\n`);
+  process.stdout.write(`Remote signer invitation: ${remoteSignerInvitationToken}\n`);
   process.stdout.write(`Synthetic invited email: ${store.invitations.get(tokenHash).recipientEmail}\n`);
 });

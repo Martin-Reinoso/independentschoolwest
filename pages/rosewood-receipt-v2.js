@@ -166,6 +166,7 @@
       const result = await api("/v2/receipts/verify-otp", { method: "POST", idempotencyKey: operationId("receipt-verify"), body: { receiptToken, challengeId, code: otpInput.value } });
       sessionToken = result.sessionToken;
       sessionStorage.setItem("rosewood_v2_receipt_session", sessionToken);
+      sessionStorage.removeItem("rosewood_v2_receipt");
       renderReceipt(result.receipt);
     } catch (error) {
       showError(document.getElementById("receipt-otp-error"), error.message);

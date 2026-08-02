@@ -101,6 +101,7 @@ test("Dynamo submission transaction includes state, tasks, receipts and outbox",
   const store = new DynamoStore({ tableName: "table", client });
   await store.submitApplication({
     applicationId: "app-1",
+    invitationTokenHash: "invitation-hash",
     expectedRevision: 3,
     frozen: { hash: "revision-hash" },
     primarySignature: { signerId: "signer-a" },
@@ -113,14 +114,32 @@ test("Dynamo submission transaction includes state, tasks, receipts and outbox",
     reference: "RW-2026-TEST"
   });
   const transaction = calls.find((input) => input.TransactItems);
-  const keys = transaction.TransactItems.map((item) => item.Put.Item).map((item) => `${item.PK}|${item.SK}`);
+  const keys = transaction.TransactItems.filter((item) => item.Put).map((item) => item.Put.Item).map((item) => `${item.PK}|${item.SK}`);
   assert.deepEqual(keys, [
     "APP#app-1|CURRENT",
     "TASK#signature-hash|META",
     "RECEIPT#receipt-hash|META",
     "OUTBOX|2026-08-02T00:00:00.000Z#email-1"
   ]);
+  const invitationUpdate = transaction.TransactItems.find((item) => item.Update?.Key?.PK === "INVITE#invitation-hash");
+  assert.equal(invitationUpdate.Update.ExpressionAttributeValues[":submitted"], "submitted");
   assert.equal(transaction.TransactItems[0].Put.Item.data.completedAt, "2026-08-02T00:00:00.000Z");
+});
+
+test("Dynamo removes only the exact attached draft document", async () => {
+  const calls = [];
+  const app = { id: "app-1", status: "draft", revision: 4, documents: { birth_certificate: { documentId: "document-1", category: "birth_certificate" }, immunisation: { documentId: "document-2", category: "immunisation" } } };
+  const client = { async send(command) {
+    calls.push(command.input);
+    if (command.input.Key?.PK === "APP#app-1" && !command.input.UpdateExpression) return { Item: { data: app } };
+    return {};
+  } };
+  const store = new DynamoStore({ tableName: "table", client });
+  await store.detachDocument("app-1", "birth_certificate", "document-1");
+  const update = calls.find((input) => input.UpdateExpression);
+  assert.deepEqual(Object.keys(update.ExpressionAttributeValues[":documents"]), ["immunisation"]);
+  assert.equal(update.ExpressionAttributeValues[":documentId"], "document-1");
+  assert.match(update.ConditionExpression, /#documents\.#category\.#documentId = :documentId/);
 });
 
 test("Dynamo final-signature transaction updates confirmed signer details with receipt delivery", async () => {
@@ -147,6 +166,23 @@ test("Dynamo final-signature transaction updates confirmed signer details with r
   assert.equal(transaction.TransactItems.length, 4);
   assert.equal(transaction.TransactItems[2].Put.Item.PK, "RECEIPT#receipt-hash");
   assert.equal(transaction.TransactItems[3].Put.Item.PK, "OUTBOX");
+});
+
+test("Dynamo signer-detail confirmation appends a value-free audit event atomically", async () => {
+  const calls = [];
+  const task = { applicationId: "app-1", signerId: "signer-b", status: "invited", revisionHash: "revision-hash", ttl: 100, signer: { email: "second@example.test" } };
+  const client = { async send(command) {
+    calls.push(command.input);
+    if (command.input.Key?.PK === "TASK#task-hash") return { Item: { data: task } };
+    return {};
+  } };
+  const store = new DynamoStore({ tableName: "table", client, now: () => Date.parse("2026-08-02T02:00:00.000Z") });
+  await store.updateSignatureDetails("task-hash", { firstName: "Jordan", lastName: "Confirmed", email: "second@example.test", mobile: "0422000000" });
+  const transaction = calls.find((input) => input.TransactItems);
+  assert.equal(transaction.TransactItems.length, 2);
+  const event = transaction.TransactItems[1].Update.ExpressionAttributeValues[":event"][0];
+  assert.deepEqual(event, { type: "signature.details_confirmed", at: "2026-08-02T02:00:00.000Z", signerId: "signer-b" });
+  assert.equal(JSON.stringify(event).includes("second@example.test"), false);
 });
 
 test("critical Dynamo commit and idempotency result survive a post-commit interruption", async () => {
@@ -183,6 +219,7 @@ test("critical Dynamo commit and idempotency result survive a post-commit interr
   await assert.rejects(() => store.idempotent("critical-operation", async (idempotency) => {
     await store.submitApplication({
       applicationId: "app-atomic",
+      invitationTokenHash: "invitation-atomic",
       expectedRevision: 1,
       frozen: { hash: "hash" },
       primarySignature: { signerId: "signer-a" },
@@ -309,6 +346,7 @@ test("deployment template includes URL-only public invocation and scheduled outb
   assert.match(template, /Resource: !Sub "\$\{ConfigSecretArn\}\*"/);
   assert.doesNotMatch(template, /^\s+Cors:/m);
   assert.match(template, /RECEIPT_PAGE_URL: https:\/\/ffe\.org\.au\/pages\/rosewood-receipt-v2\.html/);
+  assert.match(template, /POLICY_VERSION: draft-2026-08-02/);
   assert.match(template, /Action: lambda:InvokeFunctionUrl/);
   assert.match(template, /Action: lambda:InvokeFunction\n\s+Principal: "\*"\n\s+InvokedViaFunctionUrl: true/);
   assert.match(template, /RosewoodOutboxSchedule:/);

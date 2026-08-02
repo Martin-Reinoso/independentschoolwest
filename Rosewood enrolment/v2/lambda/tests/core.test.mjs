@@ -28,22 +28,22 @@ function application(overrides = {}) {
     entry_year: "2027",
     entry_year_level: "Prep",
     current_school: "Example Early Learning",
-    current_year_level: "Kindergarten",
+    current_year_level: "4-year-old kindergarten",
     student_address: "1 Example Street",
     student_suburb: "Melton",
     student_postcode: "3337",
     country_of_birth: "Australia",
     residency_status: "Australian citizen",
     home_language: "English",
-    family_connection: "New to Rosewood",
+    family_connection: "New family",
     guardian_a_first_name: "Morgan",
     guardian_a_last_name: "Example",
-    guardian_a_relationship: "Parent",
+    guardian_a_relationship: "Mother",
     guardian_a_email: invitedEmail,
     guardian_a_mobile: "0400000000",
     guardian_a_contact_role: "Primary contact",
     guardian_a_legal_responsibility: "Yes",
-    care_arrangement: "Lives with both parents / guardians",
+    care_arrangement: "Both parents together",
     court_orders: "No",
     emergency_first_name: "Taylor",
     emergency_last_name: "Example",
@@ -52,20 +52,18 @@ function application(overrides = {}) {
     guardian_completeness: "Yes",
     additional_needs: "No",
     medical_needs: "No",
-    immunisation_status: "Current",
+    immunisation_status: "Up to date and available",
     previous_school_permission: "Yes",
     previous_school_name: "Example Early Learning",
-    student_name_permission: "Yes",
-    media_permissions: ["Internal school use"],
-    community_updates: "No",
-    fee_responsibility: "Joint responsibility",
-    referral_source: "Invited by Rosewood",
-    decision_factors: ["Faith and character", "Academic excellence"],
+    student_name_permission: "First name only",
+    media_permissions: ["Internal learning and school publications"],
+    fee_responsibility: "Joint",
+    referral_source: "Current or founding family",
+    decision_factors: ["Faith and character", "Academic approach"],
     information_declaration: "Yes",
     privacy_acknowledgement: "Yes",
     authority_declaration: "Yes",
     review_ready: "Yes",
-    required_documents_pending: "No",
     documents: [],
     ...overrides
   };
@@ -95,6 +93,7 @@ function createFixture({ now = 1_800_000_000_000 } = {}) {
     OTP_FROM_EMAIL: "sender@example.test",
     REPLY_TO_EMAIL: "reply@example.test",
     SCHEMA_VERSION: schemaVersion,
+    POLICY_VERSION: "draft-2026-08-02",
     TEST_MODE: "true",
     SIGNING_PAGE_URL: `${origin}/pages/rosewood-sign-v2.html`,
     RECEIPT_PAGE_URL: `${origin}/pages/rosewood-receipt-v2.html`
@@ -127,7 +126,7 @@ async function accessSession(fixture) {
 
 async function saveCompleteDraft(fixture, token, data = application()) {
   const saved = await request(fixture, "PUT", "/v2/draft", { token, body: { schemaVersion, policyVersion: "draft-2026-08-02", baseRevision: 0, clientRevision: 1, currentStage: 7, application: data } });
-  assert.equal(saved.status, 200);
+  assert.equal(saved.status, 200, JSON.stringify(saved.body));
   for (const category of ["birth_certificate", "immunisation", "proof_of_address"]) {
     await fixture.store.attachDocument("application-test", { documentId: `doc-${category}`, fileName: `${category}.pdf`, mimeType: "application/pdf", size: 1000, category });
   }
@@ -143,9 +142,11 @@ function privateLinkToken(message, parameter) {
 async function submitSingleGuardian(fixture) {
   const token = await accessSession(fixture);
   const revision = await saveCompleteDraft(fixture, token);
-  const submitted = await request(fixture, "POST", "/v2/applications/submit", { token, body: { expectedRevision: revision, declarations: { information: "Yes", privacy: "Yes", authority: "Yes", audit: "Yes", intent: "Yes" }, signerName: "Morgan Example", signatureDataUrl: pngDataUrl() } });
+  const submissionOperation = `submission-${crypto.randomUUID()}`;
+  const submissionBody = { expectedRevision: revision, declarations: { information: "Yes", privacy: "Yes", authority: "Yes", audit: "Yes", intent: "Yes" }, signerName: "Morgan Example", signatureDataUrl: pngDataUrl() };
+  const submitted = await request(fixture, "POST", "/v2/applications/submit", { token, idempotencyKey: submissionOperation, body: submissionBody });
   assert.equal(submitted.status, 200);
-  return { token, revision, submitted };
+  return { token, revision, submitted, submissionOperation, submissionBody };
 }
 
 test("health and CORS responses are non-cacheable", async () => {
@@ -166,6 +167,7 @@ test("non-test service refuses local fallbacks and insecure runtime URLs", () =>
     OTP_HMAC_SECRET: "a".repeat(32),
     IP_HASH_SALT: "b".repeat(32),
     SCHEMA_VERSION: schemaVersion,
+    POLICY_VERSION: "draft-2026-08-02",
     OTP_FROM_EMAIL: "sender@example.test",
     REPLY_TO_EMAIL: "reply@example.test",
     ALLOWED_ORIGINS: "http://insecure.example.test",
@@ -255,6 +257,40 @@ test("draft revisions are conditional and idempotent", async () => {
   assert.equal(stale.status, 409);
 });
 
+test("draft schema rejects unknown, oversized and out-of-contract values", async () => {
+  const fixture = createFixture();
+  const token = await accessSession(fixture);
+  const attempts = [
+    application({ unreviewed_sensitive_note: "must not be stored" }),
+    application({ fee_responsibility: "Any arrangement" }),
+    application({ student_first_name: "x".repeat(81) }),
+    application({ guardian_b_email: "second@example.test" })
+  ];
+  for (const data of attempts) {
+    const response = await request(fixture, "PUT", "/v2/draft", { token, body: { schemaVersion, policyVersion: "draft-2026-08-02", baseRevision: 0, application: data } });
+    assert.equal(response.status, 422);
+    assert.equal(response.body.code, "APPLICATION_INVALID");
+  }
+
+  const accepted = await request(fixture, "PUT", "/v2/draft", { token, body: { schemaVersion, policyVersion: "draft-2026-08-02", baseRevision: 0, application: application({ documents: [{ category: "birth_certificate", documentId: "forged" }] }) } });
+  assert.equal(accepted.status, 200);
+  const stored = await fixture.store.getApplication("application-test");
+  assert.deepEqual(stored.draft.application.documents, []);
+});
+
+test("draft provenance is pinned to server schema, policy and revision metadata", async () => {
+  const fixture = createFixture();
+  const token = await accessSession(fixture);
+  const wrongPolicy = await request(fixture, "PUT", "/v2/draft", { token, body: { schemaVersion, policyVersion: "client-invented-version", baseRevision: 0, clientRevision: 1, currentStage: 1, application: application() } });
+  assert.equal(wrongPolicy.status, 409);
+  assert.equal(wrongPolicy.body.code, "POLICY_VERSION_MISMATCH");
+  for (const metadata of [{ baseRevision: -1, clientRevision: 1, currentStage: 1 }, { baseRevision: 0, clientRevision: -1, currentStage: 1 }, { baseRevision: 0, clientRevision: 1, currentStage: 8 }]) {
+    const response = await request(fixture, "PUT", "/v2/draft", { token, body: { schemaVersion, policyVersion: "draft-2026-08-02", ...metadata, application: application() } });
+    assert.equal(response.status, 422);
+    assert.equal(response.body.code, "INVALID_DRAFT_METADATA");
+  }
+});
+
 test("engagement accepts bounded non-sensitive events", async () => {
   const fixture = createFixture();
   const token = await accessSession(fixture);
@@ -276,17 +312,24 @@ test("document sessions enforce category, type, size and ownership", async () =>
   const file = fixture.drive.completeUpload(uploadId);
   const confirmed = await request(fixture, "POST", "/v2/documents/confirm", { token, body: { category: "birth_certificate", documentId: file.id } });
   assert.equal(confirmed.status, 200);
+  const removeOperation = "remove-document-operation";
+  const removed = await request(fixture, "POST", "/v2/documents/remove", { token, idempotencyKey: removeOperation, body: { category: "birth_certificate", documentId: file.id } });
+  assert.equal(removed.status, 200);
+  assert.equal(fixture.drive.files.has(file.id), false);
+  assert.equal((await fixture.store.getApplication("application-test")).documents.birth_certificate, undefined);
+  const replayedRemoval = await request(fixture, "POST", "/v2/documents/remove", { token, idempotencyKey: removeOperation, body: { category: "birth_certificate", documentId: file.id } });
+  assert.deepEqual(replayedRemoval.body, removed.body);
   const wrongOwner = fixture.drive.completeUpload((await fixture.drive.createUploadSession({ applicationId: "other", category: "immunisation", fileName: "x.pdf", mimeType: "application/pdf", size: 100 })).uploadId);
   const rejected = await request(fixture, "POST", "/v2/documents/confirm", { token, body: { category: "immunisation", documentId: wrongOwner.id } });
   assert.equal(rejected.status, 422);
 });
 
-test("submission rejects forged documents, negative acknowledgements and fake PNG data", async () => {
+test("drafts reject invalid acknowledgements and submission rejects forged documents and fake PNG data", async () => {
   const fixture = createFixture();
   const token = await accessSession(fixture);
-  const revision = await saveCompleteDraft(fixture, token, application({ privacy_acknowledgement: "No" }));
-  const rejectedDeclaration = await request(fixture, "POST", "/v2/applications/submit", { token, body: { expectedRevision: revision, declarations: { information: "Yes", privacy: "Yes", authority: "Yes", audit: "Yes", intent: "Yes" }, signerName: "Morgan Example", signatureDataUrl: pngDataUrl() } });
-  assert.equal(rejectedDeclaration.status, 422);
+  const rejectedDraft = await request(fixture, "PUT", "/v2/draft", { token, body: { schemaVersion, policyVersion: "draft-2026-08-02", baseRevision: 0, application: application({ privacy_acknowledgement: "No" }) } });
+  assert.equal(rejectedDraft.status, 422);
+  assert.equal(rejectedDraft.body.code, "APPLICATION_INVALID");
 
   const fixture2 = createFixture();
   const token2 = await accessSession(fixture2);
@@ -304,9 +347,37 @@ test("submission rejects forged documents, negative acknowledgements and fake PN
   assert.equal(rejectedImage.status, 422);
 });
 
-test("single-guardian application completes atomically and returns a receipt", async () => {
+test("submission enforces conditional document evidence or a pending explanation", async (t) => {
+  const cases = [
+    ["school report", { current_year_level: "Grade 1" }, "document:school_report"],
+    ["residency evidence", { residency_status: "Temporary resident", visa_subclass: "500" }, "document:residency"],
+    ["court order", { court_orders: "Yes", court_order_summary: "Current parenting order applies." }, "document:court_order"],
+    ["anaphylaxis plan", { medical_needs: "Yes", medical_conditions: "Synthetic allergy", medication_details: "Synthetic instructions", anaphylaxis: "Yes" }, "document:medical_plan"]
+  ];
+
+  for (const [label, overrides, expectedMissing] of cases) {
+    await t.test(label, async () => {
+      const fixture = createFixture();
+      const token = await accessSession(fixture);
+      const revision = await saveCompleteDraft(fixture, token, application(overrides));
+      const response = await request(fixture, "POST", "/v2/applications/submit", { token, body: { expectedRevision: revision, declarations: { information: "Yes", privacy: "Yes", authority: "Yes", audit: "Yes", intent: "Yes" }, signerName: "Morgan Example", signatureDataUrl: pngDataUrl() } });
+      assert.equal(response.status, 422);
+      assert.ok(response.body.details.missing.includes(expectedMissing));
+    });
+  }
+
+  await t.test("pending evidence explanation", async () => {
+    const fixture = createFixture();
+    const token = await accessSession(fixture);
+    const revision = await saveCompleteDraft(fixture, token, application({ current_year_level: "Grade 1", required_documents_pending: "Yes", pending_document_explanation: "Synthetic school report will be provided after issue." }));
+    const response = await request(fixture, "POST", "/v2/applications/submit", { token, body: { expectedRevision: revision, declarations: { information: "Yes", privacy: "Yes", authority: "Yes", audit: "Yes", intent: "Yes" }, signerName: "Morgan Example", signatureDataUrl: pngDataUrl() } });
+    assert.equal(response.status, 200);
+  });
+});
+
+test("single-guardian application completes atomically and issues a receipt task", async () => {
   const fixture = createFixture();
-  const { token, submitted } = await submitSingleGuardian(fixture);
+  const { token, submitted, submissionOperation, submissionBody } = await submitSingleGuardian(fixture);
   assert.equal(submitted.body.status, "submitted");
   assert.match(submitted.body.reference, /^RW-/);
   const app = await fixture.store.getApplication("application-test");
@@ -315,9 +386,22 @@ test("single-guardian application completes atomically and returns a receipt", a
   assert.equal(app.completedAt, app.submittedAt);
   assert.equal(fixture.store.receipts.size, 1);
   assert.equal(fixture.store.outbox.filter((item) => item.type === "application.completed").length, 1);
-  const receipt = await request(fixture, "GET", "/v2/receipt", { token });
-  assert.equal(receipt.status, 200);
-  assert.equal(receipt.body.signers[0].status, "signed");
+  assert.equal((await fixture.store.getInvitation(hash(invitationToken))).status, "submitted");
+  const artifactCount = fixture.drive.files.size;
+  const replay = await request(fixture, "POST", "/v2/applications/submit", { token, idempotencyKey: submissionOperation, body: submissionBody });
+  assert.deepEqual(replay.body, submitted.body);
+  const duplicate = await request(fixture, "POST", "/v2/applications/submit", { token, body: submissionBody });
+  assert.equal(duplicate.status, 409);
+  assert.equal(fixture.drive.files.size, artifactCount);
+  const legacyReceipt = await request(fixture, "GET", "/v2/receipt", { token });
+  assert.equal(legacyReceipt.status, 404);
+  fixture.advance(61_000);
+  const reopening = await request(fixture, "POST", "/v2/access/request-otp", { body: { invitationToken, email: invitedEmail }, sourceIp: "203.0.113.91" });
+  assert.equal(reopening.body.testCode, undefined);
+  const postSubmissionContext = await request(fixture, "GET", "/v2/session", { token });
+  assert.equal(postSubmissionContext.status, 410);
+  const postSubmissionUpload = await request(fixture, "POST", "/v2/documents/session", { token, body: { category: "birth_certificate", fileName: "late.pdf", mimeType: "application/pdf", size: 100 } });
+  assert.equal(postSubmissionUpload.status, 409);
 });
 
 test("emailed receipt requires its own generic, single-use OTP flow", async () => {
@@ -384,7 +468,8 @@ test("additional guardian independently verifies, reviews and signs the frozen r
     guardian_b_last_name: "Example",
     guardian_b_email: "second@example.test",
     guardian_b_mobile: "0422000000",
-    guardian_b_relationship: "Parent",
+    guardian_b_relationship: "Father",
+    guardian_b_contact_role: "Secondary contact",
     guardian_b_required_signer: "Yes",
     guardian_b_contact_permission: "Yes"
   }));
@@ -397,12 +482,27 @@ test("additional guardian independently verifies, reviews and signs the frozen r
   assert.match(otp.body.testCode, /^\d{6}$/);
   const verified = await request(fixture, "POST", "/v2/signatures/verify-otp", { body: { taskToken, challengeId: otp.body.challengeId, code: otp.body.testCode } });
   assert.equal(verified.status, 200);
+  assert.equal(verified.body.context.policyVersion, "draft-2026-08-02");
+  const familyReview = verified.body.context.reviewGroups.find((group) => group.title === "Family and authority");
+  assert.match(JSON.stringify(familyReview), /Jordan Example/);
+  assert.match(JSON.stringify(familyReview), /required signer/);
+  assert.match(JSON.stringify(familyReview), /second@example\.test/);
+  const declarationReview = verified.body.context.reviewGroups.find((group) => group.title === "Primary declaration and signature");
+  assert.match(JSON.stringify(declarationReview), /Morgan Example/);
+  assert.match(JSON.stringify(declarationReview), /Yes/);
   assert.equal(verified.body.context.revision, revision);
   const signToken = verified.body.sessionToken;
-  const changedEmail = await request(fixture, "PATCH", "/v2/signatures/details", { token: signToken, body: { firstName: "Jordan", lastName: "Example", email: "attacker@example.test", mobile: "0422000000" } });
+  const missingConfirmation = await request(fixture, "PATCH", "/v2/signatures/details", { token: signToken, body: { firstName: "Jordan", lastName: "Example", email: "second@example.test", mobile: "0422000000" } });
+  assert.equal(missingConfirmation.status, 422);
+  assert.equal(missingConfirmation.body.code, "DETAILS_CONFIRMATION_REQUIRED");
+  const changedEmail = await request(fixture, "PATCH", "/v2/signatures/details", { token: signToken, body: { firstName: "Jordan", lastName: "Example", email: "attacker@example.test", mobile: "0422000000", detailsConfirmed: true } });
   assert.equal(changedEmail.status, 422);
-  const details = await request(fixture, "PATCH", "/v2/signatures/details", { token: signToken, body: { firstName: "Jordan", lastName: "Example", email: "second@example.test", mobile: "0422000000" } });
+  assert.equal(changedEmail.body.code, "EMAIL_LOCKED");
+  const details = await request(fixture, "PATCH", "/v2/signatures/details", { token: signToken, body: { firstName: "Jordan", lastName: "Example", email: "second@example.test", mobile: "0422000000", detailsConfirmed: true } });
   assert.equal(details.status, 200);
+  const detailsEvent = (await fixture.store.getApplication("application-test")).events.find((event) => event.type === "signature.details_confirmed");
+  assert.equal(detailsEvent.signerId, details.body.signer.id);
+  assert.equal(JSON.stringify(detailsEvent).includes("second@example.test"), false);
   const signatureOperation = "remote-signature-retry-operation";
   const signed = await request(fixture, "POST", "/v2/signatures/submit", { token: signToken, idempotencyKey: signatureOperation, body: { revision, signerName: "Jordan Example", auditDeclaration: true, intentDeclaration: true, signatureDataUrl: pngDataUrl() } });
   assert.equal(signed.body.status, "submitted");

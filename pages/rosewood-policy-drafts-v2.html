@@ -4,6 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.lambda-url.ap-southeast-2.on.aws https://*.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'; worker-src 'none'">
   <title>Draft Enrolment Policy Pack | Rosewood College</title>
   <link rel="stylesheet" href="rosewood-enrolment-v2.css">
 </head>
@@ -11,7 +14,7 @@
   <div class="draft-banner">Draft placeholders - not approved policies - not for production reliance</div>
   <header class="site-header">
     <a class="brand" href="rosewood-enrolment-v2.html?preview=1"><img src="../img/rosewood-emblem-corrected-transparent.png" alt=""><span><strong>Rosewood College</strong><span>V2 policy library</span></span></a>
-    <button class="button button-secondary" type="button" onclick="window.print()">Print draft pack</button>
+    <button class="button button-secondary" id="print-policy-pack" type="button">Print draft pack</button>
   </header>
   <main class="policy-page">
     <section class="policy-hero">
@@ -94,5 +97,6 @@
       <p><strong>Privacy disclaimer placeholder.</strong> Personal information is proposed to be held, used and disclosed according to Rosewood's final Privacy Collection Notice and Privacy Policy. The current documents are unapproved working drafts.</p>
     </article>
   </main>
+  <script src="rosewood-policy-drafts-v2.js" defer></script>
 </body>
 </html>

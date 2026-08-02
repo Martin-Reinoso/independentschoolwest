@@ -34,6 +34,7 @@ left unset to prevent duplicate `Access-Control-Allow-Origin` headers.
 | `POST` | `/v2/engagement` | Record a bounded, non-sensitive authenticated journey event |
 | `POST` | `/v2/documents/session` | Create a scoped Google Drive resumable-upload session |
 | `POST` | `/v2/documents/confirm` | Verify uploaded Drive metadata and attach it to the draft |
+| `POST` | `/v2/documents/remove` | Detach and delete one confirmed draft document idempotently |
 | `POST` | `/v2/applications/submit` | Freeze a revision, create signatory assignments and commit the primary signature |
 | `POST` | `/v2/signatures/request-otp` | Issue an OTP for one remote signatory assignment |
 | `POST` | `/v2/signatures/verify-otp` | Create an assignment-scoped signing session |
@@ -46,6 +47,8 @@ left unset to prevent duplicate `Access-Control-Allow-Origin` headers.
 
 Every write uses an idempotency key. Revision writes use an expected base revision.
 Repeated accepted operations return the original result rather than creating duplicates.
+Primary submission atomically changes the invitation from `active` to `submitted`; the
+original application link cannot reopen or mutate the frozen record afterward.
 For primary submission and a remote signer's final submission, the completed idempotency
 result commits in the same DynamoDB transaction as the irreversible state transition.
 Pending claims are leased for 60 seconds: a later request may reclaim a genuinely stale
@@ -96,6 +99,8 @@ domain configuration.
 - Browser local storage remains an immediate fallback.
 - Server save occurs after idle debounce and valid step transitions.
 - The browser sends `baseRevision`, `operationId`, schema version and complete snapshot.
+- The backend requires the configured schema and policy versions and writes those trusted
+  values into the draft; a client cannot relabel the legal version recorded in a receipt.
 - The server conditionally increments the revision and returns its timestamp.
 - The UI says `Saved securely` only when the acknowledged revision equals the newest
   browser revision.

@@ -6,6 +6,7 @@
   <meta name="robots" content="noindex, nofollow, noarchive">
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Cache-Control" content="no-store">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.lambda-url.ap-southeast-2.on.aws https://*.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'; worker-src 'none'">
   <title>Application Receipt | Rosewood College</title>
   <link rel="stylesheet" href="rosewood-enrolment-v2.css">
 </head>
@@ -118,7 +119,7 @@
 
   <div class="toast-region" id="toast-region" aria-live="polite"></div>
   <script src="rosewood-enrolment-v2-config.js"></script>
-  <script>window.ROSEWOOD_V2_CONFIG={apiEndpoint:"",schemaVersion:"rosewood-v2-2026-08-02",policyVersion:"draft-2026-08-02",...(window.ROSEWOOD_V2_RUNTIME_CONFIG||{})};</script>
+  <script src="rosewood-enrolment-v2-bootstrap.js"></script>
   <script src="rosewood-receipt-v2.js" defer></script>
 </body>
 </html>

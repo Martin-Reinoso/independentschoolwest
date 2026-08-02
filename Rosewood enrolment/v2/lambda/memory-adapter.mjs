@@ -46,18 +46,19 @@ export class MemoryStore {
     item.revision += 1; item.draft=clone(draft); item.updatedAt=savedAt; item.events.push({type:"draft.saved",at:savedAt,revision:item.revision}); this.applications.set(applicationId,item); return clone(item);
   }
   async attachDocument(applicationId, document) { const item=this.applications.get(applicationId); item.documents[document.category]=clone(document); if(item.draft?.application)item.draft.application.documents=Object.values(item.documents);this.applications.set(applicationId,item);return clone(document); }
+  async detachDocument(applicationId, category, documentId) { const item=this.applications.get(applicationId),document=item?.documents?.[category];if(!item||item.status!=="draft"||!document||document.documentId!==documentId)throw Object.assign(new Error("Document conflict."),{status:409,code:"REVISION_CONFLICT"});delete item.documents[category];if(item.draft?.application)item.draft.application.documents=Object.values(item.documents);this.applications.set(applicationId,item);return clone(document); }
   async recordEngagement(record) { const item=this.applications.get(record.applicationId);if(!item)return null;item.events.push(clone(record));this.applications.set(record.applicationId,item);return clone(record); }
   async checkRateLimit(key, limit, windowSeconds) { const now=this.now(),start=now-windowSeconds*1000,recent=(this.rateLimits.get(key)||[]).filter(time=>time>start); if(recent.length>=limit)return false;recent.push(now);this.rateLimits.set(key,recent);return true; }
   async idempotent(key, operation) { if(this.idempotency.has(key))return clone(this.idempotency.get(key));const result=await operation();this.idempotency.set(key,clone(result));return result; }
-  async submitApplication({ applicationId, expectedRevision, frozen, primarySignature, signers, signatureTasks = [], receiptTasks = [], outboxEvents = [], submittedAt, status, reference }) {
-    const item=this.applications.get(applicationId); if(!item||item.status!=="draft"||Number(item.revision)!==Number(expectedRevision))throw Object.assign(new Error("Revision conflict."),{code:"REVISION_CONFLICT"});
-    item.status=status;item.frozen=clone(frozen);item.signatures=[clone(primarySignature)];item.signers=clone(signers);item.submittedAt=submittedAt;item.reference=reference;if(status==="submitted")item.completedAt=submittedAt;item.events.push({type:"signature.completed",at:submittedAt,signerId:primarySignature.signerId});for(const task of signatureTasks)this.tasks.set(task.tokenHash,clone(task));for(const task of receiptTasks)this.receipts.set(task.tokenHash,clone(task));this.outbox.push(...clone(outboxEvents));this.applications.set(applicationId,item);return clone(item);
+  async submitApplication({ applicationId, invitationTokenHash, expectedRevision, frozen, primarySignature, signers, signatureTasks = [], receiptTasks = [], outboxEvents = [], submittedAt, status, reference }) {
+    const item=this.applications.get(applicationId),invitation=this.invitations.get(invitationTokenHash); if(!item||item.status!=="draft"||Number(item.revision)!==Number(expectedRevision)||!invitation||invitation.status!=="active"||invitation.applicationId!==applicationId)throw Object.assign(new Error("Revision conflict."),{code:"REVISION_CONFLICT"});
+    item.status=status;item.frozen=clone(frozen);item.signatures=[clone(primarySignature)];item.signers=clone(signers);item.submittedAt=submittedAt;item.reference=reference;if(status==="submitted")item.completedAt=submittedAt;item.events.push({type:"signature.completed",at:submittedAt,signerId:primarySignature.signerId});invitation.status="submitted";invitation.submittedAt=submittedAt;this.invitations.set(invitationTokenHash,invitation);for(const task of signatureTasks)this.tasks.set(task.tokenHash,clone(task));for(const task of receiptTasks)this.receipts.set(task.tokenHash,clone(task));this.outbox.push(...clone(outboxEvents));this.applications.set(applicationId,item);return clone(item);
   }
   async putSignatureTask(task) { this.tasks.set(task.tokenHash,clone(task));return clone(task); }
   async getSignatureTask(tokenHash) { return clone(this.tasks.get(tokenHash)); }
   async putReceiptTasks(tasks) { for(const task of tasks)this.receipts.set(task.tokenHash,clone(task));return clone(tasks); }
   async getReceiptTask(tokenHash) { return clone(this.receipts.get(tokenHash)); }
-  async updateSignatureDetails(tokenHash, details) { const task=this.tasks.get(tokenHash);if(!task) return null;task.signer={...task.signer,...clone(details)};task.detailsConfirmedAt=new Date(this.now()).toISOString();this.tasks.set(tokenHash,task);return clone(task); }
+  async updateSignatureDetails(tokenHash, details) { const task=this.tasks.get(tokenHash);if(!task) return null;const confirmedAt=new Date(this.now()).toISOString();task.signer={...task.signer,...clone(details)};task.detailsConfirmedAt=confirmedAt;this.tasks.set(tokenHash,task);const app=this.applications.get(task.applicationId);if(app)app.events.push({type:"signature.details_confirmed",at:confirmedAt,signerId:task.signerId});return clone(task); }
   async completeSignature({ tokenHash, signature, at, receiptTasks = [], outboxEvents = [] }) { const task=this.tasks.get(tokenHash);if(!task||task.status==="signed")return null;const app=this.applications.get(task.applicationId);if(!app||app.frozen.hash!==signature.revisionHash)return null;task.status="signed";task.signedAt=at;this.tasks.set(tokenHash,task);app.signers=app.signers.map(item=>item.id===task.signerId?{...item,...clone(task.signer)}:item);app.signatures.push(clone(signature));const pending=app.signers.filter(s=>s.required).some(s=>!app.signatures.some(sig=>sig.signerId===s.id));if(!pending){app.status="submitted";app.completedAt=at;}for(const receiptTask of receiptTasks)this.receipts.set(receiptTask.tokenHash,clone(receiptTask));this.outbox.push(...clone(outboxEvents));this.applications.set(app.id,app);return {task:clone(task),application:clone(app)}; }
   async enqueueOutbox(event) { this.outbox.push(clone(event)); }
   async listOutbox() { return clone(this.outbox.filter(item=>!item.sentAt&&(!item.leaseUntil||item.leaseUntil<=this.now())).slice(0,25)); }
@@ -78,11 +79,13 @@ export class MemoryDrive {
   }
   async confirmUpload({ documentId, expected }) {
     const file=this.files.get(documentId);
-    if(!file||file.applicationId!==expected.applicationId||file.category!==expected.category) throw Object.assign(new Error("Uploaded document metadata does not match the application."),{status:422,code:"DOCUMENT_MISMATCH"});
+    if(!file) throw Object.assign(new Error("Uploaded document no longer exists."),{status:404,code:"DOCUMENT_NOT_FOUND"});
+    if(file.applicationId!==expected.applicationId||file.category!==expected.category) throw Object.assign(new Error("Uploaded document metadata does not match the application."),{status:422,code:"DOCUMENT_MISMATCH"});
     return {documentId:file.id,fileName:file.name,mimeType:file.mimeType,size:file.size,category:file.category};
   }
   async storeJson({ applicationId, name, value }) { const id=`json-${crypto.randomUUID()}`;this.files.set(id,{id,name,applicationId,value:clone(value),mimeType:"application/json"});return {documentId:id}; }
   async storeSignature({ applicationId, signerId, data }) { const id=`signature-${crypto.randomUUID()}`;this.files.set(id,{id,applicationId,signerId,data,mimeType:"image/png"});return {documentId:id}; }
+  async deleteFile(documentId) { this.files.delete(documentId);return {deleted:true}; }
 }
 
 export class MemoryMailer {

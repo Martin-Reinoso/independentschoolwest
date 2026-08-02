@@ -17,19 +17,29 @@ with no symbolic links and a successful handler import; packaging `lambda/` dire
 not a supported deployment path.
 
 The API suite covers OTP generic responses, enforced resend cooldown, expiry, single use,
-attempts/rates, scoped-session expiry, signature-task expiry at every gate, draft
-idempotency/revisions, bounded engagement, Drive ownership, forged-document rejection,
-declaration/signature validation, primary/remote signatures, recipient-specific receipt
-OTP and data minimisation, outbox lease/retry behaviour, Dynamo transaction composition,
-atomic signature/idempotency completion, stale-claim recovery and expired-worker races,
-Google adapters, SES composition and HTML escaping.
+attempts/rates, scoped-session expiry, signature-task expiry at every gate, closed draft
+schema validation, server-pinned schema/policy versions, draft idempotency/revisions,
+bounded engagement, conditional evidence rules, Drive ownership, document removal,
+forged-document rejection, declaration/signature validation, invitation consumption,
+primary/remote signatures, recipient-specific receipt OTP and data minimisation, outbox
+lease/retry behaviour, Dynamo transaction composition, atomic signature/idempotency
+completion, stale-claim recovery and expired-worker races, Google adapters, SES
+composition and HTML escaping.
 
 The browser suite runs desktop Chromium and a Chromium mobile emulation. It covers
 synthetic preview isolation, desktop panel clipping, mobile ordering/overflow,
-conditional fields, validation/focus summaries, guardian-menu adaptation, consent
-defaults, fee exclusivity, signature gating, policy links, axe accessibility checks,
-remote signing stages, receipt desktop/mobile layout and accessibility, a real local
-OTP-to-secure-save flow, and a full local application-to-email-to-receipt-OTP canary.
+conditional fields and documents, validation/focus summaries, guardian add/remove and
+server reconstruction, local-versus-server draft recovery, consent defaults, fee
+exclusivity, document removal, signature gating, restrictive static-page CSP, policy
+links, axe accessibility checks under that CSP, remote signing stages, receipt
+desktop/mobile layout and accessibility, a real local OTP-to-secure-save flow, a full
+local additional-guardian email/OTP/review/signature flow, and an application-to-email-
+to-receipt-OTP canary.
+
+The current verified baseline is 41 API tests and 33 browser tests passing. Seven browser
+cases are deliberately skipped where a desktop-only transaction canary or a device-
+specific layout assertion would duplicate coverage. See `COMPLETION-AUDIT.md` for the
+difference between this local evidence and the pending live cloud canary.
 
 ## Live Canary
 

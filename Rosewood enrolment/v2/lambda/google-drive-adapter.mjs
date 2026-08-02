@@ -64,7 +64,7 @@ export class GoogleDriveAdapter {
     });
     if (!response.ok) {
       const detail = await response.text().catch(() => "");
-      throw new Error(`Google Drive request failed with ${response.status}: ${detail.slice(0, 300)}`);
+      throw Object.assign(new Error(`Google Drive request failed with ${response.status}: ${detail.slice(0, 300)}`), { status: response.status });
     }
     return response;
   }
@@ -132,7 +132,11 @@ export class GoogleDriveAdapter {
   }
 
   async deleteFile(documentId) {
-    await this.driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(documentId)}?supportsAllDrives=true`, { method: "DELETE" });
+    try {
+      await this.driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(documentId)}?supportsAllDrives=true`, { method: "DELETE" });
+    } catch (error) {
+      if (error.status !== 404) throw error;
+    }
     return { deleted: true };
   }
 

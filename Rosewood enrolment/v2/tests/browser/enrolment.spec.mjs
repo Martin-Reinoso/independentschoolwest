@@ -1,9 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
 
-const require = createRequire(import.meta.url);
-const axeSource = readFileSync(require.resolve("axe-core/axe.min.js"), "utf8");
+const axeUrl = "/Rosewood%20enrolment/v2/node_modules/axe-core/axe.min.js";
 
 async function openPreview(page) {
   await page.goto("/pages/rosewood-enrolment-v2.html?preview=1");
@@ -20,7 +18,7 @@ function browserApplication() {
     entry_year: "2027",
     entry_year_level: "Prep",
     current_school: "Example Early Learning",
-    current_year_level: "Kindergarten",
+    current_year_level: "4-year-old kindergarten",
     student_address: "1 Example Street",
     student_suburb: "Melton",
     student_postcode: "3337",
@@ -30,7 +28,7 @@ function browserApplication() {
     family_connection: "New family",
     guardian_a_first_name: "Morgan",
     guardian_a_last_name: "Example",
-    guardian_a_relationship: "Parent",
+    guardian_a_relationship: "Mother",
     guardian_a_email: "guardian@example.test",
     guardian_a_mobile: "0400000000",
     guardian_a_contact_role: "Primary contact",
@@ -44,18 +42,18 @@ function browserApplication() {
     guardian_completeness: "Yes",
     additional_needs: "No",
     medical_needs: "No",
-    immunisation_status: "Current",
+    immunisation_status: "Up to date and available",
     previous_school_permission: "Yes",
     previous_school_name: "Example Early Learning",
-    student_name_permission: "Yes",
-    fee_responsibility: "Joint responsibility",
-    referral_source: "Invited by Rosewood",
-    decision_factors: ["Faith and character", "Academic excellence"],
+    student_name_permission: "First name only",
+    fee_responsibility: "Joint",
+    referral_source: "Current or founding family",
+    decision_factors: ["Faith and character", "Academic approach"],
     information_declaration: "Yes",
     privacy_acknowledgement: "Yes",
     authority_declaration: "Yes",
     review_ready: "Yes",
-    required_documents_pending: "No"
+    documents: []
   };
 }
 
@@ -133,6 +131,41 @@ test("validation is explicit and conditional questions appear only when relevant
   await expect(page.locator('[name="visa_subclass"]')).toHaveAttribute("required", "");
 });
 
+test("document requirements adapt to school, residency, orders and anaphylaxis", async ({ page }) => {
+  await openPreview(page);
+  const schoolReport = page.locator('[data-document-card="school_report"]');
+  const residency = page.locator('[data-document-card="residency"]');
+  const courtOrder = page.locator('[data-document-card="court_order"]');
+  const medicalPlan = page.locator('[data-document-card="medical_plan"]');
+
+  await page.locator('[data-go-stage="1"]').dispatchEvent("click");
+  await page.locator('[name="current_year_level"]').selectOption("Grade 1");
+  await page.locator('[name="residency_status"]').selectOption("Temporary resident");
+  await page.locator('[data-go-stage="2"]').dispatchEvent("click");
+  await page.locator('[name="court_orders"]').selectOption("Yes");
+  await page.locator('[data-go-stage="3"]').dispatchEvent("click");
+  await page.locator('[name="medical_needs"][value="Yes"]').check();
+  await page.locator('[name="anaphylaxis"][value="Yes"]').check();
+  await page.locator('[data-go-stage="5"]').dispatchEvent("click");
+
+  for (const card of [schoolReport, residency, courtOrder, medicalPlan]) {
+    await expect(card).toBeVisible();
+    await expect(card.locator('[data-document-status]')).toHaveText("Required - not uploaded");
+  }
+});
+
+test("a selected document can be removed before submission", async ({ page }) => {
+  await openPreview(page);
+  await page.locator('[data-go-stage="5"]').dispatchEvent("click");
+  const card = page.locator('[data-document-card="birth_certificate"]');
+  await card.locator('input[type="file"]').setInputFiles({ name: "synthetic-birth.pdf", mimeType: "application/pdf", buffer: Buffer.from("synthetic") });
+  await expect(card.locator('[data-document-status]')).toHaveText("synthetic-birth.pdf");
+  await expect(card.locator('[data-remove-document]')).toBeVisible();
+  await card.locator('[data-remove-document]').click();
+  await expect(card.locator('[data-document-status]')).toHaveText("Required - not uploaded");
+  await expect(card.locator('[data-remove-document]')).toBeHidden();
+});
+
 test("adding a guardian adapts the family section and clears completeness", async ({ page }) => {
   await openPreview(page);
   await page.locator('[data-go-stage="2"]').dispatchEvent("click");
@@ -141,6 +174,103 @@ test("adding a guardian adapts the family section and clears completeness", asyn
   await expect(page.locator('[data-guardian="b"]')).toBeVisible();
   await expect(page.locator('[name="guardian_completeness"]')).not.toBeChecked();
   await expect(page.locator('[name="guardian_b_required_signer"]')).toBeChecked();
+  await page.getByRole("button", { name: "Add another parent, guardian or carer" }).click();
+  await page.locator('[data-guardian="b"] .remove-guardian').click();
+  await page.getByRole("button", { name: "Add another parent, guardian or carer" }).click();
+  await expect(page.locator('[data-guardian="b"]')).toHaveCount(1);
+  await expect(page.locator('[data-guardian="c"]')).toHaveCount(1);
+  await expect(page.locator('[name="guardian_b_first_name"]')).toHaveCount(1);
+  await expect(page.locator('[name="guardian_c_first_name"]')).toHaveCount(1);
+});
+
+test("a server-saved additional guardian is reconstructed on resume", async ({ page, request }, testInfo) => {
+  test.skip(testInfo.project.name.includes("mobile"), "One server-resume canary is sufficient; mobile guardian controls are covered separately.");
+  const invitationToken = "playwright-v2-guardian-resume-token";
+  const email = "guardian@example.test";
+  const otp = await api(request, "POST", "/v2/access/request-otp", { invitationToken, email });
+  const access = await api(request, "POST", "/v2/access/verify-otp", { invitationToken, challengeId: otp.challengeId, code: otp.testCode });
+  await api(request, "PUT", "/v2/draft", {
+    schemaVersion: "rosewood-v2-2026-08-02",
+    policyVersion: "draft-2026-08-02",
+    baseRevision: 0,
+    clientRevision: 1,
+    currentStage: 2,
+    application: {
+      ...browserApplication(),
+      guardian_b_first_name: "Jordan",
+      guardian_b_last_name: "Example",
+      guardian_b_relationship: "Father",
+      guardian_b_email: "second@example.test",
+      guardian_b_mobile: "0422000000",
+      guardian_b_contact_role: "Secondary contact",
+      guardian_b_required_signer: "Yes",
+      guardian_b_contact_permission: "Yes"
+    }
+  }, access.sessionToken);
+
+  await page.goto("/");
+  await page.evaluate(({ sessionToken, inviteToken }) => {
+    sessionStorage.setItem("rosewood_v2_session", sessionToken);
+    sessionStorage.setItem("rosewood_v2_invite", inviteToken);
+  }, { sessionToken: access.sessionToken, inviteToken: invitationToken });
+  await page.goto("/pages/rosewood-enrolment-v2.html");
+  await expect(page.locator("#application-view")).toBeVisible();
+  await page.locator('[data-go-stage="2"]').dispatchEvent("click");
+  await expect(page.locator('[data-guardian="b"]')).toBeVisible();
+  await expect(page.locator('[name="guardian_b_first_name"]')).toHaveValue("Jordan");
+  await expect(page.locator('[name="guardian_b_email"]')).toHaveValue("second@example.test");
+  await expect(page.locator('[name="guardian_b_required_signer"]')).toBeChecked();
+  await page.locator('[data-go-stage="6"]').dispatchEvent("click");
+  await expect(page.locator("#review-family")).toContainText("Jordan Example");
+  await expect(page.locator("#review-policy-version")).toHaveText("draft-2026-08-02");
+});
+
+test("a newer device fallback is recovered over an older server draft", async ({ page, request }, testInfo) => {
+  test.skip(testInfo.project.name.includes("mobile"), "One recovery canary is sufficient; mobile draft status is covered by layout tests.");
+  const invitationToken = "playwright-v2-local-recovery-token";
+  const email = "guardian@example.test";
+  const otp = await api(request, "POST", "/v2/access/request-otp", { invitationToken, email });
+  const access = await api(request, "POST", "/v2/access/verify-otp", { invitationToken, challengeId: otp.challengeId, code: otp.testCode });
+  const serverApplication = { ...browserApplication(), student_preferred_name: "Server copy" };
+  const saved = await api(request, "PUT", "/v2/draft", { schemaVersion: "rosewood-v2-2026-08-02", policyVersion: "draft-2026-08-02", baseRevision: 0, clientRevision: 1, currentStage: 1, application: serverApplication }, access.sessionToken);
+
+  await page.goto("/");
+  await page.evaluate(({ sessionToken, inviteToken, data, revision }) => {
+    sessionStorage.setItem("rosewood_v2_session", sessionToken);
+    sessionStorage.setItem("rosewood_v2_invite", inviteToken);
+    localStorage.setItem("rosewood_v2_draft_invite-local-recovery-v2", JSON.stringify({
+      schemaVersion: "rosewood-v2-2026-08-02",
+      savedAt: new Date(Date.now() + 60_000).toISOString(),
+      data: { ...data, student_preferred_name: "Device-only copy" },
+      stage: 1,
+      baseRevision: revision
+    }));
+  }, { sessionToken: access.sessionToken, inviteToken: invitationToken, data: serverApplication, revision: saved.revision });
+  await page.goto("/pages/rosewood-enrolment-v2.html");
+  await expect(page.locator("#application-view")).toBeVisible();
+  await page.locator('[data-go-stage="1"]').dispatchEvent("click");
+  await expect(page.locator('[name="student_preferred_name"]')).toHaveValue("Device-only copy");
+  await expect(page.locator("#save-state")).toContainText("Recovered on this device");
+
+  const saveResponse = page.waitForResponse((response) => response.url().endsWith("/v2/draft") && response.request().method() === "PUT");
+  await page.locator('[name="student_preferred_name"]').fill("Recovered and edited");
+  expect((await saveResponse).ok()).toBe(true);
+  await expect(page.locator("#save-state")).toContainText("Saved securely");
+
+  await page.evaluate((data) => {
+    localStorage.setItem("rosewood_v2_draft_invite-local-recovery-v2", JSON.stringify({
+      schemaVersion: "rosewood-v2-2026-08-02",
+      savedAt: "2020-01-01T00:00:00.000Z",
+      data: { ...data, student_preferred_name: "Stale device copy" },
+      stage: 1,
+      baseRevision: 0
+    }));
+  }, serverApplication);
+  await page.reload();
+  await expect(page.locator("#application-view")).toBeVisible();
+  await page.locator('[data-go-stage="1"]').dispatchEvent("click");
+  await expect(page.locator('[name="student_preferred_name"]')).toHaveValue("Recovered and edited");
+  await expect(page.locator("#save-state")).toContainText("Saved securely");
 });
 
 test("optional communications default off and fee responsibility is exclusive", async ({ page }) => {
@@ -175,12 +305,26 @@ test("policy links resolve and placeholder status is unmistakable", async ({ pag
   await expect(page.locator("#signing-guidance")).toContainText("Separated parents");
   await expect(page.locator("#signing-guidance")).toContainText("informal carer", { ignoreCase: true });
   await expect(page.locator("body")).toContainText("not approved", { ignoreCase: true });
+  const csp = await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute("content");
+  expect(csp).toContain("script-src 'self'");
+  expect(csp).toContain("object-src 'none'");
+  expect(csp).toContain("https://*.lambda-url.ap-southeast-2.on.aws");
+  expect(await page.locator("[onclick], [onload], [onerror], [onsubmit]").count()).toBe(0);
+});
+
+test("static V2 pages are compatible with their strict script policy", () => {
+  for (const file of ["rosewood-enrolment-v2.html", "rosewood-sign-v2.html", "rosewood-receipt-v2.html", "rosewood-policy-drafts-v2.html"]) {
+    const source = readFileSync(new URL(`../../../../pages/${file}`, import.meta.url), "utf8");
+    expect(source, file).toContain('http-equiv="Content-Security-Policy"');
+    expect(source, file).not.toMatch(/<script(?![^>]*\bsrc=)[^>]*>/i);
+    expect(source, file).not.toMatch(/\son(?:click|load|error|submit)=/i);
+  }
 });
 
 test("main preview has no serious or critical automated accessibility findings", async ({ page }) => {
   await openPreview(page);
   await page.waitForTimeout(500);
-  await page.addScriptTag({ content: axeSource });
+  await page.addScriptTag({ url: axeUrl });
   const results = await page.evaluate(async () => window.axe.run(document, { resultTypes: ["violations"] }));
   const severe = results.violations.filter((violation) => ["serious", "critical"].includes(violation.impact));
   expect(severe, severe.map((item) => `${item.id}: ${item.help}`).join("\n")).toEqual([]);
@@ -223,7 +367,7 @@ test("receipt preview is minimal, responsive and performs no service writes", as
 test("receipt preview has no serious or critical accessibility findings", async ({ page }) => {
   await page.goto("/pages/rosewood-receipt-v2.html?preview=1");
   await page.getByRole("button", { name: "Open synthetic receipt preview" }).click();
-  await page.addScriptTag({ content: axeSource });
+  await page.addScriptTag({ url: axeUrl });
   const results = await page.evaluate(async () => window.axe.run(document, { resultTypes: ["violations"] }));
   const severe = results.violations.filter((violation) => ["serious", "critical"].includes(violation.impact));
   expect(severe, severe.map((item) => `${item.id}: ${item.help}`).join("\n")).toEqual([]);
@@ -276,10 +420,88 @@ test("real local completion email opens an OTP-protected receipt", async ({ page
   await expect(page.locator("#receipt-student")).toHaveText("Ava Example");
   await expect(page.locator("#receipt-signature-count")).toHaveText("1 of 1 complete");
   await expect(page.locator("body")).not.toContainText("1 Example Street");
+  expect(await page.evaluate(() => sessionStorage.getItem("rosewood_v2_receipt"))).toBeNull();
+  expect(await page.evaluate(() => Boolean(sessionStorage.getItem("rosewood_v2_receipt_session")))).toBe(true);
+});
+
+test("real local additional guardian independently reviews and signs", async ({ page, request }, testInfo) => {
+  test.skip(testInfo.project.name.includes("mobile"), "One full remote-signature backend canary is sufficient; mobile signing layout is covered by preview.");
+  const invitationToken = "playwright-v2-remote-signer-token";
+  const primaryEmail = "guardian@example.test";
+  const secondEmail = "second@example.test";
+  const otp = await api(request, "POST", "/v2/access/request-otp", { invitationToken, email: primaryEmail });
+  const access = await api(request, "POST", "/v2/access/verify-otp", { invitationToken, challengeId: otp.challengeId, code: otp.testCode });
+  const application = {
+    ...browserApplication(),
+    guardian_b_first_name: "Jordan",
+    guardian_b_last_name: "Example",
+    guardian_b_relationship: "Father",
+    guardian_b_email: secondEmail,
+    guardian_b_mobile: "0422000000",
+    guardian_b_contact_role: "Secondary contact",
+    guardian_b_required_signer: "Yes",
+    guardian_b_contact_permission: "Yes"
+  };
+  const saved = await api(request, "PUT", "/v2/draft", { schemaVersion: "rosewood-v2-2026-08-02", policyVersion: "draft-2026-08-02", baseRevision: 0, clientRevision: 1, currentStage: 7, application }, access.sessionToken);
+  for (const category of ["birth_certificate", "immunisation", "proof_of_address"]) {
+    const upload = await api(request, "POST", "/v2/documents/session", { category, fileName: `${category}.pdf`, mimeType: "application/pdf", size: 1000 }, access.sessionToken);
+    const uploaded = await request.put(upload.uploadUrl, { headers: { "Content-Type": "application/pdf" }, data: Buffer.alloc(1000, 1) });
+    const file = await uploaded.json();
+    await api(request, "POST", "/v2/documents/confirm", { category, documentId: file.id }, access.sessionToken);
+  }
+  const primarySubmission = await api(request, "POST", "/v2/applications/submit", {
+    expectedRevision: saved.revision,
+    declarations: { information: "Yes", privacy: "Yes", authority: "Yes", audit: "Yes", intent: "Yes" },
+    signerName: "Morgan Example",
+    signatureDataUrl: pngDataUrl()
+  }, access.sessionToken);
+  expect(primarySubmission.status).toBe("pending_signatures");
+
+  const messages = await (await request.get("/__test/messages")).json();
+  const invitation = messages.findLast((message) => message.to === secondEmail && message.subject.includes("signature is required"));
+  expect(invitation).toBeTruthy();
+  const taskHref = invitation.html.match(/href="([^"]+)"/)[1].replaceAll("&amp;", "&");
+  await page.goto(taskHref);
+  await expect(page).not.toHaveURL(/task=/);
+  await page.locator("#sign-email").fill(secondEmail);
+  const signatureOtpResponse = page.waitForResponse((response) => response.url().endsWith("/v2/signatures/request-otp"));
+  await page.getByRole("button", { name: "Send my secure code" }).click();
+  const signatureOtp = await (await signatureOtpResponse).json();
+  await page.locator("#sign-otp").fill(signatureOtp.testCode);
+  await page.getByRole("button", { name: "Verify and review" }).click();
+  await expect(page.locator("#sign-application-view")).toBeVisible();
+  await page.locator('[name="detailsConfirmed"]').check();
+  await page.getByRole("button", { name: "Save details and review" }).click();
+  await expect(page.getByRole("heading", { name: "One frozen revision, arranged for reading." })).toBeVisible();
+  await expect(page.locator("#sign-review-content")).toContainText("second@example.test");
+  await expect(page.locator("#sign-review-content")).toContainText("Primary declaration and signature");
+  await expect(page.locator("#sign-review-content")).toContainText("Morgan Example");
+  await page.locator('[name="reviewConfirmed"]').check();
+  await page.getByRole("button", { name: "Continue to my signature" }).click();
+  await page.locator("#remote-audit").check();
+  await page.locator("#remote-intent").check();
+  await page.locator('[name="signerName"]').fill("Jordan Example");
+  const canvas = page.locator("#remote-signature-canvas");
+  const box = await canvas.boundingBox();
+  await page.mouse.move(box.x + 80, box.y + 100);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 180, box.y + 60, { steps: 8 });
+  await page.mouse.move(box.x + 260, box.y + 130, { steps: 8 });
+  await page.mouse.up();
+  await page.getByRole("button", { name: "Submit my signature" }).click();
+  await expect(page.getByRole("heading", { name: "Your signature is complete." })).toBeVisible();
+  await expect(page.locator("#aggregate-sign-status")).toHaveClass(/is-complete/);
+  expect(await page.evaluate(() => sessionStorage.getItem("rosewood_v2_task"))).toBeNull();
+  expect(await page.evaluate(() => sessionStorage.getItem("rosewood_v2_sign_session"))).toBeNull();
+  await expect.poll(async () => {
+    const delivered = await (await request.get("/__test/messages")).json();
+    return delivered.some((message) => message.to === secondEmail && message.subject.includes("All signatures complete"));
+  }).toBe(true);
 });
 
 test("real local OTP opens the invited record and acknowledges a secure revision", async ({ page }, testInfo) => {
-  const invitation = testInfo.project.name.includes("mobile") ? "playwright-v2-mobile-invitation-token" : "playwright-v2-invitation-token";
+  test.skip(testInfo.project.name.includes("mobile"), "One complete backend canary is sufficient; mobile access and form behavior are covered independently.");
+  const invitation = "playwright-v2-invitation-token";
   await page.goto(`/pages/rosewood-enrolment-v2.html?invite=${invitation}`);
   await page.locator("#access-email").fill("guardian@example.test");
   const otpResponsePromise = page.waitForResponse((response) => response.url().endsWith("/v2/access/request-otp"));

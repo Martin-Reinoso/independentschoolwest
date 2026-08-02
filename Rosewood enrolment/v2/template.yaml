@@ -102,6 +102,7 @@ Resources:
           GOOGLE_SHEETS_SPREADSHEET_ID: !Ref GoogleSheetsSpreadsheetId
           ALLOWED_ORIGINS: !Ref AllowedOrigins
           SCHEMA_VERSION: rosewood-v2-2026-08-02
+          POLICY_VERSION: draft-2026-08-02
           SIGNING_PAGE_URL: https://ffe.org.au/pages/rosewood-sign-v2.html
           RECEIPT_PAGE_URL: https://ffe.org.au/pages/rosewood-receipt-v2.html
 
