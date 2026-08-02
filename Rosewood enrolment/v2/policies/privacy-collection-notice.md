@@ -10,15 +10,17 @@ consider enrolment, communicate with families, plan educational and wellbeing su
 meet safety and legal responsibilities, administer offers and maintain accountable
 records.
 
-Information may include student and guardian identity/contact details, family and care
+Information may include student and guardian identity/contact details, primary and
+shared-care household addresses, independent emergency contact details, family and care
 arrangements, education history, health/support information, permissions, residency
 information, documents, declarations, signatures and security/audit metadata.
 
 Information may be disclosed where necessary to authorised Rosewood personnel, service
-providers operating the enrolment systems, professional advisers, previous education or
-health providers with consent, and regulators or authorities where authorised or
-required. Final disclosures and overseas-processing details are not approved in this
-placeholder.
+providers operating the enrolment systems, professional advisers, previous education
+providers with consent, relevant health professionals when the conditional consent is
+given, and regulators or authorities where authorised or required. Final disclosures,
+the exact scope of health-provider contact and overseas-processing details are not
+approved in this placeholder.
 
 The V2 test architecture uses AWS services in the Sydney region and restricted Google
 Drive/Sheets. Access is intended to be limited to named staff and service accounts.

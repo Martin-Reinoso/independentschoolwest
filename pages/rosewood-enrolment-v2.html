@@ -228,13 +228,21 @@
               <label class="form-field"><span>Are there court or parenting orders? <b class="required-mark">*</b></span><select name="court_orders" required><option value="">Select</option><option>No</option><option>Yes</option><option>Unsure / seeking advice</option></select></label>
             </div>
             <div class="conditional" data-show-when="care_arrangement:Shared care across households|Other" hidden><label class="form-field"><span>Care schedule or arrangement <b class="required-mark">*</b></span><textarea name="care_arrangement_details" data-required-when-visible maxlength="1200"></textarea></label></div>
+            <div class="conditional" data-show-when="care_arrangement:Shared care across households" hidden>
+              <p class="card-intro">Record the other household where the student regularly lives. This is not a postal or billing preference.</p>
+              <div class="field-grid">
+                <label class="form-field field-span"><span>Other household street address <b class="required-mark">*</b></span><input name="secondary_address" autocomplete="street-address" data-required-when-visible maxlength="180"></label>
+                <label class="form-field"><span>Suburb <b class="required-mark">*</b></span><input name="secondary_suburb" autocomplete="address-level2" data-required-when-visible maxlength="80"></label>
+                <label class="form-field"><span>Postcode <b class="required-mark">*</b></span><input name="secondary_postcode" autocomplete="postal-code" inputmode="numeric" pattern="[0-9]{4}" data-required-when-visible maxlength="4"></label>
+              </div>
+            </div>
             <div class="conditional" data-show-when="court_orders:Yes|Unsure / seeking advice" hidden><label class="form-field"><span>What should Rosewood know now? <b class="required-mark">*</b></span><textarea name="court_order_summary" data-required-when-visible maxlength="1200"></textarea></label><p class="field-help">Upload orders only in Documents. Do not email them. Staff must not infer contact or signing authority from this summary alone.</p></div>
             <label class="form-field"><span>Informal carer or statutory declaration relevant?</span><select name="informal_carer"><option>No</option><option>Yes</option><option>Unsure / need support</option></select></label>
           </div>
 
           <div class="form-card">
             <h3>Emergency contact</h3>
-            <p class="card-intro">Please nominate someone other than the primary guardian where possible.</p>
+            <p class="card-intro">Nominate someone other than every guardian or carer recorded above, so Rosewood has a genuinely independent emergency contact.</p>
             <div class="field-grid three">
               <label class="form-field"><span>First name <b class="required-mark">*</b></span><input name="emergency_first_name" maxlength="80" required></label>
               <label class="form-field"><span>Family name <b class="required-mark">*</b></span><input name="emergency_last_name" maxlength="80" required></label>
@@ -272,6 +280,7 @@
                 <label class="form-field"><span>Medication and emergency instructions <b class="required-mark">*</b></span><textarea name="medication_details" data-required-when-visible maxlength="1500"></textarea></label>
               </div>
               <fieldset><legend>Anaphylaxis risk?</legend><div class="choice-grid"><label class="choice-card"><input type="radio" name="anaphylaxis" value="No"><span>No</span></label><label class="choice-card"><input type="radio" name="anaphylaxis" value="Yes"><span>Yes</span></label></div></fieldset>
+              <label class="check-row"><input type="checkbox" name="health_professional_permission" value="Yes" data-required-when-visible><span><strong>I authorise Rosewood to request relevant health and safety information from the professionals identified in this application. <b class="required-mark">*</b></strong><small>This draft consent is limited to enrolment assessment, transition, reasonable adjustments and safe planning. Final wording requires approval.</small></span></label>
             </div>
             <div class="field-grid">
               <label class="form-field"><span>Immunisation statement status <b class="required-mark">*</b></span><select name="immunisation_status" required><option value="">Select status</option><option>Up to date and available</option><option>Available but not up to date</option><option>Requested / not yet available</option><option>Seeking advice</option></select></label>

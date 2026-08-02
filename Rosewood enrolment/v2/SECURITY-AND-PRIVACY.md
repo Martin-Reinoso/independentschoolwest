@@ -18,6 +18,8 @@ all application content and metadata as restricted.
 - CORS permits only the Rosewood site and explicit localhost development origins
 - all state-changing requests require an idempotency key
 - browser and backend independently validate every field/file rule
+- shared-care alternate addresses and health-professional consent are conditional, and
+  an emergency contact cannot duplicate any guardian by full name, mobile or email
 - backend draft storage rejects unknown fields, out-of-contract values and client-supplied
   document references, and pins schema/policy versions to trusted runtime configuration
 - DynamoDB conditional writes enforce revisions, challenge use and signature uniqueness
@@ -36,7 +38,8 @@ all application content and metadata as restricted.
   supplied address
 - signature and document artifacts are immutable or versioned after submission
 - audit events are append-only and separate from mutable family answers
-- preview mode cannot call the API, upload, persist, send email or submit
+- preview mode uses a comprehensive synthetic family record and cannot call the API,
+  upload, persist, send email or submit
 - private invitation, signature and receipt query tokens are removed from the browser
   address bar after capture and retained only in tab-scoped session storage
 - completion state, receipt capabilities and all related outbox records commit in the

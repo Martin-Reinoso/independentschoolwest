@@ -13,6 +13,98 @@
   const guardianLetters = ["b", "c", "d"];
   const allowedFileTypes = new Set(["application/pdf", "image/jpeg", "image/png"]);
   const maxFileBytes = 8 * 1024 * 1024;
+  const syntheticPreviewApplication = {
+    readiness_acknowledgement: "Yes",
+    student_first_name: "Ava",
+    student_middle_names: "Grace",
+    student_last_name: "Example",
+    student_preferred_name: "Ava",
+    student_date_of_birth: "2021-03-04",
+    student_gender: "Female",
+    entry_year: "2027",
+    entry_year_level: "Prep",
+    current_school: "Example Early Learning Centre",
+    current_year_level: "4-year-old kindergarten",
+    student_address: "1 Example Lane",
+    student_suburb: "Melton",
+    student_postcode: "3337",
+    country_of_birth: "Australia",
+    residency_status: "Australian citizen",
+    home_language: "English",
+    interpreter_required: "No",
+    religion: "Catholic",
+    parish: "St Catherine of Siena Parish",
+    family_connection: "New family",
+    future_siblings: "Yes",
+    future_sibling_details: "One younger sibling may seek enrolment in a later year.",
+    guardian_a_first_name: "Morgan",
+    guardian_a_last_name: "Example",
+    guardian_a_relationship: "Mother",
+    guardian_a_email: "guardian@example.test",
+    guardian_a_mobile: "0400 000 000",
+    guardian_a_contact_role: "Primary contact",
+    guardian_a_lives_with_student: "Yes",
+    guardian_a_legal_responsibility: "Yes",
+    guardian_a_required_signer: "Yes",
+    guardian_b_first_name: "Jordan",
+    guardian_b_last_name: "Example",
+    guardian_b_relationship: "Father",
+    guardian_b_email: "second.guardian@example.test",
+    guardian_b_mobile: "0411 111 111",
+    guardian_b_contact_role: "Secondary contact",
+    guardian_b_lives_with_student: "Yes",
+    guardian_b_legal_responsibility: "Yes",
+    guardian_b_required_signer: "Yes",
+    guardian_b_contact_permission: "Yes",
+    care_arrangement: "Shared care across households",
+    care_arrangement_details: "Ava follows a regular week-about schedule between both households.",
+    secondary_address: "2 Sample Court",
+    secondary_suburb: "Melton South",
+    secondary_postcode: "3338",
+    court_orders: "No",
+    informal_carer: "No",
+    emergency_first_name: "Taylor",
+    emergency_last_name: "Example",
+    emergency_relationship: "Aunt",
+    emergency_mobile: "0422 222 222",
+    emergency_email: "emergency@example.test",
+    emergency_may_collect: "Yes",
+    guardian_completeness: "Yes",
+    student_strengths: "Ava is curious, imaginative and enjoys books, drawing and collaborative play.",
+    additional_needs: "Yes",
+    support_areas: ["Communication and language", "Social and emotional"],
+    support_details: "Ava benefits from advance notice of transitions and a calm introduction to unfamiliar groups.",
+    ndis_status: "No",
+    medical_needs: "Yes",
+    medical_conditions: "Synthetic example: mild asthma triggered by cold weather.",
+    medication_details: "Synthetic example: reliever inhaler used according to the current medical plan.",
+    anaphylaxis: "No",
+    health_professional_permission: "Yes",
+    immunisation_status: "Up to date and available",
+    doctor_practice: "Example Family Medical Centre",
+    doctor_phone: "03 9000 0000",
+    ambulance_cover: "Yes",
+    previous_school_permission: "Yes",
+    previous_school_name: "Example Early Learning Centre",
+    previous_school_contact: "educator@example.test",
+    media_permissions: ["Internal learning and school publications", "Public school website"],
+    student_name_permission: "First name only",
+    fee_responsibility: "Joint",
+    fee_arrangement_details: "Both guardians will share responsibility for the family account.",
+    referral_source: "School website",
+    decision_factors: ["Faith and character", "Academic approach", "Parent partnership"],
+    required_documents_pending: "Yes",
+    pending_document_explanation: "Synthetic preview: an updated proof of address will be supplied before commencement.",
+    information_declaration: "Yes",
+    privacy_acknowledgement: "Yes",
+    authority_declaration: "Yes",
+    review_ready: "Yes",
+    final_comments: "Synthetic preview only. The family would welcome a transition conversation before commencement.",
+    documents: [
+      { category: "birth_certificate", documentId: "preview-birth", fileName: "synthetic-birth-certificate.pdf", mimeType: "application/pdf", size: 120000 },
+      { category: "immunisation", documentId: "preview-immunisation", fileName: "synthetic-immunisation-statement.pdf", mimeType: "application/pdf", size: 98000 }
+    ]
+  };
 
   const accessView = document.getElementById("access-view");
   const applicationView = document.getElementById("application-view");
@@ -314,6 +406,29 @@
     }
   }
 
+  function validateIndependentEmergencyContact(errors) {
+    const emergencyFirstName = fieldValue("emergency_first_name").trim().toLowerCase();
+    const emergencyLastName = fieldValue("emergency_last_name").trim().toLowerCase();
+    const emergencyPhone = fieldValue("emergency_mobile").replace(/\D/g, "");
+    const emergencyEmail = fieldValue("emergency_email").trim().toLowerCase();
+    const emergencyName = `${emergencyFirstName} ${emergencyLastName}`.trim();
+    const matchesGuardian = ["a", ...guardianLetters].some((letter) => {
+      const firstName = fieldValue(`guardian_${letter}_first_name`).trim().toLowerCase();
+      const lastName = fieldValue(`guardian_${letter}_last_name`).trim().toLowerCase();
+      const phone = fieldValue(`guardian_${letter}_mobile`).replace(/\D/g, "");
+      const email = fieldValue(`guardian_${letter}_email`).trim().toLowerCase();
+      const guardianName = `${firstName} ${lastName}`.trim();
+      return (guardianName && guardianName === emergencyName)
+        || (phone && phone === emergencyPhone)
+        || (email && emergencyEmail && email === emergencyEmail);
+    });
+    if (!matchesGuardian) return null;
+    errors.push("The emergency contact must be someone other than every guardian or carer recorded above.");
+    const control = enrolmentForm.elements.emergency_mobile;
+    setFieldError(control, "Enter an independent emergency contact.");
+    return control;
+  }
+
   function validateStage(index, { focus = true } = {}) {
     const stage = document.querySelector(`[data-stage="${index}"]`);
     if (!stage) return true;
@@ -346,6 +461,10 @@
       }
     });
 
+    if (index === 2) {
+      const emergencyInvalid = validateIndependentEmergencyContact(errors);
+      firstInvalid ||= emergencyInvalid;
+    }
     if (index === 5) validateDocumentStage(errors);
     if (index === 7 && !signatureStarted) {
       errors.push("Draw your signature before submitting.");
@@ -392,7 +511,11 @@
     document.getElementById("mobile-step-count").textContent = target < 8 ? `${target + 1} of 8` : "Complete";
     document.getElementById("mobile-progress-bar").style.width = `${Math.min(100, ((target + 1) / 8) * 100)}%`;
     window.scrollTo({ top: 0, behavior: "smooth" });
-    document.querySelector(`[data-stage="${target}"] h1, [data-stage="${target}"] h2`)?.focus?.({ preventScroll: true });
+    const stageHeading = document.querySelector(`[data-stage="${target}"] h1, [data-stage="${target}"] h2`);
+    if (stageHeading) {
+      stageHeading.tabIndex = -1;
+      stageHeading.focus({ preventScroll: true });
+    }
     saveLocalDraft();
     if (target !== previousStage) {
       track("stage_viewed", target);
@@ -461,12 +584,18 @@
     return items;
   }
 
+  function secondaryHouseholdAddress() {
+    const street = fieldValue("secondary_address");
+    const locality = [fieldValue("secondary_suburb"), fieldValue("secondary_postcode")].filter(Boolean).join(" ");
+    return [street, locality].filter(Boolean).join(", ") || "Not applicable";
+  }
+
   function buildReview() {
     const container = document.getElementById("review-content");
     container.replaceChildren(
       createReviewSection("review-student", "Student", 1, [["Legal first name", "student_first_name"], ["Middle names", "student_middle_names"], ["Legal family name", "student_last_name"], ["Preferred name", "student_preferred_name"], ["Date of birth", "student_date_of_birth"], ["Gender", "student_gender"], ["Proposed entry", "entry_year_level"], ["Commencement year", "entry_year"], ["Current setting", "current_school"], ["Current level", "current_year_level"], ["Residential address", "student_address"], ["Suburb", "student_suburb"], ["Postcode", "student_postcode"], ["Country of birth", "country_of_birth"], ["Residency", "residency_status"], ["Visa status", "visa_subclass"], ["Visa expiry", "visa_expiry"], ["Home language", "home_language"], ["Interpreter", "interpreter_required"], ["Faith tradition", "religion"], ["Parish or community", "parish"], ["Rosewood connection", "family_connection"], ["Future siblings", "future_siblings"], ["Future sibling details", "future_sibling_details"]]),
-      createReviewValueSection("review-family", "Family and authority", 2, [...guardianReviewItems(), ["Care arrangement", fieldValue("care_arrangement")], ["Care arrangement details", fieldValue("care_arrangement_details")], ["Court or parenting orders", fieldValue("court_orders")], ["Order summary", fieldValue("court_order_summary")], ["Informal carer", fieldValue("informal_carer")], ["Emergency contact", `${fieldValue("emergency_first_name")} ${fieldValue("emergency_last_name")} · ${fieldValue("emergency_relationship")} · ${fieldValue("emergency_mobile")}`], ["Emergency email", fieldValue("emergency_email")], ["Emergency collection", fieldValue("emergency_may_collect")], ["All guardians included", fieldValue("guardian_completeness")]]),
-      createReviewSection("review-care", "Learning, wellbeing and health", 3, [["Strengths", "student_strengths"], ["Current support", "additional_needs"], ["Support areas", "support_areas"], ["Support details", "support_details"], ["NDIS", "ndis_status"], ["Medical or allergy information", "medical_needs"], ["Conditions or allergies", "medical_conditions"], ["Medication and instructions", "medication_details"], ["Anaphylaxis", "anaphylaxis"], ["Immunisation status", "immunisation_status"], ["Doctor or practice", "doctor_practice"], ["Practice phone", "doctor_phone"], ["Ambulance cover", "ambulance_cover"]]),
+      createReviewValueSection("review-family", "Family and authority", 2, [...guardianReviewItems(), ["Care arrangement", fieldValue("care_arrangement")], ["Care arrangement details", fieldValue("care_arrangement_details")], ["Other household address", secondaryHouseholdAddress()], ["Court or parenting orders", fieldValue("court_orders")], ["Order summary", fieldValue("court_order_summary")], ["Informal carer", fieldValue("informal_carer")], ["Emergency contact", `${fieldValue("emergency_first_name")} ${fieldValue("emergency_last_name")} · ${fieldValue("emergency_relationship")} · ${fieldValue("emergency_mobile")}`], ["Emergency email", fieldValue("emergency_email")], ["Emergency collection", fieldValue("emergency_may_collect")], ["All guardians included", fieldValue("guardian_completeness")]]),
+      createReviewSection("review-care", "Learning, wellbeing and health", 3, [["Strengths", "student_strengths"], ["Current support", "additional_needs"], ["Support areas", "support_areas"], ["Support details", "support_details"], ["NDIS", "ndis_status"], ["Medical or allergy information", "medical_needs"], ["Conditions or allergies", "medical_conditions"], ["Medication and instructions", "medication_details"], ["Health professional contact permission", "health_professional_permission"], ["Anaphylaxis", "anaphylaxis"], ["Immunisation status", "immunisation_status"], ["Doctor or practice", "doctor_practice"], ["Practice phone", "doctor_phone"], ["Ambulance cover", "ambulance_cover"]]),
       createReviewSection("review-choices", "Choices and responsibilities", 4, [["Previous setting permission", "previous_school_permission"], ["Previous setting", "previous_school_name"], ["Previous setting contact", "previous_school_contact"], ["Media permissions", "media_permissions"], ["Name permission", "student_name_permission"], ["Community updates", "community_updates"], ["Fee responsibility", "fee_responsibility"], ["Fee arrangement details", "fee_arrangement_details"], ["Referral source", "referral_source"], ["Decision factors", "decision_factors"]]),
       createReviewSection("review-documents", "Documents", 5, [["Uploaded categories", "documents"], ["Required evidence pending", "required_documents_pending"], ["Pending explanation", "pending_document_explanation"]])
     );
@@ -783,8 +912,9 @@
       enrolmentForm.elements.student_last_name.value = parts.join(" ");
     }
     const serverDraft = sessionContext.draft?.application ? sessionContext.draft : null;
-    const recoveredLocal = restoreLocalDraft({ newerThan: Date.parse(serverDraft?.savedAt || "") || 0 });
-    if (!recoveredLocal && serverDraft) restoreFormData(serverDraft.application);
+    const recoveredLocal = previewMode ? false : restoreLocalDraft({ newerThan: Date.parse(serverDraft?.savedAt || "") || 0 });
+    if (previewMode) restoreFormData(syntheticPreviewApplication);
+    else if (!recoveredLocal && serverDraft) restoreFormData(serverDraft.application);
     accessView.hidden = true;
     applicationView.hidden = false;
     updateConditionals();

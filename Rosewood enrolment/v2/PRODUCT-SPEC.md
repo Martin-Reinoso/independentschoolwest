@@ -24,8 +24,8 @@
 | Access | Match the invitation and verify the invited email | Valid invitation, current OTP, unused challenge |
 | Prepare | Explain time, evidence, privacy and saved-draft behaviour | Readiness acknowledgement |
 | Student | Collect identity, proposed entry, residence, language and school history | Required student and address fields |
-| Family | Collect guardians, legal authority, household/care arrangements and emergency contact | Primary guardian, authority choices and guardian-completeness attestation |
-| Care | Collect only relevant learning, medical, allergy, medication and support information | Explicit none/yes choices and required conditional details |
+| Family | Collect guardians, legal authority, household/care arrangements and emergency contact | Primary guardian, authority choices, shared-care address, independent emergency contact and guardian-completeness attestation |
+| Care | Collect only relevant learning, medical, allergy, medication and support information | Explicit none/yes choices, health-professional consent and required conditional details |
 | Choices | Collect previous-school permission, granular media choices, optional community updates and exclusive fee responsibility | Every required decision answered |
 | Documents | Collect minimum evidence and explain conditional/deferrable items | Required uploads or an approved not-yet-available explanation |
 | Review | Present a concise, navigable summary and policy versions | Accuracy, privacy and authority declarations |
@@ -53,7 +53,7 @@
 - relationship, primary/secondary contact role and lives-with-student status
 - legal responsibility, permission to contact and required-signatory status as distinct
   concepts
-- residential/postal address controls
+- a structured alternate household address when shared care is selected
 - care arrangement and shared-care schedule
 - court/parenting order branch with restricted-contact warning
 - informal-carer/statutory-declaration branch
@@ -70,7 +70,9 @@
 - allergy/anaphylaxis, action-plan and medication branches
 - immunisation statement status
 - doctor/practice and emergency health instructions
-- explicit consent to contact current educators/health professionals where required
+- separate explicit consent to contact the current education setting and, when medical
+  needs are disclosed, relevant health professionals for assessment, transition,
+  reasonable adjustments and safe planning
 
 ### Choices And Responsibilities
 
@@ -120,6 +122,8 @@ Drive metadata and task ownership.
 - Fee responsibility is exclusive and internally consistent.
 - Guardian completeness resets when the guardian set changes.
 - Sensitive branches are collapsed until relevant.
+- Shared care requires the other household address, and emergency contact identity,
+  mobile and email are checked against every recorded guardian.
 - Review is grouped and anchored; it does not display a fake interactive signature area.
 - OTP errors cover expiry, attempts, resend cooldown and support recovery.
 - Save state identifies the exact storage boundary.

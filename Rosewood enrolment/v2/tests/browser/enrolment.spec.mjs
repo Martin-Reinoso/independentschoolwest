@@ -86,6 +86,15 @@ test("preview is visibly synthetic and performs no service writes", async ({ pag
   await openPreview(page);
   await expect(page.locator(".draft-banner")).toContainText("not open for real applications");
   await expect(page.locator("#save-state")).toContainText("Preview only");
+  await expect(page.locator('[name="student_first_name"]')).toHaveValue("Ava");
+  await expect(page.locator('[name="guardian_b_first_name"]')).toHaveValue("Jordan");
+  await expect(page.locator('[name="medical_conditions"]')).toHaveValue(/mild asthma/);
+  await expect(page.locator('[data-document-card="birth_certificate"] [data-document-status]')).toHaveText("synthetic-birth-certificate.pdf");
+  await expect(page.locator('[data-stage="0"] h1')).toBeFocused();
+  await page.locator('[data-go-stage="6"]').dispatchEvent("click");
+  await expect(page.locator("#review-family")).toContainText("second.guardian@example.test");
+  await expect(page.locator("#review-care")).toContainText("mild asthma");
+  await expect(page.locator("#review-documents")).toContainText("synthetic-birth-certificate.pdf");
   await page.waitForTimeout(250);
   expect(serviceRequests).toEqual([]);
 });
@@ -118,6 +127,7 @@ test("mobile introduces the journey before the form and has no horizontal overfl
 
 test("validation is explicit and conditional questions appear only when relevant", async ({ page }) => {
   await openPreview(page);
+  await page.locator('[name="readiness_acknowledgement"]').uncheck();
   await page.getByRole("button", { name: "Tell us about your child" }).click();
   await expect(page.locator("#global-errors")).toBeVisible();
   await expect(page.locator("#global-errors")).toContainText("required");
@@ -129,6 +139,31 @@ test("validation is explicit and conditional questions appear only when relevant
   await page.locator('[name="residency_status"]').selectOption("Temporary resident");
   await expect(visaGroup).toBeVisible();
   await expect(page.locator('[name="visa_subclass"]')).toHaveAttribute("required", "");
+});
+
+test("shared care, health consent and emergency independence are enforced", async ({ page }) => {
+  await openPreview(page);
+  await page.locator('[data-go-stage="2"]').dispatchEvent("click");
+
+  await expect(page.locator('[name="secondary_address"]')).toBeVisible();
+  await expect(page.locator('[name="secondary_address"]')).toHaveAttribute("required", "");
+  await expect(page.locator('[name="secondary_address"]')).toHaveValue("2 Sample Court");
+
+  await page.locator('[name="emergency_mobile"]').fill("0400 000 000");
+  await page.getByRole("button", { name: "Continue to care" }).click();
+  await expect(page.locator("#global-errors")).toContainText("must be someone other than every guardian");
+  await expect(page.locator('[name="emergency_mobile"]')).toHaveAttribute("aria-invalid", "true");
+
+  await page.locator('[name="emergency_mobile"]').fill("0422 222 222");
+  await page.getByRole("button", { name: "Continue to care" }).click();
+  await expect(page.locator('[data-stage="3"]')).toBeVisible();
+  await expect(page.locator('[name="health_professional_permission"]')).toBeChecked();
+  await expect(page.locator('[name="health_professional_permission"]')).toHaveAttribute("required", "");
+
+  await page.locator('[name="health_professional_permission"]').uncheck();
+  await page.getByRole("button", { name: "Continue to choices" }).click();
+  await expect(page.locator("#global-errors")).toContainText("required");
+  await expect(page.locator('[data-stage="3"]')).toBeVisible();
 });
 
 test("document requirements adapt to school, residency, orders and anaphylaxis", async ({ page }) => {
@@ -158,6 +193,7 @@ test("a selected document can be removed before submission", async ({ page }) =>
   await openPreview(page);
   await page.locator('[data-go-stage="5"]').dispatchEvent("click");
   const card = page.locator('[data-document-card="birth_certificate"]');
+  await card.locator('[data-remove-document]').click();
   await card.locator('input[type="file"]').setInputFiles({ name: "synthetic-birth.pdf", mimeType: "application/pdf", buffer: Buffer.from("synthetic") });
   await expect(card.locator('[data-document-status]')).toHaveText("synthetic-birth.pdf");
   await expect(card.locator('[data-remove-document]')).toBeVisible();
@@ -169,12 +205,12 @@ test("a selected document can be removed before submission", async ({ page }) =>
 test("adding a guardian adapts the family section and clears completeness", async ({ page }) => {
   await openPreview(page);
   await page.locator('[data-go-stage="2"]').dispatchEvent("click");
+  await expect(page.locator('[data-guardian="b"]')).toBeVisible();
   await page.locator('[name="guardian_completeness"]').check();
   await page.getByRole("button", { name: "Add another parent, guardian or carer" }).click();
-  await expect(page.locator('[data-guardian="b"]')).toBeVisible();
+  await expect(page.locator('[data-guardian="c"]')).toBeVisible();
   await expect(page.locator('[name="guardian_completeness"]')).not.toBeChecked();
-  await expect(page.locator('[name="guardian_b_required_signer"]')).toBeChecked();
-  await page.getByRole("button", { name: "Add another parent, guardian or carer" }).click();
+  await expect(page.locator('[name="guardian_c_required_signer"]')).toBeChecked();
   await page.locator('[data-guardian="b"] .remove-guardian').click();
   await page.getByRole("button", { name: "Add another parent, guardian or carer" }).click();
   await expect(page.locator('[data-guardian="b"]')).toHaveCount(1);
@@ -274,10 +310,11 @@ test("a newer device fallback is recovered over an older server draft", async ({
 });
 
 test("optional communications default off and fee responsibility is exclusive", async ({ page }) => {
-  await openPreview(page);
-  await page.locator('[data-go-stage="4"]').dispatchEvent("click");
+  await page.goto("/pages/rosewood-enrolment-v2.html?preview=1");
   await expect(page.locator('[name="community_updates"]')).not.toBeChecked();
   await expect(page.locator('[name="media_permissions"]:checked')).toHaveCount(0);
+  await page.getByRole("button", { name: "Enter synthetic content preview" }).click();
+  await page.locator('[data-go-stage="4"]').dispatchEvent("click");
   await page.locator('[name="fee_responsibility"][value="Joint"]').check();
   await page.locator('[name="fee_responsibility"][value="Single account holder"]').check();
   await expect(page.locator('[name="fee_responsibility"]:checked')).toHaveCount(1);
@@ -336,6 +373,11 @@ test("remote guardian review and signature stages are unambiguous", async ({ pag
   await page.locator('[name="detailsConfirmed"]').check();
   await page.getByRole("button", { name: "Save details and review" }).click();
   await expect(page.getByRole("heading", { name: "One frozen revision, arranged for reading." })).toBeVisible();
+  await expect(page.locator("#sign-review-content .review-section")).toHaveCount(6);
+  await expect(page.locator("#sign-review-content")).toContainText("second.guardian@example.test");
+  await expect(page.locator("#sign-review-content")).toContainText("Synthetic example: mild asthma");
+  await expect(page.locator("#sign-review-content")).toContainText("Primary declaration and signature");
+  await expect(page.locator('[data-sign-panel="1"] h2')).toBeFocused();
   await expect(page.locator("#remote-signature-canvas")).toBeHidden();
   await page.locator('[name="reviewConfirmed"]').check();
   await page.getByRole("button", { name: "Continue to my signature" }).click();

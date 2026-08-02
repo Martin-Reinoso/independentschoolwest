@@ -47,6 +47,9 @@ const TEXT_LIMITS = {
   guardian_a_email: 254,
   guardian_a_mobile: 30,
   care_arrangement_details: 1200,
+  secondary_address: 180,
+  secondary_suburb: 80,
+  secondary_postcode: 4,
   court_order_summary: 1200,
   emergency_first_name: 80,
   emergency_last_name: 80,
@@ -100,6 +103,7 @@ const ARRAY_ENUM_FIELDS = {
 const YES_ONLY_FIELDS = new Set([
   "readiness_acknowledgement", "guardian_a_lives_with_student", "guardian_a_legal_responsibility",
   "guardian_a_required_signer", "guardian_completeness", "previous_school_permission",
+  "health_professional_permission",
   "community_updates", "required_documents_pending", "information_declaration",
   "privacy_acknowledgement", "authority_declaration", "review_ready",
   "signature_record_declaration", "signature_consent_declaration"
@@ -253,6 +257,7 @@ function validateApplicationShape(application, nowMs) {
   if (truthyValue(application.guardian_a_email) && !/^\S+@\S+\.\S+$/.test(normalizeEmail(application.guardian_a_email))) invalid.push("guardian_a_email:invalid_email");
   if (truthyValue(application.emergency_email) && !/^\S+@\S+\.\S+$/.test(normalizeEmail(application.emergency_email))) invalid.push("emergency_email:invalid_email");
   if (truthyValue(application.student_postcode) && !/^\d{4}$/.test(application.student_postcode)) invalid.push("student_postcode:invalid_postcode");
+  if (truthyValue(application.secondary_postcode) && !/^\d{4}$/.test(application.secondary_postcode)) invalid.push("secondary_postcode:invalid_postcode");
   if (truthyValue(application.student_date_of_birth) && (!validDate(application.student_date_of_birth) || new Date(`${application.student_date_of_birth}T00:00:00.000Z`).valueOf() > nowMs)) invalid.push("student_date_of_birth:invalid_date");
   if (truthyValue(application.visa_expiry) && !validDate(application.visa_expiry)) invalid.push("visa_expiry:invalid_date");
   for (const letter of ["b", "c", "d"]) {
@@ -280,18 +285,33 @@ function validateApplication(application, nowMs) {
   for (const field of REQUIRED_YES_FIELDS) if (application[field] !== "Yes") missing.push(`${field}:Yes`);
   if (application.additional_needs === "Yes" && (!truthyValue(application.support_areas) || !truthyValue(application.support_details))) missing.push("support_areas/support_details");
   if (application.medical_needs === "Yes" && (!truthyValue(application.medical_conditions) || !truthyValue(application.medication_details))) missing.push("medical_conditions/medication_details");
+  if (application.medical_needs === "Yes" && application.health_professional_permission !== "Yes") missing.push("health_professional_permission:Yes");
   if (["Temporary resident", "Other / seeking advice"].includes(application.residency_status) && !truthyValue(application.visa_subclass)) missing.push("visa_subclass");
   if (["Shared care across households", "Other"].includes(application.care_arrangement) && !truthyValue(application.care_arrangement_details)) missing.push("care_arrangement_details");
+  if (application.care_arrangement === "Shared care across households") {
+    for (const field of ["secondary_address", "secondary_suburb", "secondary_postcode"]) if (!truthyValue(application[field])) missing.push(field);
+  }
   if (["Yes", "Unsure / seeking advice"].includes(application.court_orders) && !truthyValue(application.court_order_summary)) missing.push("court_order_summary");
   if (["Single account holder", "Proposed split"].includes(application.fee_responsibility) && !truthyValue(application.fee_arrangement_details)) missing.push("fee_arrangement_details");
   const decisionFactors = Array.isArray(application.decision_factors) ? application.decision_factors : [application.decision_factors].filter(Boolean);
   if (decisionFactors.length < 1 || decisionFactors.length > 3) missing.push("decision_factors (select 1-3)");
+  const emergencyName = `${safeText(application.emergency_first_name, 80)} ${safeText(application.emergency_last_name, 80)}`.trim().toLowerCase();
+  const emergencyPhone = safeText(application.emergency_mobile, 30).replace(/\D/g, "");
+  const emergencyEmail = normalizeEmail(application.emergency_email);
+  for (const letter of ["a", "b", "c", "d"]) {
+    const guardianName = `${safeText(application[`guardian_${letter}_first_name`], 80)} ${safeText(application[`guardian_${letter}_last_name`], 80)}`.trim().toLowerCase();
+    const guardianPhone = safeText(application[`guardian_${letter}_mobile`], 30).replace(/\D/g, "");
+    const guardianEmail = normalizeEmail(application[`guardian_${letter}_email`]);
+    if (guardianName && emergencyName === guardianName) missing.push("emergency_contact:must_be_independent");
+    if (guardianPhone && emergencyPhone === guardianPhone) missing.push("emergency_contact:must_be_independent");
+    if (emergencyEmail && guardianEmail && emergencyEmail === guardianEmail) missing.push("emergency_contact:must_be_independent");
+  }
   const documents = Array.isArray(application.documents) ? application.documents : [];
   const categories = new Set(documents.map((document) => document.category));
   if (application.required_documents_pending !== "Yes") {
     for (const required of requiredDocumentCategories(application)) if (!categories.has(required)) missing.push(`document:${required}`);
   } else if (!truthyValue(application.pending_document_explanation)) missing.push("pending_document_explanation");
-  if (missing.length) throw appError(422, "APPLICATION_INCOMPLETE", "The application still has required information to complete.", { missing });
+  if (missing.length) throw appError(422, "APPLICATION_INCOMPLETE", "The application still has required information to complete.", { missing: [...new Set(missing)] });
 }
 
 function signerRecords(application, primarySignerId) {
@@ -334,6 +354,10 @@ function signerRecords(application, primarySignerId) {
 function reviewGroups(application, primarySignature = {}) {
   const display = (value) => Array.isArray(value) ? value.join(", ") : safeText(value, 5000) || "Not provided";
   const items = (entries) => entries.map(([label, value]) => ({ label, value: display(value) }));
+  const secondaryAddress = [
+    safeText(application.secondary_address, 180),
+    [safeText(application.secondary_suburb, 80), safeText(application.secondary_postcode, 4)].filter(Boolean).join(" ")
+  ].filter(Boolean).join(", ") || "Not applicable";
   const guardians = [
     ["Guardian 1", `${display(application.guardian_a_first_name)} ${display(application.guardian_a_last_name)} · ${display(application.guardian_a_relationship)} · ${display(application.guardian_a_contact_role)} · required signer`],
     ["Guardian 1 email", application.guardian_a_email],
@@ -356,8 +380,8 @@ function reviewGroups(application, primarySignature = {}) {
   }
   return [
     { title: "Student", items: items([["Legal first name", application.student_first_name], ["Middle names", application.student_middle_names], ["Legal family name", application.student_last_name], ["Preferred name", application.student_preferred_name], ["Date of birth", application.student_date_of_birth], ["Gender", application.student_gender], ["Proposed entry", `${display(application.entry_year_level)} in ${display(application.entry_year)}`], ["Current setting", application.current_school], ["Current level", application.current_year_level], ["Residential address", `${display(application.student_address)}, ${display(application.student_suburb)} ${display(application.student_postcode)}`], ["Country of birth", application.country_of_birth], ["Residency", application.residency_status], ["Visa status", application.visa_subclass], ["Visa expiry", application.visa_expiry], ["Home language", application.home_language], ["Interpreter", application.interpreter_required], ["Faith tradition", application.religion], ["Parish or community", application.parish], ["Rosewood connection", application.family_connection], ["Future siblings", application.future_siblings], ["Future sibling details", application.future_sibling_details]]) },
-    { title: "Family and authority", items: items([...guardians, ["Care arrangement", application.care_arrangement], ["Care arrangement details", application.care_arrangement_details], ["Court or parenting orders", application.court_orders], ["Order summary", application.court_order_summary], ["Informal carer", application.informal_carer], ["Emergency contact", `${display(application.emergency_first_name)} ${display(application.emergency_last_name)} · ${display(application.emergency_relationship)} · ${display(application.emergency_mobile)}`], ["Emergency email", application.emergency_email], ["Emergency collection", application.emergency_may_collect], ["All guardians included", application.guardian_completeness]]) },
-    { title: "Learning, wellbeing and health", items: items([["Strengths", application.student_strengths], ["Current support", application.additional_needs], ["Support areas", application.support_areas], ["Support details", application.support_details], ["NDIS", application.ndis_status], ["Medical or allergy information", application.medical_needs], ["Conditions or allergies", application.medical_conditions], ["Medication and instructions", application.medication_details], ["Anaphylaxis", application.anaphylaxis], ["Immunisation statement", application.immunisation_status], ["Doctor or practice", application.doctor_practice], ["Practice phone", application.doctor_phone], ["Ambulance cover", application.ambulance_cover]]) },
+    { title: "Family and authority", items: items([...guardians, ["Care arrangement", application.care_arrangement], ["Care arrangement details", application.care_arrangement_details], ["Other household address", secondaryAddress], ["Court or parenting orders", application.court_orders], ["Order summary", application.court_order_summary], ["Informal carer", application.informal_carer], ["Emergency contact", `${display(application.emergency_first_name)} ${display(application.emergency_last_name)} · ${display(application.emergency_relationship)} · ${display(application.emergency_mobile)}`], ["Emergency email", application.emergency_email], ["Emergency collection", application.emergency_may_collect], ["All guardians included", application.guardian_completeness]]) },
+    { title: "Learning, wellbeing and health", items: items([["Strengths", application.student_strengths], ["Current support", application.additional_needs], ["Support areas", application.support_areas], ["Support details", application.support_details], ["NDIS", application.ndis_status], ["Medical or allergy information", application.medical_needs], ["Conditions or allergies", application.medical_conditions], ["Medication and instructions", application.medication_details], ["Health professional contact permission", application.health_professional_permission], ["Anaphylaxis", application.anaphylaxis], ["Immunisation statement", application.immunisation_status], ["Doctor or practice", application.doctor_practice], ["Practice phone", application.doctor_phone], ["Ambulance cover", application.ambulance_cover]]) },
     { title: "Permissions and responsibilities", items: items([["Previous setting permission", application.previous_school_permission], ["Previous setting", application.previous_school_name], ["Previous setting contact", application.previous_school_contact], ["Media permissions", application.media_permissions], ["Name permission", application.student_name_permission], ["Community updates", application.community_updates], ["Fee responsibility", application.fee_responsibility], ["Fee arrangement details", application.fee_arrangement_details], ["Referral source", application.referral_source], ["Decision factors", application.decision_factors]]) },
     { title: "Documents", items: items([["Uploaded files", (application.documents || []).map((document) => `${document.category.replaceAll("_", " ")}: ${document.fileName}`)], ["Required evidence pending", application.required_documents_pending], ["Pending explanation", application.pending_document_explanation]]) },
     { title: "Primary declaration and signature", items: items([["Information complete and accurate", primarySignature.declarations?.information], ["Privacy notice acknowledged", primarySignature.declarations?.privacy], ["Authority declared", primarySignature.declarations?.authority], ["Signature audit acknowledged", primarySignature.declarations?.audit], ["Intent to sign and submit", primarySignature.declarations?.intent], ["Primary signer name", primarySignature.signerName], ["Signed at", primarySignature.completedAt], ["Final comments", application.final_comments]]) }

@@ -14,13 +14,16 @@ fails. The deployment preflight detects this with a create/delete probe and fail
 ## Implemented
 
 - original invitation-only eight-stage family form, responsive desktop/mobile journey
-- synthetic non-writing content preview for stakeholder review
+- comprehensive synthetic non-writing applicant and co-signer previews for stakeholder
+  review, including two guardians, shared care, health/support, documents and declarations
 - temporary SES sender configuration that can later move to a Rosewood-controlled domain
 - invitation, signer and receipt capability links with separate email OTP checks
 - short-lived, scoped, hashed sessions and single-use bounded OTP challenges
 - revisioned autosave with server/local conflict-aware recovery and truthful save status
 - closed backend field contract and server-pinned schema and policy provenance
-- conditional health, authority, residency and document requirements
+- conditional health, authority, residency and document requirements, including a
+  structured shared-care address, independent emergency contact and health-professional
+  consent
 - direct restricted-Drive upload sessions, confirmation and pre-submission removal
 - frozen comprehensive review record and independent required-guardian signing tasks
 - gated signature canvas, declaration validation and append-only value-free audit events
@@ -31,16 +34,17 @@ fails. The deployment preflight detects this with a create/delete probe and fail
 
 ## Verified
 
-- 41 API tests pass
-- 33 browser tests pass across desktop and mobile Chromium
+- 46 API tests pass
+- 35 browser tests pass across desktop and mobile Chromium
 - serious/critical Axe checks pass on the main and receipt experiences under the CSP
 - Lambda deployment bundle builds without symbolic links and imports its handler
 - API coverage is measured separately with `pnpm run test:api:coverage`
 - the Drive preflight performs a real create/delete probe rather than trusting ACL metadata
 
-Automated local flows include OTP-to-draft, conditional evidence, document removal,
-additional-guardian email/OTP/frozen review/signature, completion email, receipt OTP,
-idempotent replay and invitation invalidation after submission.
+Automated local flows include OTP-to-draft, conditional evidence, shared-care and health
+consent enforcement, emergency-contact independence, document removal, additional-
+guardian email/OTP/frozen review/signature, completion email, receipt OTP, idempotent
+replay and invitation invalidation after submission.
 
 ## External Blocker
 

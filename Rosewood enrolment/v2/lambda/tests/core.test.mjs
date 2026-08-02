@@ -264,7 +264,8 @@ test("draft schema rejects unknown, oversized and out-of-contract values", async
     application({ unreviewed_sensitive_note: "must not be stored" }),
     application({ fee_responsibility: "Any arrangement" }),
     application({ student_first_name: "x".repeat(81) }),
-    application({ guardian_b_email: "second@example.test" })
+    application({ guardian_b_email: "second@example.test" }),
+    application({ secondary_postcode: "333" })
   ];
   for (const data of attempts) {
     const response = await request(fixture, "PUT", "/v2/draft", { token, body: { schemaVersion, policyVersion: "draft-2026-08-02", baseRevision: 0, application: data } });
@@ -352,7 +353,7 @@ test("submission enforces conditional document evidence or a pending explanation
     ["school report", { current_year_level: "Grade 1" }, "document:school_report"],
     ["residency evidence", { residency_status: "Temporary resident", visa_subclass: "500" }, "document:residency"],
     ["court order", { court_orders: "Yes", court_order_summary: "Current parenting order applies." }, "document:court_order"],
-    ["anaphylaxis plan", { medical_needs: "Yes", medical_conditions: "Synthetic allergy", medication_details: "Synthetic instructions", anaphylaxis: "Yes" }, "document:medical_plan"]
+    ["anaphylaxis plan", { medical_needs: "Yes", medical_conditions: "Synthetic allergy", medication_details: "Synthetic instructions", health_professional_permission: "Yes", anaphylaxis: "Yes" }, "document:medical_plan"]
   ];
 
   for (const [label, overrides, expectedMissing] of cases) {
@@ -372,6 +373,44 @@ test("submission enforces conditional document evidence or a pending explanation
     const revision = await saveCompleteDraft(fixture, token, application({ current_year_level: "Grade 1", required_documents_pending: "Yes", pending_document_explanation: "Synthetic school report will be provided after issue." }));
     const response = await request(fixture, "POST", "/v2/applications/submit", { token, body: { expectedRevision: revision, declarations: { information: "Yes", privacy: "Yes", authority: "Yes", audit: "Yes", intent: "Yes" }, signerName: "Morgan Example", signatureDataUrl: pngDataUrl() } });
     assert.equal(response.status, 200);
+  });
+});
+
+test("submission enforces shared-care, health-consent and independent-emergency safeguards", async (t) => {
+  const cases = [
+    ["independent emergency contact", { emergency_mobile: "0400000000" }, "emergency_contact:must_be_independent"],
+    ["shared-care address", { care_arrangement: "Shared care across households", care_arrangement_details: "Week-about care." }, "secondary_address"],
+    ["health-professional consent", { medical_needs: "Yes", medical_conditions: "Synthetic asthma", medication_details: "Synthetic inhaler instructions", anaphylaxis: "No" }, "health_professional_permission:Yes"]
+  ];
+
+  for (const [label, overrides, expectedMissing] of cases) {
+    await t.test(label, async () => {
+      const fixture = createFixture();
+      const token = await accessSession(fixture);
+      const revision = await saveCompleteDraft(fixture, token, application(overrides));
+      const response = await request(fixture, "POST", "/v2/applications/submit", { token, body: { expectedRevision: revision, declarations: { information: "Yes", privacy: "Yes", authority: "Yes", audit: "Yes", intent: "Yes" }, signerName: "Morgan Example", signatureDataUrl: pngDataUrl() } });
+      assert.equal(response.status, 422);
+      assert.ok(response.body.details.missing.includes(expectedMissing));
+    });
+  }
+
+  await t.test("complete shared-care and medical record", async () => {
+    const fixture = createFixture();
+    const token = await accessSession(fixture);
+    const revision = await saveCompleteDraft(fixture, token, application({
+      care_arrangement: "Shared care across households",
+      care_arrangement_details: "Week-about care.",
+      secondary_address: "2 Sample Court",
+      secondary_suburb: "Melton South",
+      secondary_postcode: "3338",
+      medical_needs: "Yes",
+      medical_conditions: "Synthetic asthma",
+      medication_details: "Synthetic inhaler instructions",
+      health_professional_permission: "Yes",
+      anaphylaxis: "No"
+    }));
+    const response = await request(fixture, "POST", "/v2/applications/submit", { token, body: { expectedRevision: revision, declarations: { information: "Yes", privacy: "Yes", authority: "Yes", audit: "Yes", intent: "Yes" }, signerName: "Morgan Example", signatureDataUrl: pngDataUrl() } });
+    assert.equal(response.status, 200, JSON.stringify(response.body));
   });
 });
 
