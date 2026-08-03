@@ -77,6 +77,11 @@ Rosewood governance and qualified legal/privacy review before production.
 - Adding or removing a guardian clears the all-guardians confirmation.
 - Review clearly states that signing occurs in the signature area.
 - The application and later offer-acceptance process are explicitly separated.
+- Documents now reproduces both observed stages: the six application-evidence
+  categories with exact required counts, and the later download-sign-upload flow for
+  the Parent / Guardian / Carer and Student Codes of Conduct.
+- The archived conduct-document PDFs and related agreement source documents are
+  linked as clearly labelled St Lawrence reference files, not Rosewood policies.
 - A locked signature area explains which declarations must be completed.
 
 See `FIELD-CROSSWALK.md` for the complete content disposition.

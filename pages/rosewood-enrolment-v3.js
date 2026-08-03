@@ -14,7 +14,7 @@
     "Before you begin",
     "Student and family information",
     "Parents, guardians and emergency contacts",
-    "Supporting documents",
+    "Documents",
     "Conditions and permissions",
     "Review and signature",
     "Prototype complete"
@@ -128,15 +128,81 @@
     if (target) target.hidden = !show;
   }
 
+  function formatFileSize(bytes) {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function renderLocalFiles(key, fileList) {
+    const files = [...fileList];
+    const status = document.querySelector(`[data-file-status="${key}"]`);
+    const card = document.querySelector(`[data-document-card="${key}"]`);
+    const clear = document.querySelector(`[data-clear-local-file="${key}"]`);
+    if (!status || !card || !clear) return;
+
+    status.replaceChildren();
+    card.classList.toggle("has-local-files", files.length > 0);
+    clear.hidden = files.length === 0;
+
+    if (!files.length) {
+      status.textContent = status.dataset.emptyText || "No file selected";
+      return;
+    }
+
+    const summary = document.createElement("strong");
+    summary.textContent = `${files.length} file${files.length === 1 ? "" : "s"} selected locally - not uploaded`;
+    const list = document.createElement("ul");
+    files.forEach((file) => {
+      const item = document.createElement("li");
+      const name = document.createElement("span");
+      const size = document.createElement("span");
+      name.textContent = file.name;
+      size.textContent = formatFileSize(file.size);
+      if (file.size > 10 * 1024 * 1024) {
+        item.classList.add("is-too-large");
+        size.textContent += " - exceeds 10 MB";
+      }
+      item.append(name, size);
+      list.append(item);
+    });
+    status.append(summary, list);
+  }
+
+  document.querySelectorAll("[data-file-status]").forEach((status) => {
+    status.dataset.emptyText = status.textContent.trim();
+  });
+
+  document.querySelectorAll("[data-drop-zone]").forEach((dropZone) => {
+    const key = dropZone.dataset.dropZone;
+    dropZone.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      dropZone.classList.add("is-dragging");
+    });
+    dropZone.addEventListener("dragleave", () => dropZone.classList.remove("is-dragging"));
+    dropZone.addEventListener("drop", (event) => {
+      event.preventDefault();
+      dropZone.classList.remove("is-dragging");
+      renderLocalFiles(key, event.dataTransfer.files);
+    });
+  });
+
+  document.addEventListener("click", (event) => {
+    const clear = event.target.closest("[data-clear-local-file]");
+    if (!clear) return;
+    const key = clear.dataset.clearLocalFile;
+    const input = document.querySelector(`[data-local-file="${key}"]`);
+    if (input) input.value = "";
+    renderLocalFiles(key, []);
+  });
+
   form.addEventListener("change", (event) => {
     const control = event.target;
     if (control.name === "student_citizen") updateConditional("student-visa", control.value === "No");
     if (control.name === "additional_needs") updateConditional("additional-needs", control.value === "Yes");
 
     if (control.matches("[data-local-file]")) {
-      const status = document.querySelector(`[data-file-status="${control.dataset.localFile}"]`);
-      const count = control.files.length;
-      status.textContent = count ? `${count} file${count === 1 ? "" : "s"} selected locally - not uploaded` : "No file selected";
+      renderLocalFiles(control.dataset.localFile, control.files);
     }
 
     const maxGroup = control.closest("[data-max-checked]");
