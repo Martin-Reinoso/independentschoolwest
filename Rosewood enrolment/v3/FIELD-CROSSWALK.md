@@ -77,15 +77,25 @@ future production requirement but is not operational in this frontend prototype.
 | Reference requirement | V3 disposition | V3 location or rule |
 | --- | --- | --- |
 | Birth certificate, one required | Adopt | Birth certificate card |
-| Immunisation, medical plans and professional reports | Adopt | Combined health evidence card |
-| Two recent reports and available NAPLAN results | Adopt | School reports and NAPLAN card |
-| Sacramental certificates | Adopt | Sacramental card |
+| Immunisation, medical plans and professional reports | Adopt | Combined health evidence card displays 0 required from the latest editable form |
+| Earlier submitted record showed Immunisation Certificate as one required file | Adopt | Visible version-discrepancy note; Rosewood must approve one rule before production |
+| Two recent reports and available NAPLAN results, zero required | Adopt | School reports and NAPLAN card with exact observed count |
+| Sacramental certificates, zero required | Adopt | Sacramental card with exact observed count |
 | Proof of address, one required | Adopt | Proof-of-address card |
-| Passport and visa evidence | Adopt | Passport and visa card |
+| Passport and visa evidence, zero required | Adopt | Passport and visa card with exact observed count and applicable-family guidance |
 | Court or parenting orders | Adapt | Dedicated restricted-evidence card rather than leaving it implicit |
-| Multiple files and 10 MB source limit | Adopt | Displayed as content requirement |
+| Drag-and-drop and Browse controls | Adopt | Every evidence and signed-document card has both local-only interactions |
+| Multiple files and 10 MB source limit | Adopt | File names and sizes display locally; files over 10 MB are identified |
 | Broad source format list | Adapt | Captured in guidance; Rosewood must approve a smaller safe list |
 | Upload and storage | Defer | File names display locally only; no file is read, sent or stored |
+| Parent / Guardian / Carer Code of Conduct download | Adopt | Actual archived four-page reference PDF linked in Offer-acceptance documents |
+| Two parent/guardian/carer signature blocks | Adopt | Completion instruction displayed before the signed-file control |
+| One signed Parent Code upload required | Adopt | Required-count badge and local-only signed-file control |
+| Student Code of Conduct download | Adopt | Actual archived three-page reference PDF linked in Offer-acceptance documents |
+| Student and parent/guardian/carer signature fields | Adopt | Completion instruction displayed before the signed-file control |
+| One signed Student Code upload required | Adopt | Required-count badge and local-only signed-file control |
+| School Enrolment Agreement, ICT Policy and Child Safety Commitment | Adopt | Reference links displayed with the acceptance documents |
+| Application evidence and post-offer conduct documents are separate transactions | Adapt | Both are visible in Documents under explicit Formal application and After an offer headings |
 
 ## Conditions, Permissions And Survey
 
