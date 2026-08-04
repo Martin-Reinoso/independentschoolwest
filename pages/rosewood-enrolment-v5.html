@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'none'; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'">
+  <title>Enrolment | Rosewood College</title>
+  <link rel="icon" href="../img/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="rosewood-enrolment-v5.css?v=1">
+</head>
+<body>
+  <a class="skip-link" href="#family-form">Skip to the form</a>
+
+  <div class="preview-ribbon" role="status">
+    <strong>Frontend review</strong>
+    <span>Nothing entered here is saved, uploaded, emailed or submitted.</span>
+  </div>
+
+  <div class="page-shell">
+    <aside class="story-panel" aria-label="Rosewood College enrolment">
+      <div class="story-pattern" aria-hidden="true"></div>
+      <div class="story-content">
+        <img class="rosewood-emblem" src="../img/rosewood-emblem-corrected-transparent.png" alt="Rosewood College">
+        <p class="story-kicker" id="story-kicker">Enrolment</p>
+        <h1 id="story-title">Application for enrolment.</h1>
+        <p class="story-copy" id="story-copy">Complete each section carefully. You can review your answers before finishing.</p>
+        <div class="story-promise">
+          <span aria-hidden="true">R</span>
+          <p><strong>Your current task</strong>Application, offer decisions and signatures are separate so you can see exactly which form you are completing.</p>
+        </div>
+      </div>
+      <div class="story-footer"><span>Rosewood College</span><span>Melton, Victoria</span></div>
+    </aside>
+
+    <main class="form-panel">
+      <header class="form-header">
+        <div class="mobile-brand"><img src="../img/rosewood-emblem-corrected-transparent.png" alt=""><span>Rosewood College</span></div>
+        <div class="header-title"><p class="eyebrow" id="workflow-label">Application</p><h2 id="step-title">Before you begin</h2></div>
+        <div class="save-state" aria-live="polite"><span></span><div><strong>Review mode</strong><small>Not connected or saved</small></div></div>
+      </header>
+
+      <div class="review-tools" aria-label="Review tools">
+        <label>Preview workflow
+          <select id="workflow-select">
+            <option value="eoi">Expression of interest</option>
+            <option value="application" selected>Application</option>
+            <option value="acceptance">Offer acceptance</option>
+            <option value="signing">Guardian signing</option>
+            <option value="decline">Decline offer</option>
+          </select>
+        </label>
+        <button type="button" class="button button-secondary" id="fill-example">Use synthetic example</button>
+        <button type="button" class="button button-quiet" id="clear-workflow">Clear</button>
+      </div>
+
+      <nav class="progress" aria-label="Form progress">
+        <div class="progress-meta"><span id="progress-label">Step 1</span><span id="progress-percent">0% complete</span></div>
+        <div class="progress-track" aria-hidden="true"><span id="progress-bar"></span></div>
+        <ol id="step-list"></ol>
+      </nav>
+
+      <div class="error-summary" id="error-summary" role="alert" tabindex="-1" hidden>
+        <h3>Please check this section</h3>
+        <p>Complete the highlighted questions before continuing.</p>
+        <ul></ul>
+      </div>
+
+      <form id="family-form" novalidate>
+        <div id="form-root"></div>
+      </form>
+
+      <footer class="form-footer">
+        <span>Rosewood College enrolment</span>
+        <span>Frontend review only</span>
+      </footer>
+    </main>
+  </div>
+
+  <script src="rosewood-enrolment-v5.js?v=1"></script>
+</body>
+</html>
