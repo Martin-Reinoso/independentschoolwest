@@ -6,6 +6,10 @@ function button(label, url) {
   return `<p style="margin:26px 0"><a href="${url}" style="display:inline-block;background:#2f6f4e;color:#fff;text-decoration:none;font-weight:700;padding:13px 20px;border-radius:8px">${label}</a></p>`;
 }
 
+function fallbackLink(url) {
+  return `<div style="margin:22px 0;padding:16px;background:#f4f1e9;border-radius:8px"><p style="margin:0 0 8px;font-size:14px;color:#566070">If the button does not open, copy and paste this private link into your browser:</p><p style="margin:0;overflow-wrap:anywhere;word-break:break-word;font-size:13px"><a href="${url}" style="color:#245f45">${url}</a></p></div>`;
+}
+
 export function eoiAcknowledgement({ firstName, studentName, reference }) {
   const subject = `Rosewood College expression of interest received - ${reference}`;
   const text = `Dear ${firstName},\n\nWe have received your expression of interest for ${studentName}. Your reference is ${reference}.\n\nThis is not an Application for Enrolment. If Rosewood invites you to apply, you will receive a separate private link.\n\nRosewood College`;
@@ -15,7 +19,7 @@ export function eoiAcknowledgement({ firstName, studentName, reference }) {
 export function applicationInvitation({ firstName, studentName, invitationUrl, expiresAt, linked }) {
   const subject = `Invitation to apply for enrolment at Rosewood College`;
   const text = `Dear ${firstName || "Parent/Guardian"},\n\nYou are invited to begin an Application for Enrolment${studentName ? ` for ${studentName}` : ""}. ${linked ? "Information from your earlier expression of interest will be available to review and edit. " : ""}Use this private link: ${invitationUrl}\n\nThe invitation expires ${expiresAt}.\n\nRosewood College`;
-  return { subject, text, html: frame(`<h1 style="font:700 28px Georgia,serif">Application for Enrolment</h1><p>Dear ${firstName || "Parent/Guardian"},</p><p>You are invited to begin an Application for Enrolment${studentName ? ` for <strong>${studentName}</strong>` : ""}.</p>${linked ? "<p>Information from your earlier expression of interest will be available to review and edit.</p>" : ""}${button("Begin application", invitationUrl)}<p style="font-size:14px;color:#566070">This private invitation expires ${expiresAt}.</p>`) };
+  return { subject, text, html: frame(`<h1 style="font:700 28px Georgia,serif">Application for Enrolment</h1><p>Dear ${firstName || "Parent/Guardian"},</p><p>You are invited to begin an Application for Enrolment${studentName ? ` for <strong>${studentName}</strong>` : ""}.</p>${linked ? "<p>Information from your earlier expression of interest will be available to review and edit.</p>" : ""}${button("Begin application", invitationUrl)}${fallbackLink(invitationUrl)}<p style="font-size:14px;color:#566070">This private invitation expires ${expiresAt}.</p>`) };
 }
 
 export function applicationOtp({ code }) {
@@ -40,7 +44,7 @@ export function applicationSubmitted({ firstName, studentName, reference, pendin
 export function signatureInvitation({ firstName, studentName, signingUrl }) {
   const subject = `Signature requested for ${studentName}'s Rosewood College application`;
   const text = `Dear ${firstName},\n\nYou have been asked to review and sign the Application for Enrolment for ${studentName}. Use this private link: ${signingUrl}\n\nRosewood College`;
-  return { subject, text, html: frame(`<h1 style="font:700 28px Georgia,serif">Signature requested</h1><p>Dear ${firstName},</p><p>You have been asked to review and sign the Application for Enrolment for <strong>${studentName}</strong>.</p>${button("Review and sign", signingUrl)}`) };
+  return { subject, text, html: frame(`<h1 style="font:700 28px Georgia,serif">Signature requested</h1><p>Dear ${firstName},</p><p>You have been asked to review and sign the Application for Enrolment for <strong>${studentName}</strong>.</p>${button("Review and sign", signingUrl)}${fallbackLink(signingUrl)}`) };
 }
 
 export function signatureOtp({ code }) {

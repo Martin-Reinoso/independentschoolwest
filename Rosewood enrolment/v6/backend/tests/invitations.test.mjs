@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { applicationInvitation, signatureInvitation } from "../email-templates.mjs";
 import { createApplicationInvitation } from "../service.mjs";
 
 class InvitationStore {
@@ -36,4 +37,15 @@ test("linking is explicit and fails closed for an unknown EOI", async () => {
 test("linked EOI email cannot silently change during invitation", async () => {
   const store = new InvitationStore({ id: "eoi-1", values: { eoi_email: "first@example.com" } });
   await assert.rejects(() => createApplicationInvitation({ store, recipientEmail: "other@example.com", sourceEoiId: "eoi-1", applicationUrl: "https://ffe.org.au/form", clock }), error => error.code === "EOI_EMAIL_MISMATCH");
+});
+
+test("invitation emails include a copy-and-paste fallback for blocked new tabs", () => {
+  const applicationUrl = "https://ffe.org.au/form?invite=private-token";
+  const signingUrl = "https://ffe.org.au/sign?task=private-token";
+  const application = applicationInvitation({ firstName: "Alex", studentName: "Avery", invitationUrl: applicationUrl, expiresAt: "4 September 2026", linked: false });
+  const signature = signatureInvitation({ firstName: "Alex", studentName: "Avery", signingUrl });
+  assert.match(application.html, /copy and paste this private link into your browser/i);
+  assert.equal(application.html.split(applicationUrl).length - 1, 3);
+  assert.match(signature.html, /copy and paste this private link into your browser/i);
+  assert.equal(signature.html.split(signingUrl).length - 1, 3);
 });
