@@ -1,4 +1,4 @@
-/* Rosewood Enrolment V6: strict source-mapped frontend review. No data leaves this page. */
+/* Rosewood Enrolment V6: live EOI and Application; later workflows remain non-writing previews. */
 (function () {
   "use strict";
 
@@ -10,16 +10,57 @@
   const frameSelect = document.querySelector("#frame-select");
   const params = new URLSearchParams(location.search);
   const reviewMode = params.get("review") === "1";
+  const apiBase = "https://6zyzo44sdb5zmmx53toktqrnuu0sikyd.lambda-url.ap-southeast-2.on.aws";
+  const invitationToken = params.get("invite") || "";
 
   const state = {
     workflow: params.get("workflow") || "application",
     screen: 0,
     values: {},
     signatures: {},
+    challengeId: "",
+    sessionToken: "",
+    revision: 0,
+    applicationContext: null,
+    eoiResult: null,
+    submitResult: null,
+    saveStatus: "idle",
     otpResends: {},
     counts: { appGuardian: 2, sibling: 1, futureSibling: 1, relative: 1, emergency: 2, acceptanceGuardian: 2, declineGuardian: 1 }
   };
   let resendTimer;
+
+  function liveWorkflow() {
+    return !reviewMode && ["eoi", "application"].includes(state.workflow);
+  }
+
+  async function api(path, options = {}) {
+    const response = await fetch(`${apiBase}${path}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(state.sessionToken ? { Authorization: `Bearer ${state.sessionToken}` } : {}),
+        ...(options.headers || {})
+      }
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(payload.message || "The secure enrolment service could not complete this request.");
+      error.code = payload.error;
+      error.details = payload.details;
+      throw error;
+    }
+    return payload;
+  }
+
+  function showServiceError(error) {
+    const details = Array.isArray(error.details?.missing) && error.details.missing.length
+      ? `<li>${esc(error.details.missing.length)} required answer${error.details.missing.length === 1 ? " is" : "s are"} still incomplete.</li>`
+      : "";
+    errorSummary.querySelector("ul").innerHTML = `<li>${esc(error.message)}</li>${details}`;
+    errorSummary.hidden = false;
+    errorSummary.focus();
+  }
 
   const yesNo = ["Yes", "No"];
   const languageCatalogue = window.rosewoodLanguageCatalogue || ["English"];
@@ -126,9 +167,10 @@
   function renderGateway(kind) {
     const labels = { application: "begin the formal application", acceptance: "formally accept the offered place", decline: "formally decline the offered place" };
     if (kind === "application") {
+      const invitationNotice = liveWorkflow() && !invitationToken ? notice("Private invitation required", "Open the unique Application for Enrolment link sent by Rosewood College. A general link cannot start an application.", "legal-note") : "";
       return intro("Welcome to your enrolment application", "Dear Parent/Guardian,", workflows[kind].label) +
-        `<div class="gateway-welcome-copy"><p>Please enter the email address that received your invitation to begin applying for your child's admission to Rosewood College.</p><p>If you have previously submitted an Expression of Interest or provided information to Rosewood College, please use the same email address. We may use the information already provided to prepopulate parts of your application.</p><p>If this is your first contact with Rosewood College, entering the email address that received the invitation will create a new application for you.</p><p>Before beginning, please familiarise yourself with our ${documentTextLink("Enrolment Policy")} and ${documentTextLink("Enrolment Procedure")}.</p><p>Supporting documents will be requested later in the application. You can save your progress and return if you need time to obtain them.</p><p>Information provided through this application will be managed in accordance with our ${documentTextLink("Privacy Policy")} and ${documentTextLink("Privacy Collection Notice")}.</p></div>` +
-        section("Enter your email", `<div class="field-grid two">${field(`${kind}_gateway_email`, "Email", { type: "email", required: true, autocomplete: "email" })}</div>`) + actions({ label: "Next", back: false });
+        invitationNotice + `<div class="gateway-welcome-copy"><p>Please enter the email address that received your invitation to begin applying for your child's admission to Rosewood College.</p><p>If you have previously submitted an Expression of Interest or provided information to Rosewood College, please use the same email address. We may use the information already provided to prepopulate parts of your application.</p><p>If this is your first contact with Rosewood College, entering the email address that received the invitation will create a new application for you.</p><p>Before beginning, please familiarise yourself with our ${documentTextLink("Enrolment Policy")} and ${documentTextLink("Enrolment Procedure")}.</p><p>Supporting documents will be requested later in the application. You can save your progress and return if you need time to obtain them.</p><p>Information provided through this application will be managed in accordance with our ${documentTextLink("Privacy Policy")} and ${documentTextLink("Privacy Collection Notice")}.</p></div>` +
+        section("Enter your email", `<div class="field-grid two">${field(`${kind}_gateway_email`, "Email", { type: "email", required: true, autocomplete: "email", disabled: liveWorkflow() && !invitationToken })}</div>`) + actions({ label: "Next", back: false, disabled: liveWorkflow() && !invitationToken });
     }
     return intro(kind === "acceptance" ? "Accept an enrolment offer" : "Decline an enrolment offer", `Parent / Guardian, enter the email address used for your Rosewood College invitation to ${labels[kind]}.`, workflows[kind].label) +
       section("Privacy documents", `<div class="source-links">${["Privacy Policy", "Privacy Collection Notice"].map(documentPlaceholder).join("")}</div>`) +
@@ -137,14 +179,25 @@
   }
 
   function renderOtp(kind) {
-    return intro("Enter your verification code", "A six-digit code has been sent to your email address. The production code would expire after 30 minutes.", workflows[kind].label) +
-      section("Verification", `<div class="field-grid two">${field(`${kind}_code`, "Verification Code", { required: true, maxlength: 6, hint: "Use 123456 in this frontend review." })}</div><div class="inline-actions"><button type="button" class="button button-secondary" data-action="resend-code" data-resend-kind="${kind}">Resend code</button><button type="button" class="button button-quiet" data-action="back">Change email</button></div><p class="resend-status" data-resend-status="${kind}" aria-live="polite"></p>`) + actions({ label: "Verify" });
+    const live = liveWorkflow() && kind === "application";
+    return intro("Enter your verification code", live ? "A six-digit code has been sent to your invited email address. It expires after 10 minutes." : "A six-digit code would be sent to the invited email address in production.", workflows[kind].label) +
+      section("Verification", `<div class="field-grid two">${field(`${kind}_code`, "Verification Code", { required: true, maxlength: 6, hint: live ? "Enter the most recent code sent by Rosewood College." : "Review frame only." })}</div><div class="inline-actions"><button type="button" class="button button-secondary" data-action="resend-code" data-resend-kind="${kind}">Resend code</button><button type="button" class="button button-quiet" data-action="back">Change email</button></div><p class="resend-status" data-resend-status="${kind}" aria-live="polite"></p>`) + actions({ label: "Verify" });
   }
 
   function renderSelector(kind) {
     const noun = kind === "application" ? "application" : kind === "acceptance" ? "enrolment agreement" : "decline record";
     const action = kind === "application" ? "Continue" : kind === "acceptance" ? "Start acceptance form" : "Start decline form";
     const newRecord = kind === "decline" ? "" : section(`Start a new ${noun}`, `<div class="field-grid two">${field(`${kind}_new_first`, "Student First Name", { required: true })}${field(`${kind}_new_last`, "Student Last Name", { required: true })}</div>`) + actions({ label: `Start ${noun}` });
+    if (kind === "application" && liveWorkflow() && state.applicationContext) {
+      const context = state.applicationContext;
+      const studentName = context.studentName || [state.values.student_first, state.values.student_last].filter(Boolean).join(" ");
+      const linked = Boolean(context.sourceEoiId);
+      const record = studentName
+        ? section("Student record", `<div class="record-table-wrap"><table class="record-table"><thead><tr><th>Student Name</th><th>Source</th><th>Application Status</th><th>Action</th></tr></thead><tbody><tr><td>${esc(studentName)}</td><td>${linked ? "Expression of Interest" : "Direct invitation"}</td><td><span class="status-pill">${esc(context.status === "in_progress" ? "In Progress" : "Not Started")}</span></td><td><button type="button" class="button button-primary" data-action="next">Continue</button></td></tr></tbody></table></div>`)
+        : section("Enter the student", `<p>This invitation was created without an earlier Expression of Interest. Enter the student's name to begin.</p><div class="field-grid two">${field("application_new_first", "Student First Name", { required: true })}${field("application_new_last", "Student Last Name", { required: true })}</div>`) + actions({ label: "Start application" });
+      return intro("Begin the application", linked ? "We found the Expression of Interest linked by Rosewood College. Review and update all prefilled information as you continue." : "This is a direct invitation to apply. A previous Expression of Interest is not required.", workflows[kind].label) +
+        section("Invited contact", `<div class="review-card"><dl><dt>Email</dt><dd>${esc(context.recipientEmail || state.values.application_gateway_email)}</dd><dt>Application ID</dt><dd>${esc(context.applicationId)}</dd></dl></div>`) + record;
+    }
     return intro(kind === "application" ? "Select or enter a student" : kind === "acceptance" ? "Accept your offer" : "Decline an offer", `Your information was located. Select a student to continue the ${noun}.`, workflows[kind].label) +
       section("Matched contact", `<div class="record-table-wrap"><table class="record-table"><thead><tr><th>Name</th><th>Last Updated</th><th>Address</th><th>Email</th><th>Mobile Phone</th></tr></thead><tbody><tr><td>Alex Example</td><td>4 August 2026</td><td>Synthetic address</td><td>family@example.test</td><td>0400 000 000</td></tr></tbody></table></div>`) +
       section("Student records", `<div class="record-table-wrap"><table class="record-table"><thead><tr><th>Student Name</th><th>Last Updated</th><th>${kind === "acceptance" ? "Enrolment agreement" : kind === "decline" ? "Decline record" : "Form"} Status</th><th>Action</th></tr></thead><tbody><tr><td>Avery Example</td><td>4 August 2026</td><td><span class="status-pill">${kind === "application" ? "In Progress" : "Not Started"}</span></td><td><button type="button" class="button button-primary" data-action="next">${action}</button></td></tr><tr><td>Jordan Example</td><td>1 August 2026</td><td><span class="status-pill${kind === "application" ? " is-complete" : ""}">${kind === "application" ? "Submitted" : "Not Started"}</span></td><td><button type="button" class="button button-secondary" data-static>${kind === "application" ? "View" : action}</button></td></tr></tbody></table></div>`) +
@@ -156,11 +209,12 @@
       section("Primary Contact Details", `<div class="field-grid">${field("eoi_language", "Language", { type: "select", options: ["English"] })}${field("eoi_title", "Salutation", { type: "select", options: titles })}${field("eoi_first", "Primary Contact First Name", { required: true })}${field("eoi_last", "Primary Contact Last Name", { required: true })}${field("eoi_relationship", "Relationship", { type: "select", options: relationships.concat("Other"), required: true })}${field("eoi_email", "Email", { type: "email", required: true })}${field("eoi_mobile", "Mobile Phone Number", { type: "tel", required: true, hint: "Australia +61" })}</div><div class="inline-actions"><button type="button" class="button button-quiet" data-static>Refresh language</button></div>${communicationNotice()}`) +
       section("Primary Contact Address", `<div class="field-grid">${field("eoi_address", "Contact Address", { required: true, className: "span-two", hint: "Enter a location" })}${field("eoi_suburb", "Suburb", { required: true })}${field("eoi_state", "State", { type: "select", options: ["Victoria", "New South Wales", "Australian Capital Territory", "Queensland", "South Australia", "Western Australia", "Tasmania", "Northern Territory"] })}${field("eoi_postcode", "Postcode", { required: true })}${field("eoi_country", "Contact Country", { required: true, list: "country-list", value: "Australia" })}</div>`) +
       section("Student Details", `<div class="field-grid">${field("eoi_student_first", "Student First Name", { required: true })}${field("eoi_student_last", "Student Last Name", { required: true })}${field("eoi_dob", "Date of Birth", { type: "date", required: true })}</div>${choices("eoi_gender", "Gender", ["Male", "Female"], { required: true })}<div class="field-grid">${field("eoi_religion", "Religion", { type: "select", options: religions, required: true })}${field("eoi_year", "Year of Enrolment", { type: "select", options: Array.from({ length: 21 }, (_, i) => String(2026 + i)), required: true })}${field("eoi_level", "Year Level of Entry", { type: "select", options: primaryLevels, required: true })}${field("eoi_current_school", "Current School", { type: "select", options: currentSchools })}${field("eoi_current_year", "Current School Year", { type: "select", options: currentLevels })}</div>${choices("eoi_needs", "Additional Needs", yesNo, { required: true })}<div data-conditional="eoi-needs">${field("eoi_need_category", "Please Specify", { type: "select", options: needCategories, required: true })}</div>${choices("eoi_family_connection", "Family Connection", ["Current Family", "Previous Family", "New Family"], { required: true })}${choices("eoi_other_children", "Other children who may attend", yesNo, { required: true })}<div class="field-grid">${field("eoi_discovery", "How did you first hear about the school?", { type: "select", options: discoverySources.concat("Other"), required: true, className: "span-two" })}${field("eoi_information", "Additional Information or Questions", { type: "textarea", className: "span-three" })}</div>`) +
-      actions({ label: "Submit expression of interest preview", back: false });
+      actions({ label: liveWorkflow() ? "Submit expression of interest" : "Submit expression of interest preview", back: false });
   }
 
   function renderEoiAcknowledgement() {
-    return `<div class="success-card"><div class="success-mark" aria-hidden="true">&#10003;</div><p class="eyebrow">Expression of interest</p><h3>Preview complete</h3><p>The captured process issued an acknowledgement email after an expression of interest was lodged.</p><div class="status-card"><strong>Nothing was submitted</strong><p>V6 has no backend. No record was created and no email was sent.</p></div></div>`;
+    if (liveWorkflow() && state.eoiResult) return `<div class="success-card"><div class="success-mark" aria-hidden="true">&#10003;</div><p class="eyebrow">Expression of interest</p><h3>Expression of interest received</h3><p>Thank you. Rosewood College has received your Expression of Interest.</p><div class="status-card"><strong>Reference ${esc(state.eoiResult.reference)}</strong><p>An acknowledgement has been sent to ${esc(state.values.eoi_email)}. Keep the reference for your records.</p></div><p>This is an enquiry record, not an Application for Enrolment. If you are invited to apply, Rosewood College will send a separate private link.</p></div>`;
+    return `<div class="success-card"><div class="success-mark" aria-hidden="true">&#10003;</div><p class="eyebrow">Expression of interest</p><h3>Preview complete</h3><p>The captured process issued an acknowledgement email after an expression of interest was lodged.</p><div class="status-card"><strong>Nothing was submitted</strong><p>This review frame has no backend connection.</p></div></div>`;
   }
 
   function repeatBlock(kind, singular, renderer) {
@@ -169,7 +223,7 @@
 
   function renderApplicationStudent() {
     return intro("Student", "Provide the student, residence, family, background, support, sacramental and medical information requested in the application.", "Application for enrolment") +
-      section("Student Details", `<div class="field-grid">${field("student_first", "First Name", { required: true })}${field("student_middle", "Middle Name")}${field("student_last", "Last Name", { required: true })}${field("student_preferred", "Preferred Name")}${field("student_dob", "Date of Birth", { type: "date", required: true })}${field("student_gender", "Gender", { type: "select", options: ["Male", "Female"], required: true })}${field("student_religion", "Religion", { type: "select", options: religions, required: true })}</div><div class="conditional-panel" data-conditional="other-religion"><div class="field-grid">${field("student_religion_other", "Other religion", { required: true, className: "span-three" })}</div></div><div class="field-grid student-enrolment-grid">${field("current_level", "Current School Year", { type: "select", options: currentLevels, required: true })}${field("entry_year", "Entry Year", { type: "select", options: years, required: true })}${field("entry_level", "Year Level of Entry", { type: "select", options: primaryLevels, required: true })}${field("current_school", "Current Early Learning Centre / Kindergarten / Primary School", { type: "select", options: currentSchools, className: "span-three student-school-field" })}</div><div class="conditional-panel" data-conditional="other-current-school"><div class="field-grid">${field("current_school_other", "Other Early Learning Centre / Kindergarten / Primary School", { required: true, className: "span-three" })}</div></div>`) +
+      section("Student Details", `<div class="field-grid">${field("student_first", "First Name", { required: true })}${field("student_middle", "Middle Name")}${field("student_last", "Last Name", { required: true })}${field("student_preferred", "Preferred Name")}${field("student_dob", "Date of Birth", { type: "date", required: true })}${field("student_gender", "Gender", { type: "select", options: ["Male", "Female"], required: true })}${field("student_religion", "Religion", { type: "select", options: religions, required: true })}</div><div class="conditional-panel" data-conditional="other-religion"><div class="field-grid">${field("student_religion_other", "Other religion", { required: true, className: "span-three" })}</div></div><div class="field-grid student-enrolment-grid">${field("current_level", "Current School Year", { type: "select", options: currentLevels, required: true })}${field("entry_year", "Entry Year", { type: "select", options: years, required: true })}${field("entry_level", "Year Level of Entry", { type: "select", options: primaryLevels, required: true })}${field("current_school", "Current Early Learning Centre / Kindergarten / Primary School", { type: "select", options: currentSchools, required: true, className: "span-three student-school-field" })}</div><div class="conditional-panel" data-conditional="other-current-school"><div class="field-grid">${field("current_school_other", "Other Early Learning Centre / Kindergarten / Primary School", { required: true, className: "span-three" })}</div></div>`) +
       section("Student Residence", `${choices("student_address_share", "Share this address with other Parent/Guardian?", ["Yes, share", "No, keep private"], { required: true })}${choices("care_arrangement", "Home Care Arrangement", ["Both Parents", "Mother Only", "Father Only", "Shared Custody", "Carer / Guardian", "Out-of-home care", "Kinship", "Other"], { multiple: true, required: true, grid: true })}<div class="conditional-panel" data-conditional="other-care-arrangement"><div class="field-grid">${field("care_other", "Other Care Arrangement", { required: true, className: "span-three" })}</div></div><div class="conditional-panel" data-conditional="shared-parenting"><div class="field-grid">${field("shared_parenting", "Shared Parenting Schedule", { type: "textarea", required: true, className: "span-three" })}</div></div>`) +
       section("Student Primary Address", `<div class="field-grid">${field("student_address", "Address", { required: true, className: "span-two" })}${field("student_suburb", "Suburb", { required: true })}${field("student_state", "State", { required: true })}${field("student_postcode", "Postcode", { required: true })}${field("student_country", "Country", { required: true, list: "country-list", value: "Australia" })}</div>`) +
       section("Family", `${choices("future_siblings", "Do you have any other children that may attend our school?", yesNo, { required: true, className: "family-question" })}<div class="conditional-panel" data-conditional="future-siblings">${choices("future_sibling_count", "How many children?", ["1", "2", "3", "4", "5", "6", "7+"], { required: true })}</div>`) +
@@ -210,17 +264,19 @@
   }
 
   const applicationDocuments = [
-    ["Birth Certificate", "Copy of the student's birth certificate", true],
-    ["Immunisation Statement / Medical Management Plan(s) / Health Professional Report(s)", "Relevant current evidence", false],
-    ["School Reports / NAPLAN Results", "Latest school report and available NAPLAN results", false],
-    ["Sacramental Certificates", "Relevant sacramental evidence", false],
-    ["Passport / Visa Documentation", "Relevant residency and visa evidence", false]
+    ["Birth Certificate", "Copy of the student's birth certificate", true, "birth_certificate"],
+    ["Immunisation Statement / Medical Management Plan(s) / Health Professional Report(s)", "Relevant current evidence", false, "health_and_immunisation"],
+    ["School Reports / NAPLAN Results", "Latest school report and available NAPLAN results", false, "school_report"],
+    ["Sacramental Certificates", "Relevant sacramental evidence", false, "sacramental"],
+    ["Passport / Visa Documentation", "Relevant residency and visa evidence", false, "residency"]
   ];
 
   function renderApplicationDocuments() {
-    const accept = ".doc,.docx,.pdf,.odt,.png,.gif,.bmp,.jpg,.jpeg,.heic,.heif,.mp4,.avi,.mov,.webm,.mkv,.mpeg,.3gp,.flv,.ogg";
-    return intro("Documents", "Upload the supporting documents for this application.", "Application for enrolment") + notice("Frontend review", "Files remain on your device. V6 displays only the local filename and never reads or uploads file contents.") +
-      `<div class="document-list">${applicationDocuments.map((document, index) => `<article class="document-card"><header><div><h4>${document[0]}${document[2] ? ' <span class="required">*</span>' : ""}</h4><p>${document[1]}</p></div><span class="document-badge">${document[2] ? "1 file required" : "0 files required"}</span></header>${field(`application_document_${index}`, `Choose ${document[0]}`, { type: "file", required: document[2], multiple: true, accept, hint: "Multiple files accepted, maximum 10 MB each in production." })}</article>`).join("")}</div>` + actions();
+    const accept = ".doc,.docx,.pdf,.odt,.png,.gif,.bmp,.jpg,.jpeg,.heic,.heif";
+    const uploaded = state.applicationContext?.documents || [];
+    const note = liveWorkflow() ? notice("Save and return", "If you do not have every optional document now, continue with the documents available. Your completed sections are saved when you move forward.") : notice("Frontend review", "Files remain on your device in this review frame.");
+    return intro("Documents", "Upload the supporting documents available for this application.", "Application for enrolment") + note +
+      `<div class="document-list">${applicationDocuments.map((document, index) => { const existing = uploaded.filter(item => item.category === document[3]); const alreadyUploaded = existing.length > 0; return `<article class="document-card"><header><div><h4>${document[0]}${document[2] ? ' <span class="required">*</span>' : ""}</h4><p>${document[1]}</p>${alreadyUploaded ? `<p class="uploaded-document">Uploaded: ${existing.map(item => esc(item.fileName)).join(", ")}</p>` : ""}</div><span class="document-badge">${alreadyUploaded ? "Uploaded" : document[2] ? "1 file required" : "Optional"}</span></header>${field(`application_document_${index}`, `Choose ${document[0]}`, { type: "file", required: document[2] && !alreadyUploaded, multiple: true, accept, hint: "Multiple files accepted, maximum 10 MB each." })}</article>`; }).join("")}</div>` + actions();
   }
 
   function termsHeadings(count) {
@@ -245,7 +301,7 @@
       ? `<div class="field-grid">${field("application_one_signature_reason", "Explanation only one signature", { type: "textarea", required: true, className: "span-three", hint: "Only one parent/guardian has been included in this application. Enter the reason above or call the College to discuss." })}</div>`
       : `<div class="guardian-signature-followup"><div class="review-card"><h4>${esc(additionalName)}</h4><dl><dt>Email</dt><dd>${esc(additionalEmail)}</dd><dt>Signature</dt><dd>Requested after this application is submitted</dd></dl></div>${check("application_additional_signature_later", `I understand that ${esc(additionalName)} will be contacted separately to review and sign this application after I submit it.`, { required: true })}</div>`;
     return intro("Signature", "Completing, signing and lodging this application is required for consideration but does not guarantee enrolment. Enrolment is formalised only after an offer and Enrolment Agreement.", "Application for enrolment") +
-      section("Signature of Parents / Guardians", `<p class="signature-disclaimer"><strong>Disclaimer:</strong> Personal information will be held, used and disclosed in accordance with the College Privacy Collection Notice and Privacy Policy.</p>${signaturePanel("application_signature", "I declare that I have read, understood and given consent to all matters contained in this application.", { title: "Parent / Guardian: Primary Contact" })}${explanation}<div class="field-grid">${field("application_additional_information", "Additional Information", { type: "textarea", className: "span-three" })}</div>`) + actions({ label: "Submit application preview" });
+      section("Signature of Parents / Guardians", `<p class="signature-disclaimer"><strong>Disclaimer:</strong> Personal information will be held, used and disclosed in accordance with the College Privacy Collection Notice and Privacy Policy.</p>${signaturePanel("application_signature", "I declare that I have read, understood and given consent to all matters contained in this application.", { title: "Parent / Guardian: Primary Contact" })}${explanation}<div class="field-grid">${field("application_additional_information", "Additional Information", { type: "textarea", className: "span-three" })}</div>`) + actions({ label: liveWorkflow() ? "Submit application" : "Submit application preview" });
   }
 
   function acceptanceContactFields(index, prefixBase = "acceptance") {
@@ -318,6 +374,10 @@
 
   function renderPendingSignatures() {
     const application = state.workflow === "application";
+    if (application && liveWorkflow() && state.submitResult) {
+      const pending = state.submitResult.status === "pending_signatures";
+      return `<div class="success-card"><div class="success-mark" aria-hidden="true">&#10003;</div><p class="eyebrow">Application for enrolment</p><h3>Application received</h3><p>Your Application for Enrolment has been submitted successfully.</p><div class="status-card"><strong>Reference ${esc(state.submitResult.reference)}</strong><p>${pending ? "A separate signature request has been sent to each additional parent or guardian who must sign." : "All required signatures have been recorded."}</p></div><p>A confirmation email has been sent. You can close this page safely.</p></div>`;
+    }
     return `<div class="success-card"><div class="success-mark" aria-hidden="true">&#10003;</div><p class="eyebrow">${application ? "Application for enrolment" : "Enrolment Agreement"}</p><h3>Current guardian step complete</h3><p>${application ? "The captured process completes the current guardian's application step and may request separate signatures from additional guardians." : "The captured process records the current guardian's acceptance and sends each additional guardian a separate signing request."}</p><div class="status-card"><strong>Nothing was submitted</strong><p>V6 has no backend. No record, invitation, email or legally effective signature was created.</p></div></div>`;
   }
 
@@ -386,7 +446,7 @@
     document.querySelector("#progress-bar").style.width = `${percent}%`;
     document.querySelector("#step-list").innerHTML = labels.map((label, index) => {
       const target = workflows[state.workflow].screens.findIndex(item => item.formStep === index);
-      return `<li><button type="button" data-goto="${target}"${index === current ? ' aria-current="step"' : ""}${index < current ? ' class="is-reviewed"' : ""}>${label}</button></li>`;
+      return `<li><button type="button" data-goto="${target}"${index === current ? ' aria-current="step"' : ""}${index < current ? ' class="is-reviewed"' : ""}${liveWorkflow() && index > current ? " disabled" : ""}>${label}</button></li>`;
     }).join("");
   }
 
@@ -399,10 +459,28 @@
 
   function updateSaveState(screen) {
     const save = document.querySelector("#save-state");
+    if (liveWorkflow()) {
+      const verified = state.workflow === "eoi" || Boolean(state.sessionToken);
+      const saved = state.saveStatus === "saved" || Boolean(state.eoiResult || state.submitResult);
+      save.classList.toggle("is-saved", saved);
+      save.classList.toggle("is-saving", state.saveStatus === "saving");
+      save.querySelector("strong").textContent = state.saveStatus === "saving" ? "Saving securely" : saved ? "Saved" : verified ? "Secure form" : "Secure access";
+      save.querySelector("small").textContent = state.saveStatus === "saving" ? "Please keep this page open" : saved ? `Last saved ${state.lastSavedLabel || "just now"}` : verified ? "Progress saves when you continue" : "Verify your invitation email to begin";
+      return;
+    }
     const isForm = screen.formStep != null && state.workflow !== "signing";
-    save.classList.toggle("is-saved", isForm);
-    save.querySelector("strong").textContent = isForm ? "Saved preview" : "Review mode";
-    save.querySelector("small").textContent = isForm ? "Source state simulated · not persisted" : "Not connected or saved";
+    save.classList.toggle("is-saved", false);
+    save.classList.toggle("is-saving", false);
+    save.querySelector("strong").textContent = "Frontend review";
+    save.querySelector("small").textContent = isForm ? "Answers are simulated and not persisted" : "Not connected or saved";
+  }
+
+  function updateEnvironment() {
+    const live = liveWorkflow();
+    document.querySelector("#environment-label").textContent = live ? "Secure enrolment form" : "Frontend review";
+    document.querySelector("#environment-copy").textContent = live ? "EOI and Application information is saved securely. Offer acceptance and decline are not active." : "Nothing entered in this review workflow is saved, uploaded, emailed or submitted.";
+    document.querySelector("#footer-environment").textContent = live ? "Secure online form" : "Frontend review only";
+    document.querySelector("#environment-ribbon").classList.toggle("is-live", live);
   }
 
   function render() {
@@ -416,6 +494,7 @@
     document.querySelector("#story-title").textContent = workflow.title;
     document.querySelector("#story-copy").textContent = workflow.copy;
     document.querySelector("#story-promise-copy").textContent = workflow.promise;
+    updateEnvironment();
     root.innerHTML = screen.render();
     errorSummary.hidden = true;
     renderProgress(screen);
@@ -635,7 +714,7 @@
     resendTimer = setInterval(update, 1000);
   }
 
-  function resendCode(kind) {
+  async function resendCode(kind) {
     const record = state.otpResends[kind] || { count: 0, availableAt: 0 };
     state.otpResends[kind] = record;
     if (record.count >= 5 || record.availableAt > Date.now()) return startResendCountdown(kind);
@@ -645,6 +724,19 @@
     button.disabled = true;
     button.innerHTML = '<span class="button-spinner" aria-hidden="true"></span> Sending...';
     status.textContent = "Sending a new code...";
+    if (liveWorkflow() && kind === "application") {
+      try {
+        const result = await api("/v6/application/access/request-code", { method: "POST", body: JSON.stringify({ invitationToken, email: state.values.application_gateway_email }) });
+        state.challengeId = result.challengeId;
+        record.count += 1;
+        record.availableAt = Date.now() + result.resendAfterSeconds * 1000;
+        status.textContent = "A new code has been sent if the invitation and email address match.";
+      } catch (error) {
+        status.textContent = error.message;
+        record.availableAt = Date.now() + 30000;
+      }
+      return startResendCountdown(kind);
+    }
     window.setTimeout(() => {
       record.count += 1;
       record.availableAt = Date.now() + 30000;
@@ -654,17 +746,137 @@
     }, 900);
   }
 
-  form.addEventListener("submit", event => {
+  function setBusy(busy, label = "Working...") {
+    const button = root.querySelector('button[type="submit"]');
+    if (!button) return;
+    if (busy) {
+      button.dataset.previousLabel = button.textContent;
+      button.disabled = true;
+      button.innerHTML = `<span class="button-spinner" aria-hidden="true"></span> ${esc(label)}`;
+    } else {
+      button.textContent = button.dataset.previousLabel || "Next";
+      button.disabled = false;
+    }
+  }
+
+  async function saveApplicationDraft(stage) {
+    state.saveStatus = "saving";
+    updateSaveState(workflows.application.screens[state.screen]);
+    const result = await api("/v6/application/draft", {
+      method: "PUT",
+      body: JSON.stringify({
+        expectedRevision: state.revision,
+        values: state.values,
+        screen: state.screen,
+        stage,
+        guardianCount: state.counts.appGuardian,
+        emergencyCount: state.counts.emergency,
+        percentComplete: Math.round((Math.max(0, state.screen - 2) / 5) * 100)
+      })
+    });
+    state.revision = result.revision;
+    state.applicationContext = { ...state.applicationContext, ...result };
+    state.saveStatus = "saved";
+    state.lastSavedLabel = new Date().toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" });
+    updateSaveState(workflows.application.screens[state.screen]);
+    return result;
+  }
+
+  function mimeTypeFor(file) {
+    if (file.type) return file.type.toLowerCase();
+    const extension = file.name.split(".").pop().toLowerCase();
+    return ({ pdf: "application/pdf", doc: "application/msword", docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", odt: "application/vnd.oasis.opendocument.text", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", bmp: "image/bmp", heic: "image/heic", heif: "image/heif" })[extension] || "application/octet-stream";
+  }
+
+  async function uploadApplicationDocuments() {
+    for (let index = 0; index < applicationDocuments.length; index += 1) {
+      const input = root.querySelector(`[name="application_document_${index}"]`);
+      if (!input?.files?.length) continue;
+      const category = applicationDocuments[index][3];
+      for (const file of input.files) {
+        const mimeType = mimeTypeFor(file);
+        const started = await api("/v6/application/documents/start", { method: "POST", body: JSON.stringify({ category, fileName: file.name, mimeType, size: file.size }) });
+        const uploaded = await fetch(started.uploadUrl, { method: "PUT", headers: { "Content-Type": mimeType }, body: file });
+        if (!uploaded.ok) throw new Error(`The file ${file.name} could not be uploaded. Please try again.`);
+        const uploadedFile = await uploaded.json();
+        const confirmed = await api("/v6/application/documents/confirm", { method: "POST", body: JSON.stringify({ category, documentId: uploadedFile.id }) });
+        state.applicationContext.documents = [...(state.applicationContext.documents || []), { category, documentId: confirmed.document.documentId, fileName: confirmed.document.fileName, size: confirmed.document.size }];
+      }
+    }
+  }
+
+  async function handleLiveSubmit() {
+    if (state.workflow === "eoi" && state.screen === 0) {
+      setBusy(true, "Submitting...");
+      state.eoiResult = await api("/v6/eoi", { method: "POST", body: JSON.stringify({ values: state.values }) });
+      state.saveStatus = "saved";
+      state.lastSavedLabel = "submitted";
+      return next();
+    }
+    if (state.workflow !== "application") return next();
+    if (state.screen === 0) {
+      setBusy(true, "Sending code...");
+      const result = await api("/v6/application/access/request-code", { method: "POST", body: JSON.stringify({ invitationToken, email: state.values.application_gateway_email }) });
+      state.challengeId = result.challengeId;
+      state.otpResends.application = { count: 1, availableAt: Date.now() + result.resendAfterSeconds * 1000 };
+      return next();
+    }
+    if (state.screen === 1) {
+      setBusy(true, "Verifying...");
+      const result = await api("/v6/application/access/verify-code", { method: "POST", body: JSON.stringify({ invitationToken, challengeId: state.challengeId, code: state.values.application_code }) });
+      state.sessionToken = result.sessionToken;
+      state.applicationContext = result.context;
+      state.revision = result.context.revision;
+      state.values = { application_gateway_email: state.values.application_gateway_email, ...result.context.values };
+      state.counts.appGuardian = result.context.guardianCount || 1;
+      state.counts.emergency = result.context.emergencyCount || 2;
+      return next();
+    }
+    if (state.screen === 2) {
+      if (state.values.application_new_first) state.values.student_first = state.values.application_new_first;
+      if (state.values.application_new_last) state.values.student_last = state.values.application_new_last;
+      return next();
+    }
+    if (state.screen === 5) {
+      setBusy(true, "Uploading securely...");
+      await uploadApplicationDocuments();
+      await saveApplicationDraft("documents");
+      return next();
+    }
+    if (state.screen === 7) {
+      setBusy(true, "Submitting...");
+      await saveApplicationDraft("signature");
+      const canvas = root.querySelector('[data-signature="application_signature"] canvas');
+      state.submitResult = await api("/v6/application/submit", { method: "POST", body: JSON.stringify({ expectedRevision: state.revision, signatureDataUrl: canvas.toDataURL("image/png") }) });
+      state.saveStatus = "saved";
+      state.lastSavedLabel = "submitted";
+      return next();
+    }
+    const stage = workflows.application.screens[state.screen].label.toLowerCase().replaceAll(" ", "_");
+    setBusy(true, "Saving...");
+    await saveApplicationDraft(stage);
+    return next();
+  }
+
+  form.addEventListener("submit", async event => {
     event.preventDefault();
     captureValues();
     if (!validate()) return;
-    next();
+    if (!liveWorkflow()) return next();
+    try {
+      await handleLiveSubmit();
+    } catch (error) {
+      state.saveStatus = "error";
+      setBusy(false);
+      updateSaveState(workflows[state.workflow].screens[state.screen]);
+      showServiceError(error);
+    }
   });
 
   form.addEventListener("input", event => {
     if (event.target.type === "file") {
       const output = event.target.closest(".field")?.querySelector("[data-file-state]");
-      if (output) output.textContent = event.target.files[0] ? `${event.target.files[0].name} · local only` : "Nothing selected";
+      if (output) output.textContent = event.target.files[0] ? `${event.target.files.length} file${event.target.files.length === 1 ? "" : "s"} selected` : "Nothing selected";
     }
     captureValues();
     updateConditionals();

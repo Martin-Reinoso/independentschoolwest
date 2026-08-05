@@ -7,13 +7,13 @@ Test date: 5 August 2026
 - bundled Node syntax check passed for `pages/rosewood-enrolment-v6.js`
 - bundled Node syntax check passed for the generated 444-entry language catalogue
 - `git diff --check` passed for the V6 frontend
-- scans found no `fetch`, XHR, WebSocket, beacon, cookie, local-storage,
-  session-storage or IndexedDB use
+- scans found no cookie, local-storage, session-storage or IndexedDB use
 - scans found no Commencement Term or V5 correct-student/correct-offer controls
 - application-only scans found no proof of address, St Lawrence application terms,
   photography controls, Victorian guidance, parent Past Student, parent Spouse,
   emergency sharing, Current School Family, Social Media or Tour controls
-- content security policy blocks network connections and form actions
+- content security policy permits only the V6 Lambda endpoint and the required Google
+  upload endpoints; form actions, frames and objects remain blocked
 - no inline styles are used in V6-rendered content
 
 ## Browser Checks
@@ -101,8 +101,36 @@ Mobile viewport: 390 x 844.
 - controls collapse to one column
 - document width equals viewport width; no horizontal overflow
 
-## Backend Boundary
+## Backend Checks
 
-OTP delivery, autosave, draft recovery, uploads, real invitation authorisation,
-transactional email, server timestamps, submission, audit linkage and legally effective
-signatures cannot be tested because V6 intentionally has no backend.
+- nine Node tests pass for direct invitation, explicit EOI linkage, fail-closed link
+  errors, linked-email integrity, EOI normalization, conditional needs validation,
+  dynamic application fields, Acceptance-field rejection and server-side guardian
+  review acknowledgement
+- the AWS stack deployed successfully and `/v6/health` returns the expected schema
+  version, secure CORS and no-cache headers
+- a synthetic EOI produced an EOI reference, private Drive snapshot, EOI Sheet row,
+  audit event and acknowledgement email
+- a synthetic direct invitation remained unlinked to EOI, delivered invitation and OTP
+  emails, saved a revisioned draft, uploaded a synthetic file, captured two independent
+  signatures and reached 100 percent submitted status
+- a separate synthetic EOI-linked invitation prefilled the exact source EOI contact,
+  student and address values after OTP verification
+- normalized Application, Document, Signature, Guardian and Operations rows were
+  checked against the canonical application state
+- the automated second-guardian mirror defect found by the canary was fixed, deployed
+  and its synthetic row reconciled
+
+## Email Checks
+
+- the SES account is production-enabled and healthy in `ap-southeast-2`
+- controlled EOI, invitation, OTP, guardian-signature and completion messages arrived
+  from `enrolment@ffe.org.au` at `info@ffe.org.au`
+- Gmail original headers passed SPF, DKIM and DMARC and used the aligned
+  `bounce.ffe.org.au` return path
+- SES simulator success, permanent-bounce and complaint canaries completed; bounce and
+  complaint SNS notifications arrived in the operations mailbox
+
+All canary records are explicitly labelled synthetic and contain no family data.
+Uploaded-file malware scanning, the staff portal and automatic SES feedback ingestion
+remain documented production gaps.

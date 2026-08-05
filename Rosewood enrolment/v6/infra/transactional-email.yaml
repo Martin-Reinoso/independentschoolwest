@@ -1,0 +1,91 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Rosewood College transactional email feedback and least-privilege SES policy
+
+Parameters:
+  SenderDomain:
+    Type: String
+    Default: ffe.org.au
+    Description: Existing verified SES domain identity
+  SenderAddress:
+    Type: String
+    Default: enrolment@ffe.org.au
+    Description: Approved From and Reply-To address for enrolment messages
+  OperationsEmail:
+    Type: String
+    Default: info@ffe.org.au
+    Description: Organisation mailbox that receives SES feedback notifications
+
+Resources:
+  RosewoodSesFeedbackTopic:
+    Type: AWS::SNS::Topic
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      DisplayName: Rosewood SES feedback
+      TopicName: rosewood-enrolment-ses-feedback
+
+  RosewoodSesFeedbackTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref RosewoodSesFeedbackTopic
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowAccountAdministration
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:root
+            Action:
+              - sns:GetTopicAttributes
+              - sns:SetTopicAttributes
+              - sns:AddPermission
+              - sns:RemovePermission
+              - sns:DeleteTopic
+              - sns:Subscribe
+              - sns:ListSubscriptionsByTopic
+              - sns:Publish
+            Resource: !Ref RosewoodSesFeedbackTopic
+          - Sid: AllowSesFeedback
+            Effect: Allow
+            Principal:
+              Service: ses.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref RosewoodSesFeedbackTopic
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+
+  RosewoodSesFeedbackSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !Ref OperationsEmail
+      Protocol: email
+      TopicArn: !Ref RosewoodSesFeedbackTopic
+
+  RosewoodSesSendPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: Allows a future Rosewood Lambda role to send only from the approved enrolment address
+      ManagedPolicyName: rosewood-enrolment-ses-send
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: SendOnlyFromRosewoodEnrolment
+            Effect: Allow
+            Action:
+              - ses:SendEmail
+            Resource:
+              - !Sub arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/${SenderDomain}
+              - !Sub arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/${SenderAddress}
+            Condition:
+              StringEquals:
+                ses:FromAddress: !Ref SenderAddress
+
+Outputs:
+  FeedbackTopicArn:
+    Description: Use for the SES domain's bounce and complaint notification topics
+    Value: !Ref RosewoodSesFeedbackTopic
+  SenderPolicyArn:
+    Description: Attach only to the eventual Rosewood enrolment Lambda execution role
+    Value: !Ref RosewoodSesSendPolicy

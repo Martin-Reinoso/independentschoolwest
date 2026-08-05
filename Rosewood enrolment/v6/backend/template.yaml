@@ -1,0 +1,191 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Rosewood College V6 EOI and Application for Enrolment service
+
+Parameters:
+  ConfigSecretArn:
+    Type: String
+  SenderEmail:
+    Type: String
+    Default: enrolment@ffe.org.au
+  ReplyToEmail:
+    Type: String
+    Default: enrolment@ffe.org.au
+  GoogleEoiFolderId:
+    Type: String
+  GoogleApplicationFolderId:
+    Type: String
+  GoogleEoiSpreadsheetId:
+    Type: String
+  GoogleApplicationSpreadsheetId:
+    Type: String
+  GoogleOperationsSpreadsheetId:
+    Type: String
+  AllowedOrigins:
+    Type: String
+    Default: https://ffe.org.au
+
+Resources:
+  RosewoodTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      DeletionProtectionEnabled: true
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
+  RosewoodLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-service
+      RetentionInDays: 90
+
+  RosewoodRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: RosewoodV6Runtime
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Query
+                  - dynamodb:TransactWriteItems
+                Resource: !GetAtt RosewoodTable.Arn
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !Sub "${ConfigSecretArn}*"
+              - Effect: Allow
+                Action: ses:SendEmail
+                Resource:
+                  - !Sub arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/ffe.org.au
+                  - !Sub arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/${SenderEmail}
+                Condition:
+                  StringEquals:
+                    ses:FromAddress: !Ref SenderEmail
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub ${RosewoodLogGroup.Arn}:*
+
+  RosewoodFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: RosewoodLogGroup
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-service
+      Runtime: nodejs22.x
+      Handler: index.handler
+      Role: !GetAtt RosewoodRole.Arn
+      Timeout: 60
+      MemorySize: 768
+      ReservedConcurrentExecutions: 10
+      Code: lambda-dist/
+      Environment:
+        Variables:
+          ROSEWOOD_TABLE_NAME: !Ref RosewoodTable
+          ROSEWOOD_CONFIG_SECRET_ARN: !Ref ConfigSecretArn
+          SENDER_EMAIL: !Ref SenderEmail
+          REPLY_TO_EMAIL: !Ref ReplyToEmail
+          GOOGLE_EOI_FOLDER_ID: !Ref GoogleEoiFolderId
+          GOOGLE_APPLICATION_FOLDER_ID: !Ref GoogleApplicationFolderId
+          GOOGLE_EOI_SPREADSHEET_ID: !Ref GoogleEoiSpreadsheetId
+          GOOGLE_APPLICATION_SPREADSHEET_ID: !Ref GoogleApplicationSpreadsheetId
+          GOOGLE_OPERATIONS_SPREADSHEET_ID: !Ref GoogleOperationsSpreadsheetId
+          ALLOWED_ORIGINS: !Ref AllowedOrigins
+          APPLICATION_PAGE_URL: https://ffe.org.au/pages/rosewood-enrolment-v6.html
+          APPLICATION_SIGNING_PAGE_URL: https://ffe.org.au/pages/rosewood-application-sign-v6.html
+
+  RosewoodFunctionUrl:
+    Type: AWS::Lambda::Url
+    Properties:
+      TargetFunctionArn: !Ref RosewoodFunction
+      AuthType: NONE
+
+  RosewoodFunctionUrlPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref RosewoodFunction
+      Action: lambda:InvokeFunctionUrl
+      Principal: "*"
+      FunctionUrlAuthType: NONE
+
+  RosewoodFunctionUrlInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref RosewoodFunction
+      Action: lambda:InvokeFunction
+      Principal: "*"
+      InvokedViaFunctionUrl: true
+
+  RosewoodOutboxSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Retry Rosewood V6 email and Google Sheets outbox operations
+      ScheduleExpression: rate(1 minute)
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt RosewoodFunction.Arn
+          Id: RosewoodV6Outbox
+
+  RosewoodOutboxPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref RosewoodFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt RosewoodOutboxSchedule.Arn
+
+  RosewoodErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Rosewood V6 Lambda errors
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref RosewoodFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+Outputs:
+  FunctionUrl:
+    Value: !GetAtt RosewoodFunctionUrl.FunctionUrl
+  FunctionName:
+    Value: !Ref RosewoodFunction
+  TableName:
+    Value: !Ref RosewoodTable
