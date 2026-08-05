@@ -119,6 +119,9 @@ Mobile viewport: 390 x 844.
   customer-managed KMS key and have point-in-time recovery enabled
 - the Sydney backup vault is KMS-encrypted and locked; its backup plan covers both
   authoritative tables with daily 35-day and monthly 366-day recovery points
+- manual verification backups for the production records and append-only audit tables
+  both completed on 6 August 2026; the locked Sydney vault reports two completed
+  DynamoDB recovery points
 - the Lambda error alarm is `OK` and the operations mailbox confirmed its new SNS
   failure-alert subscription
 - a synthetic EOI produced an EOI reference, private Drive snapshot, EOI Sheet row,
