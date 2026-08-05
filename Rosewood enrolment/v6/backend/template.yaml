@@ -23,6 +23,9 @@ Parameters:
   AllowedOrigins:
     Type: String
     Default: https://ffe.org.au
+  StaffEmails:
+    Type: String
+    Default: info@ffe.org.au
 
 Resources:
   RosewoodTable:
@@ -123,6 +126,7 @@ Resources:
           GOOGLE_APPLICATION_SPREADSHEET_ID: !Ref GoogleApplicationSpreadsheetId
           GOOGLE_OPERATIONS_SPREADSHEET_ID: !Ref GoogleOperationsSpreadsheetId
           ALLOWED_ORIGINS: !Ref AllowedOrigins
+          STAFF_EMAILS: !Ref StaffEmails
           APPLICATION_PAGE_URL: https://ffe.org.au/pages/rosewood-enrolment-v6.html
           APPLICATION_SIGNING_PAGE_URL: https://ffe.org.au/pages/rosewood-application-sign-v6.html
 

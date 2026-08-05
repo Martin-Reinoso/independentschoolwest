@@ -34,8 +34,8 @@ real family information until the applicable blockers are closed.
 
 ## Remaining Backend And Security
 
-- authenticated staff portal for EOI-linked and direct-email invitations, application
-  progress, delivery state and audit history; the current operator path is a CLI
+- multi-user staff roles and detailed audit-history review beyond the current
+  allowlisted EOI/Application portal; the restricted CLI remains an emergency fallback
 - automated malware scanning and quarantine for uploaded files
 - automatic SES bounce/complaint correlation into Operations records
 - approved staff roles, access review, retention, deletion and incident-response rules

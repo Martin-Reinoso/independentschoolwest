@@ -84,6 +84,17 @@ export class GoogleSheetsStore {
     await this.request(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(writeRange)}?valueInputOption=RAW`, { method: "PUT", body: JSON.stringify({ range: writeRange, majorDimension: "ROWS", values: [row] }) });
   }
 
+  async list(workbook, sheet, { limit = 500 } = {}) {
+    const sheetHeaders = headers[workbook]?.[sheet];
+    const spreadsheetId = this.ids[workbook];
+    if (!sheetHeaders || !spreadsheetId) throw new Error("Unknown Google Sheets workbook or tab.");
+    const safeLimit = Math.max(1, Math.min(1000, Number(limit) || 500));
+    const rangeName = `${quoteSheet(sheet)}!A1:${columnName(sheetHeaders.length - 1)}${safeLimit + 1}`;
+    const response = await this.request(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(rangeName)}?majorDimension=ROWS`);
+    const values = (await response.json()).values || [];
+    return values.slice(1).map(row => Object.fromEntries(sheetHeaders.map((key, index) => [key, row[index] ?? ""])));
+  }
+
   async apply(operation) {
     if (operation.mode === "append") return this.append(operation.workbook, operation.sheet, operation.record);
     return this.upsert(operation.workbook, operation.sheet, operation.record, operation.matchKeys);

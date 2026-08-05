@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src https://6zyzo44sdb5zmmx53toktqrnuu0sikyd.lambda-url.ap-southeast-2.on.aws; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'">
+  <title>Enrolment Operations | Rosewood College</title>
+  <link rel="icon" href="../img/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="rosewood-enrolment-admin-v6.css?v=1">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to operations</a>
+
+  <div class="portal-shell">
+    <header class="portal-header">
+      <a class="brand" href="rosewood-enrolment-admin-v6.html" aria-label="Rosewood College enrolment operations">
+        <img src="../img/rosewood-emblem-corrected-transparent.png" alt="">
+        <span><strong>Rosewood College</strong><small>Enrolment operations</small></span>
+      </a>
+      <div class="header-actions" id="header-actions" hidden>
+        <span class="secure-chip"><span aria-hidden="true"></span>Secure staff session</span>
+        <button class="text-button" id="sign-out-button" type="button">Sign out</button>
+      </div>
+    </header>
+
+    <main id="main-content">
+      <section class="access-view" id="access-view" aria-labelledby="access-title">
+        <div class="access-story">
+          <p class="eyebrow">Restricted staff portal</p>
+          <h1 id="access-title">Every family journey, clearly in view.</h1>
+          <p>Invite families to apply, link an existing expression of interest when appropriate, and follow progress without opening sensitive application records.</p>
+          <div class="access-note">
+            <span aria-hidden="true">01</span>
+            <p><strong>Operational summaries only</strong>Detailed application answers, documents and signatures remain in private Google storage.</p>
+          </div>
+          <div class="access-note">
+            <span aria-hidden="true">02</span>
+            <p><strong>Invitation links stay private</strong>The portal sends links by email but never displays or stores them in the browser.</p>
+          </div>
+        </div>
+
+        <div class="access-card">
+          <div class="access-card-heading">
+            <p class="eyebrow">Staff access</p>
+            <h2>Sign in with your email</h2>
+            <p>We will send a six-digit access code to an authorised mailbox.</p>
+          </div>
+          <div class="notice error-notice" id="access-error" role="alert" tabindex="-1" hidden></div>
+          <div class="notice success-notice" id="access-message" role="status" hidden></div>
+
+          <form id="email-form" novalidate>
+            <label for="staff-email">Staff email</label>
+            <input id="staff-email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="name@ffe.org.au" required>
+            <button class="primary-button full-button" id="send-code-button" type="submit"><span>Send access code</span><span class="button-loader" aria-hidden="true"></span></button>
+          </form>
+
+          <form id="code-form" novalidate hidden>
+            <button class="back-button" id="change-email-button" type="button">Change email</button>
+            <label for="staff-code">Access code</label>
+            <input class="code-input" id="staff-code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required>
+            <p class="field-help">The code expires after 10 minutes.</p>
+            <button class="primary-button full-button" id="verify-code-button" type="submit"><span>Open staff portal</span><span class="button-loader" aria-hidden="true"></span></button>
+            <button class="text-button resend-button" id="resend-code-button" type="button" disabled>Resend code <span id="resend-timer"></span></button>
+          </form>
+        </div>
+      </section>
+
+      <section class="dashboard-view" id="dashboard-view" aria-labelledby="dashboard-title" hidden>
+        <div class="dashboard-intro">
+          <div>
+            <p class="eyebrow">Enrolment overview</p>
+            <h1 id="dashboard-title">Family application pipeline</h1>
+            <p id="dashboard-updated" aria-live="polite">Loading the latest records...</p>
+          </div>
+          <div class="dashboard-actions">
+            <button class="secondary-button" id="refresh-button" type="button"><span>Refresh data</span><span class="button-loader" aria-hidden="true"></span></button>
+            <button class="primary-button" id="open-invite-button" type="button">Create invitation</button>
+          </div>
+        </div>
+
+        <div class="notice error-notice" id="dashboard-error" role="alert" tabindex="-1" hidden></div>
+        <div class="notice success-notice" id="dashboard-message" role="status" hidden></div>
+
+        <section class="metric-grid" aria-label="Enrolment totals">
+          <article class="metric-card metric-eoi"><span class="metric-label">Expressions of interest</span><strong id="metric-eois">0</strong><small>Submitted records</small></article>
+          <article class="metric-card metric-active"><span class="metric-label">In progress</span><strong id="metric-active">0</strong><small>Families completing forms</small></article>
+          <article class="metric-card metric-sign"><span class="metric-label">Pending signatures</span><strong id="metric-signatures">0</strong><small>Awaiting another guardian</small></article>
+          <article class="metric-card metric-complete"><span class="metric-label">Submitted</span><strong id="metric-submitted">0</strong><small>Applications received</small></article>
+        </section>
+
+        <div class="workspace">
+          <aside class="workspace-nav" aria-label="Portal sections">
+            <button class="nav-button active" data-panel="applications" type="button"><span>Applications</span><strong id="nav-app-count">0</strong></button>
+            <button class="nav-button" data-panel="eois" type="button"><span>Expressions of interest</span><strong id="nav-eoi-count">0</strong></button>
+            <button class="nav-button" data-panel="emails" type="button"><span>Email activity</span><strong id="nav-email-count">0</strong></button>
+            <div class="sheet-links" id="sheet-links">
+              <p>Private records</p>
+              <a data-sheet="eoi" href="#" target="_blank" rel="noreferrer">EOI Sheet</a>
+              <a data-sheet="application" href="#" target="_blank" rel="noreferrer">Application Sheet</a>
+              <a data-sheet="operations" href="#" target="_blank" rel="noreferrer">Operations Sheet</a>
+            </div>
+          </aside>
+
+          <section class="workspace-panel" id="applications-panel" data-workspace-panel>
+            <div class="panel-heading">
+              <div><p class="eyebrow">Application for enrolment</p><h2>Applications</h2></div>
+              <div class="panel-filters">
+                <label class="search-field"><span>Search applications</span><input id="application-search" type="search" placeholder="Family, student or email"></label>
+                <label class="select-field"><span>Status</span><select id="application-status"><option value="all">All statuses</option><option value="invited">Invited</option><option value="in_progress">In progress</option><option value="pending_signatures">Pending signatures</option><option value="submitted">Submitted</option></select></label>
+              </div>
+            </div>
+            <div class="record-list" id="application-list" aria-live="polite"></div>
+            <div class="empty-state" id="application-empty" hidden><strong>No applications found</strong><p>Try changing the search or status filter.</p></div>
+          </section>
+
+          <section class="workspace-panel" id="eois-panel" data-workspace-panel hidden>
+            <div class="panel-heading">
+              <div><p class="eyebrow">Expression of interest</p><h2>EOI records</h2></div>
+              <label class="search-field"><span>Search EOIs</span><input id="eoi-search" type="search" placeholder="Family, student, email or reference"></label>
+            </div>
+            <div class="record-list" id="eoi-list" aria-live="polite"></div>
+            <div class="empty-state" id="eoi-empty" hidden><strong>No expressions of interest found</strong><p>New submissions will appear here.</p></div>
+          </section>
+
+          <section class="workspace-panel" id="emails-panel" data-workspace-panel hidden>
+            <div class="panel-heading"><div><p class="eyebrow">Amazon SES</p><h2>Recent email activity</h2></div><p class="panel-note">This confirms messages accepted by the sending service. Bounce and complaint alerts continue separately.</p></div>
+            <div class="record-list" id="email-list" aria-live="polite"></div>
+            <div class="empty-state" id="email-empty" hidden><strong>No email events yet</strong><p>Invitation and verification activity will appear here.</p></div>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog class="invite-dialog" id="invite-dialog" aria-labelledby="invite-title">
+    <form method="dialog" class="dialog-close-form"><button class="dialog-close" aria-label="Close invitation panel" value="cancel">×</button></form>
+    <div class="dialog-heading"><p class="eyebrow">Application for enrolment</p><h2 id="invite-title">Create an invitation</h2><p>Choose whether this family has an existing expression of interest. The private application link will be sent by email.</p></div>
+    <div class="notice error-notice" id="invite-error" role="alert" tabindex="-1" hidden></div>
+    <div class="mode-switch" role="tablist" aria-label="Invitation source">
+      <button id="direct-mode-button" class="active" role="tab" aria-selected="true" aria-controls="direct-invite-form" type="button">Direct invitation</button>
+      <button id="eoi-mode-button" role="tab" aria-selected="false" aria-controls="eoi-invite-form" type="button">From an EOI</button>
+    </div>
+
+    <form id="direct-invite-form" class="invite-form" novalidate>
+      <div class="form-row full-row"><label for="invite-email">Family email <span>*</span></label><input id="invite-email" type="email" autocomplete="off" required><small>The family will use this same email to receive their verification code.</small></div>
+      <div class="form-row"><label for="invite-first">Parent/guardian first name</label><input id="invite-first" type="text" autocomplete="off"></div>
+      <div class="form-row"><label for="invite-last">Parent/guardian last name</label><input id="invite-last" type="text" autocomplete="off"></div>
+      <div class="form-row"><label for="invite-student-first">Student first name</label><input id="invite-student-first" type="text" autocomplete="off"></div>
+      <div class="form-row"><label for="invite-student-last">Student last name</label><input id="invite-student-last" type="text" autocomplete="off"></div>
+      <div class="form-submit"><p>This creates a new application record without linking an EOI.</p><button class="primary-button" id="send-direct-invite" type="submit"><span>Send invitation</span><span class="button-loader" aria-hidden="true"></span></button></div>
+    </form>
+
+    <form id="eoi-invite-form" class="invite-form eoi-invite-form" novalidate hidden>
+      <label class="search-field full-row"><span>Find an expression of interest</span><input id="invite-eoi-search" type="search" placeholder="Family, student, email or reference"></label>
+      <div class="eoi-picker full-row" id="invite-eoi-list"></div>
+      <div class="selected-eoi full-row" id="selected-eoi" hidden></div>
+      <input id="selected-eoi-id" type="hidden">
+      <div class="form-submit"><p>Approved EOI details will prepopulate the application and remain editable by the family.</p><button class="primary-button" id="send-eoi-invite" type="submit" disabled><span>Send linked invitation</span><span class="button-loader" aria-hidden="true"></span></button></div>
+    </form>
+  </dialog>
+
+  <dialog class="confirm-dialog" id="confirm-dialog" aria-labelledby="confirm-title">
+    <div class="confirm-icon" aria-hidden="true">↻</div>
+    <h2 id="confirm-title">Resend this invitation?</h2>
+    <p id="confirm-copy">A new private link will be emailed and the earlier link will stop working.</p>
+    <div class="confirm-actions"><button class="secondary-button" id="cancel-resend-button" type="button">Cancel</button><button class="primary-button" id="confirm-resend-button" type="button"><span>Resend invitation</span><span class="button-loader" aria-hidden="true"></span></button></div>
+  </dialog>
+
+  <script src="rosewood-enrolment-admin-v6.js?v=1"></script>
+</body>
+</html>

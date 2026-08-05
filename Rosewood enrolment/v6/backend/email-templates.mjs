@@ -24,6 +24,12 @@ export function applicationOtp({ code }) {
   return { subject, text, html: frame(`<h1 style="font:700 28px Georgia,serif">Verification code</h1><p>Enter this code to continue your Application for Enrolment:</p><p style="font:700 36px 'Courier New',monospace;letter-spacing:.16em">${code}</p><p>This code expires in 10 minutes. Do not share it.</p>`) };
 }
 
+export function staffOtp({ code }) {
+  const subject = `${code} is your Rosewood enrolment staff access code`;
+  const text = `Your Rosewood enrolment staff access code is ${code}. It expires in 10 minutes. Do not share this code. If you did not request access, reply to enrolment@ffe.org.au.`;
+  return { subject, text, html: frame(`<h1 style="font:700 28px Georgia,serif">Staff access code</h1><p>Enter this code to access the Rosewood enrolment operations portal:</p><p style="font:700 36px 'Courier New',monospace;letter-spacing:.16em">${code}</p><p>This code expires in 10 minutes. Do not share it.</p><p style="font-size:14px;color:#566070">If you did not request staff access, reply to enrolment@ffe.org.au.</p>`) };
+}
+
 export function applicationSubmitted({ firstName, studentName, reference, pendingSignatures }) {
   const status = pendingSignatures ? "The application is waiting for the additional parent/guardian signature." : "The application is complete and has been received.";
   const subject = `Rosewood College application received - ${reference}`;

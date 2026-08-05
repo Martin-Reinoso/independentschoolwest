@@ -50,6 +50,19 @@ export class DynamoStore {
     return { invitation, application };
   }
 
+  async rotateInvitation({ invitation, previousTokenHash, tokenHash, outboxEvents }) {
+    const ttl = Math.floor(invitation.expiresAt / 1000) + 86400;
+    try {
+      await this.client.send(new TransactWriteCommand({ TransactItems: [
+        { Delete: { TableName: this.tableName, Key: this.key(`INVITE#${previousTokenHash}`), ConditionExpression: "attribute_exists(PK)" } },
+        { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE#${tokenHash}`), entity: "invitation", ttl, data: invitation }, ConditionExpression: "attribute_not_exists(PK)" } },
+        { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE_ID#${invitation.id}`), entity: "invitation_index", ttl, data: invitation }, ConditionExpression: "#data.#tokenHash = :previous", ExpressionAttributeNames: { "#data": "data", "#tokenHash": "tokenHash" }, ExpressionAttributeValues: { ":previous": previousTokenHash } } },
+        ...this.outboxActions(outboxEvents)
+      ] }));
+      return invitation;
+    } catch (error) { if (conditional(error)) throw conflict("This invitation changed before it could be resent. Refresh the portal and try again."); throw error; }
+  }
+
   async putChallenge(challenge) {
     await this.client.send(new PutCommand({ TableName: this.tableName, Item: { ...this.key(`CHALLENGE#${challenge.id}`), entity: "challenge", ttl: challenge.ttl, data: challenge }, ConditionExpression: "attribute_not_exists(PK)" }));
   }
