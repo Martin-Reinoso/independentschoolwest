@@ -1,6 +1,6 @@
 # V6 Testing
 
-Test date: 5 August 2026
+Test date: 6 August 2026
 
 ## Static Checks
 
@@ -103,13 +103,24 @@ Mobile viewport: 390 x 844.
 
 ## Backend Checks
 
-- thirteen Node tests pass for direct invitation, explicit EOI linkage, fail-closed link
+- eighteen Node tests pass for Google Drive upload/confirmation, legacy-safe document
+  projection headers, direct invitation, explicit EOI linkage, fail-closed link
   errors, linked-email integrity, EOI normalization, conditional needs validation,
   dynamic application fields, Acceptance-field rejection, server-side guardian review
   acknowledgement, staff allowlisting, safe dashboard projection, staff invitation
-  response redaction and atomic invitation-token rotation
+  response redaction, staff role restrictions and atomic invitation-token rotation
+- the production deployment bundle builds successfully and both family/admin browser
+  scripts pass Node syntax checks
 - the AWS stack deployed successfully and `/v6/health` returns the expected schema
   version, secure CORS and no-cache headers
+- the production Lambda uses restricted Google Drive for files and the staff portal no
+  longer exposes a document-download endpoint
+- both authoritative DynamoDB tables are deletion-protected, use the retained
+  customer-managed KMS key and have point-in-time recovery enabled
+- the Sydney backup vault is KMS-encrypted and locked; its backup plan covers both
+  authoritative tables with daily 35-day and monthly 366-day recovery points
+- the Lambda error alarm is `OK` and the operations mailbox confirmed its new SNS
+  failure-alert subscription
 - a synthetic EOI produced an EOI reference, private Drive snapshot, EOI Sheet row,
   audit event and acknowledgement email
 - a synthetic direct invitation remained unlinked to EOI, delivered invitation and OTP
@@ -153,5 +164,6 @@ Mobile viewport: 390 x 844.
   complaint SNS notifications arrived in the operations mailbox
 
 All canary records are explicitly labelled synthetic and contain no family data.
-Uploaded-file malware scanning, multi-user staff roles and automatic SES feedback
-ingestion remain documented production gaps.
+GuardDuty, uploaded-file malware scanning and cross-region protection are deliberately
+outside the small-scale launch scope. Named multi-user staff accounts and automatic SES
+feedback ingestion remain documented production gaps.

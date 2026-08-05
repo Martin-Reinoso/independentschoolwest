@@ -4,7 +4,7 @@ import { SCHEMA_VERSION, normalizeEmail, safeText, sanitizeApplication, splitApp
 import { sheetOperation } from "./google-sheets.mjs";
 
 const DOCUMENT_CATEGORIES = ["birth_certificate", "health_and_immunisation", "school_report", "sacramental", "residency"];
-const MIME_TYPES = new Set(["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.oasis.opendocument.text", "image/png", "image/jpeg", "image/gif", "image/bmp", "image/heic", "image/heif"]);
+const MIME_TYPES = new Set(["application/pdf", "image/png", "image/jpeg"]);
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
 function appError(status, code, message, details) {
@@ -173,6 +173,7 @@ export async function resendApplicationInvitation({ store, invitationId, created
 
 export function createService({ store, artifacts, drive, sheets, mailer, env, clock = () => Date.now() }) {
   artifacts ||= drive;
+  const allowUnscannedGoogleDocuments = String(env.ALLOW_UNSCANNED_GOOGLE_DOCUMENTS || "false") === "true";
   const allowedOrigins = String(env.ALLOWED_ORIGINS || "https://ffe.org.au").split(",").map(value => value.trim()).filter(Boolean);
   const staffEmails = new Set(String(env.STAFF_EMAILS || "info@ffe.org.au").split(",").map(normalizeEmail).filter(Boolean));
   const staffRoles = new Map([...staffEmails].map(email => [email, "admin"]));
@@ -342,25 +343,11 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
           size: document.size,
           uploadedAt: document.uploadedAt,
           malwareScanStatus: document.malwareScanStatus,
-          downloadable: session.role !== "viewer" && document.storageProvider === "s3" && document.malwareScanStatus === "no_threats_found"
+          storageProvider: document.storageProvider || "legacy"
         })),
         signatures: (app.signatures || []).map(signature => ({ guardianId: signature.guardianId, signerName: signature.signerName, signerEmail: signature.signerEmail, signedAt: signature.signedAt, revision: signature.revision }))
       }
     };
-  }
-
-  async function createStaffDocumentDownload(event) {
-    const session = await requireStaffSession(event, ["admin", "admissions"]);
-    const body = parseBody(event, 20_000);
-    const applicationId = safeText(body.applicationId, 200);
-    const documentId = safeText(body.documentId, 300);
-    const app = await store.getApplication(applicationId);
-    if (!app) throw appError(404, "APPLICATION_NOT_FOUND", "The application was not found.");
-    const document = Object.values(app.documents || {}).flat().find(candidate => (candidate.id || candidate.documentId) === documentId);
-    if (!document) throw appError(404, "DOCUMENT_NOT_FOUND", "The document was not found.");
-    const download = await artifacts.createDownloadUrl(document, 300);
-    await recordAudit(createAuditEvent({ workflow: "application", recordId: app.id, invitationId: app.invitationId, type: "staff.document_download_authorised", at: nowIso(), actorType: "staff", actorId: session.email, details: { documentId, category: document.category, expiresInSeconds: download.expiresInSeconds } }));
-    return download;
   }
 
   async function createStaffInvitation(event) {
@@ -493,7 +480,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     const uploadId = id("upload");
     const result = await artifacts.createUpload({ uploadId, applicationId: session.applicationId, category, fileName: safeText(body.fileName, 220), mimeType, size, checksumSha256 });
     await store.putUpload(result.upload);
-    return { uploadUrl: result.uploadUrl, uploadHeaders: result.uploadHeaders, documentId: uploadId, expiresInSeconds: 900 };
+    return { uploadUrl: result.uploadUrl, uploadHeaders: result.uploadHeaders, documentId: result.documentId ?? uploadId, expiresInSeconds: 900 };
   }
 
   async function confirmUpload(event) {
@@ -501,9 +488,12 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     const body = parseBody(event, 20_000);
     const category = safeText(body.category, 80);
     const documentId = safeText(body.documentId, 300);
-    const upload = await store.getUpload(documentId);
-    if (!upload || upload.applicationId !== session.applicationId || upload.category !== category || upload.expiresAt <= clock()) throw appError(422, "DOCUMENT_UPLOAD_EXPIRED", "This document upload has expired. Upload the file again.");
-    const document = await artifacts.confirmUpload(upload);
+    const googleDriveUpload = artifacts.storageProvider === "google_drive";
+    const upload = googleDriveUpload ? null : await store.getUpload(documentId);
+    if (!googleDriveUpload && (!upload || upload.applicationId !== session.applicationId || upload.category !== category || upload.expiresAt <= clock())) throw appError(422, "DOCUMENT_UPLOAD_EXPIRED", "This document upload has expired. Upload the file again.");
+    const document = googleDriveUpload
+      ? await artifacts.confirmUpload({ applicationId: session.applicationId, category, documentId })
+      : await artifacts.confirmUpload(upload);
     document.id = document.documentId;
     const audit = createAuditEvent({ workflow: "application", recordId: session.applicationId, invitationId: session.invitationId, type: "application.document_uploaded", at: nowIso(), actorId: session.email, stage: "documents", details: { category, documentId: document.documentId, malwareScanStatus: document.malwareScanStatus } });
     await store.attachDocument({ applicationId: session.applicationId, document, uploadId: documentId, outboxEvents: [sheetOutbox(auditSheetOperation(audit), clock())], auditEvents: [audit] });
@@ -519,7 +509,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     const guardianCount = Math.max(1, Math.min(6, Number(app.guardianCount || 1)));
     const values = validateApplicationForSubmission(app.values, guardianCount, app.emergencyCount || 2);
     if (!(app.documents?.birth_certificate || []).length) throw appError(422, "DOCUMENT_REQUIRED", "Upload the student's birth certificate before submitting.", { missing: ["birth_certificate"] });
-    const unsafeDocuments = Object.values(app.documents || {}).flat().filter(document => document.malwareScanStatus !== "no_threats_found");
+    const unsafeDocuments = Object.values(app.documents || {}).flat().filter(document => document.malwareScanStatus !== "no_threats_found" && !(allowUnscannedGoogleDocuments && document.storageProvider === "google_drive"));
     if (unsafeDocuments.length) throw appError(422, "DOCUMENT_SCAN_REQUIRED", "Every uploaded document must pass its security check before the application can be submitted.");
     const bytes = signatureBytes(body.signatureDataUrl);
     const primaryGuardianId = app.guardianIds[0];
@@ -667,7 +657,6 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     ["POST /v6/staff/access/verify-code", verifyStaffCode],
     ["GET /v6/staff/dashboard", getStaffDashboard],
     ["POST /v6/staff/applications/detail", getStaffApplicationDetail],
-    ["POST /v6/staff/documents/download", createStaffDocumentDownload],
     ["POST /v6/staff/invitations", createStaffInvitation],
     ["POST /v6/staff/invitations/resend", resendStaffInvitation],
     ["POST /v6/eoi", submitEoi],

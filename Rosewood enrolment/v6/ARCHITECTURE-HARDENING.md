@@ -1,72 +1,77 @@
 # V6 Essential Hardened Architecture
 
-Decision date: 5 August 2026
+Decision date: 6 August 2026
 
 ## Decision
 
-Rosewood will use the essential Sydney-only architecture for the expected volume of
-approximately 30 applications per year. Cross-region replication is intentionally not
-included. The small volume does not reduce the sensitivity of identity, health,
-residency, court-order, document and signature information, but it does make a simple
-managed-services design preferable to a larger SQL platform.
+Rosewood will use a small Sydney-only managed-services architecture for approximately
+30 applications per year. Cross-region replication, SQL and GuardDuty are intentionally
+outside the launch scope.
+
+The decision not to use GuardDuty does not make Google Drive a public repository.
+Application files remain private, access-controlled enrolment records and must follow
+the Google Drive controls documented in `../GOOGLE-DRIVE-INTERIM-GUIDELINES.md`.
 
 ## Trust Model
 
 ```text
 Family browser
   -> Lambda authorization, OTP, validation and revision checks
-  -> DynamoDB authoritative records
-  -> S3 quarantine -> GuardDuty scan -> clean document attachment
+  -> DynamoDB authoritative records and append-only audit events
+  -> restricted Google Drive documents, snapshots and signatures
 
 Staff browser
   -> staff OTP and role check
   -> audited DynamoDB application view
-  -> five-minute clean-document link when authorised
+  -> document access through the restricted enrolment Drive
 
 DynamoDB
-  -> asynchronous normalized Google Sheets projections
-  -> daily/monthly same-region AWS Backup
+  -> asynchronous normalized Google Sheets reporting projections
+  -> point-in-time recovery and daily/monthly same-region AWS Backup
 ```
 
-Google Sheets are not a database, backup or authorization boundary. They are disposable
-reporting projections. Staff do not receive Sheet links through the portal, and a Sheet
-edit cannot update AWS records.
+Google Sheets are not a database, backup or authorization boundary. They are
+replaceable reporting projections. A Sheet edit cannot update an AWS record.
 
 ## Controls
 
-| Concern | Control |
+| Concern | Launch control |
 | --- | --- |
-| Record loss or mistaken edit | DynamoDB point-in-time recovery plus locked daily/monthly backups |
+| Record loss or mistaken edit | DynamoDB point-in-time recovery plus daily/monthly backups |
 | Database deletion | CloudFormation retention and DynamoDB deletion protection |
-| Document replacement/deletion | S3 versioning and 35-day governance Object Lock |
-| Malicious uploads | Quarantine prefix, checksum-bound upload and GuardDuty Malware Protection |
-| Data at rest | Customer-managed KMS key with annual rotation |
-| Public document access | S3 Block Public Access and TLS-only bucket policy |
-| Staff access | Allowlisted OTP, two-hour memory-only session and role checks |
+| Data at rest | Customer-managed KMS encryption with annual rotation |
+| Staff access | Allowlisted OTP, memory-only sessions and role checks |
 | Shared reporting damage | Projection rebuild from authoritative AWS records |
-| Staff record inspection | Separate append-only audit table |
-| Unsafe download | Recheck clean GuardDuty tag and issue five-minute signed link |
+| Staff record inspection | Separate append-only DynamoDB audit table |
+| Uploaded files | Restricted Drive folder, PDF/JPG/PNG only and 10 MB server limit |
+| Public file access | No public or link-wide Drive sharing |
 | Regional disaster | Accepted residual risk; no cross-region copy at current scale |
 
-## Retention Boundary
+Google Drive is the authoritative file store for launch documents, application
+snapshots and signature images. DynamoDB stores their identifiers and metadata. The
+staff portal intentionally does not generate public or short-lived download URLs;
+authorised operators use the restricted enrolment Drive.
 
-The 35-day Object Lock, 35-day daily backups and 366-day monthly backups are operational
-recovery controls. They do not decide how long Rosewood is legally required to retain
-applications, supporting evidence or signatures. Governance must approve deletion and
-legal-retention rules before automated record expiry is added.
+## Backup Boundary
+
+DynamoDB point-in-time recovery covers approximately 35 days. AWS Backup retains daily
+copies for 35 days and monthly copies for 366 days in the Sydney region. These are
+operational recovery controls, not Rosewood's legal-retention schedule.
+
+Google Drive recovery and retention remain governed by the organisation account and
+the approved enrolment-folder process. A future move to S3 requires a separate design,
+migration and approval; no unused S3 bucket is part of the V6 runtime.
 
 ## Cost Position
 
-At approximately 30 applications per year, DynamoDB, Lambda, S3 and SES usage should
-remain very small. The recurring architecture cost is primarily customer-managed KMS,
-GuardDuty Malware Protection, AWS Backup storage and any alert traffic. Actual monthly
-cost must be monitored in AWS rather than treated as a fixed quote. Cross-region storage
-and transfer costs are deliberately avoided.
+At approximately 30 applications per year, Lambda, DynamoDB, SES and backup usage
+should remain small. The main predictable AWS charge is the customer-managed KMS key,
+plus stored backups and normal request traffic. Costs must still be monitored in AWS.
 
 ## Deferred
 
+- GuardDuty and S3 document storage
 - cross-region backup or replication
 - a relational SQL database
-- public or direct staff access to storage
 - automated legal-retention deletion
 - Acceptance, Decline and Enrolment Agreement backends

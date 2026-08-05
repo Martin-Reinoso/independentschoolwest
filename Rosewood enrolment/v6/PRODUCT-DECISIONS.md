@@ -36,8 +36,8 @@ for Enrolment backend. It must:
 - rotate the private token when an active invitation is resent, invalidating the prior
   link
 - show recent operational email events without linking staff into editable Sheets
-- allow audited review of application answers; allow admin/admissions staff to prepare
-  short-lived links only for documents that passed malware scanning
+- allow audited review of application answers and list document metadata without
+  creating public or short-lived file-sharing links
 - exclude signature images, raw invitation links and network fingerprints from portal
   responses
 

@@ -26,9 +26,8 @@ real family information until the applicable blockers are closed.
 - idempotent EOI/contact/student/application linking and direct-invite record creation
 - server-side record and workflow authorisation on every request
 - durable, revisioned autosave with truthful saving, saved and failure states
-- private encrypted uploads with file type and size restrictions
-- checksum-bound S3 quarantine, GuardDuty malware scanning and clean-only attachment
-- customer-managed KMS encryption, S3 versioning and 35-day governance Object Lock
+- restricted Google Drive uploads limited to PDF, JPG and PNG files up to 10 MB
+- customer-managed KMS encryption for authoritative DynamoDB records and backups
 - DynamoDB point-in-time recovery plus locked daily/monthly same-region backups
 - separate append-only audit table and role-ready staff controls
 - server-side validation and idempotency
@@ -41,8 +40,8 @@ real family information until the applicable blockers are closed.
 - approved named staff accounts, role ownership and periodic access review beyond the
   current shared allowlisted mailbox; the restricted CLI remains an emergency fallback
 - automatic SES bounce/complaint correlation into Operations records
-- approved legal retention/deletion and incident-response rules; the current backup and
-  Object Lock periods are operational recovery controls only
+- approved legal retention/deletion and incident-response rules; current AWS backup
+  periods are operational recovery controls only
 - approved immutable policy/document version catalogue for real-family submissions
 
 ## Deployment Gate
@@ -54,5 +53,5 @@ real family information until the applicable blockers are closed.
 - retain preview-only treatment for Acceptance and Decline until their separate backends
   and governance gates are complete
 
-AWS is authoritative for V6 records and artifacts. Google Sheets are replaceable
-reporting projections and Google Drive is legacy storage for earlier V6 artifacts only.
+AWS is authoritative for V6 operational records. Google Sheets are replaceable
+reporting projections; restricted Google Drive is the approved launch file store.

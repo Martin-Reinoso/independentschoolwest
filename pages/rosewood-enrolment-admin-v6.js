@@ -349,24 +349,6 @@
     return section;
   }
 
-  async function prepareDocumentDownload(applicationId, document, button) {
-    setLoading(button, true);
-    clearNotices("detail-error");
-    try {
-      const result = await api("/v6/staff/documents/download", { method: "POST", body: { applicationId, documentId: document.documentId } });
-      const link = element("a", "download-link", "Open document");
-      link.href = result.url;
-      link.target = "_blank";
-      link.rel = "noreferrer";
-      link.title = `Link expires in ${result.expiresInSeconds} seconds`;
-      button.replaceWith(link);
-      link.focus();
-    } catch (error) {
-      setNotice("detail-error", error.message);
-      setLoading(button, false);
-    }
-  }
-
   function renderApplicationDetail(application) {
     const content = byId("detail-content");
     clear(content);
@@ -415,16 +397,10 @@
       application.documents.forEach(document => {
         const row = element("div", "document-row");
         const details = element("div");
-        details.append(element("strong", "", document.fileName), element("small", "", `${fieldLabel(document.category)} · ${document.malwareScanStatus || "Scan status unavailable"}`));
+        const storageLabel = document.storageProvider === "google_drive" ? "Restricted Google Drive" : "Legacy document storage";
+        details.append(element("strong", "", document.fileName), element("small", "", `${fieldLabel(document.category)} · ${storageLabel}`));
         row.append(details);
-        if (document.downloadable) {
-          const button = element("button", "small-button", "Prepare download");
-          button.type = "button";
-          button.addEventListener("click", () => prepareDocumentDownload(application.applicationId, document, button));
-          row.append(button);
-        } else {
-          row.append(element("small", "", document.malwareScanStatus === "no_threats_found" ? "Viewer role: no download" : "Not available"));
-        }
+        row.append(element("small", "", "Access through the restricted enrolment Drive"));
         list.append(row);
       });
       section.append(list);

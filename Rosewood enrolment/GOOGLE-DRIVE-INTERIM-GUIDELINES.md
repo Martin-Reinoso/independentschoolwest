@@ -10,9 +10,9 @@ solely because a dedicated student administration platform or database would be
 preferable. The interim arrangement must still follow the controls below.
 
 This decision covers Drive and Sheets used for enrolment workflow and application
-records. It does not automatically move document uploads currently stored in the
-private AWS S3 bucket into Drive. A separate approved migration is required before
-changing document storage.
+records. For V6 launch, restricted Google Drive is the approved store for documents,
+snapshots and signature images. DynamoDB is authoritative for operational records and
+Google Sheets are reporting projections only.
 
 ## Required Controls
 
@@ -35,6 +35,15 @@ changing document storage.
 11. When a service account writes files, use a non-University Google Shared Drive.
     Sharing an ordinary My Drive folder is not sufficient because service accounts have
     no personal storage quota.
+12. When Shared Drives are unavailable, a delegated organisation-user OAuth identity is
+    an interim fallback only if the account is dedicated to Rosewood enrolment, protected
+    by MFA, has documented recovery/offboarding, and contains no unrelated Drive data.
+13. The current Drive adapter needs full Drive scope to discover and manage a pre-existing
+    restricted folder. Folder checks constrain application writes, but do not narrow the
+    account-wide access of a stolen refresh token. Store the token only in Secrets Manager
+    and document rotation and revocation.
+14. V6 uploads are limited to PDF, JPG and PNG files up to 10 MB. Do not widen the
+    catalogue without a separate security and operational review.
 
 ## Deployment Checklist
 
