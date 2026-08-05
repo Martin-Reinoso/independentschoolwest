@@ -103,10 +103,11 @@ Mobile viewport: 390 x 844.
 
 ## Backend Checks
 
-- nine Node tests pass for direct invitation, explicit EOI linkage, fail-closed link
+- thirteen Node tests pass for direct invitation, explicit EOI linkage, fail-closed link
   errors, linked-email integrity, EOI normalization, conditional needs validation,
-  dynamic application fields, Acceptance-field rejection and server-side guardian
-  review acknowledgement
+  dynamic application fields, Acceptance-field rejection, server-side guardian review
+  acknowledgement, staff allowlisting, safe dashboard projection, staff invitation
+  response redaction and atomic invitation-token rotation
 - the AWS stack deployed successfully and `/v6/health` returns the expected schema
   version, secure CORS and no-cache headers
 - a synthetic EOI produced an EOI reference, private Drive snapshot, EOI Sheet row,
@@ -121,6 +122,26 @@ Mobile viewport: 390 x 844.
 - the automated second-guardian mirror defect found by the canary was fixed, deployed
   and its synthetic row reconciled
 
+## Staff Portal Checks
+
+- the noindex portal loaded at
+  `https://ffe.org.au/pages/rosewood-enrolment-admin-v6.html`
+- desktop and 390 x 844 mobile layouts loaded with no horizontal overflow
+- the production OTP arrived from `enrolment@ffe.org.au` at the allowlisted
+  `info@ffe.org.au` mailbox and opened a two-hour staff session
+- the dashboard loaded 1 synthetic EOI and 2 synthetic application records, correct
+  progress/status totals, recent email events and all three private Sheet links
+- dashboard text and API projection checks found no medical, date-of-birth, document,
+  signature-image, network-fingerprint or invitation-token data
+- direct and EOI-linked invitation panels rendered correctly; the already-linked EOI
+  was disabled and no family invitation was sent during the UI verification
+- resend showed the explicit token-invalidation confirmation and was cancelled without
+  sending an email
+- sign-out returned to the access screen and browser local/session storage remained
+  empty
+- the production Lambda recorded no request failures during the verification window;
+  its CloudWatch error alarm remained `OK`
+
 ## Email Checks
 
 - the SES account is production-enabled and healthy in `ap-southeast-2`
@@ -132,5 +153,5 @@ Mobile viewport: 390 x 844.
   complaint SNS notifications arrived in the operations mailbox
 
 All canary records are explicitly labelled synthetic and contain no family data.
-Uploaded-file malware scanning, the staff portal and automatic SES feedback ingestion
-remain documented production gaps.
+Uploaded-file malware scanning, multi-user staff roles and automatic SES feedback
+ingestion remain documented production gaps.
