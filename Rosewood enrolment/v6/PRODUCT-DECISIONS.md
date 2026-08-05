@@ -112,7 +112,8 @@ question asks only whether other children may attend and, when Yes, records a co
   not impact the offer of enrolment appear before the question.
 - Parish is labelled "Parish where student lives".
 - Medical Details displays an Other medical condition field only when Other is chosen.
-- Doctor Name and Doctor Phone are optional.
+- Doctor Name and Doctor's practice/Address are mandatory. Doctor Phone remains
+  optional.
 - Ambulance Cover and Health Care Card are mandatory Yes/No questions.
 - Humanitarian Health Check clarifies that it asks whether the child has a humanitarian
   visa.
