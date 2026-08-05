@@ -29,13 +29,25 @@ Tested through a local HTTP server in the Codex in-app browser.
 - Application Student uses Entry Year and Year Level of Entry and has no Commencement
   Term
 - Application Student has no Family Connection, Siblings Already Attending or Other
-  Relatives controls; Future Siblings remains visible
+  Relatives controls; the other-children Yes branch reveals the required 1-to-7+ count
+- Religion Other and current-school Other reveal independent required full-width fields
+- Current Early Learning Centre / Kindergarten / Primary School occupies its own row on
+  desktop and mobile without displacing adjacent controls
+- Student Residence, Student Primary Address and Family render as separate sections
+- Home Care Arrangement uses checkboxes; Other and Shared Custody independently reveal
+  their required detail fields
+- Nationality and Citizenship includes its government-purpose explanation, clarified
+  student labels, expanded arrival/return guidance and languages at the end
+- Citizenship Status No reveals required residency evidence; Eligible for Australian
+  Passport keeps visa fields hidden, while each other evidence option reveals required
+  subclass/expiry and optional previous subclass
 - Main Language is a select with English first and 444 language choices
 - General / Additional Needs hides only Please Specify until Yes is selected; Health
   Professionals, Reports Attached, NDIS Support and Court or Parenting Orders remain
-  visible
+  visible; the source duty-of-care and no-impact-on-offer text is present
 - Other medical condition appears only when Other is chosen; Doctor Name and Doctor
   Phone are optional; Ambulance Cover and Health Care Card are mandatory Yes/No
+- Humanitarian Health Check explains that it refers to a humanitarian visa
 - Application Parent / Guardian has the revised sharing/SMS labels, mandatory Health
   Care Card branch, complete mandatory residential address, required occupation,
   education and residency controls, and no Past Student or Spouse field
