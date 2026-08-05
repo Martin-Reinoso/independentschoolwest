@@ -29,12 +29,12 @@ question and is therefore not carried into V6.
 | V6 area | Captured content represented | V5 correction |
 | --- | --- | --- |
 | EOI | Language, contact identity and relationship, email/mobile, communication notice, full contact address, student identity, religion, enrolment year/level, current school/year, additional needs, family connection, other children, discovery and questions | Removes middle/preferred name, connection detail, Unsure and decision-factor additions; restores missing source questions; returns to one form page |
-| Application access | Language, four policy/document positions, seven-document preparation list, email, separate OTP, matched contact, student/application statuses, Start/View/Continue and new-student start | Splits email and OTP and restores the source selector rather than one invitation card |
-| Application Student | Identity, current schooling, Entry Year/Year Level of Entry, residence/care, three repeatable family branches, nationality/residency/language, exact fourteen support categories, professional/report/NDIS/order controls, sacraments and medical record | Removes Commencement Term and Rosewood-only support/medical questions; restores Other-detail branches and source labels/options |
-| Application Parent / Guardian | Full repeatable source contact, conditional postal and alumni details, spouse selector, contact permission, completeness confirmation and two emergency contacts | No longer shares the smaller acceptance/decline component; restores missing fields and communication notice |
-| Application Documents | Six observed categories, observed required counts, multiple-file behavior, 10 MB guidance and broad captured extension list | Restores source extension coverage and exact category structure |
-| Application Conditions | Fifteen captured agreement headings, required agreement, previous-school permission, media/name/publication controls, NEALS notice, three fee branches and survey/influence choices | Removes invented clause summaries and unsupported fee arrangement; restores branch-specific fee fields |
-| Application Signature | No-guarantee/formalisation statement, Victorian guidance, privacy disclaimer, IP/declaration gates, one canvas/date, one-signature explanation or separate-guardian state, additional information | Removes Only Signer Yes/No and restores source explanation/routing |
+| Application access | Brief welcome, subtle policy/procedure sentence, invitation email, separate OTP, matched contact, student/application statuses, Start/View/Continue and new-student start | Supports either an EOI-linked invitation or a direct staff invitation without asking the family which path applies; removes gateway language and document-preparation sections |
+| Application Student | Identity, current schooling, Entry Year/Year Level of Entry, residence/care, future siblings, nationality/residency, full ASCL language catalogue, fourteen support categories, always-visible professional/report/NDIS/order controls, sacraments and medical record | Removes Commencement Term; temporarily hides Family Connection, Siblings Already Attending and Other Relatives for a new school; restores source labels, required Yes/No controls and Other-detail branches |
+| Application Parent / Guardian | Full repeatable source contact, conditional postal/card/visa details, mandatory residential address, occupation/education/residency sections, contact permission, completeness confirmation and two emergency contacts | No longer shares the smaller acceptance/decline component; removes Past Student, Spouse and emergency-sharing questions by Rosewood decision |
+| Application Documents | Five retained categories, multiple-file behavior, 10 MB guidance and broad captured extension list | Corrects School Reports wording, requests the latest report and excludes Proof of Address permanently |
+| Application Conditions | Previous-school permission, three fee branches and survey/influence choices | Keeps Enrolment Agreement terms and photography permissions out of the application; adds the source fee-responsibility explanation and fee-account nominee branch |
+| Application Signature | No-guarantee/formalisation statement, subtle privacy disclaimer, IP/declaration gates, one canvas/date, conditional one-signature explanation or prefilled separate-guardian state, additional information | Removes Victorian admission guidance and makes the separate guardian's later signature request explicit |
 | Acceptance access | Language, privacy positions, separate OTP, contact/student agreement selector and workflow-qualified statuses | Removes the added correct-student/offer question and distinguishes acceptance from application |
 | Acceptance Student | First name, last name, year level, commencement year and Enrolment Acceptance declaration | Removes DOB, gender, term, current school and details-correct additions |
 | Acceptance Parent / Guardian | Smaller repeatable agreement contact, additional-contact permission and completeness confirmation | Removes application-only address, demographic, occupation, visa and emergency fields |
@@ -54,6 +54,14 @@ These differ from the source and are explicit rather than accidental:
   observed contradictory state.
 - Fee responsibility is one exclusive choice. The source displayed checkbox cards
   that could be selected simultaneously despite the wording requiring one choice.
+- Application invitations may originate from an EOI or from direct staff entry. This
+  is a Rosewood operating requirement documented in `PRODUCT-DECISIONS.md`.
+- Family Connection, Siblings Already Attending and Other Relatives are retained as
+  inactive future schema fields but hidden for Rosewood's first intake.
+- Proof of Address, parent Past Student, parent Spouse and emergency-contact sharing
+  are deliberately not collected.
+- Application terms and photography permissions move to the post-offer Enrolment
+  Agreement rather than being duplicated in the application.
 - The influence question enforces no more than three choices, matching its instruction
   rather than the observed permissive validator.
 - Review explains that a pending signature is status only and signing is on the next
@@ -65,8 +73,9 @@ These differ from the source and are explicit rather than accidental:
 
 ## Known Fidelity Limits
 
-- country and language datalists are representative subsets of the source's 249-country
-  and approximately 395-language catalogues
+- the country datalist is a representative subset of the source's country catalogue
+- Main Language uses the complete 444-entry language-level catalogue from the ABS
+  Australian Standard Classification of Languages 2025, with English first
 - the application occupation control is free entry instead of the source's long fixed
   occupation catalogue
 - Google Maps address autocomplete is represented by ordinary address fields

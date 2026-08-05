@@ -17,7 +17,12 @@
 .status-pill.is-complete { color: var(--success); background: #eaf6f0; }
 .inline-actions { display: flex; flex-wrap: wrap; gap: .55rem; }
 .communication-notice { margin: .8rem 0 1rem; padding: .85rem 1rem; border-left: 3px solid var(--line-strong); color: var(--muted); background: #f7f5f0; font-size: .78rem; }
+.gateway-policy-note { margin: 1.1rem 0 1.35rem; color: var(--muted); font-size: .88rem; line-height: 1.65; }
+.document-text-link { display: inline-flex; flex-wrap: wrap; gap: .2rem .45rem; align-items: baseline; border-bottom: 1px solid var(--line-strong); color: var(--navy); font-weight: 700; }
+.document-text-link small { color: var(--muted); font-size: .67rem; font-weight: 500; }
+.section-copy { max-width: 760px; margin: 0 0 1rem; color: var(--muted); }
 .section-heading { margin: 1.8rem 0 .9rem; color: var(--navy); font: 600 1.6rem Baskerville, serif; }
+.subsection-heading { margin: 1.4rem 0 .1rem; padding-top: 1.1rem; border-top: 1px solid var(--line); color: var(--navy); font: 600 1.2rem Baskerville, serif; }
 .check-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: .55rem; }
 .check-line { display: flex; gap: .65rem; align-items: flex-start; padding: .72rem .8rem; border: 1px solid var(--line); border-radius: 10px; background: white; }
 .check-line input { width: 19px; height: 19px; margin-top: .15rem; accent-color: var(--terracotta); }
@@ -36,6 +41,14 @@
 .recorded-signature { min-height: 130px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 10px; color: var(--muted); background: #faf8f3; font: italic 1.4rem Baskerville, serif; }
 .pending-signature { min-height: 130px; display: grid; place-items: center; border: 2px dashed var(--line-strong); border-radius: 10px; color: var(--muted); background: #f7f5f0; font-size: 1.15rem; }
 .frame-note { margin-top: 1rem; color: var(--muted); font-size: .76rem; }
+.resend-status { min-height: 1.35rem; margin: .65rem 0 0; color: var(--muted); font-size: .8rem; }
+.button-spinner { width: 14px; height: 14px; display: inline-block; margin-right: .38rem; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; vertical-align: -.15rem; animation: spin .65s linear infinite; }
+.section-question { margin: 0 0 .45rem; color: var(--navy); font-weight: 800; }
+.fee-responsibility-note { max-width: 860px; margin: 0 0 1rem; color: var(--text); line-height: 1.6; }
+.conditional-note { margin: 0 0 1rem; color: var(--navy); font-weight: 700; }
+.signature-disclaimer { margin: 0 0 1rem; padding: .65rem .8rem; border-left: 2px solid var(--line-strong); color: var(--muted); font-size: .76rem; line-height: 1.55; }
+.guardian-signature-followup { margin: 1rem 0; }
+.guardian-signature-followup .review-card { margin-bottom: .75rem; }
 .save-state.is-saved > span { background: var(--success); box-shadow: 0 0 0 5px rgba(32,112,82,.12); }
 .save-state.is-saving > span { background: var(--warning); box-shadow: 0 0 0 5px rgba(154,92,22,.12); }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -46,4 +59,4 @@
   .v6-review-tools { align-items: stretch; }
   .v6-review-tools > a { text-align: center; }
 }
-@media (prefers-reduced-motion: reduce) { .busy-spinner { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .busy-spinner, .button-spinner { animation: none; } }
