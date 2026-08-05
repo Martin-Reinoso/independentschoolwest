@@ -1,6 +1,6 @@
 # Rosewood Enrolment V6
 
-V6 is the frontend-only Rosewood College enrolment review at:
+V6 is the Rosewood College enrolment interface at:
 
 ```text
 pages/rosewood-enrolment-v6.html
@@ -11,7 +11,7 @@ mixed workflow components. The visible design is Rosewood-branded; the workflow,
 questions, section order and observed interaction states are mapped from the captured
 St Lawrence evidence.
 
-## Review URLs
+## URLs
 
 ```text
 https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=eoi
@@ -23,6 +23,10 @@ https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=decline
 
 Add `&review=1` to reveal the internal frame selector. The normal family-facing URLs
 do not show workflow-switching or direct frame navigation.
+
+The EOI URL is live. Application is invitation-only and requires the unique token sent
+by staff; the generic Application URL cannot open a family record. Acceptance, signing
+review and decline remain non-writing previews.
 
 ## Scope
 
@@ -38,18 +42,23 @@ do not show workflow-switching or direct frame navigation.
 - required-field, repeatable-record, conditional, fee and signature interactions
 - the complete 444-entry ABS ASCL 2025 Main Language catalogue
 
-## Safety Boundary
+## Backend Boundary
 
-V6 has no backend. It makes no API requests and does not use cookies, local storage,
-session storage or IndexedDB. It cannot send an OTP or email, save answers, upload a
-file, record an IP address, create a legal signature, accept an offer or decline an
-offer. The content security policy blocks connections and form actions.
+EOI and Application for Enrolment now use the production V6 backend documented in
+`backend/README.md`. It sends real OTP and workflow emails, saves application drafts,
+uploads private application files, records application signatures and writes normalized
+records to private Google storage owned by `info@ffe.org.au`.
+
+The browser still does not use cookies, local storage, session storage or IndexedDB.
+Application access tokens and verified sessions remain in memory. Acceptance, decline
+and post-offer Enrolment Agreement frames cannot write to the backend, send messages or
+create records.
 
 V6 is hidden from site navigation and the sitemap and has `noindex`. Its URL is still
 public and is not an access-control boundary.
 
 `PRODUCT-DECISIONS.md` is the permanent implementation register for direct invitations,
 the future staff portal, OTP throttling, excluded fields and application/agreement
-boundaries. See it together with `SOURCE-COMPLIANCE.md`, `TESTING.md` and
-`RELEASE-BLOCKERS.md` before treating any part of this review as approved production
-content.
+boundaries. `SES-PRODUCTION-READINESS.md` records the transactional sender contract and
+completed AWS canaries. See these records together with `SOURCE-COMPLIANCE.md`,
+`TESTING.md` and `RELEASE-BLOCKERS.md` before inviting real families.

@@ -1,0 +1,27 @@
+.signing-page { min-height: 100vh; background: radial-gradient(circle at 10% 10%, rgba(177, 109, 70, .12), transparent 28rem), #f6f2e9; }
+.signing-shell { width: min(980px, calc(100% - 2rem)); margin: 76px auto 2rem; background: #fff; border: 1px solid #ddd4c4; border-radius: 24px; box-shadow: 0 24px 70px rgba(20, 35, 61, .13); overflow: hidden; }
+.signing-brand { display: grid; grid-template-columns: 90px 1fr auto; gap: 1.25rem; align-items: center; padding: 2rem 2.5rem; background: linear-gradient(120deg, #f8f4ec, #fff); border-bottom: 1px solid #e3dccf; }
+.signing-brand img { width: 84px; height: 84px; object-fit: contain; }
+.signing-brand h1 { margin: .2rem 0 0; color: var(--navy); font-family: Georgia, serif; font-size: clamp(2rem, 5vw, 3.3rem); }
+.signing-progress { padding: 1rem 2.5rem; border-bottom: 1px solid #e8e2d7; }
+.signing-progress ol { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem; margin: 0; padding: 0; list-style: none; }
+.signing-progress li { padding: .55rem .7rem; border-radius: 999px; background: #f0ede7; color: #687081; font-size: .78rem; text-align: center; }
+.signing-progress li.is-current { background: var(--navy); color: #fff; font-weight: 700; }
+.signing-progress li.is-complete { background: #e2f0e8; color: #1f684c; }
+#signing-form { padding: 2rem 2.5rem 2.5rem; }
+.signing-review-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.signing-review-grid .review-card { margin: 0; }
+.signing-declaration { display: grid; gap: 1rem; margin: 1.5rem 0; }
+.signing-canvas { width: 100%; height: 220px; border: 2px solid #968d80; border-radius: 14px; background: #fff; touch-action: none; }
+.signing-actions { display: flex; justify-content: space-between; gap: 1rem; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e2ddd4; }
+.signing-complete { padding: 2rem 0; text-align: center; }
+@media (max-width: 720px) {
+  .signing-shell { width: 100%; margin-top: 58px; border-radius: 0; border-inline: 0; }
+  .signing-brand { grid-template-columns: 66px 1fr; padding: 1.25rem; }
+  .signing-brand img { width: 60px; height: 60px; }
+  .signing-brand .save-state { grid-column: 1 / -1; }
+  .signing-progress { padding: .85rem 1rem; overflow-x: auto; }
+  .signing-progress ol { min-width: 520px; }
+  #signing-form { padding: 1.25rem; }
+  .signing-review-grid { grid-template-columns: 1fr; }
+}

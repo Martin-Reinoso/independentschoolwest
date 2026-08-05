@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src https://6zyzo44sdb5zmmx53toktqrnuu0sikyd.lambda-url.ap-southeast-2.on.aws; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'">
+  <title>Sign Application for Enrolment | Rosewood College</title>
+  <link rel="icon" href="../img/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="rosewood-enrolment-v5.css?v=1">
+  <link rel="stylesheet" href="rosewood-enrolment-v6.css?v=5">
+  <link rel="stylesheet" href="rosewood-application-sign-v6.css?v=1">
+</head>
+<body class="signing-page">
+  <a class="skip-link" href="#signing-form">Skip to the form</a>
+  <div class="preview-ribbon is-live" role="status"><strong>Secure signature request</strong><span>Your identity is verified before the submitted application can be reviewed or signed.</span></div>
+  <main class="signing-shell">
+    <header class="signing-brand">
+      <img src="../img/rosewood-emblem-corrected-transparent.png" alt="Rosewood College">
+      <div><p class="eyebrow">Application for Enrolment</p><h1>Review and sign.</h1></div>
+      <div class="save-state" id="signing-status" aria-live="polite"><span></span><div><strong>Secure access</strong><small>Verification required</small></div></div>
+    </header>
+    <nav class="signing-progress" aria-label="Signing progress"><ol id="signing-steps"></ol></nav>
+    <div class="error-summary" id="signing-error" role="alert" tabindex="-1" hidden><h2>Please check this step</h2><ul></ul></div>
+    <form id="signing-form" novalidate><div id="signing-root"></div></form>
+    <footer class="form-footer"><span>Rosewood College enrolment</span><span>Private signature request</span></footer>
+  </main>
+  <script src="rosewood-application-sign-v6.js?v=1"></script>
+</body>
+</html>

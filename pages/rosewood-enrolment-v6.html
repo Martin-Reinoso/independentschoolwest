@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Cache-Control" content="no-store">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'none'; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src https://6zyzo44sdb5zmmx53toktqrnuu0sikyd.lambda-url.ap-southeast-2.on.aws https://www.googleapis.com https://*.googleusercontent.com; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'">
   <title>Enrolment | Rosewood College</title>
   <link rel="icon" href="../img/favicon.ico" type="image/x-icon">
   <link rel="stylesheet" href="rosewood-enrolment-v5.css?v=1">
@@ -15,9 +15,9 @@
 <body>
   <a class="skip-link" href="#family-form">Skip to the form</a>
 
-  <div class="preview-ribbon" role="status">
-    <strong>Frontend review</strong>
-    <span>Nothing entered here is saved, uploaded, emailed or submitted.</span>
+  <div class="preview-ribbon" id="environment-ribbon" role="status">
+    <strong id="environment-label">Secure enrolment form</strong>
+    <span id="environment-copy">Your progress is protected and saved when you continue to the next section.</span>
   </div>
 
   <div class="page-shell">
@@ -40,7 +40,7 @@
       <header class="form-header">
         <div class="mobile-brand"><img src="../img/rosewood-emblem-corrected-transparent.png" alt=""><span>Rosewood College</span></div>
         <div class="header-title"><p class="eyebrow" id="workflow-label">Application</p><h2 id="step-title">Before you begin</h2></div>
-        <div class="save-state" id="save-state" aria-live="polite"><span></span><div><strong>Review mode</strong><small>Not connected or saved</small></div></div>
+        <div class="save-state" id="save-state" aria-live="polite"><span></span><div><strong>Secure access</strong><small>Verify your invitation email to begin</small></div></div>
       </header>
 
       <nav class="review-tools v6-review-tools" id="review-tools" aria-label="V6 review navigation" hidden>
@@ -71,7 +71,7 @@
 
       <footer class="form-footer">
         <span>Rosewood College enrolment</span>
-        <span>Frontend review only</span>
+        <span id="footer-environment">Secure online form</span>
       </footer>
     </main>
   </div>
@@ -85,6 +85,6 @@
   <datalist id="language-list"></datalist>
 
   <script src="rosewood-enrolment-languages.js?v=1"></script>
-  <script src="rosewood-enrolment-v6.js?v=5"></script>
+  <script src="rosewood-enrolment-v6.js?v=6"></script>
 </body>
 </html>

@@ -7,9 +7,9 @@ V6 corrects the unsupported questions and cross-workflow leakage identified in
 workflow without captured St Lawrence evidence. Prototype-only navigation, safety
 messages and synthetic statuses are interface aids, not enrolment questions.
 
-This is a source-mapped Rosewood frontend, not a legal or technical copy of Enquiry
-Tracker. It does not reproduce third-party code, private records, live links, backend
-calls or St Lawrence policy text as Rosewood policy.
+This is a source-mapped Rosewood implementation, not a legal or technical copy of
+Enquiry Tracker. It does not reproduce third-party code, private records, St Lawrence
+backend calls or St Lawrence policy text as Rosewood policy.
 
 ## Commencement Controls
 
@@ -68,8 +68,8 @@ These differ from the source and are explicit rather than accidental:
   page.
 - The decline process ends at a labelled capture boundary because its source outcome
   was not observed.
-- EOI acknowledgement and current-guardian completion cards explicitly state that the
-  frontend did not submit or send anything.
+- Preview-mode acknowledgement and completion cards explicitly state when a frame did
+  not submit or send anything.
 
 ## Known Fidelity Limits
 
@@ -85,8 +85,8 @@ These differ from the source and are explicit rather than accidental:
   positions until approved Rosewood versions exist
 - only captured agreement headings are shown; third-party legal wording is not
   republished as Rosewood terms
-- autosave, durable statuses, timestamps, emails, uploads and signatures are simulated
-  visually and not persisted
+- Acceptance, decline and post-offer agreement persistence remain intentionally absent;
+  EOI and Application persistence are implemented separately
 
 These are omissions or controlled adaptations, not added family questions. They remain
 release blockers where production equivalence depends on them.

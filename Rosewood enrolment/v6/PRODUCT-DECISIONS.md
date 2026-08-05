@@ -21,7 +21,7 @@ Decision date: 5 August 2026
 
 ## Internal Staff Portal
 
-The backend phase requires an authenticated, staff-only portal that can:
+The future authenticated, staff-only portal must:
 
 - list EOIs, applications, offer acceptances, declines and guardian-signature tasks
 - show each record's current progress and last successful save
@@ -34,7 +34,9 @@ The backend phase requires an authenticated, staff-only portal that can:
   events
 
 Staff roles, least-privilege access, audit logging and recovery controls are required
-before this portal handles real family information.
+before this portal handles real family information. The current backend provides a
+restricted operator CLI for direct and EOI-linked invitations; it is not a substitute
+for that portal.
 
 ## Application Gateway
 
@@ -137,7 +139,10 @@ Source: https://www.abs.gov.au/statistics/classifications/australian-standard-cl
 
 ## Frontend and Backend Boundary
 
-V6 remains frontend-only. Its cooldown, save state, matched records, OTP, invitation,
-uploads and signatures are demonstrations. The production backend must enforce every
-authorisation, rate limit, validation, persistence and audit rule independently of the
-browser.
+EOI and Application for Enrolment are live backend workflows. The server independently
+enforces invitation authorization, OTP expiry and throttling, session scope, validation,
+draft revisions, upload constraints, signatures, persistence and audit events.
+
+Acceptance, decline and the post-offer Enrolment Agreement remain separate non-writing
+previews. They must not reuse the EOI or Application Sheets when their backends are
+implemented.

@@ -65,6 +65,8 @@
 .guardian-signature-followup .review-card { margin-bottom: .75rem; }
 .save-state.is-saved > span { background: var(--success); box-shadow: 0 0 0 5px rgba(32,112,82,.12); }
 .save-state.is-saving > span { background: var(--warning); box-shadow: 0 0 0 5px rgba(154,92,22,.12); }
+.preview-ribbon.is-live { background: linear-gradient(90deg, #e8f3ec, #f7fbf8); border-bottom-color: rgba(32,112,82,.2); }
+.uploaded-document { margin-top: .45rem; color: var(--success); font-weight: 700; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 760px) {
   .source-links, .fee-card-grid, .terms-heading-list, .signed-status { grid-template-columns: 1fr; }
