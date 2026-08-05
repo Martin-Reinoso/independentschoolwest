@@ -18,6 +18,8 @@ class StaffStore {
     this.challenges = new Map();
     this.sessions = new Map();
     this.created = null;
+    this.records = [];
+    this.audit = [];
   }
   async checkRateLimit() { return true; }
   async putChallenge(challenge) { this.challenges.set(challenge.id, challenge); }
@@ -27,21 +29,25 @@ class StaffStore {
   async putSession(session) { this.sessions.set(session.tokenHash, session); }
   async getSession(tokenHash) { return this.sessions.get(tokenHash) || null; }
   async enqueue() {}
+  async recordAudit(event) { this.audit.push(event); }
   async listOutbox() { return []; }
+  async listOperationalRecords() { return this.records; }
+  async findApplicationBySourceEoi(sourceEoiId) { return this.records.find(item => item.entity === "application" && item.data.sourceEoiId === sourceEoiId)?.data || null; }
   async getEoi() { return null; }
   async createInvitation(value) { this.created = value; }
 }
 
-function staffService({ store = new StaffStore(), sheetRows = {} } = {}) {
+function staffService({ store = new StaffStore(), staffRoles = "info@ffe.org.au=admin" } = {}) {
   const sent = [];
   const service = createService({
     store,
     drive: {},
-    sheets: { async list(workbook, sheet) { return sheetRows[`${workbook}:${sheet}`] || []; }, async apply() {} },
+    sheets: { async apply() {} },
     mailer: { async send(message) { sent.push(message); return { messageId: "ses-1" }; } },
     env: {
       ALLOWED_ORIGINS: "https://ffe.org.au",
       STAFF_EMAILS: "info@ffe.org.au",
+      STAFF_ROLES: staffRoles,
       OTP_HMAC_SECRET: "test-otp-secret",
       NETWORK_HMAC_SECRET: "test-network-secret",
       APPLICATION_PAGE_URL: "https://ffe.org.au/pages/rosewood-enrolment-v6.html",
@@ -78,13 +84,13 @@ test("staff access sends a code only to an allowlisted mailbox", async () => {
 });
 
 test("staff dashboard exposes operational summaries but not sensitive columns", async () => {
-  const { service } = staffService({ sheetRows: {
-    "eoi:EOIs": [{ eoi_id: "eoi-1", reference: "EOI-1", submitted_at: "2026-08-01", status: "submitted", primary_contact_first_name: "Alex", primary_contact_last_name: "Example", email: "family@example.com", student_first_name: "Avery", student_last_name: "Example", date_of_birth: "2020-01-01" }],
-    "application:Applications": [{ application_id: "app-1", invitation_id: "invite-1", source_eoi_id: "eoi-1", status: "in_progress", recipient_email: "family@example.com", student_first_name: "Avery", student_last_name: "Example", created_at: "2026-08-02", updated_at: "2026-08-03" }],
-    "operations:Progress": [{ application_id: "app-1", status: "in_progress", current_stage: "student", percent_complete: "22", last_activity_at: "2026-08-03" }],
-    "operations:Application Invitations": [{ application_id: "app-1", last_sent_at: "2026-08-02", send_count: "1" }],
-    "operations:Email Events": []
-  } });
+  const store = new StaffStore();
+  store.records = [
+    { entity: "eoi", data: { id: "eoi-1", reference: "EOI-1", submittedAt: "2026-08-01", status: "submitted", values: { eoi_first: "Alex", eoi_last: "Example", eoi_email: "family@example.com", eoi_student_first: "Avery", eoi_student_last: "Example", eoi_dob: "2020-01-01" } } },
+    { entity: "application", data: { id: "app-1", invitationId: "invite-1", sourceEoiId: "eoi-1", status: "in_progress", recipientEmail: "family@example.com", values: { student_first: "Avery", student_last: "Example", student_dob: "2020-01-01" }, createdAt: "2026-08-02", updatedAt: "2026-08-03", currentStage: "student", percentComplete: 22 } },
+    { entity: "invitation_index", data: { id: "invite-1", applicationId: "app-1", lastSentAt: "2026-08-02", sendCount: 1 } }
+  ];
+  const { service } = staffService({ store });
   const sessionToken = await staffSession(service);
   const response = await service(event("/v6/staff/dashboard", "GET", null, sessionToken));
   assert.equal(response.statusCode, 200);
@@ -94,6 +100,16 @@ test("staff dashboard exposes operational summaries but not sensitive columns", 
   assert.equal(dashboard.applications[0].percentComplete, 22);
   assert.equal("dateOfBirth" in dashboard.eois[0], false);
   assert.doesNotMatch(response.body, /2020-01-01/);
+});
+
+test("viewer staff can see summaries but cannot create invitations", async () => {
+  const { service } = staffService({ staffRoles: "info@ffe.org.au=viewer" });
+  const sessionToken = await staffSession(service);
+  const dashboard = await service(event("/v6/staff/dashboard", "GET", null, sessionToken));
+  assert.equal(dashboard.statusCode, 200);
+  assert.equal(JSON.parse(dashboard.body).staff.role, "viewer");
+  const invitation = await service(event("/v6/staff/invitations", "POST", { recipientEmail: "family@example.com" }, sessionToken));
+  assert.equal(invitation.statusCode, 403);
 });
 
 test("staff portal creates a direct invitation without returning its private link", async () => {

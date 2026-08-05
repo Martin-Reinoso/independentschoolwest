@@ -27,6 +27,10 @@ real family information until the applicable blockers are closed.
 - server-side record and workflow authorisation on every request
 - durable, revisioned autosave with truthful saving, saved and failure states
 - private encrypted uploads with file type and size restrictions
+- checksum-bound S3 quarantine, GuardDuty malware scanning and clean-only attachment
+- customer-managed KMS encryption, S3 versioning and 35-day governance Object Lock
+- DynamoDB point-in-time recovery plus locked daily/monthly same-region backups
+- separate append-only audit table and role-ready staff controls
 - server-side validation and idempotency
 - separate guardian signature tasks and a calculated required-signature set
 - server timestamps, authenticated signer linkage and append-only audit events
@@ -34,11 +38,11 @@ real family information until the applicable blockers are closed.
 
 ## Remaining Backend And Security
 
-- multi-user staff roles and detailed audit-history review beyond the current
-  allowlisted EOI/Application portal; the restricted CLI remains an emergency fallback
-- automated malware scanning and quarantine for uploaded files
+- approved named staff accounts, role ownership and periodic access review beyond the
+  current shared allowlisted mailbox; the restricted CLI remains an emergency fallback
 - automatic SES bounce/complaint correlation into Operations records
-- approved staff roles, access review, retention, deletion and incident-response rules
+- approved legal retention/deletion and incident-response rules; the current backup and
+  Object Lock periods are operational recovery controls only
 - approved immutable policy/document version catalogue for real-family submissions
 
 ## Deployment Gate
@@ -50,6 +54,5 @@ real family information until the applicable blockers are closed.
 - retain preview-only treatment for Acceptance and Decline until their separate backends
   and governance gates are complete
 
-Google Drive and Sheets remain the approved interim staff storage direction. They do
-not replace the authenticated application boundary, private file controls or signature
-audit requirements.
+AWS is authoritative for V6 records and artifacts. Google Sheets are replaceable
+reporting projections and Google Drive is legacy storage for earlier V6 artifacts only.

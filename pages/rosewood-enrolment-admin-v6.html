@@ -31,10 +31,10 @@
         <div class="access-story">
           <p class="eyebrow">Restricted staff portal</p>
           <h1 id="access-title">Every family journey, clearly in view.</h1>
-          <p>Invite families to apply, link an existing expression of interest when appropriate, and follow progress without opening sensitive application records.</p>
+          <p>Invite families to apply, link an existing expression of interest when appropriate, and review application progress through one protected workspace.</p>
           <div class="access-note">
             <span aria-hidden="true">01</span>
-            <p><strong>Operational summaries only</strong>Detailed application answers, documents and signatures remain in private Google storage.</p>
+            <p><strong>Audited record access</strong>Application answers are read from the protected enrolment database. Document access is time-limited and recorded.</p>
           </div>
           <div class="access-note">
             <span aria-hidden="true">02</span>
@@ -97,10 +97,8 @@
             <button class="nav-button" data-panel="eois" type="button"><span>Expressions of interest</span><strong id="nav-eoi-count">0</strong></button>
             <button class="nav-button" data-panel="emails" type="button"><span>Email activity</span><strong id="nav-email-count">0</strong></button>
             <div class="sheet-links" id="sheet-links">
-              <p>Private records</p>
-              <a data-sheet="eoi" href="#" target="_blank" rel="noreferrer">EOI Sheet</a>
-              <a data-sheet="application" href="#" target="_blank" rel="noreferrer">Application Sheet</a>
-              <a data-sheet="operations" href="#" target="_blank" rel="noreferrer">Operations Sheet</a>
+              <p>Record source</p>
+              <span>DynamoDB is authoritative. Google Sheets are replaceable reporting copies.</span>
             </div>
           </aside>
 
@@ -169,6 +167,14 @@
     <div class="confirm-actions"><button class="secondary-button" id="cancel-resend-button" type="button">Cancel</button><button class="primary-button" id="confirm-resend-button" type="button"><span>Resend invitation</span><span class="button-loader" aria-hidden="true"></span></button></div>
   </dialog>
 
-  <script src="rosewood-enrolment-admin-v6.js?v=1"></script>
+  <dialog class="detail-dialog" id="detail-dialog" aria-labelledby="detail-title">
+    <form method="dialog" class="dialog-close-form"><button class="dialog-close" aria-label="Close application record" value="cancel">×</button></form>
+    <div class="dialog-heading"><p class="eyebrow">Protected application record</p><h2 id="detail-title">Application details</h2><p id="detail-summary">Loading the latest authoritative record...</p></div>
+    <div class="notice error-notice" id="detail-error" role="alert" tabindex="-1" hidden></div>
+    <div class="detail-loading" id="detail-loading" role="status">Loading application...</div>
+    <div class="detail-content" id="detail-content" hidden></div>
+  </dialog>
+
+  <script src="rosewood-enrolment-admin-v6.js?v=2"></script>
 </body>
 </html>

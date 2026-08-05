@@ -788,6 +788,23 @@
     return ({ pdf: "application/pdf", doc: "application/msword", docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", odt: "application/vnd.oasis.opendocument.text", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", bmp: "image/bmp", heic: "image/heic", heif: "image/heif" })[extension] || "application/octet-stream";
   }
 
+  async function sha256Base64(file) {
+    const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+    return btoa(String.fromCharCode(...new Uint8Array(digest)));
+  }
+
+  async function confirmDocumentAfterScan(category, documentId) {
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      try {
+        return await api("/v6/application/documents/confirm", { method: "POST", body: JSON.stringify({ category, documentId }) });
+      } catch (error) {
+        if (error.code !== "DOCUMENT_SCAN_PENDING" || attempt === 29) throw error;
+        await new Promise(resolve => window.setTimeout(resolve, Math.max(1, Number(error.details?.retryAfterSeconds) || 3) * 1000));
+      }
+    }
+    throw new Error("The document security check is taking longer than expected. Please try again shortly.");
+  }
+
   async function uploadApplicationDocuments() {
     for (let index = 0; index < applicationDocuments.length; index += 1) {
       const input = root.querySelector(`[name="application_document_${index}"]`);
@@ -795,11 +812,12 @@
       const category = applicationDocuments[index][3];
       for (const file of input.files) {
         const mimeType = mimeTypeFor(file);
-        const started = await api("/v6/application/documents/start", { method: "POST", body: JSON.stringify({ category, fileName: file.name, mimeType, size: file.size }) });
-        const uploaded = await fetch(started.uploadUrl, { method: "PUT", headers: { "Content-Type": mimeType }, body: file });
+        const checksumSha256 = await sha256Base64(file);
+        const started = await api("/v6/application/documents/start", { method: "POST", body: JSON.stringify({ category, fileName: file.name, mimeType, size: file.size, checksumSha256 }) });
+        const uploaded = await fetch(started.uploadUrl, { method: "PUT", headers: started.uploadHeaders || { "Content-Type": mimeType }, body: file });
         if (!uploaded.ok) throw new Error(`The file ${file.name} could not be uploaded. Please try again.`);
-        const uploadedFile = await uploaded.json();
-        const confirmed = await api("/v6/application/documents/confirm", { method: "POST", body: JSON.stringify({ category, documentId: uploadedFile.id }) });
+        const documentId = started.documentId || (await uploaded.json()).id;
+        const confirmed = await confirmDocumentAfterScan(category, documentId);
         state.applicationContext.documents = [...(state.applicationContext.documents || []), { category, documentId: confirmed.document.documentId, fileName: confirmed.document.fileName, size: confirmed.document.size }];
       }
     }

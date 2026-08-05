@@ -9,6 +9,7 @@
     sessionExpiresAt: 0,
     dashboard: null,
     selectedEoi: null,
+    selectedApplication: null,
     resendInvitation: null,
     resendTimer: null,
     refreshTimer: null
@@ -22,6 +23,7 @@
   const codeForm = byId("code-form");
   const inviteDialog = byId("invite-dialog");
   const confirmDialog = byId("confirm-dialog");
+  const detailDialog = byId("detail-dialog");
 
   function element(tag, className, text) {
     const node = document.createElement(tag);
@@ -170,9 +172,11 @@
     state.sessionExpiresAt = 0;
     state.dashboard = null;
     state.selectedEoi = null;
+    state.selectedApplication = null;
     clearInterval(state.refreshTimer);
     if (inviteDialog.open) inviteDialog.close();
     if (confirmDialog.open) confirmDialog.close();
+    if (detailDialog.open) detailDialog.close();
     dashboardView.hidden = true;
     headerActions.hidden = true;
     accessView.hidden = false;
@@ -196,7 +200,7 @@
 
   function renderDashboard() {
     const data = state.dashboard;
-    byId("dashboard-updated").textContent = `Updated ${formatDate(data.generatedAt, true)} · signed in as ${data.staff.email}`;
+    byId("dashboard-updated").textContent = `Updated ${formatDate(data.generatedAt, true)} · signed in as ${data.staff.email} · ${data.staff.role}`;
     byId("metric-eois").textContent = data.stats.expressionsOfInterest;
     byId("metric-active").textContent = data.stats.inProgress;
     byId("metric-signatures").textContent = data.stats.pendingSignatures;
@@ -204,7 +208,8 @@
     byId("nav-app-count").textContent = data.applications.length;
     byId("nav-eoi-count").textContent = data.eois.length;
     byId("nav-email-count").textContent = data.recentEmails.length;
-    document.querySelectorAll("[data-sheet]").forEach(link => { link.href = data.sheetLinks[link.dataset.sheet]; });
+    const canManage = ["admin", "admissions"].includes(data.staff.role);
+    byId("open-invite-button").hidden = !canManage;
     renderApplications();
     renderEois();
     renderEmails();
@@ -246,7 +251,11 @@
       addRecordCell(card, "Last activity", formatDate(record.updatedAt, true), record.reference || record.applicationId);
       card.append(statusBadge(record.status));
       const actions = element("div", "record-actions");
-      if (record.canResend) {
+      const review = element("button", "small-button", "Review");
+      review.type = "button";
+      review.addEventListener("click", () => openApplicationDetail(record));
+      actions.append(review);
+      if (record.canResend && ["admin", "admissions"].includes(state.dashboard.staff.role)) {
         const resend = element("button", "small-button", "Resend");
         resend.type = "button";
         resend.dataset.resendInvitation = record.invitationId;
@@ -273,7 +282,7 @@
       addRecordCell(card, "Submitted", formatDate(record.submittedAt), record.reference);
       card.append(record.linkedApplicationId ? element("span", "linked-tag", "Application linked") : statusBadge(record.status));
       const actions = element("div", "record-actions");
-      if (!record.linkedApplicationId) {
+      if (!record.linkedApplicationId && ["admin", "admissions"].includes(state.dashboard.staff.role)) {
         const invite = element("button", "small-button", "Invite to apply");
         invite.type = "button";
         invite.addEventListener("click", () => openInviteFromEoi(record));
@@ -309,6 +318,142 @@
       button.classList.toggle("active", active);
       button.setAttribute("aria-current", active ? "page" : "false");
     });
+  }
+
+  function fieldLabel(key) {
+    return key
+      .replace(/^app_guardian_\d+_/, "")
+      .replace(/^emergency_\d+_/, "")
+      .replaceAll("_", " ")
+      .replace(/\b(ndis|naplan|sms|dob|ip)\b/gi, value => value.toUpperCase())
+      .replace(/\b\w/g, value => value.toUpperCase());
+  }
+
+  function displayValue(value) {
+    if (Array.isArray(value)) return value.join(", ");
+    if (value && typeof value === "object") return Object.values(value).join(", ");
+    return String(value ?? "");
+  }
+
+  function detailSection(title, entries) {
+    if (!entries.length) return null;
+    const section = element("section", "detail-section");
+    section.append(element("h3", "", title));
+    const list = element("dl", "detail-grid");
+    entries.forEach(([key, value]) => {
+      const item = element("div", "detail-item");
+      item.append(element("dt", "", fieldLabel(key)), element("dd", "", displayValue(value)));
+      list.append(item);
+    });
+    section.append(list);
+    return section;
+  }
+
+  async function prepareDocumentDownload(applicationId, document, button) {
+    setLoading(button, true);
+    clearNotices("detail-error");
+    try {
+      const result = await api("/v6/staff/documents/download", { method: "POST", body: { applicationId, documentId: document.documentId } });
+      const link = element("a", "download-link", "Open document");
+      link.href = result.url;
+      link.target = "_blank";
+      link.rel = "noreferrer";
+      link.title = `Link expires in ${result.expiresInSeconds} seconds`;
+      button.replaceWith(link);
+      link.focus();
+    } catch (error) {
+      setNotice("detail-error", error.message);
+      setLoading(button, false);
+    }
+  }
+
+  function renderApplicationDetail(application) {
+    const content = byId("detail-content");
+    clear(content);
+    const values = Object.entries(application.values || {}).filter(([, value]) => value !== "" && value != null && (!Array.isArray(value) || value.length));
+    const guardianGroups = new Map();
+    const emergencyGroups = new Map();
+    const general = [];
+    for (const entry of values) {
+      const guardian = entry[0].match(/^app_guardian_(\d+)_/);
+      const emergency = entry[0].match(/^emergency_(\d+)_/);
+      if (guardian) {
+        const group = guardianGroups.get(guardian[1]) || [];
+        group.push(entry);
+        guardianGroups.set(guardian[1], group);
+      } else if (emergency) {
+        const group = emergencyGroups.get(emergency[1]) || [];
+        group.push(entry);
+        emergencyGroups.set(emergency[1], group);
+      } else if (!entry[0].startsWith("application_signature_")) {
+        general.push(entry);
+      }
+    }
+    const overview = detailSection("Record overview", [
+      ["status", statusLabel(application.status)],
+      ["reference", application.reference || application.applicationId],
+      ["recipient_email", application.recipientEmail],
+      ["last_updated", formatDate(application.updatedAt, true)],
+      ["submitted_at", formatDate(application.submittedAt, true)],
+      ["signatures", `${application.completedSignatureCount} of ${application.requiredSignatureCount}`]
+    ]);
+    if (overview) content.append(overview);
+    const answers = detailSection("Application answers", general);
+    if (answers) content.append(answers);
+    [...guardianGroups.entries()].sort(([a], [b]) => Number(a) - Number(b)).forEach(([index, entries]) => {
+      const section = detailSection(`Parent / guardian ${Number(index) + 1}`, entries);
+      if (section) content.append(section);
+    });
+    [...emergencyGroups.entries()].sort(([a], [b]) => Number(a) - Number(b)).forEach(([index, entries]) => {
+      const section = detailSection(`Emergency contact ${Number(index) + 1}`, entries);
+      if (section) content.append(section);
+    });
+    if (application.documents?.length) {
+      const section = element("section", "detail-section");
+      section.append(element("h3", "", "Documents"));
+      const list = element("div", "document-list");
+      application.documents.forEach(document => {
+        const row = element("div", "document-row");
+        const details = element("div");
+        details.append(element("strong", "", document.fileName), element("small", "", `${fieldLabel(document.category)} · ${document.malwareScanStatus || "Scan status unavailable"}`));
+        row.append(details);
+        if (document.downloadable) {
+          const button = element("button", "small-button", "Prepare download");
+          button.type = "button";
+          button.addEventListener("click", () => prepareDocumentDownload(application.applicationId, document, button));
+          row.append(button);
+        } else {
+          row.append(element("small", "", document.malwareScanStatus === "no_threats_found" ? "Viewer role: no download" : "Not available"));
+        }
+        list.append(row);
+      });
+      section.append(list);
+      content.append(section);
+    }
+    const signatures = detailSection("Signature status", (application.signatures || []).flatMap((signature, index) => [
+      [`signer_${index + 1}`, signature.signerName],
+      [`signed_at_${index + 1}`, formatDate(signature.signedAt, true)]
+    ]));
+    if (signatures) content.append(signatures);
+    byId("detail-loading").hidden = true;
+    content.hidden = false;
+  }
+
+  async function openApplicationDetail(record) {
+    state.selectedApplication = record;
+    byId("detail-title").textContent = record.studentName || "Application details";
+    byId("detail-summary").textContent = `${record.reference || record.applicationId} · ${statusLabel(record.status)}`;
+    byId("detail-content").hidden = true;
+    byId("detail-loading").hidden = false;
+    clearNotices("detail-error");
+    detailDialog.showModal();
+    try {
+      const result = await api("/v6/staff/applications/detail", { method: "POST", body: { applicationId: record.applicationId } });
+      renderApplicationDetail(result.application);
+    } catch (error) {
+      byId("detail-loading").hidden = true;
+      setNotice("detail-error", error.message);
+    }
   }
 
   function setInviteMode(mode) {
@@ -454,4 +599,5 @@
   byId("confirm-resend-button").addEventListener("click", confirmResend);
   inviteDialog.addEventListener("click", event => { if (event.target === inviteDialog) inviteDialog.close(); });
   confirmDialog.addEventListener("click", event => { if (event.target === confirmDialog) confirmDialog.close(); });
+  detailDialog.addEventListener("click", event => { if (event.target === detailDialog) detailDialog.close(); });
 })();

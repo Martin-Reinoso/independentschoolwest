@@ -9,7 +9,7 @@ https://ffe.org.au/pages/rosewood-enrolment-admin-v6.html
 ```
 
 Offer acceptance, decline and the post-offer Enrolment Agreement remain separate,
-preview-only workflows. Do not record or manage them through this portal or its Sheets.
+preview-only workflows. Do not record or manage them through this portal.
 
 ## Access
 
@@ -17,6 +17,8 @@ preview-only workflows. Do not record or manage them through this portal or its 
   is not a security boundary.
 - AWS verifies an email OTP before returning any records or accepting a staff action.
 - The production allowlist currently contains only `info@ffe.org.au`.
+- The role model supports `admin`, `admissions` and `viewer`. Admin/admissions can
+  invite, resend and prepare document downloads; viewers cannot.
 - Codes expire after 10 minutes, allow five attempts and have server-side email/network
   throttling plus a 30-second resend cooldown.
 - Staff sessions expire after two hours and are held in browser memory only. Closing or
@@ -61,20 +63,24 @@ Use **Resend** only when a family confirms they cannot use the active invitation
 - Earlier invitations created before token rotation was introduced may require a new
   invitation instead of a resend.
 
-## Dashboard Data Boundary
+## Application Review And Documents
 
-The portal shows names, recipient emails, references, status, progress, timestamps,
-signature counts and recent email-operation summaries. It deliberately excludes:
+The dashboard shows names, recipient emails, references, status, progress, timestamps,
+signature counts and recent email-operation summaries. Select **Review** to open the
+authoritative application answers. Each detailed view creates an audit event.
 
-- student medical, wellbeing, residency and address answers
-- guardian addresses, education and occupation answers
-- uploaded documents and Drive file identifiers
-- signature drawings and signature evidence
-- raw invitation or signing links
-- network fingerprints and detailed audit payloads
+- Admin/admissions staff may select **Prepare download** for a clean document. The
+  portal returns a five-minute **Open document** link. This second deliberate click is
+  used instead of a popup, so browser popup blocking does not interrupt access.
+- Viewer accounts cannot prepare downloads.
+- A file is available only when its exact S3 version has a clean GuardDuty malware tag.
+- Legacy Drive files and files with pending, failed or unsafe results are not available
+  through this route.
+- The portal never returns signature drawings, raw invitation/signing links or network
+  fingerprints.
 
-Use the private source Sheets only when operational detail is genuinely required. Do
-not change Sheet sharing from `info@ffe.org.au` without an approved access decision.
+Google Sheets are replaceable reporting projections. Do not use a Sheet edit to correct
+an application or change Sheet sharing from `info@ffe.org.au` without approval.
 
 ## Incident Response
 
@@ -82,10 +88,13 @@ If a staff code or session may be compromised:
 
 1. Close the portal tab immediately.
 2. Record the time and affected mailbox.
-3. Review Operations Audit and Email Events plus CloudWatch logs.
-4. Remove the mailbox from `STAFF_EMAILS` and deploy the stack if access must be revoked.
+3. Review the append-only audit table, Email Events and CloudWatch logs.
+4. Remove the mailbox from `STAFF_EMAILS`/`STAFF_ROLES` and deploy if access must be revoked.
 5. Rotate the relevant invitation through **Resend** if a family link may be exposed.
 6. Escalate any suspected family-data disclosure before continuing normal operation.
 
 Do not place OTPs, invitation URLs, OAuth credentials, AWS secrets or real-family test
 data in Git, ordinary notes, chat messages or screenshots.
+
+See `RECOVERY-RUNBOOK.md` for database restore, S3-version and Google projection
+rebuild procedures.
