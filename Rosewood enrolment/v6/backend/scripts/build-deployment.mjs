@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.join(root, "lambda-dist");
-const files = ["index.mjs", "service.mjs", "schema.mjs", "dynamo-store.mjs", "google-auth.mjs", "google-drive.mjs", "google-sheets.mjs", "ses-mailer.mjs", "email-templates.mjs", "package.json", "pnpm-lock.yaml"];
+const files = ["index.mjs", "service.mjs", "schema.mjs", "dynamo-store.mjs", "google-auth.mjs", "google-sheets.mjs", "s3-store.mjs", "ses-mailer.mjs", "email-templates.mjs", "package.json", "pnpm-lock.yaml"];
 
 function run(command, args) {
   const result = spawnSync(command, args, { cwd: output, env: process.env, encoding: "utf8", stdio: "inherit" });

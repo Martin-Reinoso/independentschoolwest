@@ -35,15 +35,18 @@ for Enrolment backend. It must:
 - send the automatic invitation email and record its delivery status
 - rotate the private token when an active invitation is resent, invalidating the prior
   link
-- show recent operational email events and links to private source Sheets
-- exclude medical answers, addresses, uploaded documents, signature images, raw
-  invitation links and network fingerprints from its dashboard responses
+- show recent operational email events without linking staff into editable Sheets
+- allow audited review of application answers; allow admin/admissions staff to prepare
+  short-lived links only for documents that passed malware scanning
+- exclude signature images, raw invitation links and network fingerprints from portal
+  responses
 
 The first release is allowlisted to `info@ffe.org.au`, uses email OTP, records staff
-actions and keeps its two-hour session in browser memory only. The restricted operator
-CLI remains an emergency fallback. Multi-user roles, periodic access review and any
-future acceptance/decline interface require a separate governance decision and must
-not merge those workflows into the current Sheets or API.
+actions and keeps its two-hour session in browser memory only. The backend supports
+admin, admissions and viewer roles so named mailboxes can be added after access owners
+and review/offboarding rules are approved. The restricted operator CLI remains an
+emergency fallback. Any future acceptance/decline interface must not merge those
+workflows into the current records or API.
 
 ## Application Gateway
 
@@ -151,5 +154,5 @@ enforces invitation authorization, OTP expiry and throttling, session scope, val
 draft revisions, upload constraints, signatures, persistence and audit events.
 
 Acceptance, decline and the post-offer Enrolment Agreement remain separate non-writing
-previews. They must not reuse the EOI or Application Sheets when their backends are
+previews. They must not reuse the EOI or Application records when their backends are
 implemented.

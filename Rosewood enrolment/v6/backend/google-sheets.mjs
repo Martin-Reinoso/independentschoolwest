@@ -12,7 +12,7 @@ const headers = {
     "Student": ["application_id", "student_id", "first_name", "middle_name", "last_name", "preferred_name", "date_of_birth", "gender", "religion", "religion_other", "current_year_level", "entry_year", "entry_year_level", "current_school", "current_school_other", "share_address_with_guardians", "care_arrangement", "care_arrangement_other", "shared_parenting_schedule", "address", "suburb", "state", "postcode", "country", "future_siblings", "future_sibling_count", "country_of_residence", "country_of_birth", "nationality", "ethnicity", "arrival_or_return_date", "residency_status", "australian_citizen", "residency_evidence", "visa_subclass", "visa_expiry", "previous_visa_subclass", "indigenous_status", "main_language", "other_languages", "additional_needs", "need_categories", "need_other", "health_professionals", "health_professional_other", "reports_attached", "ndis_support", "court_or_parenting_orders", "other_relevant_information", "parish", "sacraments_json", "medical_conditions", "other_medical_condition", "condition_details", "allergy_details", "anaphylaxis_risk", "anaphylaxis_device", "immunisation_status", "humanitarian_health_check", "doctor_name", "doctor_practice_address", "doctor_phone", "medicare_number", "medicare_expiry", "private_health_insurance", "ambulance_cover", "health_care_card", "schema_version"],
     "Guardians": ["application_id", "guardian_id", "position", "share_with_other_contacts", "salutation", "first_name", "last_name", "email", "mobile_phone", "home_phone", "work_phone", "relationship", "contact_type", "marital_status", "religion", "sms_messaging", "health_care_card", "health_care_card_number", "health_care_card_expiry", "residential_address", "suburb", "state", "postcode", "country", "postal_same_as_residential", "postal_address", "postal_suburb", "postal_state", "postal_postcode", "postal_country", "occupational_group", "occupation", "employer", "school_level_education", "university_further_education", "country_of_birth", "nationality", "ethnicity", "languages", "residency_status", "visa_subclass", "visa_expiry", "indigenous_status", "contact_permission", "signature_required", "signature_status", "schema_version"],
     "Emergency Contacts": ["application_id", "emergency_contact_id", "position", "first_name", "last_name", "relationship", "mobile_phone", "home_phone", "work_phone", "email", "schema_version"],
-    "Documents": ["application_id", "document_id", "category", "original_file_name", "mime_type", "size_bytes", "drive_file_id", "uploaded_at", "sha256", "malware_scan_status", "schema_version"],
+    "Documents": ["application_id", "document_id", "category", "original_file_name", "mime_type", "size_bytes", "drive_file_id", "storage_provider", "storage_key", "storage_version_id", "uploaded_at", "sha256", "malware_scan_status", "schema_version"],
     "Conditions": ["application_id", "previous_school_permission", "previous_school_name", "previous_school_address", "previous_school_interstate", "fee_option", "fee_account_recipient", "guardian_a_name", "guardian_a_percentage", "guardian_b_name", "guardian_b_percentage", "fee_responsibility_date", "discovery_source", "influence_factors", "schema_version"],
     "Signatures": ["application_id", "signature_id", "guardian_id", "signer_name", "signer_email", "signature_status", "signed_at", "revision", "revision_hash", "signature_file_id", "network_fingerprint", "ip_recording_acknowledged", "application_terms_acknowledged", "one_signature_explanation", "additional_information", "schema_version"],
     "Application Audit": ["event_id", "occurred_at", "application_id", "invitation_id", "event_type", "stage", "actor_type", "actor_id", "details_json", "schema_version"]
@@ -93,6 +93,19 @@ export class GoogleSheetsStore {
     const response = await this.request(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(rangeName)}?majorDimension=ROWS`);
     const values = (await response.json()).values || [];
     return values.slice(1).map(row => Object.fromEntries(sheetHeaders.map((key, index) => [key, row[index] ?? ""])));
+  }
+
+  async replace(workbook, sheet, records) {
+    const spreadsheetId = this.ids[workbook];
+    const sheetHeaders = headers[workbook]?.[sheet];
+    if (!sheetHeaders || !spreadsheetId) throw new Error("Unknown Google Sheets workbook or tab.");
+    const lastColumn = columnName(sheetHeaders.length - 1);
+    const clearRange = `${quoteSheet(sheet)}!A2:${lastColumn}`;
+    await this.request(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(clearRange)}:clear`, { method: "POST", body: "{}" });
+    if (!records.length) return { replaced: 0 };
+    const writeRange = `${quoteSheet(sheet)}!A2:${lastColumn}${records.length + 1}`;
+    await this.request(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(writeRange)}?valueInputOption=RAW`, { method: "PUT", body: JSON.stringify({ range: writeRange, majorDimension: "ROWS", values: records.map(record => this.row(workbook, sheet, record)) }) });
+    return { replaced: records.length };
   }
 
   async apply(operation) {

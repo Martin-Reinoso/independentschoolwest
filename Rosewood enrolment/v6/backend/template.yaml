@@ -26,8 +26,43 @@ Parameters:
   StaffEmails:
     Type: String
     Default: info@ffe.org.au
+  StaffRoles:
+    Type: String
+    Default: info@ffe.org.au=admin
+  SecurityNotificationEmail:
+    Type: String
+    Default: info@ffe.org.au
+  ArtifactGovernanceDays:
+    Type: Number
+    Default: 35
+    MinValue: 35
+    MaxValue: 365
 
 Resources:
+  RosewoodKey:
+    Type: AWS::KMS::Key
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Description: Rosewood enrolment records, documents and backups
+      EnableKeyRotation: true
+      PendingWindowInDays: 30
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: EnableAccountAdministration
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:root
+            Action: kms:*
+            Resource: "*"
+
+  RosewoodKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub alias/${AWS::StackName}-records
+      TargetKeyId: !Ref RosewoodKey
+
   RosewoodTable:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Retain
@@ -49,9 +84,319 @@ Resources:
         PointInTimeRecoveryEnabled: true
       SSESpecification:
         SSEEnabled: true
+        SSEType: KMS
+        KMSMasterKeyId: !GetAtt RosewoodKey.Arn
       TimeToLiveSpecification:
         AttributeName: ttl
         Enabled: true
+
+  RosewoodAuditTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      DeletionProtectionEnabled: true
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+        KMSMasterKeyId: !GetAtt RosewoodKey.Arn
+
+  RosewoodArtifactBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - BucketKeyEnabled: true
+            ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !GetAtt RosewoodKey.Arn
+      ObjectLockEnabled: true
+      ObjectLockConfiguration:
+        ObjectLockEnabled: Enabled
+        Rule:
+          DefaultRetention:
+            Mode: GOVERNANCE
+            Days: !Ref ArtifactGovernanceDays
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - "*"
+            AllowedMethods:
+              - PUT
+              - GET
+              - HEAD
+            AllowedOrigins:
+              - https://ffe.org.au
+            ExposedHeaders:
+              - ETag
+              - x-amz-checksum-sha256
+              - x-amz-version-id
+            MaxAge: 300
+
+  RosewoodArtifactBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref RosewoodArtifactBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource:
+              - !GetAtt RosewoodArtifactBucket.Arn
+              - !Sub ${RosewoodArtifactBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
+  RosewoodSecurityTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: Rosewood enrolment security and backup alerts
+      KmsMasterKeyId: alias/aws/sns
+
+  RosewoodSecurityTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref RosewoodSecurityTopic
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AccountAdministration
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:root
+            Action: SNS:*
+            Resource: !Ref RosewoodSecurityTopic
+          - Sid: ServiceAlerts
+            Effect: Allow
+            Principal:
+              Service:
+                - backup.amazonaws.com
+                - events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref RosewoodSecurityTopic
+
+  RosewoodSecuritySubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      Endpoint: !Ref SecurityNotificationEmail
+      TopicArn: !Ref RosewoodSecurityTopic
+
+  RosewoodGuardDutyRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: malware-protection-plan.guardduty.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: GuardDutyMalwareProtectionForS3
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: ManageGuardDutyEventBridgeRule
+                Effect: Allow
+                Action:
+                  - events:PutRule
+                  - events:DeleteRule
+                  - events:PutTargets
+                  - events:RemoveTargets
+                Resource: !Sub arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/DO-NOT-DELETE-AmazonGuardDutyMalwareProtectionS3*
+                Condition:
+                  StringLike:
+                    events:ManagedBy: malware-protection-plan.guardduty.amazonaws.com
+              - Sid: InspectGuardDutyEventBridgeRule
+                Effect: Allow
+                Action:
+                  - events:DescribeRule
+                  - events:ListTargetsByRule
+                Resource: !Sub arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/DO-NOT-DELETE-AmazonGuardDutyMalwareProtectionS3*
+              - Sid: ConfigureBucketNotifications
+                Effect: Allow
+                Action:
+                  - s3:PutBucketNotification
+                  - s3:GetBucketNotification
+                Resource: !GetAtt RosewoodArtifactBucket.Arn
+              - Sid: ValidateAndListBucket
+                Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:PutObject
+                Resource:
+                  - !GetAtt RosewoodArtifactBucket.Arn
+                  - !Sub ${RosewoodArtifactBucket.Arn}/malware-protection-resource-validation-object
+              - Sid: ScanAndTagObjects
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObjectTagging
+                  - s3:GetObjectTagging
+                  - s3:PutObjectVersionTagging
+                  - s3:GetObjectVersionTagging
+                Resource: !Sub ${RosewoodArtifactBucket.Arn}/quarantine/*
+              - Sid: UseArtifactEncryptionKey
+                Effect: Allow
+                Action:
+                  - kms:Decrypt
+                  - kms:GenerateDataKey
+                Resource: !GetAtt RosewoodKey.Arn
+                Condition:
+                  StringEquals:
+                    kms:ViaService: !Sub s3.${AWS::Region}.amazonaws.com
+
+  RosewoodMalwareProtectionPlan:
+    Type: AWS::GuardDuty::MalwareProtectionPlan
+    DependsOn:
+      - RosewoodArtifactBucketPolicy
+      - RosewoodGuardDutyRole
+    Properties:
+      Actions:
+        Tagging:
+          Status: ENABLED
+      ProtectedResource:
+        S3Bucket:
+          BucketName: !Ref RosewoodArtifactBucket
+          ObjectPrefixes:
+            - quarantine/
+      Role: !GetAtt RosewoodGuardDutyRole.Arn
+
+  RosewoodMalwareAlertRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Alert when a Rosewood upload is unsafe or cannot be scanned
+      EventPattern:
+        source:
+          - aws.guardduty
+        detail-type:
+          - GuardDuty Malware Protection Object Scan Result
+        detail:
+          s3ObjectDetails:
+            bucketName:
+              - !Ref RosewoodArtifactBucket
+          scanResultDetails:
+            scanResultStatus:
+              - THREATS_FOUND
+              - UNSUPPORTED
+              - ACCESS_DENIED
+              - FAILED
+      State: ENABLED
+      Targets:
+        - Arn: !Ref RosewoodSecurityTopic
+          Id: RosewoodSecurityAlerts
+
+  RosewoodBackupRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: backup.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForRestores
+      Policies:
+        - PolicyName: RosewoodBackupEncryption
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - kms:DescribeKey
+                  - kms:Decrypt
+                  - kms:GenerateDataKey
+                Resource: !GetAtt RosewoodKey.Arn
+              - Effect: Allow
+                Action: kms:CreateGrant
+                Resource: !GetAtt RosewoodKey.Arn
+                Condition:
+                  Bool:
+                    kms:GrantIsForAWSResource: true
+
+  RosewoodBackupVault:
+    Type: AWS::Backup::BackupVault
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BackupVaultName: !Sub ${AWS::StackName}-locked
+      EncryptionKeyArn: !GetAtt RosewoodKey.Arn
+      LockConfiguration:
+        MinRetentionDays: 35
+        MaxRetentionDays: 366
+      Notifications:
+        BackupVaultEvents:
+          - BACKUP_JOB_FAILED
+          - RESTORE_JOB_FAILED
+          - COPY_JOB_FAILED
+        SNSTopicArn: !Ref RosewoodSecurityTopic
+
+  RosewoodBackupPlan:
+    Type: AWS::Backup::BackupPlan
+    Properties:
+      BackupPlan:
+        BackupPlanName: !Sub ${AWS::StackName}-daily-monthly
+        BackupPlanRule:
+          - RuleName: Daily35Days
+            TargetBackupVault: !Ref RosewoodBackupVault
+            ScheduleExpression: cron(0 16 * * ? *)
+            StartWindowMinutes: 120
+            CompletionWindowMinutes: 360
+            Lifecycle:
+              DeleteAfterDays: 35
+          - RuleName: Monthly366Days
+            TargetBackupVault: !Ref RosewoodBackupVault
+            ScheduleExpression: cron(0 17 1 * ? *)
+            StartWindowMinutes: 120
+            CompletionWindowMinutes: 360
+            Lifecycle:
+              DeleteAfterDays: 366
+
+  RosewoodBackupSelection:
+    Type: AWS::Backup::BackupSelection
+    Properties:
+      BackupPlanId: !Ref RosewoodBackupPlan
+      BackupSelection:
+        SelectionName: RosewoodAuthoritativeTables
+        IamRoleArn: !GetAtt RosewoodBackupRole.Arn
+        Resources:
+          - !GetAtt RosewoodTable.Arn
+          - !GetAtt RosewoodAuditTable.Arn
 
   RosewoodLogGroup:
     Type: AWS::Logs::LogGroup
@@ -76,15 +421,47 @@ Resources:
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
-              - Effect: Allow
+              - Sid: AuthoritativeRecords
+                Effect: Allow
                 Action:
                   - dynamodb:GetItem
                   - dynamodb:PutItem
                   - dynamodb:UpdateItem
                   - dynamodb:DeleteItem
                   - dynamodb:Query
+                  - dynamodb:Scan
                   - dynamodb:TransactWriteItems
                 Resource: !GetAtt RosewoodTable.Arn
+              - Sid: AppendOnlyAudit
+                Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:Query
+                  - dynamodb:TransactWriteItems
+                Resource: !GetAtt RosewoodAuditTable.Arn
+              - Sid: StoreArtifacts
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub ${RosewoodArtifactBucket.Arn}/records/*
+                  - !Sub ${RosewoodArtifactBucket.Arn}/quarantine/*
+              - Sid: ReadCleanArtifacts
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:GetObjectTagging
+                  - s3:GetObjectVersionTagging
+                Resource: !Sub ${RosewoodArtifactBucket.Arn}/*
+              - Sid: UseArtifactEncryptionKey
+                Effect: Allow
+                Action:
+                  - kms:Decrypt
+                  - kms:Encrypt
+                  - kms:GenerateDataKey
+                  - kms:DescribeKey
+                Resource: !GetAtt RosewoodKey.Arn
               - Effect: Allow
                 Action: secretsmanager:GetSecretValue
                 Resource: !Sub "${ConfigSecretArn}*"
@@ -117,6 +494,8 @@ Resources:
       Environment:
         Variables:
           ROSEWOOD_TABLE_NAME: !Ref RosewoodTable
+          ROSEWOOD_AUDIT_TABLE_NAME: !Ref RosewoodAuditTable
+          ROSEWOOD_ARTIFACT_BUCKET: !Ref RosewoodArtifactBucket
           ROSEWOOD_CONFIG_SECRET_ARN: !Ref ConfigSecretArn
           SENDER_EMAIL: !Ref SenderEmail
           REPLY_TO_EMAIL: !Ref ReplyToEmail
@@ -127,6 +506,7 @@ Resources:
           GOOGLE_OPERATIONS_SPREADSHEET_ID: !Ref GoogleOperationsSpreadsheetId
           ALLOWED_ORIGINS: !Ref AllowedOrigins
           STAFF_EMAILS: !Ref StaffEmails
+          STAFF_ROLES: !Ref StaffRoles
           APPLICATION_PAGE_URL: https://ffe.org.au/pages/rosewood-enrolment-v6.html
           APPLICATION_SIGNING_PAGE_URL: https://ffe.org.au/pages/rosewood-application-sign-v6.html
 
@@ -155,7 +535,7 @@ Resources:
   RosewoodOutboxSchedule:
     Type: AWS::Events::Rule
     Properties:
-      Description: Retry Rosewood V6 email and Google Sheets outbox operations
+      Description: Retry Rosewood V6 email and Google Sheets projection operations
       ScheduleExpression: rate(1 minute)
       State: ENABLED
       Targets:
@@ -193,3 +573,15 @@ Outputs:
     Value: !Ref RosewoodFunction
   TableName:
     Value: !Ref RosewoodTable
+  AuditTableName:
+    Value: !Ref RosewoodAuditTable
+  ArtifactBucketName:
+    Value: !Ref RosewoodArtifactBucket
+  BackupVaultName:
+    Value: !Ref RosewoodBackupVault
+  BackupRoleArn:
+    Value: !GetAtt RosewoodBackupRole.Arn
+  KmsKeyArn:
+    Value: !GetAtt RosewoodKey.Arn
+  SecurityTopicArn:
+    Value: !Ref RosewoodSecurityTopic

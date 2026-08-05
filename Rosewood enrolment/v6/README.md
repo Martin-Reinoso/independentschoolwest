@@ -50,18 +50,22 @@ allowlisted email OTP and currently covers EOI and Application for Enrolment onl
 
 EOI and Application for Enrolment now use the production V6 backend documented in
 `backend/README.md`. It sends real OTP and workflow emails, saves application drafts,
-uploads private application files, records application signatures and writes normalized
-records to private Google storage owned by `info@ffe.org.au`.
+quarantines and scans private application files, records application signatures in
+protected AWS storage and writes normalized reporting projections to private Google
+Sheets owned by `info@ffe.org.au`. DynamoDB is authoritative; the Sheets are
+replaceable reports rather than the application database.
 
 The browser still does not use cookies, local storage, session storage or IndexedDB.
 Application access tokens and verified sessions remain in memory. Acceptance, decline
 and post-offer Enrolment Agreement frames cannot write to the backend, send messages or
 create records.
 
-The staff portal also keeps its two-hour session in memory only. It displays safe
-operational summaries, creates direct or EOI-linked application invitations, rotates
-tokens when resending and links to the three private Google Sheets. It does not display
-application answers, uploaded documents, signatures or raw invitation links.
+The staff portal also keeps its two-hour session in memory only. It displays operational
+summaries, creates direct or EOI-linked invitations, rotates tokens when resending and
+provides audited application review. Admin/admissions staff can prepare five-minute
+links for documents that passed malware scanning; viewers cannot invite or download.
+The portal does not show raw invitation links, signature drawings or network
+fingerprints and does not link staff directly into editable Sheets.
 
 V6 is hidden from site navigation and the sitemap and has `noindex`. Its URL is still
 public and is not an access-control boundary.
@@ -69,6 +73,7 @@ public and is not an access-control boundary.
 `PRODUCT-DECISIONS.md` is the permanent implementation register for direct invitations,
 the staff portal, OTP throttling, excluded fields and application/agreement
 boundaries. `SES-PRODUCTION-READINESS.md` records the transactional sender contract and
-completed AWS canaries. See these records together with `SOURCE-COMPLIANCE.md`,
-`TESTING.md`, `STAFF-PORTAL-RUNBOOK.md` and `RELEASE-BLOCKERS.md` before inviting real
-families.
+completed AWS canaries. `ARCHITECTURE-HARDENING.md` and `RECOVERY-RUNBOOK.md` record the
+Sydney-only protection and restore model. See these records together with
+`SOURCE-COMPLIANCE.md`, `TESTING.md`, `STAFF-PORTAL-RUNBOOK.md` and
+`RELEASE-BLOCKERS.md` before inviting real families.

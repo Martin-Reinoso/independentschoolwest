@@ -9,12 +9,15 @@
   "scripts": {
     "test": "node --test tests/*.test.mjs",
     "build": "node scripts/build-deployment.mjs",
-    "invite": "node scripts/create-application-invitation.mjs"
+    "invite": "node scripts/create-application-invitation.mjs",
+    "rebuild-projections": "node scripts/rebuild-google-projections.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.883.0",
+    "@aws-sdk/client-s3": "^3.883.0",
     "@aws-sdk/client-sesv2": "^3.883.0",
     "@aws-sdk/client-secrets-manager": "^3.883.0",
-    "@aws-sdk/lib-dynamodb": "^3.883.0"
+    "@aws-sdk/lib-dynamodb": "^3.883.0",
+    "@aws-sdk/s3-request-presigner": "^3.883.0"
   }
 }
