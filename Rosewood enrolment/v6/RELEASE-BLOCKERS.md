@@ -12,7 +12,8 @@ real family information until the applicable blockers are closed.
 - approve application and signature declarations, photography/recording permissions,
   communication consent and IP-address wording
 - confirm fee responsibility choices, percentages, nominees, dates and evidence rules
-- confirm required documents, formats, limits, retention and deletion
+- confirm required documents, formats, limits, retention and deletion; proof of
+  address is explicitly excluded from the application
 - confirm year, school, country, language, religion, occupation and relationship catalogues
 - commission legal, privacy, records-management and accessibility reviews
 
@@ -20,7 +21,11 @@ real family information until the applicable blockers are closed.
 
 - high-entropy, expiring, single-family invitation records
 - Rosewood-controlled transactional sender with SPF, DKIM and DMARC
-- rate-limited OTP with expiry, attempt limits and replay protection
+- rate-limited OTP with expiry, attempt limits and replay protection; initially allow
+  at least 30 seconds between sends and five resends per challenge in 30 minutes
+- authenticated staff portal for EOI-linked and direct-email invitations, application
+  progress, delivery state and audit history
+- idempotent EOI/contact/student/application linking and direct-invite record creation
 - server-side record and workflow authorisation on every request
 - durable autosave with truthful saving, saved, unsaved and failure states
 - private encrypted uploads, malware scanning and least-privilege access

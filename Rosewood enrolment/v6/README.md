@@ -27,7 +27,8 @@ do not show workflow-switching or direct frame navigation.
 ## Scope
 
 - one-page Expression of Interest
-- invited application gateway, OTP frame and record selector
+- invited application gateway, OTP frame and record selector for EOI-linked and direct
+  staff invitations
 - five-step application
 - separate offer-acceptance gateway, selector and five-step Enrolment Agreement
 - independent guardian identity, OTP, Introduction, Your Details, Review, Sign,
@@ -35,6 +36,7 @@ do not show workflow-switching or direct frame navigation.
 - separate decline gateway, selector and three-step decline form
 - responsive desktop and mobile presentation
 - required-field, repeatable-record, conditional, fee and signature interactions
+- the complete 444-entry ABS ASCL 2025 Main Language catalogue
 
 ## Safety Boundary
 
@@ -46,5 +48,8 @@ offer. The content security policy blocks connections and form actions.
 V6 is hidden from site navigation and the sitemap and has `noindex`. Its URL is still
 public and is not an access-control boundary.
 
-See `SOURCE-COMPLIANCE.md`, `TESTING.md` and `RELEASE-BLOCKERS.md` before treating any
-part of this review as approved production content.
+`PRODUCT-DECISIONS.md` is the permanent implementation register for direct invitations,
+the future staff portal, OTP throttling, excluded fields and application/agreement
+boundaries. See it together with `SOURCE-COMPLIANCE.md`, `TESTING.md` and
+`RELEASE-BLOCKERS.md` before treating any part of this review as approved production
+content.
