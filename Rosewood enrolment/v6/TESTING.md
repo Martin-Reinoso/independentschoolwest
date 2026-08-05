@@ -45,8 +45,9 @@ Tested through a local HTTP server in the Codex in-app browser.
 - General / Additional Needs hides only Please Specify until Yes is selected; Health
   Professionals, Reports Attached, NDIS Support and Court or Parenting Orders remain
   visible; the source duty-of-care and no-impact-on-offer text is present
-- Other medical condition appears only when Other is chosen; Doctor Name and Doctor
-  Phone are optional; Ambulance Cover and Health Care Card are mandatory Yes/No
+- Other medical condition appears only when Other is chosen; Doctor Name and Doctor's
+  practice/Address are mandatory while Doctor Phone remains optional; Ambulance Cover
+  and Health Care Card are mandatory Yes/No
 - Humanitarian Health Check explains that it refers to a humanitarian visa
 - Application Parent / Guardian has the revised sharing/SMS labels, mandatory Health
   Care Card branch, complete mandatory residential address, required occupation,
