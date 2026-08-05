@@ -18,7 +18,7 @@ preview-only workflows. Do not record or manage them through this portal.
 - AWS verifies an email OTP before returning any records or accepting a staff action.
 - The production allowlist currently contains only `info@ffe.org.au`.
 - The role model supports `admin`, `admissions` and `viewer`. Admin/admissions can
-  invite, resend and prepare document downloads; viewers cannot.
+  invite and resend; viewers cannot.
 - Codes expire after 10 minutes, allow five attempts and have server-side email/network
   throttling plus a 30-second resend cooldown.
 - Staff sessions expire after two hours and are held in browser memory only. Closing or
@@ -69,13 +69,11 @@ The dashboard shows names, recipient emails, references, status, progress, times
 signature counts and recent email-operation summaries. Select **Review** to open the
 authoritative application answers. Each detailed view creates an audit event.
 
-- Admin/admissions staff may select **Prepare download** for a clean document. The
-  portal returns a five-minute **Open document** link. This second deliberate click is
-  used instead of a popup, so browser popup blocking does not interrupt access.
-- Viewer accounts cannot prepare downloads.
-- A file is available only when its exact S3 version has a clean GuardDuty malware tag.
-- Legacy Drive files and files with pending, failed or unsafe results are not available
-  through this route.
+- The portal lists document names and categories but does not create sharing or
+  download links.
+- Authorised operators access files through the restricted enrolment Drive using the
+  `info@ffe.org.au` organisation identity.
+- Never create public or link-wide sharing to make a document easier to access.
 - The portal never returns signature drawings, raw invitation/signing links or network
   fingerprints.
 
@@ -96,5 +94,5 @@ If a staff code or session may be compromised:
 Do not place OTPs, invitation URLs, OAuth credentials, AWS secrets or real-family test
 data in Git, ordinary notes, chat messages or screenshots.
 
-See `RECOVERY-RUNBOOK.md` for database restore, S3-version and Google projection
-rebuild procedures.
+See `RECOVERY-RUNBOOK.md` for database restore, restricted Drive recovery and Google
+projection rebuild procedures.

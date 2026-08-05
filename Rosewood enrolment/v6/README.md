@@ -50,10 +50,11 @@ allowlisted email OTP and currently covers EOI and Application for Enrolment onl
 
 EOI and Application for Enrolment now use the production V6 backend documented in
 `backend/README.md`. It sends real OTP and workflow emails, saves application drafts,
-quarantines and scans private application files, records application signatures in
-protected AWS storage and writes normalized reporting projections to private Google
-Sheets owned by `info@ffe.org.au`. DynamoDB is authoritative; the Sheets are
-replaceable reports rather than the application database.
+records application signatures and documents in restricted Google Drive folders and
+writes normalized reporting projections to private Google Sheets owned by
+`info@ffe.org.au`. DynamoDB is authoritative for operational records; the Sheets are
+replaceable reports rather than the application database. GuardDuty and active S3
+document storage are outside the launch scope.
 
 The browser still does not use cookies, local storage, session storage or IndexedDB.
 Application access tokens and verified sessions remain in memory. Acceptance, decline
@@ -62,8 +63,9 @@ create records.
 
 The staff portal also keeps its two-hour session in memory only. It displays operational
 summaries, creates direct or EOI-linked invitations, rotates tokens when resending and
-provides audited application review. Admin/admissions staff can prepare five-minute
-links for documents that passed malware scanning; viewers cannot invite or download.
+provides audited application review. It lists document metadata but does not create
+document-sharing links; authorised staff access documents through the restricted
+enrolment Drive. Viewers cannot create invitations.
 The portal does not show raw invitation links, signature drawings or network
 fingerprints and does not link staff directly into editable Sheets.
 

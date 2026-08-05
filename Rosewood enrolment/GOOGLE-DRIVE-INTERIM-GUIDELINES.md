@@ -10,9 +10,9 @@ solely because a dedicated student administration platform or database would be
 preferable. The interim arrangement must still follow the controls below.
 
 This decision covers Drive and Sheets used for enrolment workflow and application
-records. It does not automatically move document uploads currently stored in the
-private AWS S3 bucket into Drive. A separate approved migration is required before
-changing document storage.
+records. For V6 launch, restricted Google Drive is the approved store for documents,
+snapshots and signature images. DynamoDB is authoritative for operational records and
+Google Sheets are reporting projections only.
 
 ## Required Controls
 
@@ -42,6 +42,8 @@ changing document storage.
     restricted folder. Folder checks constrain application writes, but do not narrow the
     account-wide access of a stolen refresh token. Store the token only in Secrets Manager
     and document rotation and revocation.
+14. V6 uploads are limited to PDF, JPG and PNG files up to 10 MB. Do not widen the
+    catalogue without a separate security and operational review.
 
 ## Deployment Checklist
 

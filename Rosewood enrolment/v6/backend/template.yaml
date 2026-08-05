@@ -32,19 +32,31 @@ Parameters:
   SecurityNotificationEmail:
     Type: String
     Default: info@ffe.org.au
-  ArtifactGovernanceDays:
-    Type: Number
-    Default: 35
-    MinValue: 35
-    MaxValue: 365
+  RecordsKmsKeyArn:
+    Type: String
+    Default: ""
+    Description: Existing retained KMS key ARN to reuse after a safe rollback; leave empty for a new stack-managed key
+  ExistingAuditTableName:
+    Type: String
+    Default: ""
+    Description: Existing retained append-only audit table to reuse after a safe rollback
+  ExistingBackupVaultName:
+    Type: String
+    Default: ""
+    Description: Existing retained locked backup vault to reuse after a safe rollback
+Conditions:
+  CreateRecordsKey: !Equals [!Ref RecordsKmsKeyArn, ""]
+  CreateAuditTable: !Equals [!Ref ExistingAuditTableName, ""]
+  CreateBackupVault: !Equals [!Ref ExistingBackupVaultName, ""]
 
 Resources:
   RosewoodKey:
     Type: AWS::KMS::Key
+    Condition: CreateRecordsKey
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      Description: Rosewood enrolment records, documents and backups
+      Description: Rosewood enrolment records and backups
       EnableKeyRotation: true
       PendingWindowInDays: 30
       KeyPolicy:
@@ -61,7 +73,7 @@ Resources:
     Type: AWS::KMS::Alias
     Properties:
       AliasName: !Sub alias/${AWS::StackName}-records
-      TargetKeyId: !Ref RosewoodKey
+      TargetKeyId: !If [CreateRecordsKey, !Ref RosewoodKey, !Ref RecordsKmsKeyArn]
 
   RosewoodTable:
     Type: AWS::DynamoDB::Table
@@ -85,13 +97,14 @@ Resources:
       SSESpecification:
         SSEEnabled: true
         SSEType: KMS
-        KMSMasterKeyId: !GetAtt RosewoodKey.Arn
+        KMSMasterKeyId: !If [CreateRecordsKey, !GetAtt RosewoodKey.Arn, !Ref RecordsKmsKeyArn]
       TimeToLiveSpecification:
         AttributeName: ttl
         Enabled: true
 
   RosewoodAuditTable:
     Type: AWS::DynamoDB::Table
+    Condition: CreateAuditTable
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
@@ -112,69 +125,7 @@ Resources:
       SSESpecification:
         SSEEnabled: true
         SSEType: KMS
-        KMSMasterKeyId: !GetAtt RosewoodKey.Arn
-
-  RosewoodArtifactBucket:
-    Type: AWS::S3::Bucket
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-    Properties:
-      BucketEncryption:
-        ServerSideEncryptionConfiguration:
-          - BucketKeyEnabled: true
-            ServerSideEncryptionByDefault:
-              SSEAlgorithm: aws:kms
-              KMSMasterKeyID: !GetAtt RosewoodKey.Arn
-      ObjectLockEnabled: true
-      ObjectLockConfiguration:
-        ObjectLockEnabled: Enabled
-        Rule:
-          DefaultRetention:
-            Mode: GOVERNANCE
-            Days: !Ref ArtifactGovernanceDays
-      OwnershipControls:
-        Rules:
-          - ObjectOwnership: BucketOwnerEnforced
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
-      VersioningConfiguration:
-        Status: Enabled
-      CorsConfiguration:
-        CorsRules:
-          - AllowedHeaders:
-              - "*"
-            AllowedMethods:
-              - PUT
-              - GET
-              - HEAD
-            AllowedOrigins:
-              - https://ffe.org.au
-            ExposedHeaders:
-              - ETag
-              - x-amz-checksum-sha256
-              - x-amz-version-id
-            MaxAge: 300
-
-  RosewoodArtifactBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref RosewoodArtifactBucket
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Sid: DenyInsecureTransport
-            Effect: Deny
-            Principal: "*"
-            Action: s3:*
-            Resource:
-              - !GetAtt RosewoodArtifactBucket.Arn
-              - !Sub ${RosewoodArtifactBucket.Arn}/*
-            Condition:
-              Bool:
-                aws:SecureTransport: false
+        KMSMasterKeyId: !If [CreateRecordsKey, !GetAtt RosewoodKey.Arn, !Ref RecordsKmsKeyArn]
 
   RosewoodSecurityTopic:
     Type: AWS::SNS::Topic
@@ -194,16 +145,28 @@ Resources:
             Effect: Allow
             Principal:
               AWS: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:root
-            Action: SNS:*
+            Action:
+              - sns:AddPermission
+              - sns:DeleteTopic
+              - sns:GetTopicAttributes
+              - sns:ListSubscriptionsByTopic
+              - sns:Publish
+              - sns:Receive
+              - sns:RemovePermission
+              - sns:SetTopicAttributes
+              - sns:Subscribe
             Resource: !Ref RosewoodSecurityTopic
           - Sid: ServiceAlerts
             Effect: Allow
             Principal:
               Service:
                 - backup.amazonaws.com
-                - events.amazonaws.com
+                - cloudwatch.amazonaws.com
             Action: sns:Publish
             Resource: !Ref RosewoodSecurityTopic
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
 
   RosewoodSecuritySubscription:
     Type: AWS::SNS::Subscription
@@ -211,112 +174,6 @@ Resources:
       Protocol: email
       Endpoint: !Ref SecurityNotificationEmail
       TopicArn: !Ref RosewoodSecurityTopic
-
-  RosewoodGuardDutyRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: malware-protection-plan.guardduty.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: GuardDutyMalwareProtectionForS3
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Sid: ManageGuardDutyEventBridgeRule
-                Effect: Allow
-                Action:
-                  - events:PutRule
-                  - events:DeleteRule
-                  - events:PutTargets
-                  - events:RemoveTargets
-                Resource: !Sub arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/DO-NOT-DELETE-AmazonGuardDutyMalwareProtectionS3*
-                Condition:
-                  StringLike:
-                    events:ManagedBy: malware-protection-plan.guardduty.amazonaws.com
-              - Sid: InspectGuardDutyEventBridgeRule
-                Effect: Allow
-                Action:
-                  - events:DescribeRule
-                  - events:ListTargetsByRule
-                Resource: !Sub arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/DO-NOT-DELETE-AmazonGuardDutyMalwareProtectionS3*
-              - Sid: ConfigureBucketNotifications
-                Effect: Allow
-                Action:
-                  - s3:PutBucketNotification
-                  - s3:GetBucketNotification
-                Resource: !GetAtt RosewoodArtifactBucket.Arn
-              - Sid: ValidateAndListBucket
-                Effect: Allow
-                Action:
-                  - s3:ListBucket
-                  - s3:PutObject
-                Resource:
-                  - !GetAtt RosewoodArtifactBucket.Arn
-                  - !Sub ${RosewoodArtifactBucket.Arn}/malware-protection-resource-validation-object
-              - Sid: ScanAndTagObjects
-                Effect: Allow
-                Action:
-                  - s3:GetObject
-                  - s3:GetObjectVersion
-                  - s3:PutObjectTagging
-                  - s3:GetObjectTagging
-                  - s3:PutObjectVersionTagging
-                  - s3:GetObjectVersionTagging
-                Resource: !Sub ${RosewoodArtifactBucket.Arn}/quarantine/*
-              - Sid: UseArtifactEncryptionKey
-                Effect: Allow
-                Action:
-                  - kms:Decrypt
-                  - kms:GenerateDataKey
-                Resource: !GetAtt RosewoodKey.Arn
-                Condition:
-                  StringEquals:
-                    kms:ViaService: !Sub s3.${AWS::Region}.amazonaws.com
-
-  RosewoodMalwareProtectionPlan:
-    Type: AWS::GuardDuty::MalwareProtectionPlan
-    DependsOn:
-      - RosewoodArtifactBucketPolicy
-      - RosewoodGuardDutyRole
-    Properties:
-      Actions:
-        Tagging:
-          Status: ENABLED
-      ProtectedResource:
-        S3Bucket:
-          BucketName: !Ref RosewoodArtifactBucket
-          ObjectPrefixes:
-            - quarantine/
-      Role: !GetAtt RosewoodGuardDutyRole.Arn
-
-  RosewoodMalwareAlertRule:
-    Type: AWS::Events::Rule
-    Properties:
-      Description: Alert when a Rosewood upload is unsafe or cannot be scanned
-      EventPattern:
-        source:
-          - aws.guardduty
-        detail-type:
-          - GuardDuty Malware Protection Object Scan Result
-        detail:
-          s3ObjectDetails:
-            bucketName:
-              - !Ref RosewoodArtifactBucket
-          scanResultDetails:
-            scanResultStatus:
-              - THREATS_FOUND
-              - UNSUPPORTED
-              - ACCESS_DENIED
-              - FAILED
-      State: ENABLED
-      Targets:
-        - Arn: !Ref RosewoodSecurityTopic
-          Id: RosewoodSecurityAlerts
 
   RosewoodBackupRole:
     Type: AWS::IAM::Role
@@ -341,21 +198,22 @@ Resources:
                   - kms:DescribeKey
                   - kms:Decrypt
                   - kms:GenerateDataKey
-                Resource: !GetAtt RosewoodKey.Arn
+                Resource: !If [CreateRecordsKey, !GetAtt RosewoodKey.Arn, !Ref RecordsKmsKeyArn]
               - Effect: Allow
                 Action: kms:CreateGrant
-                Resource: !GetAtt RosewoodKey.Arn
+                Resource: !If [CreateRecordsKey, !GetAtt RosewoodKey.Arn, !Ref RecordsKmsKeyArn]
                 Condition:
                   Bool:
                     kms:GrantIsForAWSResource: true
 
   RosewoodBackupVault:
     Type: AWS::Backup::BackupVault
+    Condition: CreateBackupVault
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
       BackupVaultName: !Sub ${AWS::StackName}-locked
-      EncryptionKeyArn: !GetAtt RosewoodKey.Arn
+      EncryptionKeyArn: !If [CreateRecordsKey, !GetAtt RosewoodKey.Arn, !Ref RecordsKmsKeyArn]
       LockConfiguration:
         MinRetentionDays: 35
         MaxRetentionDays: 366
@@ -373,14 +231,14 @@ Resources:
         BackupPlanName: !Sub ${AWS::StackName}-daily-monthly
         BackupPlanRule:
           - RuleName: Daily35Days
-            TargetBackupVault: !Ref RosewoodBackupVault
+            TargetBackupVault: !If [CreateBackupVault, !Ref RosewoodBackupVault, !Ref ExistingBackupVaultName]
             ScheduleExpression: cron(0 16 * * ? *)
             StartWindowMinutes: 120
             CompletionWindowMinutes: 360
             Lifecycle:
               DeleteAfterDays: 35
           - RuleName: Monthly366Days
-            TargetBackupVault: !Ref RosewoodBackupVault
+            TargetBackupVault: !If [CreateBackupVault, !Ref RosewoodBackupVault, !Ref ExistingBackupVaultName]
             ScheduleExpression: cron(0 17 1 * ? *)
             StartWindowMinutes: 120
             CompletionWindowMinutes: 360
@@ -396,7 +254,10 @@ Resources:
         IamRoleArn: !GetAtt RosewoodBackupRole.Arn
         Resources:
           - !GetAtt RosewoodTable.Arn
-          - !GetAtt RosewoodAuditTable.Arn
+          - !If
+            - CreateAuditTable
+            - !GetAtt RosewoodAuditTable.Arn
+            - !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ExistingAuditTableName}
 
   RosewoodLogGroup:
     Type: AWS::Logs::LogGroup
@@ -438,30 +299,10 @@ Resources:
                   - dynamodb:PutItem
                   - dynamodb:Query
                   - dynamodb:TransactWriteItems
-                Resource: !GetAtt RosewoodAuditTable.Arn
-              - Sid: StoreArtifacts
-                Effect: Allow
-                Action:
-                  - s3:PutObject
-                Resource:
-                  - !Sub ${RosewoodArtifactBucket.Arn}/records/*
-                  - !Sub ${RosewoodArtifactBucket.Arn}/quarantine/*
-              - Sid: ReadCleanArtifacts
-                Effect: Allow
-                Action:
-                  - s3:GetObject
-                  - s3:GetObjectVersion
-                  - s3:GetObjectTagging
-                  - s3:GetObjectVersionTagging
-                Resource: !Sub ${RosewoodArtifactBucket.Arn}/*
-              - Sid: UseArtifactEncryptionKey
-                Effect: Allow
-                Action:
-                  - kms:Decrypt
-                  - kms:Encrypt
-                  - kms:GenerateDataKey
-                  - kms:DescribeKey
-                Resource: !GetAtt RosewoodKey.Arn
+                Resource: !If
+                  - CreateAuditTable
+                  - !GetAtt RosewoodAuditTable.Arn
+                  - !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ExistingAuditTableName}
               - Effect: Allow
                 Action: secretsmanager:GetSecretValue
                 Resource: !Sub "${ConfigSecretArn}*"
@@ -494,8 +335,9 @@ Resources:
       Environment:
         Variables:
           ROSEWOOD_TABLE_NAME: !Ref RosewoodTable
-          ROSEWOOD_AUDIT_TABLE_NAME: !Ref RosewoodAuditTable
-          ROSEWOOD_ARTIFACT_BUCKET: !Ref RosewoodArtifactBucket
+          ROSEWOOD_AUDIT_TABLE_NAME: !If [CreateAuditTable, !Ref RosewoodAuditTable, !Ref ExistingAuditTableName]
+          ROSEWOOD_ARTIFACT_STORE_MODE: google_drive
+          ALLOW_UNSCANNED_GOOGLE_DOCUMENTS: "true"
           ROSEWOOD_CONFIG_SECRET_ARN: !Ref ConfigSecretArn
           SENDER_EMAIL: !Ref SenderEmail
           REPLY_TO_EMAIL: !Ref ReplyToEmail
@@ -565,6 +407,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref RosewoodSecurityTopic
 
 Outputs:
   FunctionUrl:
@@ -574,14 +418,12 @@ Outputs:
   TableName:
     Value: !Ref RosewoodTable
   AuditTableName:
-    Value: !Ref RosewoodAuditTable
-  ArtifactBucketName:
-    Value: !Ref RosewoodArtifactBucket
+    Value: !If [CreateAuditTable, !Ref RosewoodAuditTable, !Ref ExistingAuditTableName]
   BackupVaultName:
-    Value: !Ref RosewoodBackupVault
+    Value: !If [CreateBackupVault, !Ref RosewoodBackupVault, !Ref ExistingBackupVaultName]
   BackupRoleArn:
     Value: !GetAtt RosewoodBackupRole.Arn
   KmsKeyArn:
-    Value: !GetAtt RosewoodKey.Arn
+    Value: !If [CreateRecordsKey, !GetAtt RosewoodKey.Arn, !Ref RecordsKmsKeyArn]
   SecurityTopicArn:
     Value: !Ref RosewoodSecurityTopic

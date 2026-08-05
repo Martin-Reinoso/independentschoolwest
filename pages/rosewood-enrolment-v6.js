@@ -272,7 +272,7 @@
   ];
 
   function renderApplicationDocuments() {
-    const accept = ".doc,.docx,.pdf,.odt,.png,.gif,.bmp,.jpg,.jpeg,.heic,.heif";
+    const accept = ".pdf,.png,.jpg,.jpeg";
     const uploaded = state.applicationContext?.documents || [];
     const note = liveWorkflow() ? notice("Save and return", "If you do not have every optional document now, continue with the documents available. Your completed sections are saved when you move forward.") : notice("Frontend review", "Files remain on your device in this review frame.");
     return intro("Documents", "Upload the supporting documents available for this application.", "Application for enrolment") + note +
@@ -785,7 +785,7 @@
   function mimeTypeFor(file) {
     if (file.type) return file.type.toLowerCase();
     const extension = file.name.split(".").pop().toLowerCase();
-    return ({ pdf: "application/pdf", doc: "application/msword", docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", odt: "application/vnd.oasis.opendocument.text", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", bmp: "image/bmp", heic: "image/heic", heif: "image/heif" })[extension] || "application/octet-stream";
+    return ({ pdf: "application/pdf", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg" })[extension] || "application/octet-stream";
   }
 
   async function sha256Base64(file) {

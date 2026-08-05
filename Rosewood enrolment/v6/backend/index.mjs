@@ -1,7 +1,7 @@
 import { GetSecretValueCommand, SecretsManagerClient } from "@aws-sdk/client-secrets-manager";
 import { DynamoStore } from "./dynamo-store.mjs";
+import { GoogleDriveStore } from "./google-drive.mjs";
 import { GoogleSheetsStore } from "./google-sheets.mjs";
-import { S3ArtifactStore } from "./s3-store.mjs";
 import { SesMailer } from "./ses-mailer.mjs";
 import { createService } from "./service.mjs";
 
@@ -27,7 +27,7 @@ export async function buildService(overrides = {}) {
     oauthRefreshToken: config.GOOGLE_OAUTH_REFRESH_TOKEN
   };
   const store = overrides.store || new DynamoStore({ tableName: config.ROSEWOOD_TABLE_NAME, auditTableName: config.ROSEWOOD_AUDIT_TABLE_NAME });
-  const artifacts = overrides.artifacts || overrides.drive || new S3ArtifactStore({ bucketName: config.ROSEWOOD_ARTIFACT_BUCKET });
+  const artifacts = overrides.artifacts || overrides.drive || new GoogleDriveStore({ auth, eoiFolderId: config.GOOGLE_EOI_FOLDER_ID, applicationFolderId: config.GOOGLE_APPLICATION_FOLDER_ID });
   const sheets = overrides.sheets || new GoogleSheetsStore({ auth, eoiSpreadsheetId: config.GOOGLE_EOI_SPREADSHEET_ID, applicationSpreadsheetId: config.GOOGLE_APPLICATION_SPREADSHEET_ID, operationsSpreadsheetId: config.GOOGLE_OPERATIONS_SPREADSHEET_ID });
   const mailer = overrides.mailer || new SesMailer({ from: config.SENDER_EMAIL, replyTo: config.REPLY_TO_EMAIL, configurationSetName: config.SES_CONFIGURATION_SET });
   return createService({ store, artifacts, drive: artifacts, sheets, mailer, env: config });

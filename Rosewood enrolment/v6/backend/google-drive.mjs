@@ -9,6 +9,7 @@ function safeName(value) {
 
 export class GoogleDriveStore {
   constructor({ auth, eoiFolderId, applicationFolderId, fetchImpl = fetch }) {
+    this.storageProvider = "google_drive";
     this.tokenProvider = new GoogleAccessTokenProvider({ ...auth, scope: DRIVE_SCOPE, fetchImpl });
     this.eoiFolderId = eoiFolderId;
     this.applicationFolderId = applicationFolderId;
@@ -53,6 +54,27 @@ export class GoogleDriveStore {
     return { uploadUrl };
   }
 
+  async createUpload({ uploadId, applicationId, category, fileName, mimeType, size, checksumSha256 }) {
+    const { uploadUrl } = await this.createUploadSession({ applicationId, category, fileName, mimeType, size });
+    return {
+      uploadUrl,
+      uploadHeaders: { "Content-Type": mimeType },
+      documentId: "",
+      upload: {
+        id: uploadId,
+        applicationId,
+        category,
+        fileName,
+        mimeType,
+        size,
+        checksumSha256,
+        storageProvider: this.storageProvider,
+        createdAt: new Date().toISOString(),
+        expiresAt: Date.now() + 15 * 60 * 1000
+      }
+    };
+  }
+
   async confirmUpload({ applicationId, category, documentId }) {
     const fields = "id,name,mimeType,size,parents,appProperties,trashed,md5Checksum,createdTime";
     const response = await this.request(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(documentId)}?fields=${encodeURIComponent(fields)}`);
@@ -60,6 +82,6 @@ export class GoogleDriveStore {
     const properties = file.appProperties || {};
     const valid = !file.trashed && file.parents?.includes(this.applicationFolderId) && properties.rosewoodApplicationId === applicationId && properties.rosewoodCategory === category && properties.rosewoodExpectedMime === file.mimeType && Number(properties.rosewoodExpectedSize) === Number(file.size);
     if (!valid) throw Object.assign(new Error("Uploaded document metadata does not match its authorised upload."), { status: 422, code: "DOCUMENT_MISMATCH" });
-    return { documentId: file.id, fileName: file.name, mimeType: file.mimeType, size: Number(file.size), category, checksum: file.md5Checksum || "", uploadedAt: file.createdTime || new Date().toISOString() };
+    return { documentId: file.id, fileName: file.name, mimeType: file.mimeType, size: Number(file.size), category, checksum: file.md5Checksum || "", malwareScanStatus: "not_scanned", storageProvider: this.storageProvider, storageKey: file.id, uploadedAt: file.createdTime || new Date().toISOString() };
   }
 }
