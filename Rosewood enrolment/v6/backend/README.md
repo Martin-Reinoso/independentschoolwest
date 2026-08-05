@@ -28,9 +28,12 @@ private workflow-specific folders owned by the same account.
 - Matching email addresses alone never create an EOI link.
 - Approved EOI values may prefill an application but remain editable by the family.
 
-Until the authenticated staff portal is built, authorised operators create invitations
-with `scripts/create-application-invitation.mjs`. Never send or store invitation tokens
-in ordinary notes, analytics or Git.
+Authorised operators use the staff portal at
+`https://ffe.org.au/pages/rosewood-enrolment-admin-v6.html`. The portal can create a
+direct invitation or explicitly link one EOI, monitor operational progress and resend
+an active invitation. Resending rotates the private token, so the earlier link stops
+working. The restricted CLI remains an emergency operator fallback. Never send or
+store invitation tokens in ordinary notes, analytics, the staff browser or Git.
 
 ## Runtime
 
@@ -48,10 +51,20 @@ sessions expire after 30 minutes and are kept in memory only by the frontend. Ra
 addresses are not stored; the service records a keyed network fingerprint for security
 and signature audit purposes.
 
+Staff portal access uses a separate allowlisted email OTP. Staff sessions expire after
+two hours and are also kept in browser memory only. The dashboard deliberately returns
+operational summaries rather than medical, address, document, signature-image or
+network-fingerprint data.
+
 ## Routes
 
 ```text
 GET  /v6/health
+POST /v6/staff/access/request-code
+POST /v6/staff/access/verify-code
+GET  /v6/staff/dashboard
+POST /v6/staff/invitations
+POST /v6/staff/invitations/resend
 POST /v6/eoi
 POST /v6/application/access/request-code
 POST /v6/application/access/verify-code
@@ -84,10 +97,12 @@ aws cloudformation deploy ...
 Secrets belong only in AWS Secrets Manager. Do not add Google OAuth credentials, OTP
 secrets, network HMAC keys, active tokens or real-family test data to this directory.
 
+See `../STAFF-PORTAL-RUNBOOK.md` for access, invitation, resend and incident procedures.
+
 ## Production Gaps
 
-- The staff invitation/progress portal is not built; the current staff entry point is
-  the restricted CLI.
+- The staff portal currently has one allowlisted administrator mailbox. A multi-user
+  role model and periodic access review are required before more staff are added.
 - Uploaded files are private and type/size constrained, but automated malware scanning
   is not yet connected. The Documents Sheet records `not_scanned` transparently.
 - SES bounce and complaint alerts reach `info@ffe.org.au`; automatic feedback ingestion

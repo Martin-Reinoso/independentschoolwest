@@ -19,6 +19,7 @@ https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=application
 https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=acceptance
 https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=signing
 https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=decline
+https://ffe.org.au/pages/rosewood-enrolment-admin-v6.html
 ```
 
 Add `&review=1` to reveal the internal frame selector. The normal family-facing URLs
@@ -27,6 +28,9 @@ do not show workflow-switching or direct frame navigation.
 The EOI URL is live. Application is invitation-only and requires the unique token sent
 by staff; the generic Application URL cannot open a family record. Acceptance, signing
 review and decline remain non-writing previews.
+
+The last URL is the no-index staff operations portal. Access is restricted by an
+allowlisted email OTP and currently covers EOI and Application for Enrolment only.
 
 ## Scope
 
@@ -54,11 +58,17 @@ Application access tokens and verified sessions remain in memory. Acceptance, de
 and post-offer Enrolment Agreement frames cannot write to the backend, send messages or
 create records.
 
+The staff portal also keeps its two-hour session in memory only. It displays safe
+operational summaries, creates direct or EOI-linked application invitations, rotates
+tokens when resending and links to the three private Google Sheets. It does not display
+application answers, uploaded documents, signatures or raw invitation links.
+
 V6 is hidden from site navigation and the sitemap and has `noindex`. Its URL is still
 public and is not an access-control boundary.
 
 `PRODUCT-DECISIONS.md` is the permanent implementation register for direct invitations,
-the future staff portal, OTP throttling, excluded fields and application/agreement
+the staff portal, OTP throttling, excluded fields and application/agreement
 boundaries. `SES-PRODUCTION-READINESS.md` records the transactional sender contract and
 completed AWS canaries. See these records together with `SOURCE-COMPLIANCE.md`,
-`TESTING.md` and `RELEASE-BLOCKERS.md` before inviting real families.
+`TESTING.md`, `STAFF-PORTAL-RUNBOOK.md` and `RELEASE-BLOCKERS.md` before inviting real
+families.

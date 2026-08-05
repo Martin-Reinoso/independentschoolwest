@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { applicationComplete, applicationInvitation, applicationOtp, applicationSubmitted, eoiAcknowledgement, signatureInvitation, signatureOtp } from "./email-templates.mjs";
+import { applicationComplete, applicationInvitation, applicationOtp, applicationSubmitted, eoiAcknowledgement, signatureInvitation, signatureOtp, staffOtp } from "./email-templates.mjs";
 import { SCHEMA_VERSION, normalizeEmail, safeText, sanitizeApplication, splitApplication, truthy, validateApplicationForSubmission, validateEoi } from "./schema.mjs";
 import { sheetOperation } from "./google-sheets.mjs";
 
@@ -116,7 +116,8 @@ export async function createApplicationInvitation({ store, recipientEmail, first
   if (!eoi) Object.assign(values, { app_guardian_0_first: firstName, app_guardian_0_last: lastName, app_guardian_0_email: email, student_first: studentFirstName, student_last: studentLastName });
   const createdAt = iso(now);
   const expiresAt = now + 30 * 86400_000;
-  const invitation = { id: invitationId, applicationId, contactId, studentId, recipientEmail: email, sourceEoiId: sourceEoiId || "", status: "active", createdAt, expiresAt, firstSentAt: createdAt, lastSentAt: createdAt, sendCount: 1 };
+  const tokenHash = sha256(rawToken);
+  const invitation = { id: invitationId, applicationId, contactId, studentId, recipientEmail: email, sourceEoiId: sourceEoiId || "", status: "active", createdAt, expiresAt, firstSentAt: createdAt, lastSentAt: createdAt, sendCount: 1, tokenHash };
   const application = { id: applicationId, invitationId, sourceEoiId: sourceEoiId || "", contactId, studentId, recipientEmail: email, status: "invited", revision: 0, values, guardianCount: 2, emergencyCount: 2, documents: {}, signatures: [], guardianIds: [id("guardian"), id("guardian")], createdAt, updatedAt: createdAt, schemaVersion: SCHEMA_VERSION };
   const invitationUrl = `${applicationUrl}${applicationUrl.includes("?") ? "&" : "?"}workflow=application&invite=${encodeURIComponent(rawToken)}`;
   const displayFirst = eoi?.values.eoi_first || firstName || "Parent/Guardian";
@@ -135,15 +136,43 @@ export async function createApplicationInvitation({ store, recipientEmail, first
     emailEvent({ messageType: "application_invitation", workflow: "application", recordId: applicationId, recipientEmail: email, at: createdAt })
   ];
   if (eoi) operations.push(sheetOperation("operations", "Workflow Links", { link_id: id("link"), source_workflow: "eoi", source_record_id: sourceEoiId, target_workflow: "application", target_record_id: applicationId, linked_by: createdBy, linked_at: createdAt, prefill_fields_json: Object.keys(values), schema_version: SCHEMA_VERSION }, ["link_id"]));
-  await store.createInvitation({ invitation, tokenHash: sha256(rawToken), application, outboxEvents: [emailOutbox({ to: email, ...message, tags: { workflow: "application", message_type: "invitation" } }, now), ...operations.map(operation => sheetOutbox(operation, now))] });
+  await store.createInvitation({ invitation, tokenHash, application, outboxEvents: [emailOutbox({ to: email, ...message, tags: { workflow: "application", message_type: "invitation" } }, now), ...operations.map(operation => sheetOutbox(operation, now))] });
   return { applicationId, invitationId, invitationUrl, sourceEoiId: sourceEoiId || null, recipientEmail: email };
+}
+
+export async function resendApplicationInvitation({ store, invitationId, createdBy, applicationUrl, clock = () => Date.now() }) {
+  const current = await store.getInvitationById(invitationId);
+  if (!current) throw appError(404, "INVITATION_NOT_FOUND", "The invitation was not found.");
+  if (!current.tokenHash) throw appError(409, "INVITATION_NOT_ROTATABLE", "This earlier invitation cannot be resent safely. Create a new invitation instead.");
+  if (current.status !== "active") throw appError(409, "INVITATION_NOT_ACTIVE", "Only active invitations can be resent.");
+  const application = await store.getApplication(current.applicationId);
+  if (!application || !["invited", "in_progress"].includes(application.status)) throw appError(409, "APPLICATION_NOT_EDITABLE", "This application has already been submitted or is no longer editable.");
+  const now = clock();
+  const rawToken = token();
+  const tokenHash = sha256(rawToken);
+  const sentAt = iso(now);
+  const expiresAt = now + 30 * 86400_000;
+  const invitation = { ...current, tokenHash, expiresAt, lastSentAt: sentAt, sendCount: Number(current.sendCount || 0) + 1 };
+  const invitationUrl = `${applicationUrl}${applicationUrl.includes("?") ? "&" : "?"}workflow=application&invite=${encodeURIComponent(rawToken)}`;
+  const firstName = application.values?.app_guardian_0_first || "Parent/Guardian";
+  const studentName = [application.values?.student_first, application.values?.student_last].filter(Boolean).join(" ");
+  const message = applicationInvitation({ firstName, studentName, invitationUrl, expiresAt: new Date(expiresAt).toLocaleDateString("en-AU"), linked: Boolean(application.sourceEoiId) });
+  const operations = [
+    sheetOperation("operations", "Application Invitations", { invitation_id: current.id, application_id: current.applicationId, recipient_contact_id: current.contactId, recipient_email: current.recipientEmail, student_id: current.studentId, source_eoi_id: current.sourceEoiId || "", status: "active", created_at: current.createdAt, expires_at: iso(expiresAt), first_sent_at: current.firstSentAt, last_sent_at: sentAt, send_count: invitation.sendCount, opened_at: current.openedAt || "", verified_at: current.verifiedAt || "", submitted_at: "", schema_version: SCHEMA_VERSION }, ["invitation_id"]),
+    auditEvent({ workflow: "operations", recordId: current.applicationId, type: "application.invitation_resent", at: sentAt, actorType: "staff", actorId: createdBy, details: { invitationId: current.id, sendCount: invitation.sendCount } }),
+    emailEvent({ messageType: "application_invitation_resent", workflow: "application", recordId: current.applicationId, recipientEmail: current.recipientEmail, at: sentAt })
+  ];
+  await store.rotateInvitation({ invitation, previousTokenHash: current.tokenHash, tokenHash, outboxEvents: [emailOutbox({ to: current.recipientEmail, ...message, tags: { workflow: "application", message_type: "invitation_resend" } }, now), ...operations.map(operation => sheetOutbox(operation, now))] });
+  return { applicationId: current.applicationId, invitationId: current.id, recipientEmail: current.recipientEmail, sendCount: invitation.sendCount, expiresAt: iso(expiresAt) };
 }
 
 export function createService({ store, drive, sheets, mailer, env, clock = () => Date.now() }) {
   const allowedOrigins = String(env.ALLOWED_ORIGINS || "https://ffe.org.au").split(",").map(value => value.trim()).filter(Boolean);
+  const staffEmails = new Set(String(env.STAFF_EMAILS || "info@ffe.org.au").split(",").map(normalizeEmail).filter(Boolean));
   const otpSecret = env.OTP_HMAC_SECRET;
   const networkSecret = env.NETWORK_HMAC_SECRET;
   const signingPageUrl = env.APPLICATION_SIGNING_PAGE_URL;
+  const applicationPageUrl = env.APPLICATION_PAGE_URL;
   if (!otpSecret || !networkSecret) throw new Error("OTP_HMAC_SECRET and NETWORK_HMAC_SECRET are required.");
 
   function response(statusCode, payload, origin) {
@@ -162,6 +191,133 @@ export function createService({ store, drive, sheets, mailer, env, clock = () =>
     const session = await store.getSession(sha256(raw));
     if (!session || session.scope !== scope || session.expiresAt <= clock()) throw appError(401, "SESSION_EXPIRED", "Your secure session has expired. Verify your email address again.");
     return session;
+  }
+
+  async function requireStaffSession(event) {
+    const session = await requireSession(event, "staff");
+    if (!staffEmails.has(normalizeEmail(session.email))) throw appError(403, "STAFF_ACCESS_DENIED", "This account is not authorised for the staff portal.");
+    return session;
+  }
+
+  async function requestStaffCode(event) {
+    const body = parseBody(event, 20_000);
+    const email = normalizeEmail(body.email);
+    const fingerprint = networkFingerprint(event);
+    for (const [key, limit, seconds] of [[`staff-cooldown:${sha256(email)}`, 1, 30], [`staff-email:${sha256(email)}`, 5, 1800], [`staff-network:${fingerprint}`, 10, 1800]]) {
+      if (!await store.checkRateLimit(key, limit, seconds)) throw appError(429, "OTP_RATE_LIMIT", "Please wait before requesting another access code.");
+    }
+    const challengeId = id("challenge");
+    if (staffEmails.has(email)) {
+      const verificationCode = code();
+      await store.putChallenge({ id: challengeId, purpose: "staff_access", subjectHash: sha256(email), email, codeHmac: hmac(otpSecret, `${challengeId}:${verificationCode}`), attempts: 0, maxAttempts: 5, createdAt: clock(), expiresAt: clock() + 600_000, ttl: Math.floor((clock() + 86400_000) / 1000) });
+      const sent = await mailer.send({ to: email, ...staffOtp({ code: verificationCode }), tags: { workflow: "staff", message_type: "staff_otp" } });
+      await enqueueSheet(sheetOperation("operations", "Email Events", { email_event_id: id("mail"), occurred_at: nowIso(), message_type: "staff_otp", workflow: "staff", record_id: "staff-access", recipient_email: email, ses_message_id: sent.messageId, delivery_status: "sent_to_ses", schema_version: SCHEMA_VERSION }, ["email_event_id"]));
+    }
+    return { challengeId, expiresInSeconds: 600, resendAfterSeconds: 30, message: "If this email is authorised, a staff access code has been sent." };
+  }
+
+  async function verifyStaffCode(event) {
+    const body = parseBody(event, 20_000);
+    const email = normalizeEmail(body.email);
+    const challengeId = safeText(body.challengeId, 200);
+    const challenge = await store.getChallenge(challengeId);
+    if (!staffEmails.has(email) || !challenge || challenge.purpose !== "staff_access" || challenge.subjectHash !== sha256(email) || challenge.email !== email) throw appError(401, "OTP_INVALID", "The code is invalid or expired. Request a new code.");
+    const consumed = await store.consumeChallenge(challengeId, hmac(otpSecret, `${challengeId}:${safeText(body.code, 12)}`), clock());
+    if (!consumed) { await store.failChallenge(challengeId); throw appError(401, "OTP_INVALID", "The code is invalid or expired. Request a new code."); }
+    const rawSession = token();
+    await store.putSession({ tokenHash: sha256(rawSession), scope: "staff", email, createdAt: clock(), expiresAt: clock() + 2 * 60 * 60_000, ttl: Math.floor((clock() + 3 * 60 * 60_000) / 1000) });
+    await enqueueSheet(auditEvent({ workflow: "operations", recordId: "staff-portal", type: "staff.session_started", at: nowIso(), actorType: "staff", actorId: email }));
+    return { sessionToken: rawSession, expiresInSeconds: 7200, staff: { email } };
+  }
+
+  async function getStaffDashboard(event) {
+    const session = await requireStaffSession(event);
+    const [eoiRows, applicationRows, progressRows, invitationRows, emailRows] = await Promise.all([
+      sheets.list("eoi", "EOIs", { limit: 1000 }),
+      sheets.list("application", "Applications", { limit: 1000 }),
+      sheets.list("operations", "Progress", { limit: 1000 }),
+      sheets.list("operations", "Application Invitations", { limit: 1000 }),
+      sheets.list("operations", "Email Events", { limit: 200 })
+    ]);
+    const progressByApplication = new Map(progressRows.map(row => [row.application_id, row]));
+    const invitationByApplication = new Map(invitationRows.map(row => [row.application_id, row]));
+    const applicationByEoi = new Map(applicationRows.filter(row => row.source_eoi_id).map(row => [row.source_eoi_id, row]));
+    const applications = applicationRows.map(row => {
+      const progress = progressByApplication.get(row.application_id) || {};
+      const invitation = invitationByApplication.get(row.application_id) || {};
+      return {
+        applicationId: row.application_id,
+        invitationId: row.invitation_id,
+        sourceEoiId: row.source_eoi_id || null,
+        status: progress.status || row.status || "invited",
+        reference: row.reference || "",
+        recipientEmail: row.recipient_email,
+        studentName: [row.student_first_name, row.student_last_name].filter(Boolean).join(" "),
+        createdAt: row.created_at,
+        updatedAt: progress.last_activity_at || row.updated_at || row.created_at,
+        submittedAt: row.submitted_at || "",
+        currentStage: progress.current_stage || "gateway",
+        percentComplete: Math.max(0, Math.min(100, Number(progress.percent_complete || 0))),
+        requiredSignatures: Number(row.required_signature_count || 0),
+        completedSignatures: Number(row.completed_signature_count || 0),
+        lastSentAt: invitation.last_sent_at || "",
+        sendCount: Number(invitation.send_count || 0),
+        expiresAt: invitation.expires_at || "",
+        canResend: ["invited", "in_progress"].includes(progress.status || row.status || "invited")
+      };
+    }).sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+    const eois = eoiRows.map(row => {
+      const linked = applicationByEoi.get(row.eoi_id);
+      return {
+        eoiId: row.eoi_id,
+        reference: row.reference,
+        submittedAt: row.submitted_at,
+        status: row.status,
+        contactName: [row.primary_contact_first_name, row.primary_contact_last_name].filter(Boolean).join(" "),
+        email: row.email,
+        studentName: [row.student_first_name, row.student_last_name].filter(Boolean).join(" "),
+        entryYear: row.entry_year,
+        entryLevel: row.entry_year_level,
+        linkedApplicationId: linked?.application_id || null
+      };
+    }).sort((a, b) => String(b.submittedAt).localeCompare(String(a.submittedAt)));
+    const counts = applications.reduce((result, application) => ({ ...result, [application.status]: (result[application.status] || 0) + 1 }), {});
+    return {
+      generatedAt: nowIso(),
+      staff: { email: session.email },
+      stats: { expressionsOfInterest: eois.length, applications: applications.length, invited: counts.invited || 0, inProgress: counts.in_progress || 0, pendingSignatures: counts.pending_signatures || 0, submitted: counts.submitted || 0 },
+      eois,
+      applications,
+      recentEmails: emailRows.slice(-30).reverse().map(row => ({ occurredAt: row.occurred_at, messageType: row.message_type, workflow: row.workflow, recordId: row.record_id, recipientEmail: row.recipient_email, deliveryStatus: row.delivery_status })),
+      sheetLinks: {
+        eoi: `https://docs.google.com/spreadsheets/d/${env.GOOGLE_EOI_SPREADSHEET_ID}`,
+        application: `https://docs.google.com/spreadsheets/d/${env.GOOGLE_APPLICATION_SPREADSHEET_ID}`,
+        operations: `https://docs.google.com/spreadsheets/d/${env.GOOGLE_OPERATIONS_SPREADSHEET_ID}`
+      }
+    };
+  }
+
+  async function createStaffInvitation(event) {
+    const session = await requireStaffSession(event);
+    const body = parseBody(event, 20_000);
+    if (!await store.checkRateLimit(`staff-invite:${sha256(session.email)}`, 30, 3600)) throw appError(429, "STAFF_RATE_LIMIT", "The hourly invitation limit has been reached. Wait before creating another invitation.");
+    const sourceEoiId = safeText(body.sourceEoiId, 200);
+    if (sourceEoiId) {
+      const existing = (await sheets.list("application", "Applications", { limit: 1000 })).find(row => row.source_eoi_id === sourceEoiId);
+      if (existing) throw appError(409, "EOI_ALREADY_LINKED", "This expression of interest is already linked to an application.", { applicationId: existing.application_id });
+    }
+    const result = await createApplicationInvitation({ store, recipientEmail: body.recipientEmail, firstName: safeText(body.firstName, 120), lastName: safeText(body.lastName, 120), studentFirstName: safeText(body.studentFirstName, 120), studentLastName: safeText(body.studentLastName, 120), sourceEoiId, createdBy: session.email, applicationUrl: applicationPageUrl, clock });
+    await dispatchOutbox(50);
+    return { applicationId: result.applicationId, invitationId: result.invitationId, sourceEoiId: result.sourceEoiId, recipientEmail: result.recipientEmail, message: "The application invitation has been sent." };
+  }
+
+  async function resendStaffInvitation(event) {
+    const session = await requireStaffSession(event);
+    const body = parseBody(event, 20_000);
+    if (!await store.checkRateLimit(`staff-resend:${sha256(session.email)}`, 30, 3600)) throw appError(429, "STAFF_RATE_LIMIT", "The hourly resend limit has been reached. Wait before resending another invitation.");
+    const result = await resendApplicationInvitation({ store, invitationId: safeText(body.invitationId, 200), createdBy: session.email, applicationUrl: applicationPageUrl, clock });
+    await dispatchOutbox(50);
+    return { ...result, message: "A new private invitation link has been sent. The earlier link no longer works." };
   }
 
   async function submitEoi(event) {
@@ -424,6 +580,11 @@ export function createService({ store, drive, sheets, mailer, env, clock = () =>
 
   const routes = new Map([
     ["GET /v6/health", async () => ({ status: "ok", schemaVersion: SCHEMA_VERSION })],
+    ["POST /v6/staff/access/request-code", requestStaffCode],
+    ["POST /v6/staff/access/verify-code", verifyStaffCode],
+    ["GET /v6/staff/dashboard", getStaffDashboard],
+    ["POST /v6/staff/invitations", createStaffInvitation],
+    ["POST /v6/staff/invitations/resend", resendStaffInvitation],
     ["POST /v6/eoi", submitEoi],
     ["POST /v6/application/access/request-code", requestApplicationCode],
     ["POST /v6/application/access/verify-code", verifyApplicationCode],

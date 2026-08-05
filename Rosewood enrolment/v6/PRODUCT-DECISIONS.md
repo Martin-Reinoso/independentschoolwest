@@ -21,22 +21,29 @@ Decision date: 5 August 2026
 
 ## Internal Staff Portal
 
-The future authenticated, staff-only portal must:
+The first authenticated staff portal release covers only the live EOI and Application
+for Enrolment backend. It must:
 
-- list EOIs, applications, offer acceptances, declines and guardian-signature tasks
+- list EOIs and applications, including the guardian-signature status held by each
+  application
 - show each record's current progress and last successful save
 - search and filter records without exposing them publicly
 - select an EOI and issue an application invitation
 - enter a new email address and issue a direct application invitation
-- create or link the correct contact, student and application records idempotently
+- prevent an EOI already linked to an application from being linked again through the
+  portal
 - send the automatic invitation email and record its delivery status
-- show an append-only audit history of invitation, verification, save and submission
-  events
+- rotate the private token when an active invitation is resent, invalidating the prior
+  link
+- show recent operational email events and links to private source Sheets
+- exclude medical answers, addresses, uploaded documents, signature images, raw
+  invitation links and network fingerprints from its dashboard responses
 
-Staff roles, least-privilege access, audit logging and recovery controls are required
-before this portal handles real family information. The current backend provides a
-restricted operator CLI for direct and EOI-linked invitations; it is not a substitute
-for that portal.
+The first release is allowlisted to `info@ffe.org.au`, uses email OTP, records staff
+actions and keeps its two-hour session in browser memory only. The restricted operator
+CLI remains an emergency fallback. Multi-user roles, periodic access review and any
+future acceptance/decline interface require a separate governance decision and must
+not merge those workflows into the current Sheets or API.
 
 ## Application Gateway
 
