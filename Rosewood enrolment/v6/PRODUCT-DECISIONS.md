@@ -83,21 +83,39 @@ The following St Lawrence application fields are hidden for Rosewood's first int
 
 The production schema should reserve nullable, inactive fields and repeat structures
 for them. They must not be rendered, required, silently defaulted or used in decisions
-until Rosewood explicitly enables them for a later intake. Future Siblings remains
-visible.
+until Rosewood explicitly enables them for a later intake. The visible future-family
+question asks only whether other children may attend and, when Yes, records a count of
+1 to 6 or 7+.
 
 ## Student Rules
 
+- Religion and Current Early Learning Centre / Kindergarten / Primary School reveal a
+  mandatory free-text field when Other is selected. The current-school control occupies
+  its own row so long labels and conditional fields do not misalign adjacent controls.
+- Student Residence, Student Primary Address and Family are separate visual sections.
+  Address sharing explicitly refers to other parents/guardians.
+- Home Care Arrangement is a required multi-select. Other reveals a required care
+  description, and Shared Custody reveals a required Shared Parenting Schedule.
+- Nationality and Citizenship is identified as a government requirement and makes clear
+  that every question refers to the student. Citizenship follows residential status,
+  and language questions appear at the end of the section.
+- Citizenship Status No reveals required Evidence of Australian Residency. Permanent
+  Resident, Temporary Resident and Other / Visitor / Overseas Student reveal mandatory
+  Visa subclass and Visa expiry; Eligible for Australian Passport does not. Previous
+  visa subclass remains optional.
 - Main Language uses the 444 language-level entries in the ABS Australian Standard
   Classification of Languages 2025, with English first and all remaining entries in
   alphabetical order.
 - General / Additional Needs controls only the visibility of Please Specify. Health
   Professionals, Reports Attached, NDIS Support and Court or Parenting Orders remain
-  visible.
+  visible. The source duty-of-care explanation and assurance that the information will
+  not impact the offer of enrolment appear before the question.
 - Parish is labelled "Parish where student lives".
 - Medical Details displays an Other medical condition field only when Other is chosen.
 - Doctor Name and Doctor Phone are optional.
 - Ambulance Cover and Health Care Card are mandatory Yes/No questions.
+- Humanitarian Health Check clarifies that it asks whether the child has a humanitarian
+  visa.
 
 Source: https://www.abs.gov.au/statistics/classifications/australian-standard-classification-languages-ascl/2025
 
