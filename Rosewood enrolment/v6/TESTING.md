@@ -166,6 +166,28 @@ Mobile viewport: 390 x 844.
 - SES simulator success, permanent-bounce and complaint canaries completed; bounce and
   complaint SNS notifications arrived in the operations mailbox
 
+## Recovery Drill
+
+Completed 6 August 2026 using the two verified recovery points in the locked Sydney
+backup vault.
+
+- the production records recovery point restored to an isolated temporary table and
+  the AWS Backup restore job completed at 100 percent
+- the append-only audit recovery point restored to a separate isolated temporary table
+  and the AWS Backup restore job completed at 100 percent
+- aggregate item counts matched exactly: operational records `102/102` and audit
+  records `0/0`; no family values were printed or exported
+- both restored tables were active, used the retained customer-managed KMS key and had
+  the expected `PK` partition key and `SK` sort key
+- restored tables were never connected to Lambda, Google Sheets, Google Drive or the
+  staff portal
+- `pnpm rebuild-projections` completed in `dry-run` mode and produced aggregate row
+  counts only; the apply confirmation was not supplied and no Sheet rows were changed
+- both temporary recovery tables were deleted after validation and AWS returned no
+  remaining table with the `rosewood-recovery-` prefix
+- both production tables remained active, encrypted and deletion-protected, and the
+  production `/v6/health` endpoint continued to return `ok`
+
 All canary records are explicitly labelled synthetic and contain no family data.
 GuardDuty, uploaded-file malware scanning and cross-region protection are deliberately
 outside the small-scale launch scope. Named multi-user staff accounts and automatic SES
