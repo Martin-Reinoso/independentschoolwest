@@ -303,6 +303,16 @@ Resources:
                   - CreateAuditTable
                   - !GetAtt RosewoodAuditTable.Arn
                   - !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ExistingAuditTableName}
+              - Sid: EncryptedRecordsKeyUse
+                Effect: Allow
+                Action:
+                  - kms:Decrypt
+                  - kms:DescribeKey
+                  - kms:Encrypt
+                  - kms:GenerateDataKey
+                  - kms:ReEncryptFrom
+                  - kms:ReEncryptTo
+                Resource: !If [CreateRecordsKey, !GetAtt RosewoodKey.Arn, !Ref RecordsKmsKeyArn]
               - Effect: Allow
                 Action: secretsmanager:GetSecretValue
                 Resource: !Sub "${ConfigSecretArn}*"
