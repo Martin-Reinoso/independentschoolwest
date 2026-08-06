@@ -76,6 +76,8 @@ public and is not an access-control boundary.
 the staff portal, OTP throttling, excluded fields and application/agreement
 boundaries. `SES-PRODUCTION-READINESS.md` records the transactional sender contract and
 completed AWS canaries. `ARCHITECTURE-HARDENING.md` and `RECOVERY-RUNBOOK.md` record the
-Sydney-only protection and restore model. See these records together with
+Sydney-only protection and restore model. `DATA-PROCESS-MAP.md` provides the
+stakeholder-facing general workflow, section-level data flows, access matrix and
+live/preview boundaries. See these records together with
 `SOURCE-COMPLIANCE.md`, `TESTING.md`, `STAFF-PORTAL-RUNBOOK.md` and
 `RELEASE-BLOCKERS.md` before inviting real families.

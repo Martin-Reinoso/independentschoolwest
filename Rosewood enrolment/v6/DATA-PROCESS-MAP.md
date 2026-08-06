@@ -1,0 +1,715 @@
+# Rosewood V6 Application Workflow and Data Process Map
+
+Document date: 6 August 2026
+Implementation: Rosewood Enrolment V6
+Audience: Rosewood leadership, admissions, governance, privacy, records management,
+technology support and implementation partners
+
+## Purpose
+
+This document explains how enrolment information moves through the implemented V6
+system. It covers:
+
+- what a family, guardian and staff member does
+- when information is collected, checked, saved, projected or emailed
+- which system is authoritative for each type of information
+- which workflows are live and which are still non-writing previews
+- how access, audit, backup and recovery work
+- which governance and implementation decisions remain open
+
+This is a process and system map. It is not an approved Privacy Collection Notice,
+retention schedule, legal declaration or Enrolment Agreement.
+
+## Status Legend
+
+| Status | Meaning |
+| --- | --- |
+| **Live - writing** | The production frontend calls the V6 backend and can create or update records. |
+| **Live - read/sign** | A production page reads an existing submitted record and can add an authorised signature. |
+| **Preview only** | The screens exist for stakeholder review but do not save, send email or create a legally effective record. |
+
+## Workflow Scope
+
+| Workflow | Status | Entry point | Current outcome |
+| --- | --- | --- | --- |
+| Expression of Interest (EOI) | **Live - writing** | Public, hidden and `noindex` EOI URL | Independent EOI record, reference and acknowledgement email |
+| Staff operations | **Live - writing** | Hidden and `noindex` staff portal plus staff OTP | Review EOI/Application progress and issue direct or EOI-linked invitations |
+| Application for Enrolment | **Live - writing** | Private invitation URL plus family email OTP | Revisioned application, documents, primary signature and status |
+| Additional application guardian signing | **Live - read/sign** | Private signature-request URL plus guardian email OTP | Signature against the frozen submitted application revision |
+| Offer Acceptance / Enrolment Agreement | **Preview only** | V6 review workflow | No record, upload, email or signature is created |
+| Enrolment Agreement signing preview | **Preview only** | V6 review workflow | Demonstrates the future post-offer signing experience only |
+| Decline Offer | **Preview only** | V6 review workflow | No decline record or notification is created |
+
+The live additional-guardian signing page is
+`pages/rosewood-application-sign-v6.html`. It signs an **Application for Enrolment**.
+It must not be confused with the preview-only `workflow=signing` screens, which model a
+future **Enrolment Agreement** signing process.
+
+## General Stakeholder Map
+
+```mermaid
+flowchart LR
+    Family["Family browser"]
+    Guardian["Additional guardian browser"]
+    Staff["Staff browser"]
+    Pages["FFE static pages on GitHub Pages"]
+    Lambda["Rosewood V6 Lambda in Sydney"]
+    MainDB["Authoritative DynamoDB records"]
+    AuditDB["Append-only DynamoDB audit"]
+    Drive["Restricted Google Drive files"]
+    Outbox["Durable DynamoDB outbox"]
+    SES["Amazon SES email"]
+    Sheets["Private Google Sheets projections"]
+    Backup["PITR and locked Sydney backups"]
+    Alerts["CloudWatch and SNS alerts"]
+
+    Family --> Pages
+    Guardian --> Pages
+    Staff --> Pages
+    Pages -->|"HTTPS API requests"| Lambda
+    Lambda -->|"Validated transactional writes"| MainDB
+    Lambda -->|"Attributable events"| AuditDB
+    Lambda -->|"Snapshots, uploads and signatures"| Drive
+    MainDB --> Outbox
+    Outbox -->|"Retry every minute"| SES
+    Outbox -->|"Replaceable reporting rows"| Sheets
+    MainDB --> Backup
+    AuditDB --> Backup
+    Lambda --> Alerts
+    Backup --> Alerts
+```
+
+### Core Principle
+
+AWS is authoritative for operational records. Google Sheets are reporting
+projections, not the application database. Editing or deleting a Sheet row does not
+change the application held in DynamoDB. Google Drive is the approved launch file
+store for documents, JSON snapshots and signature images.
+
+## Systems of Record
+
+| Information | Authoritative location | Secondary representation | Notes |
+| --- | --- | --- | --- |
+| EOI answers and status | Main DynamoDB table | EOI and Operations Sheets | A JSON snapshot is also stored in restricted Drive. |
+| Application invitation and link relationship | Main DynamoDB table | Operations Sheet | Raw invitation token is not stored; only its hash is retained. |
+| OTP challenge | Main DynamoDB table | Minimal email-event projection | Code is emailed; only an HMAC is stored. Challenge expires automatically. |
+| Verified session | Main DynamoDB table and browser memory | None | Raw session token stays in browser memory; only its hash is stored. |
+| Application draft and revision | Main DynamoDB table | Progress and audit projections | Full draft answers are not written to a draft Sheet. |
+| Submitted application | Main DynamoDB table | Normalised Application Sheets | A frozen JSON snapshot is stored in restricted Drive. |
+| Supporting documents | Restricted Google Drive | DynamoDB and Sheet metadata | Portal lists metadata; staff open files through restricted Drive. |
+| Signature image | Restricted Google Drive | DynamoDB and Sheet metadata | Staff API does not return the image. |
+| Audit events | Separate append-only DynamoDB table | EOI, Application and Operations audit tabs | Detailed application views and state changes create events. |
+| Email work and receipts | DynamoDB outbox/receipts plus SES | Operations Email Events | Outbox is retried every minute. |
+| Backups | DynamoDB PITR and locked AWS Backup vault | None | Drive recovery is governed separately by Google account controls. |
+
+## End-to-End State Model
+
+```mermaid
+stateDiagram-v2
+    [*] --> EOI_Submitted: Optional public EOI
+    EOI_Submitted --> Application_Invited: Staff explicitly creates linked invitation
+    [*] --> Application_Invited: Staff creates direct invitation
+    Application_Invited --> Application_Invited: Staff resend rotates invitation token
+    Application_Invited --> Application_In_Progress: First successful section save
+    Application_In_Progress --> Application_In_Progress: Revisioned section saves
+    Application_In_Progress --> Pending_Signatures: Primary guardian submits and more signatures are required
+    Application_In_Progress --> Submitted: Primary guardian submits and is the only required signer
+    Pending_Signatures --> Pending_Signatures: A guardian signs but others remain
+    Pending_Signatures --> Submitted: Final required guardian signs
+    Submitted --> [*]
+```
+
+An EOI is never converted into an application. When staff explicitly selects an EOI,
+the application receives a `sourceEoiId`, reuses the EOI contact/student identifiers and
+prefills approved values. The original EOI remains unchanged.
+
+## Common Security and Processing Controls
+
+1. The URL is hidden and marked `noindex`, but URL secrecy is not treated as access
+   control.
+2. Application access requires both a high-entropy invitation token and an OTP sent to
+   the invitation email.
+3. Additional-guardian access requires both a high-entropy signing-task token and an OTP
+   sent to that guardian's email.
+4. Staff access requires an allowlisted email and OTP.
+5. Family and guardian sessions expire after 30 minutes. Staff sessions expire after
+   two hours.
+6. Session tokens stay in browser memory. V6 uses no cookies, local storage, session
+   storage or IndexedDB.
+7. OTPs expire after 10 minutes, allow five attempts and are subject to server-side
+   cooldown, email, invitation/task and network limits.
+8. Application saves use an expected revision. A stale browser receives a conflict
+   rather than silently overwriting a newer record.
+9. Raw IP addresses are not stored. The backend stores a keyed network fingerprint for
+   defined submission/audit evidence.
+10. DynamoDB records and backups use a customer-managed KMS key. Production tables have
+    deletion protection and point-in-time recovery.
+
+## Workflow 1: Expression of Interest
+
+### Process
+
+```mermaid
+sequenceDiagram
+    actor Family
+    participant Page as EOI page
+    participant API as V6 Lambda
+    participant Drive as Restricted Drive
+    participant DB as DynamoDB
+    participant Outbox as Durable outbox
+    participant SES as SES
+    participant Sheets as Sheets projections
+
+    Family->>Page: Complete one-page EOI
+    Page->>API: POST /v6/eoi
+    API->>API: Validate and normalise required values
+    API->>Drive: Store JSON EOI snapshot
+    API->>DB: Transactionally create EOI and audit records
+    API->>Outbox: Queue acknowledgement and projections
+    API->>Outbox: Dispatch immediately
+    Outbox->>SES: Send acknowledgement and reference
+    Outbox->>Sheets: Upsert EOI, Contact, Student and audit rows
+    API-->>Page: Return EOI reference and submitted status
+```
+
+### EOI Sections and Data
+
+| Section | Information collected | Processing and destination |
+| --- | --- | --- |
+| Primary Contact Details | Language, salutation, name, relationship, email and mobile | Validated into the EOI record; contact summary projected to Operations. |
+| Primary Contact Address | Address, suburb, state, postcode and country | Stored in the EOI record and EOI projection. |
+| Student Details | Student name, DOB, gender, religion, intended year/year level, current school/year | Stored in the EOI record; student summary projected to Operations. |
+| Additional Needs | Yes/No and category when Yes | Stored in the EOI record; treated as sensitive support information. |
+| Family and Engagement | Family connection, other children, discovery source, questions | Stored in the EOI record and EOI projection. |
+
+### EOI Outputs
+
+- EOI identifier and human-readable `EOI-...` reference
+- contact and student identifiers
+- authoritative DynamoDB EOI record
+- restricted Drive JSON snapshot
+- append-only EOI and Operations audit events
+- EOI, Contact and Student reporting rows
+- acknowledgement email confirming that the EOI is **not** an Application for
+  Enrolment
+
+## Workflow 2: Staff Access and Invitation
+
+### Staff Access
+
+```mermaid
+sequenceDiagram
+    actor Staff
+    participant Portal as Staff portal
+    participant API as V6 Lambda
+    participant DB as DynamoDB
+    participant SES as SES
+    participant Audit as Audit table
+
+    Staff->>Portal: Enter staff email
+    Portal->>API: Request staff code
+    API->>DB: Apply cooldown/email/network limits
+    API->>SES: Send code only if allowlisted
+    API-->>Portal: Return generic response
+    Staff->>Portal: Enter code
+    Portal->>API: Verify code
+    API->>DB: Consume one-time challenge and create 2-hour session
+    API->>Audit: Record staff session start
+    API-->>Portal: Return memory-only staff session and role
+```
+
+The current production allowlist uses `info@ffe.org.au`. The backend supports
+`admin`, `admissions` and `viewer`; viewers cannot create or resend invitations.
+
+### Invitation Decision
+
+```mermaid
+flowchart TD
+    Start["Staff chooses Create invitation"]
+    Choice{"Link a specific EOI?"}
+    Direct["Direct invitation: enter email and optional names"]
+    Linked["EOI-linked invitation: select one unlinked EOI"]
+    Checks["Validate staff role, email and EOI rules"]
+    Create["Create contact/student IDs, invitation and application"]
+    Prefill["Reuse EOI IDs and copy approved prefill values"]
+    Empty["Create new IDs and minimal initial values"]
+    Email["Queue private invitation email"]
+    Report["Queue Operations and Application projections"]
+
+    Start --> Choice
+    Choice -->|"No"| Direct --> Checks --> Empty --> Create
+    Choice -->|"Yes"| Linked --> Checks --> Prefill --> Create
+    Create --> Email
+    Create --> Report
+```
+
+### Direct Invitation
+
+- Used when there is no EOI or Rosewood intentionally does not link an earlier EOI.
+- Matching an EOI email does not create an automatic link.
+- Backend creates new contact, student, invitation and application identifiers.
+- Initial application status is `invited`, revision `0`, with two guardian slots and
+  two emergency-contact slots.
+
+### EOI-Linked Invitation
+
+- Staff must explicitly select the source EOI.
+- EOI must exist, remain unlinked and use the same recipient email.
+- Backend reuses contact and student identifiers.
+- Selected EOI contact, student, address, enrolment and additional-needs fields are
+  copied into the editable application draft.
+- A Workflow Links projection records the relationship; the EOI itself is not changed.
+
+### Invitation Token Handling
+
+- The raw token appears only in the private email link and is returned internally to
+  the email process, not to the staff browser.
+- DynamoDB stores a SHA-256 token hash.
+- Invitation expires after 30 days.
+- Resend creates a new token, deletes the previous token-keyed record and invalidates
+  the earlier URL atomically.
+
+## Workflow 3: Application Access
+
+```mermaid
+sequenceDiagram
+    actor Family
+    participant Page as Application page
+    participant API as V6 Lambda
+    participant DB as DynamoDB
+    participant SES as SES
+    participant Audit as Audit table
+
+    Family->>Page: Open private invitation link
+    Family->>Page: Enter invited email
+    Page->>API: Request application OTP
+    API->>DB: Validate invitation hash, email, expiry and limits
+    API->>DB: Store HMAC challenge with TTL
+    API->>SES: Send six-digit OTP
+    Family->>Page: Enter OTP
+    Page->>API: Verify one-time challenge
+    API->>DB: Consume challenge and create 30-minute session
+    API->>Audit: Record email verification
+    API-->>Page: Return application context and editable values
+```
+
+The API returns a generic response when requesting a code so the endpoint does not
+confirm whether an invitation/email combination exists. The browser receives the raw
+session token and keeps it only in memory. Every subsequent draft, upload and submission
+request is scoped server-side to the application in that session.
+
+### Record Selection Screen
+
+- EOI-linked invitation: shows that Rosewood linked the prior EOI and allows the family
+  to review/edit prefilled values.
+- Direct invitation with known names: shows the invited student/application record.
+- Direct invitation without names: asks for student first and last name before the
+  five application sections.
+
+## Workflow 4: Five Application Sections
+
+### Save Behaviour Shared by Sections
+
+```mermaid
+sequenceDiagram
+    actor Family
+    participant Page as Application page
+    participant API as V6 Lambda
+    participant DB as DynamoDB
+    participant Audit as Audit table
+    participant Outbox as Outbox
+    participant Sheets as Operations Sheets
+
+    Family->>Page: Select Next after completing a section
+    Page->>Page: Run visible required/conditional validation
+    Page->>API: PUT /v6/application/draft with expected revision
+    API->>API: Sanitize allowed Application fields
+    API->>DB: Conditional update to next revision
+    API->>Audit: Append draft-saved event
+    API->>Outbox: Queue Progress and audit projections
+    Outbox->>Sheets: Update operational progress asynchronously
+    API-->>Page: Return server-acknowledged revision and saved time
+```
+
+V6 saves when the family moves forward from a section. It does not save every
+keystroke. The green Saved state means the server acknowledged a new DynamoDB revision.
+If the page is refreshed, the memory-only session is lost, but the last acknowledged
+server draft remains and can be reopened after OTP verification.
+
+### Section 1: Student
+
+| Subsection | Data categories | Important conditions | Destination |
+| --- | --- | --- | --- |
+| Student Details | Names, preferred name, DOB, gender, religion, current school/year and intended entry | Religion Other and Current School Other reveal required text fields. | Draft `values`; final Student projection |
+| Student Residence | Address-sharing choice and home-care arrangements | Other care requires details; Shared Custody requires a parenting schedule. | Draft `values`; final Student projection |
+| Student Primary Address | Address, suburb, state, postcode and country | Required | Draft `values`; final Student projection |
+| Family | Whether other children may attend and how many | Count appears only after Yes. | Draft `values`; final Student projection |
+| Nationality and Citizenship | Residence, birth, nationality, ethnicity, arrival/return date, residency, citizenship, evidence, visas, Indigenous status and languages | Non-citizen paths reveal residency evidence; most evidence choices require visa subclass/expiry. | Draft `values`; final Student projection |
+| General / Additional Needs | Need categories, professionals, reports, NDIS, court/parenting orders and other information | Need category appears after Yes; several support fields remain visible regardless. | Draft `values`; final Student projection |
+| Sacraments | Parish and sacrament date/location details | Date/location appears for each selected sacrament. | Draft `values`; final Student projection as sacrament JSON |
+| Medical Details | Conditions, allergies, anaphylaxis, immunisation, humanitarian health, doctor, Medicare, insurance, ambulance and Health Care Card | Other condition reveals text; doctor name/address, ambulance and card response are required. | Draft `values`; final Student projection |
+
+This section contains identity, health, disability/support, religious, Indigenous,
+residency and court/parenting information and therefore has the highest privacy
+sensitivity in the application.
+
+### Section 2: Parent / Guardian
+
+| Subsection | Data categories | Important conditions | Destination |
+| --- | --- | --- | --- |
+| Contact and sharing | Sharing choice, name, email, phones, relationship, contact type, marital status and religion | Each added guardian becomes a repeat record. | Draft `values`; final Guardians projection |
+| Messaging and Health Care Card | SMS choice and Health Care Card status | Card number/expiry appear after Yes. | Draft `values`; final Guardians projection |
+| Residential and postal address | Residential address and whether postal is the same | Separate postal fields appear after No. | Draft `values`; final Guardians projection |
+| Occupation and education | Occupational group, occupation, employer, school and further education | Core government-reporting fields are required. | Draft `values`; final Guardians projection |
+| Residency | Birth country, nationality, ethnicity, languages, status, visa and Indigenous response | Temporary Resident reveals visa subclass and expiry. | Draft `values`; final Guardians projection |
+| Contact permission | Whether Rosewood may contact an additional guardian | No suppresses the separate signature-request email. | Draft `values`; used during task creation |
+| Guardian confirmation | Confirmation that all legal parents/guardians were entered | Required before moving on. | Draft `values` |
+| Emergency contacts | At least two names, relationships and phone details; email optional | Repeatable up to the server limit. | Draft `values`; final Emergency Contacts projection |
+
+The application begins with two guardian records by default. A second guardian is the
+normal path, but a family can reduce the count to one and provide an explanation in the
+Signature section.
+
+### Section 3: Documents
+
+| Category | Required at submission | Accepted formats | Storage |
+| --- | --- | --- | --- |
+| Birth Certificate | Yes | PDF, JPG or PNG, maximum 10 MB per file | Restricted Application Drive folder |
+| Immunisation / medical plans / professional reports | Optional | PDF, JPG or PNG, maximum 10 MB per file | Restricted Application Drive folder |
+| Latest School Report / available NAPLAN | Optional | PDF, JPG or PNG, maximum 10 MB per file | Restricted Application Drive folder |
+| Sacramental Certificates | Optional | PDF, JPG or PNG, maximum 10 MB per file | Restricted Application Drive folder |
+| Passport / Visa Documentation | Optional | PDF, JPG or PNG, maximum 10 MB per file | Restricted Application Drive folder |
+
+Proof of address is not collected.
+
+```mermaid
+sequenceDiagram
+    actor Family
+    participant Page as Application page
+    participant API as V6 Lambda
+    participant DB as DynamoDB
+    participant Drive as Restricted Drive
+    participant Audit as Audit table
+
+    Page->>Page: Calculate browser SHA-256 and read type/size
+    Page->>API: Start upload with category and metadata
+    API->>API: Validate category, PDF/JPG/PNG, checksum shape and 10 MB limit
+    API->>Drive: Create short-lived resumable upload session
+    API->>DB: Store short-lived upload authorisation record
+    Page->>Drive: Upload file directly
+    Page->>API: Confirm Drive file ID and category
+    API->>Drive: Verify parent folder and application/category/type/size metadata
+    API->>DB: Attach document metadata to the application
+    API->>Audit: Append document-uploaded event
+```
+
+The staff portal returns document metadata only. It does not generate public or
+temporary download links. Authorised operators use the restricted enrolment Drive.
+Automated malware scanning is outside the current launch scope.
+
+### Section 4: Conditions
+
+| Subsection | Data and decision | Destination |
+| --- | --- | --- |
+| Previous School Permission | Consent to contact prior school, school name/address and interstate status | Draft `values`; final Conditions projection |
+| School Fee Responsibility | Both guardians, one guardian, or court-ordered percentage split; nominee/percentages and date | Draft `values`; final Conditions projection |
+| Application Survey | Discovery source and up to three decision influences | Draft `values`; final Conditions projection |
+
+This is not the Enrolment Agreement. Terms and Conditions of Enrolment and photography
+permissions are deliberately excluded and belong to the future post-offer workflow.
+
+### Section 5: Signature and Submission
+
+The primary guardian must:
+
+- acknowledge network-address recording language
+- accept the application declaration
+- provide a drawn or keyboard-accessible signature
+- provide the date
+- explain why only one guardian was entered, when applicable
+- otherwise acknowledge that an additional guardian will be contacted separately
+
+```mermaid
+sequenceDiagram
+    actor Primary as Primary guardian
+    participant Page as Application page
+    participant API as V6 Lambda
+    participant DB as DynamoDB
+    participant Drive as Restricted Drive
+    participant Outbox as Outbox
+    participant SES as SES
+
+    Primary->>Page: Complete declarations and signature
+    Page->>API: Save final signature-stage draft
+    API->>DB: Advance revision conditionally
+    Page->>API: Submit application with expected revision and signature image
+    API->>API: Revalidate every required field and Birth Certificate
+    API->>API: Hash frozen values, documents and revision
+    API->>Drive: Store frozen JSON snapshot
+    API->>Drive: Store primary signature PNG
+    API->>DB: Atomically store submitted state, signature tasks, audit and outbox
+    Outbox->>SES: Send application receipt
+    Outbox->>SES: Send additional guardian signing requests
+```
+
+Submission creates an `APP-...` reference. If only one signature is required, status
+becomes `submitted`. If more are required, status becomes `pending_signatures` and the
+operational progress is reported as 95 percent.
+
+## Workflow 5: Additional Application Guardian Signing
+
+### Process
+
+```mermaid
+sequenceDiagram
+    actor Guardian
+    participant Page as Dedicated signing page
+    participant API as V6 Lambda
+    participant DB as DynamoDB
+    participant Drive as Restricted Drive
+    participant Audit as Audit table
+    participant SES as SES
+
+    Guardian->>Page: Open private signature-task link
+    Guardian->>Page: Enter invited email
+    Page->>API: Request guardian OTP
+    API->>DB: Validate task/email/expiry and store challenge
+    API->>SES: Send OTP
+    Guardian->>Page: Verify OTP
+    API->>DB: Consume challenge and create 30-minute signing session
+    API-->>Page: Return frozen revision review context
+    Guardian->>Page: Review student, signer, previous-school and fee information
+    Guardian->>Page: Confirm ready, accept declarations and sign
+    Page->>API: Submit signature
+    API->>DB: Recheck task status and frozen revision hash
+    API->>Drive: Store guardian signature PNG
+    API->>Audit: Append guardian-signed event
+    API->>DB: Update signature task and application atomically
+    API->>SES: When final, send completion email to guardians
+```
+
+The guardian cannot edit the submitted application from the signing page. The task is
+bound to the application ID, guardian ID, email, revision and revision hash. It expires
+after 14 days and cannot be reused after signing.
+
+## Workflow 6: Staff Dashboard and Review
+
+### Dashboard Data
+
+The dashboard reads authoritative DynamoDB entities and returns:
+
+- EOI/application counts and status totals
+- contact/student names and recipient emails
+- references, stage, percentage, timestamps and invitation expiry/send count
+- required and completed signature counts
+- recent transactional email summaries
+
+The dashboard does not return medical answers, full application answers, documents,
+signature images, network fingerprints or raw invitation links.
+
+### Detailed Review
+
+An authorised staff member can request one application detail view. The backend returns
+the current application answers plus document metadata and signature metadata, but not
+signature images or network fingerprints. Every detailed view appends a
+`staff.application_viewed` audit event with the staff identity and role.
+
+```mermaid
+flowchart LR
+    Session["Valid staff session and role"] --> Dashboard["Operational dashboard"]
+    Dashboard --> Detail["Select Review"]
+    Detail --> Authorise["Server authorises application lookup"]
+    Authorise --> Audit["Append staff.application_viewed"]
+    Authorise --> Answers["Return current answers and safe metadata"]
+    Answers --> Drive["Authorised staff separately use restricted Drive"]
+```
+
+## Asynchronous Email and Sheet Processing
+
+Business-state changes, audit events and their outbox work are written together where
+the workflow requires atomicity. Delivery is then attempted immediately for major
+operations and retried by EventBridge every minute.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Pending: Outbox item created
+    Pending --> Leased: Worker claims 60-second lease
+    Leased --> SentReceipt: SES or Sheet operation succeeds
+    Leased --> Pending: Delivery fails and lease is released
+    SentReceipt --> [*]: Pending item removed; receipt retained temporarily
+```
+
+### Automatic Emails
+
+| Trigger | Recipient | Message |
+| --- | --- | --- |
+| EOI submission | Primary EOI contact | EOI acknowledgement and reference |
+| Application invitation | Invited family email | Private application link and expiry |
+| Invitation resend | Invited family email | Replacement link; prior link invalidated |
+| Application access | Invited family email | Six-digit OTP |
+| Staff access | Allowlisted staff email | Six-digit staff OTP |
+| Primary application submission | Primary guardian | Receipt, reference and signature status |
+| Additional guardian required | Each eligible additional guardian | Private application-signing link |
+| Guardian access | Invited guardian email | Six-digit signing OTP |
+| Final required signature | Guardian emails | Application complete confirmation |
+
+SES sends as `enrolment@ffe.org.au`. SPF, DKIM and DMARC have been verified. Bounce and
+complaint notifications reach the operations mailbox, but automatic correlation back
+into individual Operations records remains a future improvement.
+
+## Google Sheets Projection Map
+
+| Workbook | Tabs | Purpose |
+| --- | --- | --- |
+| EOI | EOIs, EOI Audit | EOI reporting and workflow audit |
+| Application | Applications, Student, Guardians, Emergency Contacts, Documents, Conditions, Signatures, Application Audit | Normalised submitted application reporting |
+| Operations | Contacts, Students, Application Invitations, Workflow Links, Progress, Email Events, Audit | Cross-workflow administration and monitoring |
+
+Headers are an implementation contract and are repaired before writes. A controlled
+rebuild can recreate all projection rows from DynamoDB. The rebuild is dry-run unless
+an explicit apply confirmation is supplied.
+
+## Data Access Matrix
+
+| Actor | EOI/Application access | Documents | Signatures | Audit/operations |
+| --- | --- | --- | --- | --- |
+| Public visitor | Can open static pages; can submit EOI | None without verified application session | None | None |
+| Verified application family | Its session-bound current application only | Can upload to authorised application folder session | Primary signature only during submission | Own save/status responses only |
+| Verified additional guardian | Frozen review context for its signature task | No document access | Can submit only its assigned signature | Own completion status only |
+| Viewer staff | Dashboard and detailed application review | Metadata in portal; restricted Drive only if separately authorised | Metadata only, no images | Read operational summaries; detailed view is audited |
+| Admissions/Admin staff | Viewer access plus create/resend invitations | Same Drive boundary | Same metadata boundary | Invitation actions and review are audited |
+| Restricted Drive operator | Files within approved enrolment folders | Direct restricted access | Direct restricted access where authorised | No automatic DynamoDB authority from Drive access |
+| Google Sheets editor | Reporting projections | No file access from Sheet alone | Metadata only | Sheet edits do not alter authoritative records |
+| AWS operator | Infrastructure and authoritative stores under AWS account controls | File IDs/metadata, not Google file contents by AWS alone | Metadata, not Drive image content by AWS alone | Backup, restore, logs and alarms |
+
+## Retention, Backup and Recovery
+
+```mermaid
+flowchart TD
+    Main["Main DynamoDB table"] --> PITR1["Point-in-time recovery"]
+    Audit["Append-only audit table"] --> PITR2["Point-in-time recovery"]
+    Main --> Daily["Daily AWS Backup - 35 days"]
+    Audit --> Daily
+    Main --> Monthly["Monthly AWS Backup - 366 days"]
+    Audit --> Monthly
+    Daily --> Vault["KMS-encrypted locked Sydney vault"]
+    Monthly --> Vault
+    Drive["Restricted Google Drive"] --> GoogleRecovery["Google account/version recovery controls"]
+    Sheets["Replaceable Sheets"] --> Rebuild["Rebuild from DynamoDB"]
+```
+
+The AWS backup periods are operational recovery controls, not the approved legal
+retention schedule. A full recovery drill completed on 6 August 2026: both tables were
+restored to isolated names, KMS/schema and aggregate counts matched, the projection
+rebuild passed in dry-run mode, and the temporary tables were deleted.
+
+## Preview-Only Future Workflows
+
+### Offer Acceptance / Enrolment Agreement
+
+Planned screen sequence:
+
+```text
+Acceptance gateway -> OTP -> Select offer -> Student -> Parent/Guardian
+-> Documents -> Conditions -> Primary signature -> Pending signatures
+```
+
+Mapped content includes offered student/year, acceptance declaration, guardians,
+signed Parent and Student Codes of Conduct, 16 agreement clause headings, transfer of
+information, photography/recording permission, ICT policy and guardian signatures.
+Rosewood-approved legal text, document versions, persistence, invitation records,
+emails and audit contracts are not yet implemented.
+
+### Enrolment Agreement Guardian Signing Preview
+
+Mapped sequence:
+
+```text
+Identity -> OTP -> Introduction -> Your Details -> Read-only Review
+-> Ready confirmation -> Sign -> Thank You -> Signed Form
+```
+
+This preview records nothing. It should become a separate state machine and database
+contract rather than reusing Application signature tasks.
+
+### Decline Offer Preview
+
+Mapped sequence:
+
+```text
+Decline gateway -> OTP -> Select offer -> Student and decline reason/destination
+-> Parent/Guardian -> Signature -> Capture boundary
+```
+
+The observed source process ended before a verified completion page, so V6 does not
+invent a final receipt. A future backend must define decline authority, final status,
+notifications, retention and the effect on the offer record.
+
+## Current Decisions and Open Risks
+
+### Implemented Decisions
+
+- EOI and Application remain separate records.
+- Direct invitation is supported and does not require an EOI.
+- EOI linking is explicit and email-bound.
+- DynamoDB is authoritative; Sheets are replaceable projections.
+- Restricted Google Drive is the launch file store.
+- Proof of address is not collected.
+- Application terms and photography permission are deferred to the Enrolment Agreement.
+- GuardDuty, SQL and cross-region replication are outside launch scope.
+
+### Stakeholder Decisions Still Required
+
+1. Approve the Privacy Collection Notice, Privacy Policy, Application declarations,
+   Enrolment Agreement and supporting policy/document versions.
+2. Approve legal retention, deletion, correction, withdrawal and incident-response
+   processes across DynamoDB, Drive, Sheets, SES records and exports.
+3. Replace the shared staff mailbox with named staff identities, approved roles,
+   offboarding and periodic access review.
+4. Decide whether an additional guardian marked "No, do not contact them" remains a
+   required signer. The current implementation counts every entered guardian as
+   required but creates no signing task when contact permission is No; that combination
+   can leave an application permanently `pending_signatures`.
+5. Decide how administrators correct submitted applications and reissue signatures
+   without weakening the frozen-revision evidence.
+6. Define the business process after `submitted`: assessment, decision, offer,
+   acceptance or decline, and family communications.
+7. Implement Acceptance, Enrolment Agreement signing and Decline as separate backend
+   workflows only after their governance contracts are approved.
+8. Decide whether automated upload scanning becomes necessary if volume, risk or file
+   types expand.
+9. Add automatic SES bounce/complaint correlation into Operations records.
+
+## Implementation Route Appendix
+
+| Route | Purpose |
+| --- | --- |
+| `GET /v6/health` | Service and schema health |
+| `POST /v6/eoi` | Validate and submit EOI |
+| `POST /v6/application/access/request-code` | Validate invitation/email and request OTP |
+| `POST /v6/application/access/verify-code` | Consume OTP and create family session |
+| `GET /v6/application/context` | Reload session-bound application context |
+| `PUT /v6/application/draft` | Revisioned section save |
+| `POST /v6/application/documents/start` | Authorise a constrained Drive upload |
+| `POST /v6/application/documents/confirm` | Validate and attach uploaded file metadata |
+| `POST /v6/application/submit` | Freeze revision, save primary signature and submit |
+| `POST /v6/application/signatures/request-code` | Request additional-guardian OTP |
+| `POST /v6/application/signatures/verify-code` | Create signing session for assigned task |
+| `POST /v6/application/signatures/submit` | Validate and append guardian signature |
+| `POST /v6/staff/access/request-code` | Request allowlisted staff OTP |
+| `POST /v6/staff/access/verify-code` | Create role-bound staff session |
+| `GET /v6/staff/dashboard` | Return safe operational summaries |
+| `POST /v6/staff/applications/detail` | Return audited application detail |
+| `POST /v6/staff/invitations` | Create direct or EOI-linked invitation |
+| `POST /v6/staff/invitations/resend` | Rotate token and resend active invitation |
+
+## Related Records
+
+- `README.md` - V6 scope and URLs
+- `PRODUCT-DECISIONS.md` - permanent product decisions
+- `ARCHITECTURE-HARDENING.md` - launch architecture and control choices
+- `STAFF-PORTAL-RUNBOOK.md` - staff operating instructions
+- `RECOVERY-RUNBOOK.md` - backup and recovery procedure
+- `TESTING.md` - frontend, backend, email and recovery evidence
+- `RELEASE-BLOCKERS.md` - governance and production gates
+- `backend/README.md` - technical backend contract
