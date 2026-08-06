@@ -103,12 +103,13 @@ Mobile viewport: 390 x 844.
 
 ## Backend Checks
 
-- eighteen Node tests pass for Google Drive upload/confirmation, legacy-safe document
+- nineteen Node tests pass for Google Drive upload/confirmation, legacy-safe document
   projection headers, direct invitation, explicit EOI linkage, fail-closed link
   errors, linked-email integrity, EOI normalization, conditional needs validation,
   dynamic application fields, Acceptance-field rejection, server-side guardian review
   acknowledgement, staff allowlisting, safe dashboard projection, staff invitation
-  response redaction, staff role restrictions and atomic invitation-token rotation
+  response redaction, staff role restrictions, atomic invitation-token rotation and
+  customer-managed KMS access in the Lambda runtime policy
 - the production deployment bundle builds successfully and both family/admin browser
   scripts pass Node syntax checks
 - the AWS stack deployed successfully and `/v6/health` returns the expected schema
@@ -153,8 +154,28 @@ Mobile viewport: 390 x 844.
   sending an email
 - sign-out returned to the access screen and browser local/session storage remained
   empty
-- the production Lambda recorded no request failures during the verification window;
+- the production Lambda recorded no request failures during the original verification
+  window;
   its CloudWatch error alarm remained `OK`
+
+## KMS Runtime Permission Incident
+
+Resolved 6 August 2026 after the staff portal returned the generic service-error
+message.
+
+- CloudWatch identified `kms:Decrypt` access denied for the Lambda execution role when
+  it accessed the customer-managed-KMS-encrypted DynamoDB tables
+- the health endpoint remained available because it does not read DynamoDB, while staff
+  OTP creation and the scheduled outbox reader failed closed
+- the CloudFormation runtime role now has the required encrypt, decrypt, re-encrypt,
+  data-key and key-description actions scoped only to the Rosewood records key
+- the reviewed change set updated the role and Lambda in place; no table, key, backup
+  vault or stored record was replaced
+- the scheduled outbox reader completed successfully after deployment
+- an allowlisted staff challenge was created and the new OTP arrived at
+  `info@ffe.org.au` from `enrolment@ffe.org.au`
+- the infrastructure regression test prevents removal of the scoped runtime KMS
+  permissions from the template
 
 ## Email Checks
 
