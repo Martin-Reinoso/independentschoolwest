@@ -524,3 +524,13 @@ submitted, reopened or changed during release verification.
   `2026.7` contracts
 - the Lambda error alarm is `OK`, the EventBridge outbox rule remains enabled at one
   minute and the same-region daily/monthly backup plan remains present
+- release commit `ffd8120` was published to `main`; GitHub Pages run `31217458031`
+  completed successfully
+- all nine live family, staff and guardian-signing HTML/JavaScript/CSS assets matched
+  the tested release files byte for byte after deployment
+- public browser checks at 390 x 844 and 1440 x 1000 found no horizontal overflow;
+  the live child selector, Student, Parent / Guardian, Conditions, Signature and staff
+  gateway layouts remained readable without creating or changing an applicant record
+- the public health endpoint returned `ok`, schema
+  `rosewood-v6-2026-08-08-form-v7`, EOI `rosewood-eoi-2026.7` and Application
+  `rosewood-application-2026.7` after the Pages release
