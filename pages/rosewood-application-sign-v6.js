@@ -32,10 +32,23 @@
     return `<div class="section-intro"><p class="eyebrow">Identity</p><h2>Enter your code</h2><p class="lead">A six-digit code has been sent to the invited email address and expires after 10 minutes.</p></div><label class="field"><span>Verification code <span class="required">*</span></span><input name="code" inputmode="numeric" maxlength="6" value="${esc(state.code)}" required></label><p class="resend-status" aria-live="polite">Use the most recent code sent by Rosewood College.</p><div class="inline-actions"><button type="button" class="button button-secondary" data-resend>Resend code</button></div>${actions("Verify and continue")}`;
   }
 
+  function reviewGroup(group) {
+    const items = Array.isArray(group?.items) ? group.items : [];
+    return `<article class="application-review-group"><header><h4>${esc(group?.title || "Application information")}</h4>${group?.badge ? `<span class="review-badge">${esc(group.badge)}</span>` : ""}</header><dl>${items.map(item => `<div class="review-answer"><dt>${esc(item?.label || "Answer")}</dt><dd>${esc(item?.value || "Not provided")}</dd></div>`).join("")}</dl></article>`;
+  }
+
+  function reviewSection(section, index) {
+    const groups = Array.isArray(section?.groups) ? section.groups : [];
+    const headingId = `review-section-${index}`;
+    return `<section class="application-review-section" aria-labelledby="${headingId}"><header class="application-review-heading"><span>${String(index + 1).padStart(2, "0")}</span><h3 id="${headingId}">${esc(section?.title || "Application section")}</h3></header>${section?.note ? `<p class="application-review-note">${esc(section.note)}</p>` : ""}<div class="application-review-groups">${groups.map(reviewGroup).join("")}</div></section>`;
+  }
+
   function review() {
     const context = state.context;
-    const conditions = context.review.conditions;
-    return `<div class="section-intro"><p class="eyebrow">Read-only review</p><h2>Review the submitted application</h2><p class="lead">You are signing revision ${esc(context.revision)} of the Application for Enrolment. Answers cannot be changed from this signing page.</p></div><div class="signing-review-grid"><article class="review-card"><h3>Student</h3><dl><dt>Name</dt><dd>${esc(context.studentName)}</dd><dt>Application reference</dt><dd>${esc(context.reference)}</dd></dl></article><article class="review-card"><h3>Your signing details</h3><dl><dt>Name</dt><dd>${esc(context.signerName)}</dd><dt>Email</dt><dd>${esc(context.signerEmail)}</dd></dl></article><article class="review-card"><h3>Previous school permission</h3><p>${esc(conditions.previous_school_permission || "Not provided")}</p></article><article class="review-card"><h3>Fee responsibility</h3><p>${esc(conditions.fee_option || "Not provided")}</p></article></div><label class="check-line"><input name="ready" type="checkbox" value="Confirmed" required><span>I have reviewed the submitted application and am ready to proceed to signing. <span class="required">*</span></span></label>${actions("Continue to sign")}`;
+    const application = context.review || {};
+    const sections = Array.isArray(application.sections) ? application.sections : [];
+    if (!sections.length) return `<div class="section-intro"><p class="eyebrow">Read-only review</p><h2>The submitted application is not available to review</h2><p class="lead">Do not proceed to signing without the complete application. Return to verification and try again, or contact Rosewood College for assistance.</p></div><div class="notice legal-note"><strong>Review required</strong><p>The complete frozen application could not be loaded. No signature has been recorded.</p></div><div class="signing-actions"><button type="button" class="button button-secondary" data-back>Back to verification</button></div>`;
+    return `<div class="section-intro"><p class="eyebrow">Read-only review</p><h2>Review the complete submitted application</h2><p class="lead">Review every section below before signing. This is revision ${esc(context.revision)} of the Application for Enrolment and its answers cannot be changed from this page.</p></div><p class="review-record-line"><span><strong>Student:</strong> ${esc(context.studentName)}</span><span><strong>Application reference:</strong> ${esc(context.reference)}</span><span><strong>Submitted:</strong> ${esc(application.submittedAt || "Recorded")}</span><span><strong>Signing as:</strong> ${esc(context.signerName)} (${esc(context.signerEmail)})</span></p><div class="application-review">${sections.map(reviewSection).join("")}</div><label class="check-line review-confirmation"><input name="ready" type="checkbox" value="Confirmed" required><span>I have reviewed the complete submitted application and am ready to proceed to signing. <span class="required">*</span></span></label>${actions("Continue to sign")}`;
   }
 
   function sign() {

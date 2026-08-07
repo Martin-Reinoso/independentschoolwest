@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { buildApplicationReview } from "./application-review.mjs";
 import { applicationComplete, applicationInvitation, applicationOtp, applicationSubmitted, eoiAcknowledgement, signatureInvitation, signatureOtp, staffOtp } from "./email-templates.mjs";
 import { currentFormDefinition, FORM_DEFINITIONS, getFormDefinition, recordFormReference } from "./form-definitions.mjs";
 import { SCHEMA_VERSION, normalizeEmail, safeText, sanitizeApplication, splitApplication, truthy, validateApplicationForSubmission, validateEoi } from "./schema.mjs";
@@ -858,8 +859,12 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
 
   async function signatureContext(task) {
     const app = await store.getApplication(task.applicationId);
+    if (!app || app.status !== "pending_signatures" || task.revisionHash !== app.revisionHash) throw appError(409, "SIGNATURE_TASK_UNAVAILABLE", "This signing request is no longer available.");
+    requireRecordDefinition(app, "application");
     const index = task.guardianIndex;
-    return { applicationId: app.id, reference: app.reference, revision: app.revision, studentName: `${app.values.student_first} ${app.values.student_last}`, signerName: `${app.values[`app_guardian_${index}_first`]} ${app.values[`app_guardian_${index}_last`]}`.trim(), signerEmail: task.email, declarations: { ip: "I acknowledge that my network address will be recorded securely for administrative, security and legal compliance purposes.", terms: "I have reviewed the Application for Enrolment and declare that I have read, understood and consented to the matters it contains." }, review: { student: studentRow(app, app.values), conditions: conditionsRow(app, app.values) } };
+    const review = buildApplicationReview(app, index);
+    review.conditions = { previous_school_permission: app.values.previous_school_permission, fee_option: app.values.fee_option };
+    return { reference: app.reference, revision: app.revision, studentName: `${app.values.student_first} ${app.values.student_last}`, signerName: `${app.values[`app_guardian_${index}_first`]} ${app.values[`app_guardian_${index}_last`]}`.trim(), signerEmail: task.email, declarations: { ip: "I acknowledge that my network address will be recorded securely for administrative, security and legal compliance purposes.", terms: "I have reviewed the Application for Enrolment and declare that I have read, understood and consented to the matters it contains." }, review };
   }
 
   async function submitSignature(event) {

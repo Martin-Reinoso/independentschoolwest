@@ -80,6 +80,13 @@ shows **Awaiting Parent/Guardian Signature** until every required signature is r
 and uses **Completed** only for the final `submitted` state. A dry-run-first operational
 command in `backend/scripts/repair-missing-signature-invitations.mjs` can recover a
 missing task without rewriting the frozen application answers.
+After the invited guardian verifies their email OTP, the dedicated signing page shows
+the complete frozen application as read-only sections: student, nationality and
+citizenship, additional needs, sacraments, medical details, every parent/guardian,
+emergency contacts, document file names, conditions and the recorded primary signature.
+The response omits internal record IDs, storage locations, revision hashes, network
+fingerprints and signature image identifiers. The guardian confirms review only after
+the complete application and then proceeds to the separate signing step.
 Acceptance, decline and post-offer Enrolment Agreement frames cannot write to the
 backend, send messages or create records.
 
