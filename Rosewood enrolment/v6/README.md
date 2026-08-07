@@ -70,6 +70,10 @@ short pause and during continuous typing. Selecting a document starts its upload
 immediately and displays per-file progress and inline retryable errors. Next and **Save
 and continue later** wait for any active transfer, flush the draft and, for save-later,
 revoke the browser sessions. Returning after OTP resumes the last acknowledged section.
+An unsigned drawing is kept only in the current browser session, survives navigation
+between application sections and is labelled `Signature ready`; it is recorded only
+after successful final validation and submission. Missing final answers are identified
+by field and section, with a direct review action and inline highlight.
 Acceptance, decline and post-offer Enrolment Agreement frames cannot write to the
 backend, send messages or create records.
 
