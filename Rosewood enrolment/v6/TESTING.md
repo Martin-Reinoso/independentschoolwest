@@ -273,7 +273,7 @@ Verified in production on 8 August 2026 without printing or exporting family ans
 
 ## Complete Guardian Review Release
 
-Verified locally on 8 August 2026 with synthetic answers only.
+Verified locally and in production on 8 August 2026 with synthetic answers only.
 
 - after OTP verification, the signing page renders ten read-only sections: Student,
   Nationality and Citizenship, General / Additional Needs, Sacraments, Medical Details,
@@ -289,6 +289,18 @@ Verified locally on 8 August 2026 with synthetic answers only.
 - signing assets are cache-versioned as JavaScript `v=2` and CSS `v=2`
 - forty-one Node tests pass, including the complete review projection, verified signing
   response boundary and browser renderer
+- the reviewed CloudFormation change set updated the Lambda code in place; no DynamoDB,
+  KMS, backup, staging, secret or Google configuration resource changed
+- CloudFormation reached `UPDATE_COMPLETE`, Lambda remained `Active` with a successful
+  update, `/v6/health` retained both `2026.4` form versions, the outbox schedule remained
+  enabled and the Lambda error alarm remained `OK`
+- GitHub Pages completed the `main` release and the live HTML, CSS and JavaScript hashes
+  exactly match the committed files
+- a live-origin synthetic OTP response rendered all 10 sections and 19 information
+  groups with the current guardian marked; desktop and 390 x 844 mobile checks had no
+  horizontal overflow and no browser warnings or errors
+- no real task token, OTP, family answer, document or signature was used in the release
+  check
 
 ## Staff Portal Checks
 
