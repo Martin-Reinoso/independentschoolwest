@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { applicationComplete, applicationInvitation, applicationOtp, applicationSubmitted, eoiAcknowledgement, signatureInvitation, signatureOtp, staffOtp } from "./email-templates.mjs";
+import { currentFormDefinition, getFormDefinition, recordFormReference } from "./form-definitions.mjs";
 import { SCHEMA_VERSION, normalizeEmail, safeText, sanitizeApplication, splitApplication, truthy, validateApplicationForSubmission, validateEoi } from "./schema.mjs";
 import { sheetOperation } from "./google-sheets.mjs";
 
@@ -10,6 +11,12 @@ const INVITATION_LIFETIME_MS = 14 * 86400_000;
 const MAX_FAMILY_APPLICATIONS = 8;
 const APPLICATION_SESSION_IDLE_MS = 20 * 60_000;
 const APPLICATION_SESSION_ABSOLUTE_MS = 8 * 60 * 60_000;
+const APPLICATION_VALIDATORS = new Map([
+  [currentFormDefinition("application").formVersion, { sanitize: sanitizeApplication, validate: validateApplicationForSubmission }]
+]);
+const EOI_VALIDATORS = new Map([
+  [currentFormDefinition("eoi").formVersion, validateEoi]
+]);
 
 function appError(status, code, message, details) {
   return Object.assign(new Error(message), { status, code, details });
@@ -23,6 +30,60 @@ function id(prefix) { return `${prefix}-${token(10)}`; }
 function iso(now) { return new Date(now).toISOString(); }
 function json(value) { return JSON.stringify(value ?? {}); }
 function invitationDate(value) { return new Date(value).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric", timeZone: "Australia/Melbourne" }); }
+
+function projectionVersion(record, workflow) {
+  const reference = recordFormReference(record, workflow);
+  return { schema_version: reference.schemaVersion || SCHEMA_VERSION, form_version: reference.formVersion, form_definition_hash: reference.formDefinitionHash };
+}
+
+async function ensureDefinition(store, workflow, formVersion) {
+  const definition = getFormDefinition(workflow, formVersion);
+  if (!definition) throw appError(409, "FORM_VERSION_UNSUPPORTED", "This form version is not available. Contact Rosewood College before continuing.");
+  if (store.ensureFormDefinition) await store.ensureFormDefinition(definition);
+  return definition;
+}
+
+function requireRecordDefinition(record, workflow, request = {}) {
+  const reference = recordFormReference(record, workflow);
+  const definition = getFormDefinition(workflow, reference.formVersion);
+  if (!definition) throw appError(409, "FORM_VERSION_UNSUPPORTED", "This form version is not available. Contact Rosewood College before continuing.", { formVersion: reference.formVersion });
+  if (reference.formDefinitionHash && reference.formDefinitionHash !== definition.definitionHash) throw appError(409, "FORM_DEFINITION_MISMATCH", "The saved form contract does not match this release. No information was changed.");
+  if (request.formVersion && request.formVersion !== reference.formVersion) throw appError(409, "FORM_VERSION_MISMATCH", "The form changed before this save. Refresh the application and review the saved information.");
+  if (request.formDefinitionHash && request.formDefinitionHash !== definition.definitionHash) throw appError(409, "FORM_DEFINITION_MISMATCH", "The form contract changed before this save. Refresh the application and review the saved information.");
+  return definition;
+}
+
+function applicationValidator(definition) {
+  const validator = APPLICATION_VALIDATORS.get(definition.formVersion);
+  if (!validator) throw appError(409, "FORM_VALIDATOR_UNAVAILABLE", "This saved form version cannot be processed by the current service. No information was changed.");
+  return validator;
+}
+
+function changedFields(previous = {}, next = {}) {
+  return [...new Set([...Object.keys(previous), ...Object.keys(next)])]
+    .filter(key => JSON.stringify(previous[key]) !== JSON.stringify(next[key]))
+    .sort();
+}
+
+function applicationRevision(app, { kind, values = app.values || {}, savedAt = app.updatedAt || app.createdAt, saveMode = "", changed = [] } = {}) {
+  const reference = recordFormReference(app, "application");
+  return {
+    applicationId: app.id,
+    revision: Number(app.revision || 0),
+    kind,
+    status: app.status || "invited",
+    screen: Number(app.screen || 0),
+    stage: app.currentStage || "gateway",
+    percentComplete: Number(app.percentComplete || 0),
+    guardianCount: Number(app.guardianCount || 1),
+    emergencyCount: Number(app.emergencyCount || 2),
+    savedAt,
+    saveMode,
+    changedFields: changed,
+    values,
+    ...reference
+  };
+}
 
 function parseBody(event, maxBytes = 1_500_000) {
   const raw = event?.isBase64Encoded ? Buffer.from(event.body || "", "base64").toString("utf8") : event?.body || "{}";
@@ -49,30 +110,30 @@ function signatureBytes(dataUrl) {
 
 export function mapEoiRow(record) {
   const v = record.values;
-  return { eoi_id: record.id, submitted_at: record.submittedAt, status: record.status, primary_contact_id: record.contactId, student_id: record.studentId, language: v.eoi_language, salutation: v.eoi_title, primary_contact_first_name: v.eoi_first, primary_contact_last_name: v.eoi_last, relationship: v.eoi_relationship, email: v.eoi_email, mobile_phone: v.eoi_mobile, contact_address: v.eoi_address, suburb: v.eoi_suburb, state: v.eoi_state, postcode: v.eoi_postcode, country: v.eoi_country, student_first_name: v.eoi_student_first, student_last_name: v.eoi_student_last, date_of_birth: v.eoi_dob, gender: v.eoi_gender, religion: v.eoi_religion, entry_year: v.eoi_year, entry_year_level: v.eoi_level, current_school: v.eoi_current_school, current_year_level: v.eoi_current_year, additional_needs: v.eoi_needs, need_categories: v.eoi_need_category, family_connection: v.eoi_family_connection, other_children: v.eoi_other_children, discovery_source: v.eoi_discovery, additional_information: v.eoi_information, snapshot_file_id: record.snapshotFileId, network_fingerprint: record.networkFingerprint, schema_version: SCHEMA_VERSION, reference: record.reference };
+  return { eoi_id: record.id, submitted_at: record.submittedAt, status: record.status, primary_contact_id: record.contactId, student_id: record.studentId, language: v.eoi_language, salutation: v.eoi_title, primary_contact_first_name: v.eoi_first, primary_contact_last_name: v.eoi_last, relationship: v.eoi_relationship, email: v.eoi_email, mobile_phone: v.eoi_mobile, contact_address: v.eoi_address, suburb: v.eoi_suburb, state: v.eoi_state, postcode: v.eoi_postcode, country: v.eoi_country, student_first_name: v.eoi_student_first, student_last_name: v.eoi_student_last, date_of_birth: v.eoi_dob, gender: v.eoi_gender, religion: v.eoi_religion, entry_year: v.eoi_year, entry_year_level: v.eoi_level, current_school: v.eoi_current_school, current_year_level: v.eoi_current_year, additional_needs: v.eoi_needs, need_categories: v.eoi_need_category, family_connection: v.eoi_family_connection, other_children: v.eoi_other_children, discovery_source: v.eoi_discovery, additional_information: v.eoi_information, snapshot_file_id: record.snapshotFileId, network_fingerprint: record.networkFingerprint, reference: record.reference, ...projectionVersion(record, "eoi") };
 }
 
 export function mapApplicationRow(app) {
-  return { application_id: app.id, invitation_id: app.invitationId, source_eoi_id: app.sourceEoiId, status: app.status, reference: app.reference, recipient_email: app.recipientEmail, student_id: app.studentId, student_first_name: app.values.student_first, student_last_name: app.values.student_last, created_at: app.createdAt, updated_at: app.updatedAt, submitted_at: app.submittedAt, completed_at: app.completedAt, revision: app.revision, required_signature_count: app.requiredSignatureCount || 0, completed_signature_count: app.signatures?.length || 0, snapshot_file_id: app.snapshotFileId, schema_version: SCHEMA_VERSION };
+  return { application_id: app.id, invitation_id: app.invitationId, source_eoi_id: app.sourceEoiId, status: app.status, reference: app.reference, recipient_email: app.recipientEmail, student_id: app.studentId, student_first_name: app.values.student_first, student_last_name: app.values.student_last, created_at: app.createdAt, updated_at: app.updatedAt, submitted_at: app.submittedAt, completed_at: app.completedAt, revision: app.revision, required_signature_count: app.requiredSignatureCount || 0, completed_signature_count: app.signatures?.length || 0, snapshot_file_id: app.snapshotFileId, ...projectionVersion(app, "application") };
 }
 
 export function studentRow(app, values) {
   const sacraments = Object.fromEntries(Object.entries(values).filter(([key]) => key.startsWith("sacrament_")));
-  return { application_id: app.id, student_id: app.studentId, first_name: values.student_first, middle_name: values.student_middle, last_name: values.student_last, preferred_name: values.student_preferred, date_of_birth: values.student_dob, gender: values.student_gender, religion: values.student_religion, religion_other: values.student_religion_other, current_year_level: values.current_level, entry_year: values.entry_year, entry_year_level: values.entry_level, current_school: values.current_school, current_school_other: values.current_school_other, share_address_with_guardians: values.student_address_share, care_arrangement: values.care_arrangement, care_arrangement_other: values.care_other, shared_parenting_schedule: values.shared_parenting, address: values.student_address, suburb: values.student_suburb, state: values.student_state, postcode: values.student_postcode, country: values.student_country, future_siblings: values.future_siblings, future_sibling_count: values.future_sibling_count, country_of_residence: values.residence_country, country_of_birth: values.birth_country, nationality: values.nationality, ethnicity: values.ethnicity, arrival_or_return_date: values.arrival_date, residency_status: values.residency_status, australian_citizen: values.australian_citizen, residency_evidence: values.residency_evidence, visa_subclass: values.visa_subclass, visa_expiry: values.visa_expiry, previous_visa_subclass: values.previous_visa, indigenous_status: values.indigenous_status, main_language: values.main_language, other_languages: values.other_languages, additional_needs: values.additional_needs, need_categories: values.need_categories, need_other: values.need_other, health_professionals: values.professional_categories, health_professional_other: values.professional_other, reports_attached: values.reports_attached, ndis_support: values.ndis_support, court_or_parenting_orders: values.court_orders, other_relevant_information: values.other_relevant_information, parish: values.parish, sacraments_json: sacraments, medical_conditions: values.medical_conditions, other_medical_condition: values.other_medical_condition, condition_details: values.condition_details, allergy_details: values.allergy_details, anaphylaxis_risk: values.anaphylaxis_risk, anaphylaxis_device: values.anaphylaxis_device, immunisation_status: values.immunisation, humanitarian_health_check: values.humanitarian_health, doctor_name: values.doctor_name, doctor_practice_address: values.doctor_address, doctor_phone: values.doctor_phone, medicare_number: values.medicare_number, medicare_expiry: values.medicare_expiry, private_health_insurance: values.private_insurance, ambulance_cover: values.ambulance_cover, health_care_card: values.healthcare_card, schema_version: SCHEMA_VERSION };
+  return { application_id: app.id, student_id: app.studentId, first_name: values.student_first, middle_name: values.student_middle, last_name: values.student_last, preferred_name: values.student_preferred, date_of_birth: values.student_dob, gender: values.student_gender, religion: values.student_religion, religion_other: values.student_religion_other, current_year_level: values.current_level, entry_year: values.entry_year, entry_year_level: values.entry_level, current_school: values.current_school, current_school_other: values.current_school_other, share_address_with_guardians: values.student_address_share, care_arrangement: values.care_arrangement, care_arrangement_other: values.care_other, shared_parenting_schedule: values.shared_parenting, address: values.student_address, suburb: values.student_suburb, state: values.student_state, postcode: values.student_postcode, country: values.student_country, future_siblings: values.future_siblings, future_sibling_count: values.future_sibling_count, country_of_residence: values.residence_country, country_of_birth: values.birth_country, nationality: values.nationality, ethnicity: values.ethnicity, arrival_or_return_date: values.arrival_date, residency_status: values.residency_status, australian_citizen: values.australian_citizen, residency_evidence: values.residency_evidence, visa_subclass: values.visa_subclass, visa_expiry: values.visa_expiry, previous_visa_subclass: values.previous_visa, indigenous_status: values.indigenous_status, main_language: values.main_language, other_languages: values.other_languages, additional_needs: values.additional_needs, need_categories: values.need_categories, need_other: values.need_other, health_professionals: values.professional_categories, health_professional_other: values.professional_other, reports_attached: values.reports_attached, ndis_support: values.ndis_support, court_or_parenting_orders: values.court_orders, other_relevant_information: values.other_relevant_information, parish: values.parish, sacraments_json: sacraments, medical_conditions: values.medical_conditions, other_medical_condition: values.other_medical_condition, condition_details: values.condition_details, allergy_details: values.allergy_details, anaphylaxis_risk: values.anaphylaxis_risk, anaphylaxis_device: values.anaphylaxis_device, immunisation_status: values.immunisation, humanitarian_health_check: values.humanitarian_health, doctor_name: values.doctor_name, doctor_practice_address: values.doctor_address, doctor_phone: values.doctor_phone, medicare_number: values.medicare_number, medicare_expiry: values.medicare_expiry, private_health_insurance: values.private_insurance, ambulance_cover: values.ambulance_cover, health_care_card: values.healthcare_card, ...projectionVersion(app, "application") };
 }
 
 export function guardianRow(app, guardian, index, signatureStatus = "pending") {
-  return { application_id: app.id, guardian_id: app.guardianIds[index], position: index + 1, share_with_other_contacts: guardian.share, salutation: guardian.title, first_name: guardian.first, last_name: guardian.last, email: guardian.email, mobile_phone: guardian.mobile, home_phone: guardian.home, work_phone: guardian.work, relationship: guardian.relationship, contact_type: guardian.contact_type, marital_status: guardian.marital, religion: guardian.religion, sms_messaging: guardian.sms, health_care_card: guardian.healthcare, health_care_card_number: guardian.healthcare_number, health_care_card_expiry: guardian.healthcare_expiry, residential_address: guardian.address, suburb: guardian.suburb, state: guardian.state, postcode: guardian.postcode, country: guardian.country, postal_same_as_residential: guardian.postal_same, postal_address: guardian.postal_address, postal_suburb: guardian.postal_suburb, postal_state: guardian.postal_state, postal_postcode: guardian.postal_postcode, postal_country: guardian.postal_country, occupational_group: guardian.occupation_group, occupation: guardian.occupation, employer: guardian.employer, school_level_education: guardian.school_education, university_further_education: guardian.further_education, country_of_birth: guardian.birth_country, nationality: guardian.nationality, ethnicity: guardian.ethnicity, languages: guardian.languages, residency_status: guardian.residency, visa_subclass: guardian.visa_subclass, visa_expiry: guardian.visa_expiry, indigenous_status: guardian.indigenous, contact_permission: guardian.permission || "Yes", signature_required: index < app.requiredSignatureCount ? "Yes" : "No", signature_status: signatureStatus, schema_version: SCHEMA_VERSION };
+  return { application_id: app.id, guardian_id: app.guardianIds[index], position: index + 1, share_with_other_contacts: guardian.share, salutation: guardian.title, first_name: guardian.first, last_name: guardian.last, email: guardian.email, mobile_phone: guardian.mobile, home_phone: guardian.home, work_phone: guardian.work, relationship: guardian.relationship, contact_type: guardian.contact_type, marital_status: guardian.marital, religion: guardian.religion, sms_messaging: guardian.sms, health_care_card: guardian.healthcare, health_care_card_number: guardian.healthcare_number, health_care_card_expiry: guardian.healthcare_expiry, residential_address: guardian.address, suburb: guardian.suburb, state: guardian.state, postcode: guardian.postcode, country: guardian.country, postal_same_as_residential: guardian.postal_same, postal_address: guardian.postal_address, postal_suburb: guardian.postal_suburb, postal_state: guardian.postal_state, postal_postcode: guardian.postal_postcode, postal_country: guardian.postal_country, occupational_group: guardian.occupation_group, occupation: guardian.occupation, employer: guardian.employer, school_level_education: guardian.school_education, university_further_education: guardian.further_education, country_of_birth: guardian.birth_country, nationality: guardian.nationality, ethnicity: guardian.ethnicity, languages: guardian.languages, residency_status: guardian.residency, visa_subclass: guardian.visa_subclass, visa_expiry: guardian.visa_expiry, indigenous_status: guardian.indigenous, contact_permission: guardian.permission || "Yes", signature_required: index < app.requiredSignatureCount ? "Yes" : "No", signature_status: signatureStatus, ...projectionVersion(app, "application") };
 }
 
 export function emergencyRow(app, contact, index) {
-  return { application_id: app.id, emergency_contact_id: `${app.id}-emergency-${index + 1}`, position: index + 1, first_name: contact.first, last_name: contact.last, relationship: contact.relationship, mobile_phone: contact.mobile, home_phone: contact.home, work_phone: contact.work, email: contact.email, schema_version: SCHEMA_VERSION };
+  return { application_id: app.id, emergency_contact_id: `${app.id}-emergency-${index + 1}`, position: index + 1, first_name: contact.first, last_name: contact.last, relationship: contact.relationship, mobile_phone: contact.mobile, home_phone: contact.home, work_phone: contact.work, email: contact.email, ...projectionVersion(app, "application") };
 }
 
 export function conditionsRow(app, values) {
   const both = values.fee_option === "Both Parents / Guardian";
   const one = values.fee_option === "One Parent / Guardian";
-  return { application_id: app.id, previous_school_permission: values.previous_school_permission, previous_school_name: values.previous_school_name, previous_school_address: values.previous_school_address, previous_school_interstate: values.previous_school_interstate, fee_option: values.fee_option, fee_account_recipient: both ? values.fee_both_nominee : one ? values.fee_one_nominee : "", guardian_a_name: values.fee_guardian_a, guardian_a_percentage: values.fee_guardian_a_percent, guardian_b_name: values.fee_guardian_b, guardian_b_percentage: values.fee_guardian_b_percent, fee_responsibility_date: values.fee_both_date || values.fee_one_date || values.fee_split_date, discovery_source: values.application_discovery, influence_factors: values.application_influences, schema_version: SCHEMA_VERSION };
+  return { application_id: app.id, previous_school_permission: values.previous_school_permission, previous_school_name: values.previous_school_name, previous_school_address: values.previous_school_address, previous_school_interstate: values.previous_school_interstate, fee_option: values.fee_option, fee_account_recipient: both ? values.fee_both_nominee : one ? values.fee_one_nominee : "", guardian_a_name: values.fee_guardian_a, guardian_a_percentage: values.fee_guardian_a_percent, guardian_b_name: values.fee_guardian_b, guardian_b_percentage: values.fee_guardian_b_percent, fee_responsibility_date: values.fee_both_date || values.fee_one_date || values.fee_split_date, discovery_source: values.application_discovery, influence_factors: values.application_influences, ...projectionVersion(app, "application") };
 }
 
 function createAuditEvent({ workflow, recordId, type, at, actorType = "family", actorId = "", details = {}, stage = "", invitationId = "" }) {
@@ -118,6 +179,7 @@ async function getInvitationApplications(store, invitation) {
 
 export async function createApplicationInvitation({ store, recipientEmail, firstName = "", lastName = "", sourceEoiId = "", createdBy = "staff-cli", applicationUrl, clock = () => Date.now() }) {
   const now = clock();
+  const definition = await ensureDefinition(store, "application", currentFormDefinition("application").formVersion);
   const email = normalizeEmail(recipientEmail);
   if (!/^\S+@\S+\.\S+$/.test(email)) throw appError(422, "INVALID_EMAIL", "Provide a valid recipient email.");
   const eoi = sourceEoiId ? await store.getEoi(sourceEoiId) : null;
@@ -136,8 +198,9 @@ export async function createApplicationInvitation({ store, recipientEmail, first
   const tokenHash = sha256(rawToken);
   const displayFirst = eoi?.values.eoi_first || firstName;
   const displayLast = eoi?.values.eoi_last || lastName || "";
-  const invitation = { id: invitationId, applicationId, applicationIds: [applicationId], familyRevision: 0, contactId, studentId, recipientEmail: email, firstName: displayFirst, lastName: displayLast, sourceEoiId: sourceEoiId || "", status: "active", createdAt, expiresAt, firstSentAt: createdAt, lastSentAt: createdAt, sendCount: 1, tokenHash };
-  const application = { id: applicationId, invitationId, sourceEoiId: sourceEoiId || "", contactId, studentId, recipientEmail: email, status: "invited", revision: 0, values, guardianCount: 2, emergencyCount: 2, documents: {}, signatures: [], guardianIds: [id("guardian"), id("guardian")], createdAt, updatedAt: createdAt, schemaVersion: SCHEMA_VERSION };
+  const formReference = { formVersion: definition.formVersion, formDefinitionHash: definition.definitionHash, schemaVersion: definition.schemaVersion };
+  const invitation = { id: invitationId, applicationId, applicationIds: [applicationId], familyRevision: 0, contactId, studentId, recipientEmail: email, firstName: displayFirst, lastName: displayLast, sourceEoiId: sourceEoiId || "", status: "active", createdAt, expiresAt, firstSentAt: createdAt, lastSentAt: createdAt, sendCount: 1, tokenHash, ...formReference };
+  const application = { id: applicationId, invitationId, sourceEoiId: sourceEoiId || "", contactId, studentId, recipientEmail: email, status: "invited", revision: 0, values, guardianCount: 2, emergencyCount: 2, documents: {}, signatures: [], guardianIds: [id("guardian"), id("guardian")], createdAt, updatedAt: createdAt, ...formReference };
   const invitationUrl = `${applicationUrl}${applicationUrl.includes("?") ? "&" : "?"}workflow=application&invite=${encodeURIComponent(rawToken)}`;
   const studentFirst = eoi?.values.eoi_student_first || "";
   const studentLast = eoi?.values.eoi_student_last || "";
@@ -146,15 +209,15 @@ export async function createApplicationInvitation({ store, recipientEmail, first
   const audit = createAuditEvent({ workflow: "operations", recordId: applicationId, type: eoi ? "application.invited_from_eoi" : "application.invited_directly", at: createdAt, actorType: "staff", actorId: createdBy, details: { invitationId, sourceEoiId: sourceEoiId || null } });
   const operations = [
     sheetOperation("operations", "Contacts", { contact_id: contactId, email, first_name: displayFirst, last_name: displayLast, mobile_phone: eoi?.values.eoi_mobile || "", source: eoi ? "eoi" : "direct_invitation", created_at: eoi?.submittedAt || createdAt, updated_at: createdAt, schema_version: SCHEMA_VERSION }, ["contact_id"]),
-    sheetOperation("operations", "Application Invitations", { invitation_id: invitationId, application_id: applicationId, application_ids_json: [applicationId], recipient_contact_id: contactId, recipient_email: email, student_id: studentId, source_eoi_id: sourceEoiId, status: "active", created_at: createdAt, expires_at: iso(expiresAt), first_sent_at: createdAt, last_sent_at: createdAt, send_count: 1, schema_version: SCHEMA_VERSION }, ["invitation_id"]),
-    sheetOperation("operations", "Progress", { application_id: applicationId, current_stage: "gateway", status: "invited", revision: 0, last_activity_at: createdAt, percent_complete: 0, schema_version: SCHEMA_VERSION }, ["application_id"]),
+    sheetOperation("operations", "Application Invitations", { invitation_id: invitationId, application_id: applicationId, application_ids_json: [applicationId], recipient_contact_id: contactId, recipient_email: email, student_id: studentId, source_eoi_id: sourceEoiId, status: "active", created_at: createdAt, expires_at: iso(expiresAt), first_sent_at: createdAt, last_sent_at: createdAt, send_count: 1, ...projectionVersion(application, "application") }, ["invitation_id"]),
+    sheetOperation("operations", "Progress", { application_id: applicationId, current_stage: "gateway", status: "invited", revision: 0, last_activity_at: createdAt, percent_complete: 0, ...projectionVersion(application, "application") }, ["application_id"]),
     sheetOperation("application", "Applications", mapApplicationRow(application), ["application_id"]),
     auditSheetOperation(audit),
     emailEvent({ messageType: "application_invitation", workflow: "application", recordId: applicationId, recipientEmail: email, at: createdAt })
   ];
   if (studentName) operations.splice(1, 0, sheetOperation("operations", "Students", { student_id: studentId, first_name: studentFirst, last_name: studentLast, date_of_birth: eoi?.values.eoi_dob || "", source: "eoi", created_at: eoi?.submittedAt || createdAt, updated_at: createdAt, schema_version: SCHEMA_VERSION }, ["student_id"]));
-  if (eoi) operations.push(sheetOperation("operations", "Workflow Links", { link_id: id("link"), source_workflow: "eoi", source_record_id: sourceEoiId, target_workflow: "application", target_record_id: applicationId, linked_by: createdBy, linked_at: createdAt, prefill_fields_json: Object.keys(values), schema_version: SCHEMA_VERSION }, ["link_id"]));
-  await store.createInvitation({ invitation, tokenHash, application, outboxEvents: [emailOutbox({ to: email, ...message, tags: { workflow: "application", message_type: "invitation" } }, now), ...operations.map(operation => sheetOutbox(operation, now))], auditEvents: [audit] });
+  if (eoi) operations.push(sheetOperation("operations", "Workflow Links", { link_id: id("link"), source_workflow: "eoi", source_record_id: sourceEoiId, target_workflow: "application", target_record_id: applicationId, linked_by: createdBy, linked_at: createdAt, prefill_fields_json: Object.keys(values), ...projectionVersion(application, "application") }, ["link_id"]));
+  await store.createInvitation({ invitation, tokenHash, application, revisionRecord: applicationRevision(application, { kind: "created", values, savedAt: createdAt }), outboxEvents: [emailOutbox({ to: email, ...message, tags: { workflow: "application", message_type: "invitation" } }, now), ...operations.map(operation => sheetOutbox(operation, now))], auditEvents: [audit] });
   return { applicationId, invitationId, invitationUrl, sourceEoiId: sourceEoiId || null, recipientEmail: email };
 }
 
@@ -178,7 +241,7 @@ export async function resendApplicationInvitation({ store, invitationId, created
   const message = applicationInvitation({ firstName, studentName, entryLevel: application.values?.entry_level || "", entryYear: application.values?.entry_year || "", invitationUrl, expiresAt: invitationDate(expiresAt), linked: Boolean(application.sourceEoiId) });
   const audit = createAuditEvent({ workflow: "operations", recordId: current.applicationId, type: "application.invitation_resent", at: sentAt, actorType: "staff", actorId: createdBy, details: { invitationId: current.id, sendCount: invitation.sendCount } });
   const operations = [
-    sheetOperation("operations", "Application Invitations", { invitation_id: current.id, application_id: current.applicationId, application_ids_json: invitationApplicationIds(current), recipient_contact_id: current.contactId, recipient_email: current.recipientEmail, student_id: current.studentId, source_eoi_id: current.sourceEoiId || "", status: "active", created_at: current.createdAt, expires_at: iso(expiresAt), first_sent_at: current.firstSentAt, last_sent_at: sentAt, send_count: invitation.sendCount, opened_at: current.openedAt || "", verified_at: current.verifiedAt || "", submitted_at: "", schema_version: SCHEMA_VERSION }, ["invitation_id"]),
+    sheetOperation("operations", "Application Invitations", { invitation_id: current.id, application_id: current.applicationId, application_ids_json: invitationApplicationIds(current), recipient_contact_id: current.contactId, recipient_email: current.recipientEmail, student_id: current.studentId, source_eoi_id: current.sourceEoiId || "", status: "active", created_at: current.createdAt, expires_at: iso(expiresAt), first_sent_at: current.firstSentAt, last_sent_at: sentAt, send_count: invitation.sendCount, opened_at: current.openedAt || "", verified_at: current.verifiedAt || "", submitted_at: "", ...projectionVersion(application, "application") }, ["invitation_id"]),
     auditSheetOperation(audit),
     emailEvent({ messageType: "application_invitation_resent", workflow: "application", recordId: current.applicationId, recipientEmail: current.recipientEmail, at: sentAt })
   ];
@@ -345,7 +408,9 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     const applicationId = safeText(body.applicationId, 200);
     const app = await store.getApplication(applicationId);
     if (!app) throw appError(404, "APPLICATION_NOT_FOUND", "The application was not found.");
+    const revisions = store.listApplicationRevisions ? await store.listApplicationRevisions(app.id, 100) : [];
     await recordAudit(createAuditEvent({ workflow: "application", recordId: app.id, invitationId: app.invitationId, type: "staff.application_viewed", at: nowIso(), actorType: "staff", actorId: session.email, details: { role: session.role } }));
+    const formReference = recordFormReference(app, "application");
     return {
       application: {
         applicationId: app.id,
@@ -363,6 +428,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
         emergencyCount: app.emergencyCount || 2,
         requiredSignatureCount: app.requiredSignatureCount || 0,
         completedSignatureCount: app.signatures?.length || 0,
+        ...formReference,
         values: app.values || {},
         documents: Object.values(app.documents || {}).flat().map(document => ({
           documentId: document.id || document.documentId,
@@ -374,9 +440,24 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
           malwareScanStatus: document.malwareScanStatus,
           storageProvider: document.storageProvider || "legacy"
         })),
-        signatures: (app.signatures || []).map(signature => ({ guardianId: signature.guardianId, signerName: signature.signerName, signerEmail: signature.signerEmail, signedAt: signature.signedAt, revision: signature.revision }))
+        signatures: (app.signatures || []).map(signature => ({ guardianId: signature.guardianId, signerName: signature.signerName, signerEmail: signature.signerEmail, signedAt: signature.signedAt, revision: signature.revision })),
+        revisions: revisions.map(revision => ({ revisionKey: revision.revisionKey, revision: revision.revision, kind: revision.kind, status: revision.status, stage: revision.stage, savedAt: revision.savedAt, saveMode: revision.saveMode, changedFields: revision.changedFields || [], formVersion: revision.formVersion, formDefinitionHash: revision.formDefinitionHash, schemaVersion: revision.schemaVersion }))
       }
     };
+  }
+
+  async function getStaffApplicationRevision(event) {
+    const session = await requireStaffSession(event);
+    const body = parseBody(event, 20_000);
+    const applicationId = safeText(body.applicationId, 200);
+    const revisionKey = safeText(body.revisionKey, 80);
+    if (!/^REV#\d{8}#[A-Z0-9_]{1,40}$/.test(revisionKey)) throw appError(422, "INVALID_REVISION", "Select a valid saved revision.");
+    const app = await store.getApplication(applicationId);
+    if (!app) throw appError(404, "APPLICATION_NOT_FOUND", "The application was not found.");
+    const revision = await store.getApplicationRevision(applicationId, revisionKey);
+    if (!revision) throw appError(404, "REVISION_NOT_FOUND", "The saved revision was not found.");
+    await recordAudit(createAuditEvent({ workflow: "application", recordId: app.id, invitationId: app.invitationId, type: "staff.application_revision_viewed", at: nowIso(), actorType: "staff", actorId: session.email, details: { role: session.role, revisionKey, revision: revision.revision } }));
+    return { revision: { revisionKey, revision: revision.revision, kind: revision.kind, status: revision.status, stage: revision.stage, savedAt: revision.savedAt, saveMode: revision.saveMode, changedFields: revision.changedFields || [], formVersion: revision.formVersion, formDefinitionHash: revision.formDefinitionHash, schemaVersion: revision.schemaVersion, values: revision.values || {} } };
   }
 
   async function createStaffInvitation(event) {
@@ -403,14 +484,15 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
   }
 
   async function submitEoi(event) {
-    const values = validateEoi(parseBody(event).values);
+    const definition = await ensureDefinition(store, "eoi", currentFormDefinition("eoi").formVersion);
+    const values = EOI_VALIDATORS.get(definition.formVersion)(parseBody(event).values);
     const now = clock();
     const submittedAt = iso(now);
     const eoiId = id("eoi");
     const contactId = id("contact");
     const studentId = id("student");
     const reference = `EOI-${new Date(now).getFullYear()}-${token(5).toUpperCase()}`;
-    const record = { id: eoiId, reference, status: "submitted", contactId, studentId, values, submittedAt, networkFingerprint: networkFingerprint(event), schemaVersion: SCHEMA_VERSION };
+    const record = { id: eoiId, reference, status: "submitted", contactId, studentId, values, submittedAt, networkFingerprint: networkFingerprint(event), formVersion: definition.formVersion, formDefinitionHash: definition.definitionHash, schemaVersion: definition.schemaVersion };
     const snapshot = await artifacts.storeEoiSnapshot({ eoiId, snapshot: record });
     record.snapshotFileId = snapshot.id;
     record.snapshotStorageProvider = snapshot.storageProvider || "legacy";
@@ -465,6 +547,8 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     if (!consumed) { await store.failChallenge(challengeId); throw appError(401, "OTP_INVALID", "The code is invalid or expired. Request a new code."); }
     const app = await store.getApplication(invitation.applicationId);
     if (!app) throw appError(404, "APPLICATION_NOT_FOUND", "The application attached to this invitation was not found.");
+    const definition = requireRecordDefinition(app, "application");
+    await ensureDefinition(store, "application", definition.formVersion);
     const rawFamilySession = token();
     const sessionCreatedAt = clock();
     const absoluteExpiresAt = sessionCreatedAt + APPLICATION_SESSION_ABSOLUTE_MS;
@@ -475,7 +559,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
   }
 
   function applicationContext(app) {
-    return { applicationId: app.id, invitationId: app.invitationId, sourceEoiId: app.sourceEoiId || null, recipientEmail: app.recipientEmail, status: app.status, revision: app.revision, screen: Number(app.screen || 0), currentStage: app.currentStage || "gateway", percentComplete: Number(app.percentComplete || 0), values: app.values || {}, guardianCount: app.guardianCount || 1, emergencyCount: app.emergencyCount || 2, documents: Object.values(app.documents || {}).flat().map(document => ({ category: document.category, documentId: document.documentId, fileName: document.fileName, size: document.size })), studentName: [app.values.student_first, app.values.student_last].filter(Boolean).join(" "), updatedAt: app.updatedAt };
+    return { applicationId: app.id, invitationId: app.invitationId, sourceEoiId: app.sourceEoiId || null, recipientEmail: app.recipientEmail, status: app.status, revision: app.revision, screen: Number(app.screen || 0), currentStage: app.currentStage || "gateway", percentComplete: Number(app.percentComplete || 0), values: app.values || {}, guardianCount: app.guardianCount || 1, emergencyCount: app.emergencyCount || 2, documents: Object.values(app.documents || {}).flat().map(document => ({ category: document.category, documentId: document.documentId, fileName: document.fileName, size: document.size })), studentName: [app.values.student_first, app.values.student_last].filter(Boolean).join(" "), updatedAt: app.updatedAt, ...recordFormReference(app, "application") };
   }
 
   function familyApplicationSummary(app) {
@@ -513,6 +597,8 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     const application = await store.getApplication(applicationId);
     if (!application || application.invitationId !== invitation.id) throw appError(404, "APPLICATION_NOT_FOUND", "The selected application was not found.");
     if (!["invited", "in_progress"].includes(application.status || "invited")) throw appError(409, "APPLICATION_NOT_EDITABLE", "This child application has already been submitted and cannot be reopened.");
+    const definition = requireRecordDefinition(application, "application", body);
+    await ensureDefinition(store, "application", definition.formVersion);
     const sessionToken = await issueApplicationSession(invitation, application, session.email);
     await recordAudit(createAuditEvent({ workflow: "application", recordId: application.id, invitationId: invitation.id, type: "application.selected", at: nowIso(), actorId: application.contactId, stage: "selector" }));
     return { sessionToken, expiresInSeconds: APPLICATION_SESSION_IDLE_MS / 1000, idleTimeoutSeconds: APPLICATION_SESSION_IDLE_MS / 1000, absoluteTimeoutSeconds: APPLICATION_SESSION_ABSOLUTE_MS / 1000, context: applicationContext(application) };
@@ -530,34 +616,38 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     const createdAt = nowIso();
     let application;
     if (blank) {
+      const definition = requireRecordDefinition(blank, "application", body);
+      await ensureDefinition(store, "application", definition.formVersion);
       const values = { ...(blank.values || {}), student_first: studentFirstName, student_last: studentLastName };
-      const next = { ...blank, values, status: "in_progress", revision: Number(blank.revision) + 1, currentStage: "student", percentComplete: 0, updatedAt: createdAt };
+      const next = { ...blank, values, status: "in_progress", revision: Number(blank.revision) + 1, currentStage: "student", percentComplete: 0, updatedAt: createdAt, formVersion: definition.formVersion, formDefinitionHash: definition.definitionHash, schemaVersion: definition.schemaVersion };
       const audit = createAuditEvent({ workflow: "application", recordId: blank.id, invitationId: invitation.id, type: "application.student_started", at: createdAt, actorId: blank.contactId, stage: "selector", details: { revision: next.revision } });
       const operations = [
         sheetOperation("operations", "Students", { student_id: blank.studentId, first_name: studentFirstName, last_name: studentLastName, date_of_birth: "", source: "family_entry", created_at: blank.createdAt, updated_at: createdAt, schema_version: SCHEMA_VERSION }, ["student_id"]),
-        sheetOperation("operations", "Progress", { application_id: blank.id, current_stage: "student", status: "in_progress", revision: next.revision, last_saved_at: createdAt, last_activity_at: createdAt, percent_complete: 0, schema_version: SCHEMA_VERSION }, ["application_id"]),
+        sheetOperation("operations", "Progress", { application_id: blank.id, current_stage: "student", status: "in_progress", revision: next.revision, last_saved_at: createdAt, last_activity_at: createdAt, percent_complete: 0, ...projectionVersion(next, "application") }, ["application_id"]),
         sheetOperation("application", "Applications", mapApplicationRow(next), ["application_id"]),
         auditSheetOperation(audit)
       ];
-      application = await store.saveDraft({ applicationId: blank.id, expectedRevision: blank.revision, values, screen: 2, stage: "student", percentComplete: 0, guardianCount: blank.guardianCount || 2, emergencyCount: blank.emergencyCount || 2, savedAt: createdAt, outboxEvents: operations.map(operation => sheetOutbox(operation, clock())), auditEvents: [audit] });
+      application = await store.saveDraft({ applicationId: blank.id, expectedRevision: blank.revision, values, screen: 2, stage: "student", percentComplete: 0, guardianCount: blank.guardianCount || 2, emergencyCount: blank.emergencyCount || 2, savedAt: createdAt, formVersion: definition.formVersion, formDefinitionHash: definition.definitionHash, schemaVersion: definition.schemaVersion, revisionRecord: applicationRevision(next, { kind: "student_started", values, savedAt: createdAt, changed: changedFields(blank.values, values) }), outboxEvents: operations.map(operation => sheetOutbox(operation, clock())), auditEvents: [audit] });
     } else {
       const source = applications.find(app => app.id === invitation.applicationId) || applications[0];
+      const sourceReference = recordFormReference(source || invitation, "application");
+      const definition = await ensureDefinition(store, "application", sourceReference.formVersion);
       const guardianValues = Object.fromEntries(Object.entries(source?.values || {}).filter(([key]) => key.startsWith("app_guardian_0_")));
       const applicationId = id("app");
       const studentId = id("student");
       const values = { ...guardianValues, app_guardian_0_first: invitation.firstName || guardianValues.app_guardian_0_first || "", app_guardian_0_last: invitation.lastName || guardianValues.app_guardian_0_last || "", app_guardian_0_email: invitation.recipientEmail, student_first: studentFirstName, student_last: studentLastName };
-      application = { id: applicationId, invitationId: invitation.id, sourceEoiId: "", contactId: invitation.contactId, studentId, recipientEmail: invitation.recipientEmail, status: "in_progress", revision: 0, values, guardianCount: 2, emergencyCount: 2, documents: {}, signatures: [], guardianIds: [id("guardian"), id("guardian")], currentStage: "student", percentComplete: 0, createdAt, updatedAt: createdAt, schemaVersion: SCHEMA_VERSION };
+      application = { id: applicationId, invitationId: invitation.id, sourceEoiId: "", contactId: invitation.contactId, studentId, recipientEmail: invitation.recipientEmail, status: "in_progress", revision: 0, values, guardianCount: 2, emergencyCount: 2, documents: {}, signatures: [], guardianIds: [id("guardian"), id("guardian")], currentStage: "student", percentComplete: 0, createdAt, updatedAt: createdAt, formVersion: definition.formVersion, formDefinitionHash: definition.definitionHash, schemaVersion: definition.schemaVersion };
       const expectedFamilyRevision = Number(invitation.familyRevision || 0);
       const nextInvitation = { ...invitation, applicationIds: [...invitationApplicationIds(invitation), applicationId], familyRevision: expectedFamilyRevision + 1 };
       const audit = createAuditEvent({ workflow: "application", recordId: applicationId, invitationId: invitation.id, type: "application.child_added", at: createdAt, actorId: invitation.contactId, stage: "selector", details: { familyApplicationCount: nextInvitation.applicationIds.length } });
       const operations = [
         sheetOperation("operations", "Students", { student_id: studentId, first_name: studentFirstName, last_name: studentLastName, date_of_birth: "", source: "family_entry", created_at: createdAt, updated_at: createdAt, schema_version: SCHEMA_VERSION }, ["student_id"]),
-        sheetOperation("operations", "Application Invitations", { invitation_id: invitation.id, application_id: invitation.applicationId, application_ids_json: nextInvitation.applicationIds, recipient_contact_id: invitation.contactId, recipient_email: invitation.recipientEmail, student_id: invitation.studentId, source_eoi_id: invitation.sourceEoiId || "", status: invitation.status, created_at: invitation.createdAt, expires_at: iso(invitation.expiresAt), first_sent_at: invitation.firstSentAt, last_sent_at: invitation.lastSentAt, send_count: invitation.sendCount, schema_version: SCHEMA_VERSION }, ["invitation_id"]),
-        sheetOperation("operations", "Progress", { application_id: applicationId, current_stage: "student", status: "in_progress", revision: 0, last_activity_at: createdAt, percent_complete: 0, schema_version: SCHEMA_VERSION }, ["application_id"]),
+        sheetOperation("operations", "Application Invitations", { invitation_id: invitation.id, application_id: invitation.applicationId, application_ids_json: nextInvitation.applicationIds, recipient_contact_id: invitation.contactId, recipient_email: invitation.recipientEmail, student_id: invitation.studentId, source_eoi_id: invitation.sourceEoiId || "", status: invitation.status, created_at: invitation.createdAt, expires_at: iso(invitation.expiresAt), first_sent_at: invitation.firstSentAt, last_sent_at: invitation.lastSentAt, send_count: invitation.sendCount, ...projectionVersion(application, "application") }, ["invitation_id"]),
+        sheetOperation("operations", "Progress", { application_id: applicationId, current_stage: "student", status: "in_progress", revision: 0, last_activity_at: createdAt, percent_complete: 0, ...projectionVersion(application, "application") }, ["application_id"]),
         sheetOperation("application", "Applications", mapApplicationRow(application), ["application_id"]),
         auditSheetOperation(audit)
       ];
-      await store.addApplicationToInvitation({ invitation: nextInvitation, expectedFamilyRevision, application, outboxEvents: operations.map(operation => sheetOutbox(operation, clock())), auditEvents: [audit] });
+      await store.addApplicationToInvitation({ invitation: nextInvitation, expectedFamilyRevision, application, revisionRecord: applicationRevision(application, { kind: "created", values, savedAt: createdAt, changed: Object.keys(values).sort() }), outboxEvents: operations.map(operation => sheetOutbox(operation, clock())), auditEvents: [audit] });
     }
     const sessionToken = await issueApplicationSession(invitation, application, session.email);
     return { sessionToken, expiresInSeconds: APPLICATION_SESSION_IDLE_MS / 1000, idleTimeoutSeconds: APPLICATION_SESSION_IDLE_MS / 1000, absoluteTimeoutSeconds: APPLICATION_SESSION_ABSOLUTE_MS / 1000, context: applicationContext(application), family: await familyApplicationContext(await store.getInvitationById(invitation.id)) };
@@ -567,24 +657,34 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     const session = await requireSession(event);
     const app = await store.getApplication(session.applicationId);
     if (!app) throw appError(404, "APPLICATION_NOT_FOUND", "The application was not found.");
+    const definition = requireRecordDefinition(app, "application");
+    await ensureDefinition(store, "application", definition.formVersion);
     return applicationContext(app);
   }
 
   async function saveDraft(event) {
     const session = await requireSession(event);
     const body = parseBody(event);
-    const values = sanitizeApplication(body.values);
+    const current = await store.getApplication(session.applicationId);
+    if (!current || !["invited", "in_progress"].includes(current.status || "invited")) throw appError(409, "APPLICATION_NOT_EDITABLE", "This application is no longer editable.");
+    if (Number(body.expectedRevision) !== Number(current.revision)) throw appError(409, "REVISION_CONFLICT", "The application changed before this save. Refresh and review the latest saved information.");
+    const definition = requireRecordDefinition(current, "application", body);
+    await ensureDefinition(store, "application", definition.formVersion);
+    const incomingValues = applicationValidator(definition).sanitize(body.values);
+    const values = { ...(current.values || {}), ...incomingValues };
     const guardianCount = Math.max(1, Math.min(6, Number(body.guardianCount || 1)));
     const emergencyCount = Math.max(2, Math.min(6, Number(body.emergencyCount || 2)));
     const saveMode = ["autosave", "navigation", "save_and_close", "submission"].includes(body.saveMode) ? body.saveMode : "navigation";
     const savedAt = nowIso();
     const nextRevision = Number(body.expectedRevision) + 1;
+    const changed = changedFields(current.values, values);
     const audit = createAuditEvent({ workflow: "application", recordId: session.applicationId, invitationId: session.invitationId, type: saveMode === "autosave" ? "application.draft_autosaved" : "application.draft_saved", at: savedAt, actorId: session.email, stage: safeText(body.stage, 80), details: { revision: nextRevision, saveMode } });
     const operations = [
-      sheetOperation("operations", "Progress", { application_id: session.applicationId, current_stage: safeText(body.stage, 80), status: "in_progress", revision: nextRevision, last_saved_at: savedAt, last_activity_at: savedAt, percent_complete: Math.max(0, Math.min(100, Number(body.percentComplete || 0))), schema_version: SCHEMA_VERSION }, ["application_id"]),
+      sheetOperation("operations", "Progress", { application_id: session.applicationId, current_stage: safeText(body.stage, 80), status: "in_progress", revision: nextRevision, last_saved_at: savedAt, last_activity_at: savedAt, percent_complete: Math.max(0, Math.min(100, Number(body.percentComplete || 0))), schema_version: definition.schemaVersion, form_version: definition.formVersion, form_definition_hash: definition.definitionHash }, ["application_id"]),
       auditSheetOperation(audit)
     ];
-    const app = await store.saveDraft({ applicationId: session.applicationId, expectedRevision: body.expectedRevision, values, screen: Number(body.screen || 0), stage: safeText(body.stage, 80), percentComplete: Math.max(0, Math.min(100, Number(body.percentComplete || 0))), guardianCount, emergencyCount, savedAt, outboxEvents: operations.map(operation => sheetOutbox(operation, clock())), auditEvents: [audit] });
+    const revisionApp = { ...current, revision: nextRevision, values, screen: Number(body.screen || 0), currentStage: safeText(body.stage, 80), percentComplete: Math.max(0, Math.min(100, Number(body.percentComplete || 0))), guardianCount, emergencyCount, updatedAt: savedAt, status: "in_progress", formVersion: definition.formVersion, formDefinitionHash: definition.definitionHash, schemaVersion: definition.schemaVersion };
+    const app = await store.saveDraft({ applicationId: session.applicationId, expectedRevision: body.expectedRevision, values, screen: revisionApp.screen, stage: revisionApp.currentStage, percentComplete: revisionApp.percentComplete, guardianCount, emergencyCount, savedAt, formVersion: definition.formVersion, formDefinitionHash: definition.definitionHash, schemaVersion: definition.schemaVersion, revisionRecord: applicationRevision(revisionApp, { kind: saveMode === "autosave" ? "draft_autosaved" : "draft_saved", values, savedAt, saveMode, changed }), outboxEvents: operations.map(operation => sheetOutbox(operation, clock())), auditEvents: [audit] });
     return applicationContext(app);
   }
 
@@ -625,16 +725,18 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     const app = await store.getApplication(session.applicationId);
     if (!app || !["invited", "in_progress"].includes(app.status)) throw appError(409, "APPLICATION_NOT_EDITABLE", "This application is no longer editable.");
     if (Number(body.expectedRevision) !== Number(app.revision)) throw appError(409, "REVISION_CONFLICT", "The application changed after review. Review the latest saved version before signing.");
+    const definition = requireRecordDefinition(app, "application", body);
+    await ensureDefinition(store, "application", definition.formVersion);
     const guardianCount = Math.max(1, Math.min(6, Number(app.guardianCount || 1)));
-    const values = validateApplicationForSubmission(app.values, guardianCount, app.emergencyCount || 2);
+    const values = applicationValidator(definition).validate(app.values, guardianCount, app.emergencyCount || 2);
     if (!(app.documents?.birth_certificate || []).length) throw appError(422, "DOCUMENT_REQUIRED", "Upload the student's birth certificate before submitting.", { missing: ["birth_certificate"] });
     const unsafeDocuments = Object.values(app.documents || {}).flat().filter(document => document.malwareScanStatus !== "no_threats_found" && !(allowUnscannedGoogleDocuments && document.storageProvider === "google_drive"));
     if (unsafeDocuments.length) throw appError(422, "DOCUMENT_SCAN_REQUIRED", "Every uploaded document must pass its security check before the application can be submitted.");
     const bytes = signatureBytes(body.signatureDataUrl);
     const primaryGuardianId = app.guardianIds[0];
     const primarySignatureId = id("sig");
-    const revisionHash = sha256(json({ values, documents: app.documents, revision: app.revision }));
-    const snapshotPayload = { applicationId: app.id, invitationId: app.invitationId, sourceEoiId: app.sourceEoiId || null, revision: app.revision, revisionHash, values, documents: app.documents, submittedAt: nowIso(), schemaVersion: SCHEMA_VERSION };
+    const revisionHash = sha256(json({ values, documents: app.documents, revision: app.revision, formVersion: definition.formVersion, formDefinitionHash: definition.definitionHash }));
+    const snapshotPayload = { applicationId: app.id, invitationId: app.invitationId, sourceEoiId: app.sourceEoiId || null, revision: app.revision, revisionHash, values, documents: app.documents, submittedAt: nowIso(), formVersion: definition.formVersion, formDefinitionHash: definition.definitionHash, schemaVersion: definition.schemaVersion };
     const [snapshot, signatureFile] = await Promise.all([artifacts.storeApplicationSnapshot({ applicationId: app.id, revision: app.revision, snapshot: snapshotPayload }), artifacts.storeSignature({ applicationId: app.id, guardianId: primaryGuardianId, signatureId: primarySignatureId, data: bytes })]);
     const signedAt = nowIso();
     const primarySignature = { id: primarySignatureId, guardianId: primaryGuardianId, signerName: `${values.app_guardian_0_first} ${values.app_guardian_0_last}`.trim(), signerEmail: normalizeEmail(values.app_guardian_0_email), signedAt, revision: app.revision, revisionHash, fileId: signatureFile.id, storageProvider: signatureFile.storageProvider, storageVersionId: signatureFile.storageVersionId, networkFingerprint: networkFingerprint(event), ipAcknowledged: values.application_signature_ip, termsAcknowledged: values.application_signature_terms };
@@ -654,7 +756,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     const requiredSignatureCount = guardianCount;
     const status = requiredSignatureCount > 1 ? "pending_signatures" : "submitted";
     const reference = `APP-${new Date(clock()).getFullYear()}-${token(5).toUpperCase()}`;
-    const next = { ...app, values, status, reference, requiredSignatureCount, signatures: [primarySignature], snapshotFileId: snapshot.id, snapshotStorageProvider: snapshot.storageProvider, snapshotStorageVersionId: snapshot.storageVersionId, revisionHash, submittedAt: signedAt, completedAt: status === "submitted" ? signedAt : "", updatedAt: signedAt };
+    const next = { ...app, values, status, reference, requiredSignatureCount, signatures: [primarySignature], snapshotFileId: snapshot.id, snapshotStorageProvider: snapshot.storageProvider, snapshotStorageVersionId: snapshot.storageVersionId, revisionHash, submittedAt: signedAt, completedAt: status === "submitted" ? signedAt : "", updatedAt: signedAt, formVersion: definition.formVersion, formDefinitionHash: definition.definitionHash, schemaVersion: definition.schemaVersion };
     const { guardians, emergencyContacts } = splitApplication(values, app.id, guardianCount, app.emergencyCount || 2);
     const invitation = await store.getInvitationById(app.invitationId);
     const audit = createAuditEvent({ workflow: "application", recordId: app.id, invitationId: app.invitationId, type: "application.submitted", at: signedAt, actorId: session.email, stage: "signature", details: { reference, status, revision: app.revision } });
@@ -664,17 +766,17 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
       ...guardians.map((guardian, index) => sheetOperation("application", "Guardians", guardianRow(next, guardian, index, index === 0 ? "signed" : "pending"), ["application_id", "guardian_id"])),
       ...emergencyContacts.map((contact, index) => sheetOperation("application", "Emergency Contacts", emergencyRow(next, contact, index), ["application_id", "emergency_contact_id"])),
       sheetOperation("application", "Conditions", conditionsRow(next, values), ["application_id"]),
-      sheetOperation("application", "Signatures", { application_id: app.id, signature_id: primarySignature.id, guardian_id: primaryGuardianId, signer_name: primarySignature.signerName, signer_email: primarySignature.signerEmail, signature_status: "signed", signed_at: signedAt, revision: app.revision, revision_hash: revisionHash, signature_file_id: signatureFile.id, network_fingerprint: primarySignature.networkFingerprint, ip_recording_acknowledged: values.application_signature_ip, application_terms_acknowledged: values.application_signature_terms, one_signature_explanation: values.application_one_signature_reason, additional_information: values.application_additional_information, schema_version: SCHEMA_VERSION }, ["signature_id"]),
-      ...Object.values(app.documents || {}).flat().map(document => sheetOperation("application", "Documents", { application_id: app.id, document_id: document.id, category: document.category, original_file_name: document.fileName, mime_type: document.mimeType, size_bytes: document.size, drive_file_id: document.storageProvider === "s3" ? "" : document.documentId, storage_provider: document.storageProvider || "legacy", storage_key: document.storageKey || "", storage_version_id: document.storageVersionId || "", uploaded_at: document.uploadedAt, sha256: document.checksum, malware_scan_status: document.malwareScanStatus, schema_version: SCHEMA_VERSION }, ["document_id"])),
+      sheetOperation("application", "Signatures", { application_id: app.id, signature_id: primarySignature.id, guardian_id: primaryGuardianId, signer_name: primarySignature.signerName, signer_email: primarySignature.signerEmail, signature_status: "signed", signed_at: signedAt, revision: app.revision, revision_hash: revisionHash, signature_file_id: signatureFile.id, network_fingerprint: primarySignature.networkFingerprint, ip_recording_acknowledged: values.application_signature_ip, application_terms_acknowledged: values.application_signature_terms, one_signature_explanation: values.application_one_signature_reason, additional_information: values.application_additional_information, ...projectionVersion(next, "application") }, ["signature_id"]),
+      ...Object.values(app.documents || {}).flat().map(document => sheetOperation("application", "Documents", { application_id: app.id, document_id: document.id, category: document.category, original_file_name: document.fileName, mime_type: document.mimeType, size_bytes: document.size, drive_file_id: document.storageProvider === "s3" ? "" : document.documentId, storage_provider: document.storageProvider || "legacy", storage_key: document.storageKey || "", storage_version_id: document.storageVersionId || "", uploaded_at: document.uploadedAt, sha256: document.checksum, malware_scan_status: document.malwareScanStatus, ...projectionVersion(next, "application") }, ["document_id"])),
       auditSheetOperation(audit),
-      sheetOperation("operations", "Progress", { application_id: app.id, current_stage: status === "submitted" ? "complete" : "guardian_signatures", status, revision: app.revision, last_saved_at: app.updatedAt, last_activity_at: signedAt, percent_complete: status === "submitted" ? 100 : 95, schema_version: SCHEMA_VERSION }, ["application_id"]),
-      sheetOperation("operations", "Application Invitations", { invitation_id: app.invitationId, application_id: invitation?.applicationId || app.id, application_ids_json: invitationApplicationIds(invitation || { applicationId: app.id }), recipient_contact_id: app.contactId, recipient_email: app.recipientEmail, student_id: invitation?.studentId || app.studentId, source_eoi_id: invitation?.sourceEoiId || app.sourceEoiId, status: invitation?.status || "active", created_at: invitation?.createdAt || app.createdAt, expires_at: invitation?.expiresAt ? iso(invitation.expiresAt) : "", first_sent_at: invitation?.firstSentAt || "", last_sent_at: invitation?.lastSentAt || "", send_count: invitation?.sendCount || 1, opened_at: invitation?.openedAt || "", verified_at: invitation?.verifiedAt || "", submitted_at: signedAt, schema_version: SCHEMA_VERSION }, ["invitation_id"]),
+      sheetOperation("operations", "Progress", { application_id: app.id, current_stage: status === "submitted" ? "complete" : "guardian_signatures", status, revision: app.revision, last_saved_at: app.updatedAt, last_activity_at: signedAt, percent_complete: status === "submitted" ? 100 : 95, ...projectionVersion(next, "application") }, ["application_id"]),
+      sheetOperation("operations", "Application Invitations", { invitation_id: app.invitationId, application_id: invitation?.applicationId || app.id, application_ids_json: invitationApplicationIds(invitation || { applicationId: app.id }), recipient_contact_id: app.contactId, recipient_email: app.recipientEmail, student_id: invitation?.studentId || app.studentId, source_eoi_id: invitation?.sourceEoiId || app.sourceEoiId, status: invitation?.status || "active", created_at: invitation?.createdAt || app.createdAt, expires_at: invitation?.expiresAt ? iso(invitation.expiresAt) : "", first_sent_at: invitation?.firstSentAt || "", last_sent_at: invitation?.lastSentAt || "", send_count: invitation?.sendCount || 1, opened_at: invitation?.openedAt || "", verified_at: invitation?.verifiedAt || "", submitted_at: signedAt, ...projectionVersion(next, "application") }, ["invitation_id"]),
       emailEvent({ messageType: "application_submitted", workflow: "application", recordId: app.id, recipientEmail: app.recipientEmail, at: signedAt }),
       ...taskEmails.map(mail => emailEvent({ messageType: "signature_invitation", workflow: "application", recordId: app.id, recipientEmail: mail.to, at: signedAt }))
     ];
     const confirmation = applicationSubmitted({ firstName: values.app_guardian_0_first, studentName: `${values.student_first} ${values.student_last}`, reference, pendingSignatures: status === "pending_signatures" });
     const emailEvents = [emailOutbox({ to: app.recipientEmail, ...confirmation, tags: { workflow: "application", message_type: "submitted" } }, clock()), ...taskEmails.map(mail => emailOutbox(mail, clock()))];
-    await store.submitApplication({ applicationId: app.id, expectedRevision: app.revision, application: next, signatureTasks, outboxEvents: [...emailEvents, ...operations.map(operation => sheetOutbox(operation, clock()))], auditEvents: [audit] });
+    await store.submitApplication({ applicationId: app.id, expectedRevision: app.revision, application: next, revisionRecord: applicationRevision(next, { kind: "submitted", values, savedAt: signedAt, saveMode: "submission" }), signatureTasks, outboxEvents: [...emailEvents, ...operations.map(operation => sheetOutbox(operation, clock()))], auditEvents: [audit] });
     await dispatchOutbox(50);
     return { applicationId: app.id, reference, status };
   }
@@ -736,9 +838,9 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     const operations = [
       sheetOperation("application", "Applications", mapApplicationRow(next), ["application_id"]),
       sheetOperation("application", "Guardians", guardianRow(next, splitApplication(app.values, app.id, app.guardianCount, app.emergencyCount || 2).guardians[session.guardianIndex], session.guardianIndex, "signed"), ["application_id", "guardian_id"]),
-      sheetOperation("application", "Signatures", { application_id: app.id, signature_id: signature.id, guardian_id: signature.guardianId, signer_name: signature.signerName, signer_email: signature.signerEmail, signature_status: "signed", signed_at: signedAt, revision: app.revision, revision_hash: app.revisionHash, signature_file_id: signature.fileId, network_fingerprint: signature.networkFingerprint, ip_recording_acknowledged: "Confirmed", application_terms_acknowledged: "Confirmed", schema_version: SCHEMA_VERSION }, ["signature_id"]),
+      sheetOperation("application", "Signatures", { application_id: app.id, signature_id: signature.id, guardian_id: signature.guardianId, signer_name: signature.signerName, signer_email: signature.signerEmail, signature_status: "signed", signed_at: signedAt, revision: app.revision, revision_hash: app.revisionHash, signature_file_id: signature.fileId, network_fingerprint: signature.networkFingerprint, ip_recording_acknowledged: "Confirmed", application_terms_acknowledged: "Confirmed", ...projectionVersion(next, "application") }, ["signature_id"]),
       auditSheetOperation(audit),
-      sheetOperation("operations", "Progress", { application_id: app.id, current_stage: status === "submitted" ? "complete" : "guardian_signatures", status, revision: app.revision, last_saved_at: app.updatedAt, last_activity_at: signedAt, percent_complete: status === "submitted" ? 100 : 95, schema_version: SCHEMA_VERSION }, ["application_id"])
+      sheetOperation("operations", "Progress", { application_id: app.id, current_stage: status === "submitted" ? "complete" : "guardian_signatures", status, revision: app.revision, last_saved_at: app.updatedAt, last_activity_at: signedAt, percent_complete: status === "submitted" ? 100 : 95, ...projectionVersion(next, "application") }, ["application_id"])
     ];
     const emails = [];
     if (status === "submitted") {
@@ -771,12 +873,13 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
   }
 
   const routes = new Map([
-    ["GET /v6/health", async () => ({ status: "ok", schemaVersion: SCHEMA_VERSION })],
+    ["GET /v6/health", async () => ({ status: "ok", schemaVersion: SCHEMA_VERSION, formVersions: { eoi: currentFormDefinition("eoi").formVersion, application: currentFormDefinition("application").formVersion } })],
     ["POST /v6/session/logout", logoutSession],
     ["POST /v6/staff/access/request-code", requestStaffCode],
     ["POST /v6/staff/access/verify-code", verifyStaffCode],
     ["GET /v6/staff/dashboard", getStaffDashboard],
     ["POST /v6/staff/applications/detail", getStaffApplicationDetail],
+    ["POST /v6/staff/applications/revision", getStaffApplicationRevision],
     ["POST /v6/staff/invitations", createStaffInvitation],
     ["POST /v6/staff/invitations/resend", resendStaffInvitation],
     ["POST /v6/eoi", submitEoi],

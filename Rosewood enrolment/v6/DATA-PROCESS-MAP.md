@@ -695,6 +695,26 @@ The observed source process ended before a verified completion page, so V6 does 
 invent a final receipt. A future backend must define decline authority, final status,
 notifications, retention and the effect on the offer record.
 
+## Question Changes And Historical Answers
+
+```text
+Immutable form definition
+  -> new EOI/application is pinned to form version + definition hash
+  -> family save includes the pinned contract
+  -> Lambda checks expected revision and contract
+  -> incoming visible fields merge into existing answers
+  -> omitted/retired answers remain present
+  -> transaction updates CURRENT and appends full REV# snapshot
+  -> staff sees revision metadata
+  -> selected historical answer access is separately authorised and audited
+```
+
+Changing a Sheet, removing a field from a future page, or adding a new required field
+cannot rewrite an older application. Existing records stay under their original form
+contract; new invitations can move to a new contract. Submitted Drive snapshots and
+signature revision hashes also retain the form version and definition hash. See
+`SCHEMA-EVOLUTION.md` for the mandatory release and migration rules.
+
 ## Current Decisions and Open Risks
 
 ### Implemented Decisions
@@ -753,6 +773,7 @@ notifications, retention and the effect on the offer record.
 | `POST /v6/staff/access/verify-code` | Create role-bound staff session |
 | `GET /v6/staff/dashboard` | Return safe operational summaries |
 | `POST /v6/staff/applications/detail` | Return audited application detail |
+| `POST /v6/staff/applications/revision` | Return one authorised, audited immutable answer revision |
 | `POST /v6/staff/invitations` | Create direct or EOI-linked invitation |
 | `POST /v6/staff/invitations/resend` | Rotate token and resend active invitation |
 
@@ -763,6 +784,7 @@ notifications, retention and the effect on the offer record.
 - `ARCHITECTURE-HARDENING.md` - launch architecture and control choices
 - `STAFF-PORTAL-RUNBOOK.md` - staff operating instructions
 - `RECOVERY-RUNBOOK.md` - backup and recovery procedure
+- `SCHEMA-EVOLUTION.md` - immutable form versions, revision history and migration rules
 - `TESTING.md` - frontend, backend, email and recovery evidence
 - `RELEASE-BLOCKERS.md` - governance and production gates
 - `backend/README.md` - technical backend contract

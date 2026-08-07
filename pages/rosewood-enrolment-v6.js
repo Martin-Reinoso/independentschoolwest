@@ -14,6 +14,7 @@
   const reviewMode = params.get("review") === "1";
   const apiBase = "https://6zyzo44sdb5zmmx53toktqrnuu0sikyd.lambda-url.ap-southeast-2.on.aws";
   const invitationToken = params.get("invite") || "";
+  const SUPPORTED_APPLICATION_FORM_VERSIONS = new Set(["rosewood-application-2026.1"]);
 
   const state = {
     workflow: params.get("workflow") || "application",
@@ -25,6 +26,8 @@
     familySessionToken: "",
     familyContext: null,
     revision: 0,
+    formVersion: "",
+    formDefinitionHash: "",
     applicationContext: null,
     eoiResult: null,
     submitResult: null,
@@ -47,6 +50,17 @@
 
   function liveWorkflow() {
     return !reviewMode && ["eoi", "application"].includes(state.workflow);
+  }
+
+  function applyFormContract(context) {
+    const formVersion = context?.formVersion;
+    if (!SUPPORTED_APPLICATION_FORM_VERSIONS.has(formVersion)) {
+      const error = new Error("This saved application uses a form version that this page cannot open. Please contact Rosewood College; your saved information has not been changed.");
+      error.code = "FORM_VERSION_UNSUPPORTED";
+      throw error;
+    }
+    state.formVersion = formVersion;
+    state.formDefinitionHash = context.formDefinitionHash || "";
   }
 
   async function api(path, options = {}) {
@@ -972,7 +986,9 @@
             guardianCount: payload.guardianCount,
             emergencyCount: payload.emergencyCount,
             percentComplete: Math.round((Math.max(0, payload.screen - 2) / 5) * 100),
-            saveMode: mode
+            saveMode: mode,
+            formVersion: state.formVersion,
+            formDefinitionHash: state.formDefinitionHash
           })
         });
         state.revision = result.revision;
@@ -1038,6 +1054,7 @@
   }
 
   function applyApplicationSession(result) {
+    applyFormContract(result.context);
     state.sessionToken = result.sessionToken;
     state.applicationContext = result.context;
     if (result.family) state.familyContext = result.family;
@@ -1081,6 +1098,8 @@
     state.applicationContext = null;
     state.challengeId = "";
     state.revision = 0;
+    state.formVersion = "";
+    state.formDefinitionHash = "";
     state.values = {};
     state.signatures = {};
     state.lastSavedSnapshot = "";
@@ -1149,6 +1168,7 @@
     if (state.screen === 1) {
       setBusy(true, "Verifying...");
       const result = await api("/v6/application/access/verify-code", { method: "POST", body: JSON.stringify({ invitationToken, challengeId: state.challengeId, code: state.values.application_code }) });
+      applyFormContract(result.context);
       state.familySessionToken = result.familySessionToken || "";
       state.familyContext = result.family || null;
       state.sessionToken = result.family ? "" : result.sessionToken;
@@ -1185,7 +1205,7 @@
       setBusy(true, "Submitting...");
       await saveApplicationDraft("signature", { mode: "submission" });
       const canvas = root.querySelector('[data-signature="application_signature"] canvas');
-      state.submitResult = await api("/v6/application/submit", { method: "POST", body: JSON.stringify({ expectedRevision: state.revision, signatureDataUrl: canvas.toDataURL("image/png") }) });
+      state.submitResult = await api("/v6/application/submit", { method: "POST", body: JSON.stringify({ expectedRevision: state.revision, formVersion: state.formVersion, formDefinitionHash: state.formDefinitionHash, signatureDataUrl: canvas.toDataURL("image/png") }) });
       state.saveStatus = "saved";
       state.lastSavedLabel = "submitted";
       return next();

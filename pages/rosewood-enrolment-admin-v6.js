@@ -8,6 +8,7 @@
     sessionToken: "",
     sessionExpiresAt: 0,
     dashboard: null,
+    currentApplicationDetail: null,
     selectedEoi: null,
     selectedApplication: null,
     resendInvitation: null,
@@ -349,7 +350,65 @@
     return section;
   }
 
+  function renderRevisionHistory(application) {
+    const revisions = application.revisions || [];
+    if (!revisions.length) return null;
+    const section = element("section", "detail-section revision-history");
+    section.append(element("h3", "", "Saved answer history"));
+    section.append(element("p", "revision-intro", "Each entry is an immutable server-acknowledged snapshot. Opening a revision is recorded in the audit log."));
+    const list = element("div", "revision-list");
+    revisions.forEach(revision => {
+      const row = element("div", "revision-row");
+      const copy = element("div");
+      copy.append(
+        element("strong", "", `Revision ${revision.revision} · ${fieldLabel(revision.kind || "saved")}`),
+        element("small", "", `${formatDate(revision.savedAt, true)} · ${stageLabel(revision.stage)} · ${revision.changedFields?.length || 0} changed field${revision.changedFields?.length === 1 ? "" : "s"}`)
+      );
+      const button = element("button", "secondary-button compact-button", "View answers");
+      button.type = "button";
+      button.dataset.revisionKey = revision.revisionKey;
+      row.append(copy, button);
+      list.append(row);
+    });
+    const snapshot = element("div", "revision-snapshot");
+    snapshot.id = "revision-snapshot";
+    snapshot.hidden = true;
+    section.append(list, snapshot);
+    return section;
+  }
+
+  function renderRevisionSnapshot(revision) {
+    const snapshot = byId("revision-snapshot");
+    if (!snapshot) return;
+    clear(snapshot);
+    snapshot.append(element("h4", "", `Revision ${revision.revision} answers`));
+    snapshot.append(element("p", "revision-intro", `${formatDate(revision.savedAt, true)} · ${fieldLabel(revision.kind || "saved")} · ${revision.formVersion || "Legacy version"}`));
+    const entries = Object.entries(revision.values || {}).filter(([, value]) => value !== "" && value != null && (!Array.isArray(value) || value.length));
+    const answers = detailSection("Recorded fields", entries);
+    if (answers) snapshot.append(answers);
+    snapshot.hidden = false;
+    snapshot.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  async function openApplicationRevision(button) {
+    const application = state.currentApplicationDetail;
+    if (!application) return;
+    const previous = button.textContent;
+    setLoading(button, true);
+    button.querySelector("span")?.remove();
+    try {
+      const result = await api("/v6/staff/applications/revision", { method: "POST", body: { applicationId: application.applicationId, revisionKey: button.dataset.revisionKey } });
+      renderRevisionSnapshot(result.revision);
+    } catch (error) {
+      setNotice("detail-error", error.message);
+    } finally {
+      setLoading(button, false);
+      button.textContent = previous;
+    }
+  }
+
   function renderApplicationDetail(application) {
+    state.currentApplicationDetail = application;
     const content = byId("detail-content");
     clear(content);
     const values = Object.entries(application.values || {}).filter(([, value]) => value !== "" && value != null && (!Array.isArray(value) || value.length));
@@ -377,7 +436,9 @@
       ["recipient_email", application.recipientEmail],
       ["last_updated", formatDate(application.updatedAt, true)],
       ["submitted_at", formatDate(application.submittedAt, true)],
-      ["signatures", `${application.completedSignatureCount} of ${application.requiredSignatureCount}`]
+      ["signatures", `${application.completedSignatureCount} of ${application.requiredSignatureCount}`],
+      ["form_version", application.formVersion || "Legacy record"],
+      ["schema_version", application.schemaVersion || "Legacy record"]
     ]);
     if (overview) content.append(overview);
     const answers = detailSection("Application answers", general);
@@ -411,12 +472,15 @@
       [`signed_at_${index + 1}`, formatDate(signature.signedAt, true)]
     ]));
     if (signatures) content.append(signatures);
+    const history = renderRevisionHistory(application);
+    if (history) content.append(history);
     byId("detail-loading").hidden = true;
     content.hidden = false;
   }
 
   async function openApplicationDetail(record) {
     state.selectedApplication = record;
+    state.currentApplicationDetail = null;
     byId("detail-title").textContent = record.studentName || "Application details";
     byId("detail-summary").textContent = `${record.reference || record.applicationId} · ${statusLabel(record.status)}`;
     byId("detail-content").hidden = true;
@@ -582,4 +646,8 @@
   inviteDialog.addEventListener("click", event => { if (event.target === inviteDialog) inviteDialog.close(); });
   confirmDialog.addEventListener("click", event => { if (event.target === confirmDialog) confirmDialog.close(); });
   detailDialog.addEventListener("click", event => { if (event.target === detailDialog) detailDialog.close(); });
+  byId("detail-content").addEventListener("click", event => {
+    const button = event.target.closest("[data-revision-key]");
+    if (button) openApplicationRevision(button);
+  });
 })();
