@@ -196,12 +196,12 @@ Mobile viewport: 390 x 844.
 
 ## Form Version And Migration Checks
 
-- EOI and Application use separate immutable `2026.2` form contracts with SHA-256
+- EOI and Application use separate immutable `2026.3` form contracts with SHA-256
   definition hashes; the production build fails if the pinned family HTML or JavaScript
   changes without a deliberate form-definition update
-- the original `2026.1` definitions retain their exact hashes and validators; the family
-  browser supports both Application versions so existing records are not migrated or
-  rewritten by the upload interaction fix
+- the original `2026.1` and `2026.2` definitions retain their exact hashes and validators;
+  the family browser supports all three Application versions so existing records are not
+  migrated or rewritten by later interaction fixes
 - partial-save tests prove that omitted and retired answer keys remain in the current
   record and immutable revision; a mismatched browser version is rejected without a
   write
@@ -222,6 +222,24 @@ Mobile viewport: 390 x 844.
   and `/v6/health` returned both current workflow versions after deployment
 - local desktop and 390 x 844 review-mode checks loaded JavaScript `v=13` without console
   errors or horizontal overflow
+
+## Submission Validation Release
+
+Verified in production on 8 August 2026 without printing or exporting family answers.
+
+- GitHub Pages served CSS `v=8` and JavaScript `v=13`; the live JavaScript SHA-256 matched
+  the immutable `2026.3` form definition
+- the reviewed CloudFormation change set updated the Lambda code in place and did not
+  replace either DynamoDB table, the KMS key, backup resources or document storage
+- CloudFormation reached `UPDATE_COMPLETE`, Lambda was `Active` with a successful update,
+  the scheduled outbox rule remained enabled and the Lambda error alarm remained `OK`
+- `/v6/health` returned `rosewood-eoi-2026.3` and
+  `rosewood-application-2026.3` as the current contracts
+- the latest pre-release Application record remained pinned to its original `2026.1`
+  contract and progressed to `pending_signatures`; this confirms that its primary
+  signature was stored and the application now awaits the additional guardian signature
+- no production family record, answer, signature image, invitation token or identifier was
+  written to this repository or included in the release evidence
 
 ## Staff Portal Checks
 
