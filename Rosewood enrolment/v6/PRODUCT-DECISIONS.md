@@ -93,6 +93,9 @@ workflows into the current records or API.
 - The compact workflow/section header remains visible while scrolling on desktop and
   mobile. Its indicator uses family-facing states: In progress, Saving, Saved, No
   connection, Save failed and Session expired.
+- The save indicator is hidden on the Application gateway, email-verification and child
+  selection screens because no child draft is open. Authentication errors use the form
+  error area and must never be labelled as save failures.
 - Saved means the backend acknowledged the exact current revision. A selected but not
   yet uploaded file and a drawn but not submitted signature must not appear saved.
 - Application answers autosave 1.2 seconds after input pauses and at least every eight
