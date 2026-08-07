@@ -220,7 +220,7 @@ Mobile viewport: 390 x 844.
   and definition hash
 - the production Lambda remained `Active`, CloudFormation reached `UPDATE_COMPLETE`,
   and `/v6/health` returned both current workflow versions after deployment
-- local desktop and 390 x 844 review-mode checks loaded JavaScript `v=12` without console
+- local desktop and 390 x 844 review-mode checks loaded JavaScript `v=13` without console
   errors or horizontal overflow
 
 ## Staff Portal Checks
