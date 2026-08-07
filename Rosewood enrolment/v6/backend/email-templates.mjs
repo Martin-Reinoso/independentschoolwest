@@ -2,6 +2,10 @@ function frame(content) {
   return `<!doctype html><html><body style="margin:0;background:#f4f1e9;font-family:Arial,sans-serif;color:#14233d"><div style="max-width:640px;margin:0 auto;padding:32px 20px"><div style="background:#fff;border:1px solid #ddd4c4;border-radius:16px;padding:32px"><p style="margin:0 0 20px;font:700 13px Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#a84b34">Rosewood College</p>${content}<hr style="border:0;border-top:1px solid #e4ded3;margin:28px 0"><p style="font-size:13px;color:#566070">This is a private enrolment message. If you did not expect it, reply to enrolment@ffe.org.au.</p></div></div></body></html>`;
 }
 
+function htmlEscape(value) {
+  return String(value ?? "").replace(/[&<>'"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
+}
+
 function button(label, url) {
   return `<p style="margin:26px 0"><a href="${url}" style="display:inline-block;background:#2f6f4e;color:#fff;text-decoration:none;font-weight:700;padding:13px 20px;border-radius:8px">${label}</a></p>`;
 }
@@ -16,10 +20,22 @@ export function eoiAcknowledgement({ firstName, studentName, reference }) {
   return { subject, text, html: frame(`<h1 style="font:700 28px Georgia,serif">Expression of interest received</h1><p>Dear ${firstName},</p><p>We have received your expression of interest for <strong>${studentName}</strong>.</p><p>Your reference is <strong>${reference}</strong>.</p><p>This is not an Application for Enrolment. If Rosewood invites you to apply, you will receive a separate private link.</p>`) };
 }
 
-export function applicationInvitation({ firstName, studentName, invitationUrl, expiresAt, linked }) {
-  const subject = `Invitation to apply for enrolment at Rosewood College`;
-  const text = `Dear ${firstName || "Parent/Guardian"},\n\nYou are invited to begin an Application for Enrolment${studentName ? ` for ${studentName}` : ""}. ${linked ? "Information from your earlier expression of interest will be available to review and edit. " : ""}Use this private link: ${invitationUrl}\n\nThe invitation expires ${expiresAt}.\n\nRosewood College`;
-  return { subject, text, html: frame(`<h1 style="font:700 28px Georgia,serif">Application for Enrolment</h1><p>Dear ${firstName || "Parent/Guardian"},</p><p>You are invited to begin an Application for Enrolment${studentName ? ` for <strong>${studentName}</strong>` : ""}.</p>${linked ? "<p>Information from your earlier expression of interest will be available to review and edit.</p>" : ""}${button("Begin application", invitationUrl)}${fallbackLink(invitationUrl)}<p style="font-size:14px;color:#566070">This private invitation expires ${expiresAt}.</p>`) };
+export function applicationInvitation({ firstName, studentName, entryLevel, entryYear, invitationUrl, expiresAt, linked }) {
+  const subject = "Invitation to Apply for Enrolment at Rosewood College";
+  const greeting = firstName || "Parent/Guardian";
+  const assistance = "If you require assistance or have questions, please do not hesitate to get in touch at enrolment@ffe.org.au.";
+  const signoff = "Kind regards,\n\nRosewood College Enrolment Team";
+  const expiry = `This private invitation expires on ${expiresAt}.`;
+  const directIntro = "Thank you for considering Rosewood College for your child’s education. We appreciate the opportunity to learn more about your family and your hopes for your child’s schooling.";
+  const directInvite = "We are pleased to invite you to begin an Application for Enrolment using the private link below. When prompted, please enter the same email address that received this invitation.";
+  const interest = [entryLevel, entryYear].filter(Boolean).join(", ");
+  const linkedIntro = `Our records indicate that you have expressed interest${interest ? ` in ${interest}` : ""} at Rosewood College${studentName ? ` for your child ${studentName}` : ""}.`;
+  const linkedInvite = "We now invite you to apply online using the application link below. When prompted, please enter the same email address that received this invitation. This allows us to prefill parts of the application using information you have already provided.";
+  const introduction = linked ? linkedIntro : directIntro;
+  const invitation = linked ? linkedInvite : directInvite;
+  const text = `Dear ${greeting},\n\n${introduction}\n\n${invitation}\n\nBEGIN APPLICATION\n${invitationUrl}\n\n${assistance}\n\n${signoff}\n\n${expiry}`;
+  const html = frame(`<h1 style="font:700 28px Georgia,serif">Application for Enrolment</h1><p>Dear ${htmlEscape(greeting)},</p><p>${htmlEscape(introduction)}</p><p>${htmlEscape(invitation)}</p>${button("BEGIN APPLICATION", invitationUrl)}${fallbackLink(invitationUrl)}<p>${htmlEscape(assistance)}</p><p>Kind regards,</p><p>Rosewood College Enrolment Team</p><p style="font-size:14px;color:#566070">${htmlEscape(expiry)}</p>`);
+  return { subject, text, html };
 }
 
 export function applicationOtp({ code }) {

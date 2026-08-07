@@ -3,7 +3,7 @@
 This register records Rosewood decisions that must survive future frontend and backend
 rebuilds. These decisions override earlier V6 assumptions where they conflict.
 
-Decision date: 5 August 2026
+Decision date: 7 August 2026
 
 ## Application Invitation and Record Creation
 
@@ -13,9 +13,21 @@ Decision date: 5 August 2026
 - Staff must not ask a family which path applies. The invitation record determines it.
 - For an EOI-linked invitation, successful email verification links to the existing
   contact and student records and may prefill approved EOI information.
-- For a direct invitation, staff enter the invitee email in the internal portal. The
-  backend creates the invitation and initial contact/application records so the family
-  can verify that email and start a new application.
+- For a direct invitation, staff enter the invitee email and parent/guardian first name
+  in the internal portal. Parent/guardian surname is optional but encouraged. Staff do
+  not enter a child name at invitation time.
+- A verified family can add more than one child. Each child has a separate application
+  ID, draft, progress, documents, signatures and outcome under the same family
+  invitation. The launch safety limit is eight child applications per invitation.
+- The backend retains the original `applicationId` on an invitation and also records
+  `applicationIds` so earlier one-child records remain compatible.
+- Invitations and resends expire 14 days after they are issued.
+- Direct and deliberately EOI-linked invitations use separate approved email variants.
+  Both use the subject `Invitation to Apply for Enrolment at Rosewood College`, a
+  private button plus copy/paste URL, enrolment contact details and the exact expiry.
+- The EOI-linked variant identifies the child, entry year level and year and explains
+  that approved prior information may be prefilled. It names Rosewood College; the St
+  Lawrence school name from the source example is not carried into Rosewood messages.
 - Prefilled fields remain reviewable and editable unless a separately approved rule
   makes a field immutable.
 
@@ -29,7 +41,8 @@ for Enrolment backend. It must:
 - show each record's current progress and last successful save
 - search and filter records without exposing them publicly
 - select an EOI and issue an application invitation
-- enter a new email address and issue a direct application invitation
+- enter a parent/guardian first name, optional surname and email address and issue a
+  direct family invitation without collecting a child name
 - prevent an EOI already linked to an application from being linked again through the
   portal
 - send the automatic invitation email and record its delivery status

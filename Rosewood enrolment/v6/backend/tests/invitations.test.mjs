@@ -13,11 +13,19 @@ const clock = () => Date.parse("2026-08-05T12:00:00.000Z");
 
 test("direct invitation creates an application without an EOI link", async () => {
   const store = new InvitationStore();
-  const result = await createApplicationInvitation({ store, recipientEmail: "family@example.com", firstName: "Alex", studentFirstName: "Avery", applicationUrl: "https://ffe.org.au/form", clock });
+  const result = await createApplicationInvitation({ store, recipientEmail: "family@example.com", firstName: "Alex", applicationUrl: "https://ffe.org.au/form", clock });
   assert.equal(result.sourceEoiId, null);
   assert.equal(store.created.application.sourceEoiId, "");
   assert.equal(store.created.application.values.app_guardian_0_email, "family@example.com");
+  assert.equal(store.created.application.values.student_first, undefined);
+  assert.deepEqual(store.created.invitation.applicationIds, [result.applicationId]);
+  assert.equal(store.created.invitation.expiresAt, clock() + 14 * 86400_000);
   assert.match(result.invitationUrl, /^https:\/\/ffe\.org\.au\/form\?workflow=application&invite=/);
+});
+
+test("direct invitation requires a parent or guardian first name", async () => {
+  const store = new InvitationStore();
+  await assert.rejects(() => createApplicationInvitation({ store, recipientEmail: "family@example.com", applicationUrl: "https://ffe.org.au/form", clock }), error => error.code === "PARENT_NAME_REQUIRED");
 });
 
 test("explicit EOI link prefills names and records source_eoi_id", async () => {
@@ -39,13 +47,27 @@ test("linked EOI email cannot silently change during invitation", async () => {
   await assert.rejects(() => createApplicationInvitation({ store, recipientEmail: "other@example.com", sourceEoiId: "eoi-1", applicationUrl: "https://ffe.org.au/form", clock }), error => error.code === "EOI_EMAIL_MISMATCH");
 });
 
-test("invitation emails include a copy-and-paste fallback for blocked new tabs", () => {
+test("invitation emails use the approved direct and EOI-linked variants", () => {
   const applicationUrl = "https://ffe.org.au/form?invite=private-token";
   const signingUrl = "https://ffe.org.au/sign?task=private-token";
-  const application = applicationInvitation({ firstName: "Alex", studentName: "Avery", invitationUrl: applicationUrl, expiresAt: "4 September 2026", linked: false });
+  const application = applicationInvitation({ firstName: "Alex", invitationUrl: applicationUrl, expiresAt: "4 September 2026", linked: false });
+  const linked = applicationInvitation({ firstName: "Alex", studentName: "Avery Example", entryLevel: "Foundation", entryYear: "2027", invitationUrl: applicationUrl, expiresAt: "4 September 2026", linked: true });
   const signature = signatureInvitation({ firstName: "Alex", studentName: "Avery", signingUrl });
+  assert.equal(application.subject, "Invitation to Apply for Enrolment at Rosewood College");
+  assert.match(application.text, /Thank you for considering Rosewood College for your child’s education/);
+  assert.match(application.text, /same email address that received this invitation/);
+  assert.match(application.text, /Rosewood College Enrolment Team/);
+  assert.match(application.text, /expires on 4 September 2026/);
+  assert.match(linked.text, /expressed interest in Foundation, 2027 at Rosewood College for your child Avery Example/);
+  assert.match(linked.text, /prefill parts of the application/);
   assert.match(application.html, /copy and paste this private link into your browser/i);
   assert.equal(application.html.split(applicationUrl).length - 1, 3);
   assert.match(signature.html, /copy and paste this private link into your browser/i);
   assert.equal(signature.html.split(signingUrl).length - 1, 3);
+});
+
+test("invitation email escapes names before rendering HTML", () => {
+  const message = applicationInvitation({ firstName: "<Alex>", invitationUrl: "https://ffe.org.au/form", expiresAt: "4 September 2026", linked: false });
+  assert.doesNotMatch(message.html, /Dear <Alex>/);
+  assert.match(message.html, /Dear &lt;Alex&gt;/);
 });

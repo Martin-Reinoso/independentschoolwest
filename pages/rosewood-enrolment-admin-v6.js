@@ -561,7 +561,13 @@
       byId("invite-email").focus();
       return;
     }
-    createInvitation({ recipientEmail: email, firstName: byId("invite-first").value.trim(), lastName: byId("invite-last").value.trim(), studentFirstName: byId("invite-student-first").value.trim(), studentLastName: byId("invite-student-last").value.trim() }, byId("send-direct-invite"));
+    const firstName = byId("invite-first").value.trim();
+    if (!firstName) {
+      setNotice("invite-error", "Enter the parent or guardian first name.");
+      byId("invite-first").focus();
+      return;
+    }
+    createInvitation({ recipientEmail: email, firstName, lastName: byId("invite-last").value.trim() }, byId("send-direct-invite"));
   });
   byId("eoi-invite-form").addEventListener("submit", event => {
     event.preventDefault();

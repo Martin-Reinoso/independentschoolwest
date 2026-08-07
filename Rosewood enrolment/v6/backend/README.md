@@ -27,8 +27,14 @@ legacy columns.
 
 ## Invitations And Staff Access
 
-- A direct invitation creates an application without an EOI link.
+- A direct invitation requires the parent/guardian first name and email; surname is
+  optional and no child name is collected by staff.
 - An EOI is linked only when staff explicitly select the matching record and email.
+- Initial and replacement invitation links expire after 14 days.
+- OTP verification creates a family-scoped session. A family can select an existing
+  child or add another child, after which the service creates a separate
+  application-scoped session. Each child's answers, files and signatures remain in a
+  distinct application record. Existing one-child invitation records remain supported.
 - Staff authenticate at
   `https://ffe.org.au/pages/rosewood-enrolment-admin-v6.html` with an allowlisted OTP.
 - Roles are `admin`, `admissions` and `viewer`; configured addresses receive one role.
@@ -62,6 +68,8 @@ POST /v6/staff/invitations/resend
 POST /v6/eoi
 POST /v6/application/access/request-code
 POST /v6/application/access/verify-code
+POST /v6/application/records/select
+POST /v6/application/records
 GET  /v6/application/context
 PUT  /v6/application/draft
 POST /v6/application/documents/start
@@ -73,7 +81,8 @@ POST /v6/application/signatures/submit
 ```
 
 Every application, draft, upload, document and signature request is authorised on the
-server. The browser cannot select another family's application ID.
+server. Family record selection is checked against the invitation's server-side
+application list; the browser cannot select another family's application ID.
 
 ## Build And Recovery
 

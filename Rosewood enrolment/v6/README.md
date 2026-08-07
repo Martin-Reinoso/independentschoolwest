@@ -37,6 +37,8 @@ allowlisted email OTP and currently covers EOI and Application for Enrolment onl
 - one-page Expression of Interest
 - invited application gateway, OTP frame and record selector for EOI-linked and direct
   staff invitations
+- family-level record selection that keeps each child's application, progress,
+  documents and signatures separate under one verified invitation
 - five-step application
 - separate offer-acceptance gateway, selector and five-step Enrolment Agreement
 - independent guardian identity, OTP, Introduction, Your Details, Review, Sign,
@@ -57,9 +59,10 @@ replaceable reports rather than the application database. GuardDuty and active S
 document storage are outside the launch scope.
 
 The browser still does not use cookies, local storage, session storage or IndexedDB.
-Application access tokens and verified sessions remain in memory. Acceptance, decline
-and post-offer Enrolment Agreement frames cannot write to the backend, send messages or
-create records.
+Family and child-application sessions remain in memory. A family invitation and email
+OTP reveal only the child records attached to that invitation; selecting or creating a
+child produces a separate application-scoped session. Acceptance, decline and post-offer
+Enrolment Agreement frames cannot write to the backend, send messages or create records.
 
 The staff portal also keeps its two-hour session in memory only. It displays operational
 summaries, creates direct or EOI-linked invitations, rotates tokens when resending and
@@ -68,6 +71,8 @@ document-sharing links; authorised staff access documents through the restricted
 enrolment Drive. Viewers cannot create invitations.
 The portal does not show raw invitation links, signature drawings or network
 fingerprints and does not link staff directly into editable Sheets.
+Direct invitation staff fields are parent/guardian first name, optional surname and
+email only. The invitation lasts 14 days and the family supplies each child after OTP.
 
 V6 is hidden from site navigation and the sitemap and has `noindex`. Its URL is still
 public and is not an access-control boundary.

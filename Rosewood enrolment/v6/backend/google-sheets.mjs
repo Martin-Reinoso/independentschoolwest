@@ -20,7 +20,7 @@ const headers = {
   operations: {
     "Contacts": ["contact_id", "email", "first_name", "last_name", "mobile_phone", "source", "created_at", "updated_at", "schema_version"],
     "Students": ["student_id", "first_name", "last_name", "date_of_birth", "source", "created_at", "updated_at", "schema_version"],
-    "Application Invitations": ["invitation_id", "application_id", "recipient_contact_id", "recipient_email", "student_id", "source_eoi_id", "status", "created_at", "expires_at", "first_sent_at", "last_sent_at", "send_count", "opened_at", "verified_at", "submitted_at", "schema_version"],
+    "Application Invitations": ["invitation_id", "application_id", "recipient_contact_id", "recipient_email", "student_id", "source_eoi_id", "status", "created_at", "expires_at", "first_sent_at", "last_sent_at", "send_count", "opened_at", "verified_at", "submitted_at", "schema_version", "application_ids_json"],
     "Workflow Links": ["link_id", "source_workflow", "source_record_id", "target_workflow", "target_record_id", "linked_by", "linked_at", "prefill_fields_json", "schema_version"],
     "Progress": ["application_id", "current_stage", "status", "revision", "last_saved_at", "last_activity_at", "percent_complete", "schema_version"],
     "Email Events": ["email_event_id", "occurred_at", "message_type", "workflow", "record_id", "recipient_email", "ses_message_id", "delivery_status", "bounce_type", "complaint_type", "details_json", "schema_version"],
