@@ -169,6 +169,15 @@ function invitationApplicationIds(invitation) {
   return [...new Set([...(Array.isArray(invitation?.applicationIds) ? invitation.applicationIds : []), invitation?.applicationId].filter(Boolean))];
 }
 
+export function additionalGuardianSignatureRecipients(values, guardianCount) {
+  const recipients = [];
+  for (let index = 1; index < Math.max(1, Math.min(6, Number(guardianCount || 1))); index += 1) {
+    const email = normalizeEmail(values[`app_guardian_${index}_email`]);
+    if (email) recipients.push({ index, email, firstName: safeText(values[`app_guardian_${index}_first`], 120) });
+  }
+  return recipients;
+}
+
 async function getInvitationApplications(store, invitation) {
   return (await Promise.all(invitationApplicationIds(invitation).map(applicationId => store.getApplication(applicationId)))).filter(Boolean);
 }
@@ -243,6 +252,43 @@ export async function resendApplicationInvitation({ store, invitationId, created
   ];
   await store.rotateInvitation({ invitation, previousTokenHash: current.tokenHash, tokenHash, outboxEvents: [emailOutbox({ to: current.recipientEmail, ...message, tags: { workflow: "application", message_type: "invitation_resend" } }, now), ...operations.map(operation => sheetOutbox(operation, now))], auditEvents: [audit] });
   return { applicationId: current.applicationId, invitationId: current.id, recipientEmail: current.recipientEmail, sendCount: invitation.sendCount, expiresAt: iso(expiresAt) };
+}
+
+export async function queueMissingGuardianSignatureInvitations({ store, applicationId, signingPageUrl, actorId = "staff-cli", clock = () => Date.now() }) {
+  const app = await store.getApplication(applicationId);
+  if (!app) throw appError(404, "APPLICATION_NOT_FOUND", "The application was not found.");
+  if (app.status !== "pending_signatures") throw appError(409, "APPLICATION_NOT_PENDING_SIGNATURES", "The application is not awaiting guardian signatures.");
+  if (!app.revisionHash) throw appError(409, "APPLICATION_REVISION_UNAVAILABLE", "The submitted application does not have a frozen revision hash.");
+  if (!store.listSignatureTasksForApplication || !store.addSignatureTasks) throw new Error("The configured store does not support signature-task recovery.");
+
+  const existingTasks = await store.listSignatureTasksForApplication(app.id);
+  const existingGuardianIds = new Set(existingTasks.map(task => task.guardianId));
+  const signedGuardianIds = new Set((app.signatures || []).map(signature => signature.guardianId));
+  const recipients = additionalGuardianSignatureRecipients(app.values || {}, app.guardianCount || 1)
+    .filter(recipient => {
+      const guardianId = app.guardianIds?.[recipient.index];
+      return guardianId && !existingGuardianIds.has(guardianId) && !signedGuardianIds.has(guardianId);
+    });
+  if (!recipients.length) return { applicationId: app.id, status: app.status, queuedSignatureRequests: 0 };
+
+  const now = clock();
+  const createdAt = iso(now);
+  const signatureTasks = [];
+  const emailEvents = [];
+  for (const recipient of recipients) {
+    const rawTask = token();
+    const guardianId = app.guardianIds[recipient.index];
+    signatureTasks.push({ tokenHash: sha256(rawTask), applicationId: app.id, guardianId, guardianIndex: recipient.index, email: recipient.email, status: "invited", revision: app.revision, revisionHash: app.revisionHash, createdAt: now, expiresAt: now + 14 * 86400_000, ttl: Math.floor((now + 30 * 86400_000) / 1000) });
+    const signingUrl = `${signingPageUrl}?task=${encodeURIComponent(rawTask)}`;
+    emailEvents.push(emailOutbox({ to: recipient.email, ...signatureInvitation({ firstName: recipient.firstName, studentName: `${app.values.student_first} ${app.values.student_last}`, signingUrl }), tags: { workflow: "application", message_type: "signature_invitation" } }, now));
+  }
+  const audit = createAuditEvent({ workflow: "application", recordId: app.id, invitationId: app.invitationId, type: "application.signature_invitations_recovered", at: createdAt, actorType: "staff", actorId, stage: "guardian_signatures", details: { queuedSignatureRequests: signatureTasks.length, revision: app.revision } });
+  const operations = [
+    auditSheetOperation(audit),
+    ...recipients.map(recipient => emailEvent({ messageType: "signature_invitation", workflow: "application", recordId: app.id, recipientEmail: recipient.email, at: createdAt }))
+  ];
+  await store.addSignatureTasks({ applicationId: app.id, revisionHash: app.revisionHash, signatureTasks, outboxEvents: [...emailEvents, ...operations.map(operation => sheetOutbox(operation, now))], auditEvents: [audit] });
+  return { applicationId: app.id, status: app.status, queuedSignatureRequests: signatureTasks.length };
 }
 
 export function createService({ store, artifacts, drive, sheets, mailer, env, clock = () => Date.now() }) {
@@ -725,6 +771,8 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     await ensureDefinition(store, "application", definition.formVersion);
     const guardianCount = Math.max(1, Math.min(6, Number(app.guardianCount || 1)));
     const values = applicationValidator(definition).validate(app.values, guardianCount, app.emergencyCount || 2);
+    const additionalSignatureRecipients = additionalGuardianSignatureRecipients(values, guardianCount);
+    if (additionalSignatureRecipients.length !== guardianCount - 1) throw appError(422, "SIGNATURE_RECIPIENT_REQUIRED", "Each additional parent or guardian needs a valid email address before the application can be submitted.");
     if (!(app.documents?.birth_certificate || []).length) throw appError(422, "DOCUMENT_REQUIRED", "Upload the student's birth certificate before submitting.", { missing: ["birth_certificate"] });
     const unsafeDocuments = Object.values(app.documents || {}).flat().filter(document => document.malwareScanStatus !== "no_threats_found" && !(allowUnscannedGoogleDocuments && document.storageProvider === "google_drive"));
     if (unsafeDocuments.length) throw appError(422, "DOCUMENT_SCAN_REQUIRED", "Every uploaded document must pass its security check before the application can be submitted.");
@@ -738,18 +786,18 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     const primarySignature = { id: primarySignatureId, guardianId: primaryGuardianId, signerName: `${values.app_guardian_0_first} ${values.app_guardian_0_last}`.trim(), signerEmail: normalizeEmail(values.app_guardian_0_email), signedAt, revision: app.revision, revisionHash, fileId: signatureFile.id, storageProvider: signatureFile.storageProvider, storageVersionId: signatureFile.storageVersionId, networkFingerprint: networkFingerprint(event), ipAcknowledged: values.application_signature_ip, termsAcknowledged: values.application_signature_terms };
     const signatureTasks = [];
     const taskEmails = [];
-    for (let index = 1; index < guardianCount; index += 1) {
+    for (const recipient of additionalSignatureRecipients) {
+      const index = recipient.index;
       const guardianId = app.guardianIds[index] || id("guardian");
       app.guardianIds[index] = guardianId;
-      const email = normalizeEmail(values[`app_guardian_${index}_email`]);
-      if (!email || values[`app_guardian_${index}_permission`] === "No, do not contact them") continue;
+      const email = recipient.email;
       const rawTask = token();
       const task = { tokenHash: sha256(rawTask), applicationId: app.id, guardianId, guardianIndex: index, email, status: "invited", revision: app.revision, revisionHash, createdAt: clock(), expiresAt: clock() + 14 * 86400_000, ttl: Math.floor((clock() + 30 * 86400_000) / 1000) };
       signatureTasks.push(task);
       const signingUrl = `${signingPageUrl}?task=${encodeURIComponent(rawTask)}`;
-      taskEmails.push({ to: email, ...signatureInvitation({ firstName: values[`app_guardian_${index}_first`], studentName: `${values.student_first} ${values.student_last}`, signingUrl }), tags: { workflow: "application", message_type: "signature_invitation" } });
+      taskEmails.push({ to: email, ...signatureInvitation({ firstName: recipient.firstName, studentName: `${values.student_first} ${values.student_last}`, signingUrl }), tags: { workflow: "application", message_type: "signature_invitation" } });
     }
-    const requiredSignatureCount = guardianCount;
+    const requiredSignatureCount = 1 + signatureTasks.length;
     const status = requiredSignatureCount > 1 ? "pending_signatures" : "submitted";
     const reference = `APP-${new Date(clock()).getFullYear()}-${token(5).toUpperCase()}`;
     const next = { ...app, values, status, reference, requiredSignatureCount, signatures: [primarySignature], snapshotFileId: snapshot.id, snapshotStorageProvider: snapshot.storageProvider, snapshotStorageVersionId: snapshot.storageVersionId, revisionHash, submittedAt: signedAt, completedAt: status === "submitted" ? signedAt : "", updatedAt: signedAt, formVersion: definition.formVersion, formDefinitionHash: definition.definitionHash, schemaVersion: definition.schemaVersion };

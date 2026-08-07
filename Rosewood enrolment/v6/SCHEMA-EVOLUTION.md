@@ -28,12 +28,12 @@ contract and deliberately creating a new version.
 Current launch contracts:
 
 ```text
-EOI:         rosewood-eoi-2026.3
-Application: rosewood-application-2026.3
+EOI:         rosewood-eoi-2026.4
+Application: rosewood-application-2026.4
 ```
 
-The original `2026.1` and `2026.2` contracts and validators remain addressable for
-existing records.
+The original `2026.1`, `2026.2` and `2026.3` contracts and validators remain addressable
+for existing records.
 The `2026.2` release changes document-upload interaction and transport without changing
 question meaning, required answers or stored answer keys. Existing `2026.1`
 applications use the corrected uploader and remain pinned to their original contract;
@@ -41,7 +41,10 @@ records created under that release remain pinned to `2026.2`. The `2026.3` relea
 adds exact-three client validation for the existing decision-influences rule, translates
 server validation into field/section guidance and preserves an unsigned drawing during
 in-form navigation. It does not change stored answer keys or reinterpret earlier data.
-New records receive `2026.3`.
+The `2026.4` release clarifies that an additional guardian's general contact preference
+does not suppress the required transactional signing request, and corrects family-facing
+status labels so `pending_signatures` is never presented as Completed. No stored answer
+key is removed or reinterpreted. New records receive `2026.4`.
 
 Acceptance, Decline and the Enrolment Agreement must receive their own independent
 version series when their backends are built. They must not reuse the Application

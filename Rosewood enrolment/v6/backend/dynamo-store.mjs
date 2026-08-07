@@ -285,6 +285,38 @@ export class DynamoStore {
     catch (error) { if (conditional(error)) throw conflict("This signature request has already been completed or the application changed."); throw error; }
   }
 
+  async listSignatureTasksForApplication(applicationId) {
+    const items = [];
+    let ExclusiveStartKey;
+    do {
+      const response = await this.client.send(new ScanCommand({
+        TableName: this.tableName,
+        FilterExpression: "#entity = :entity AND #data.#applicationId = :applicationId",
+        ExpressionAttributeNames: { "#entity": "entity", "#data": "data", "#applicationId": "applicationId" },
+        ExpressionAttributeValues: { ":entity": "signature_task", ":applicationId": applicationId },
+        ExclusiveStartKey,
+        ConsistentRead: true
+      }));
+      items.push(...(response.Items || []).map(item => item.data));
+      ExclusiveStartKey = response.LastEvaluatedKey;
+    } while (ExclusiveStartKey);
+    return items;
+  }
+
+  async addSignatureTasks({ applicationId, revisionHash, signatureTasks, outboxEvents, auditEvents = [] }) {
+    const actions = [{ ConditionCheck: {
+      TableName: this.tableName,
+      Key: this.key(`APP#${applicationId}`, "CURRENT"),
+      ConditionExpression: "#data.#status = :pending AND #data.#revisionHash = :revisionHash",
+      ExpressionAttributeNames: { "#data": "data", "#status": "status", "#revisionHash": "revisionHash" },
+      ExpressionAttributeValues: { ":pending": "pending_signatures", ":revisionHash": revisionHash }
+    } }];
+    for (const task of signatureTasks) actions.push({ Put: { TableName: this.tableName, Item: { ...this.key(`SIGN_TASK#${task.tokenHash}`), entity: "signature_task", ttl: task.ttl, data: task }, ConditionExpression: "attribute_not_exists(PK)" } });
+    actions.push(...this.outboxActions(outboxEvents), ...this.auditActions(auditEvents));
+    try { await this.client.send(new TransactWriteCommand({ TransactItems: actions })); }
+    catch (error) { if (conditional(error)) throw conflict("The signature state changed before the missing request could be queued."); throw error; }
+  }
+
   async checkRateLimit(key, limit, windowSeconds) {
     const bucket = Math.floor(this.now() / (windowSeconds * 1000));
     try {
