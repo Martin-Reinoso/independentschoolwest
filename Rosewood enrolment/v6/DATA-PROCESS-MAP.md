@@ -292,6 +292,15 @@ flowchart TD
 
 ## Workflow 3: Application Access
 
+### Welcome And Policy Review
+
+Before entering an email, the family can open the approved Enrolment Policy, Enrolment
+Procedure or Privacy Policy inside the Application page. The selected policy is encoded
+in the URL so direct links and browser Back work. Switching and returning preserve
+welcome values in page memory. No policy-view event is sent to Lambda, DynamoDB, Google
+Sheets, Google Drive, SES or analytics; reviewing a policy does not record acceptance.
+The byte-identical Word source and canonical PDF are available as fallbacks.
+
 ```mermaid
 sequenceDiagram
     actor Family
@@ -534,6 +543,12 @@ only after the final required signature changes the authoritative status to `sub
 Operational progress is reported as 95 percent while signatures remain outstanding.
 
 ## Workflow 5: Additional Application Guardian Signing
+
+The initial request email contains only a greeting, a concise explanation of why the
+recipient was contacted, the private signing link, expiry context and the enrolment
+contact. It deliberately omits the student's name, family/medical details, answers and
+internal identifiers. The private link alone reveals no application information: the
+recipient must enter the invited email and complete OTP verification first.
 
 ### Process
 

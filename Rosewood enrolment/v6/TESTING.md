@@ -5,6 +5,7 @@ Test date: 8 August 2026
 ## Static Checks
 
 - bundled Node syntax check passed for `pages/rosewood-enrolment-v6.js`
+- bundled Node syntax check passed for the generated policy projection
 - bundled Node syntax check passed for the generated 444-entry language catalogue
 - `git diff --check` passed for the V6 frontend
 - scans found no cookie, local-storage, session-storage or IndexedDB use
@@ -17,15 +18,28 @@ Test date: 8 August 2026
 - no inline styles are used in V6-rendered content
 - scans found no family-facing `Secure enrolment form`, backend-scope or
   `Progress saves when you continue` wording
-- the release page references V6 CSS `v=8` and JavaScript `v=13`
+- the release page references V6 CSS `v=10`, policy projection `v=1` and JavaScript
+  `v=15`
+- all three copied Word documents match their approved source SHA-256 hashes exactly;
+  their canonical PDFs open as 8, 7 and 8-page documents
 
 ## Browser Checks
 
 Tested through a local HTTP server in the Codex in-app browser.
 
 - all five workflow gateways and internal review-frame lists load
-- Application gateway contains a short welcome, the policy/procedure sentence and one
-  invitation-email field; it has no language prompt or preparation checklist
+- Application gateway contains a short welcome, internal links for the Enrolment Policy,
+  Enrolment Procedure and Privacy Policy, and one invitation-email field; it has no
+  Privacy Collection Notice reference, language prompt or preparation checklist
+- each direct policy URL loads the requested approved title; desktop policy tabs and the
+  mobile selector switch all three documents and expose the active selection with
+  `aria-current` or the selected option
+- Return to application and browser Back restore the gateway without losing its entered
+  email; policy switching does not create a checkbox, acknowledgement, save or API call
+- original PDF links use the current tab rather than a popup, and each original Word
+  fallback has an explicit download attribute
+- policy landmarks, labelled navigation, heading levels, document-register table,
+  contents links and scoped visible focus styles are present in the accessibility tree
 - OTP resend immediately shows a sending animation and live status, then confirms a
   new code was sent and disables itself for a 30-second countdown
 - EOI is one page; empty submission remains on the page and reports 19 missing groups
@@ -130,6 +144,8 @@ Desktop viewport: 1280 px wide.
 - no horizontal overflow
 - the sticky header remains at viewport top while the form scrolls and is approximately
   81 px high at the 1280 px test viewport
+- the policy reader retains the blue Rosewood information panel, shows all three tabs,
+  clearly marks the current policy and keeps Return to application visible
 
 Mobile viewport: 390 x 844.
 
@@ -137,10 +153,15 @@ Mobile viewport: 390 x 844.
 - the form starts after the story panel and remains scrollable
 - controls collapse to one column
 - document width equals viewport width; no horizontal overflow
+- the policy reader replaces the desktop columns with the compact Rosewood header,
+  sticky return/selector toolbar and reading-progress indicator
+- the document-register table reflows into labelled rows, collapsed contents occupies
+  only its natural height, and long content remains within the 390 px viewport
 
 ## Backend Checks
 
-- thirty-eight Node tests pass for immutable form definitions and stable hashes, frontend
+- forty-four Node tests pass for immutable form definitions and stable hashes, approved
+  policy source/asset hashes, guardian-email privacy, frontend
   submission guidance and in-browser signature continuity, Google Drive
   upload/confirmation, legacy-safe
   document and family-invitation projection headers, direct invitation, explicit EOI
@@ -199,11 +220,11 @@ Mobile viewport: 390 x 844.
 
 ## Form Version And Migration Checks
 
-- EOI and Application use separate immutable `2026.4` form contracts with SHA-256
-  definition hashes; the production build fails if the pinned family HTML or JavaScript
+- EOI and Application use separate immutable `2026.5` form contracts with SHA-256
+  definition hashes; the production build fails if any pinned family or policy asset
   changes without a deliberate form-definition update
-- the original `2026.1`, `2026.2` and `2026.3` definitions retain their exact hashes and
-  validators; the family browser supports all four Application versions so existing
+- the original `2026.1`, `2026.2`, `2026.3` and `2026.4` definitions retain their exact
+  hashes and validators; the family browser supports all five Application versions so existing
   records are not migrated or rewritten by later interaction fixes
 - partial-save tests prove that omitted and retired answer keys remain in the current
   record and immutable revision; a mismatched browser version is rejected without a
@@ -349,6 +370,9 @@ message.
 - the SES account is production-enabled and healthy in `ap-southeast-2`
 - controlled EOI, invitation, OTP, guardian-signature and completion messages arrived
   from `enrolment@ffe.org.au` at `info@ffe.org.au`
+- the additional-guardian template places the approved purpose/safety explanation before
+  the action button, omits student, family, medical and application details, and retains
+  the private-link plus email-OTP verification flow
 - controlled inactive-link canaries for both new invitation variants arrived on
   7 August 2026 with the exact title-case subject, approved direct or EOI-linked copy,
   fallback URL, enrolment contact, Rosewood sign-off and 21 August 2026 expiry

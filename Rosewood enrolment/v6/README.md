@@ -20,6 +20,9 @@ https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=acceptance
 https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=signing
 https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=decline
 https://ffe.org.au/pages/rosewood-enrolment-admin-v6.html
+https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=application&policy=enrolment-policy
+https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=application&policy=enrolment-procedure
+https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=application&policy=privacy-policy
 ```
 
 Add `&review=1` to reveal the internal frame selector. The normal family-facing URLs
@@ -45,6 +48,8 @@ allowlisted email OTP and currently covers EOI and Application for Enrolment onl
   Thank You and immutable Signed Form frames
 - separate decline gateway, selector and three-step decline form
 - responsive desktop and mobile presentation
+- an internal responsive reader for the approved Enrolment Policy, Enrolment Procedure
+  and Privacy Policy, with direct routes and original Word/PDF fallbacks
 - required-field, repeatable-record, conditional, fee and signature interactions
 - the complete 444-entry ABS ASCL 2025 Main Language catalogue
 
@@ -98,6 +103,14 @@ request. Google Sheets show the record's actual form version but remain replacea
 reports. `SCHEMA-EVOLUTION.md` defines the mandatory process for adding, removing,
 renaming or changing questions and for migrating existing records.
 
+The Application welcome uses the three approved Rosewood policies stored under
+`pages/rosewood-policies/`. Selecting one changes the current URL through the History
+API and renders its approved wording in the enrolment page; it does not call the
+backend, save an acknowledgement or constitute acceptance. Return to application and
+browser Back restore the in-memory welcome state. Desktop retains the Rosewood story
+panel, while mobile uses a compact header, sticky selector and reading-progress bar.
+The original byte-identical Word documents and canonical-layout PDFs remain available.
+
 The family-facing page has no environment or backend-status ribbon. Its compact sticky
 header shows the current workflow/section and truthful save or connectivity status on
 desktop and mobile. The non-writing internal review URL retains an explicit review
@@ -112,6 +125,10 @@ The portal does not show raw invitation links, signature drawings or network
 fingerprints and does not link staff directly into editable Sheets.
 Direct invitation staff fields are parent/guardian first name, optional surname and
 email only. The invitation lasts 14 days and the family supplies each child after OTP.
+Additional-guardian signing emails explain why the recipient was contacted before the
+private action button and contain no student, family, medical or application details.
+The private link still requires the invited email and OTP before the frozen application
+review is returned.
 
 V6 is hidden from site navigation and the sitemap and has `noindex`. Its URL is still
 public and is not an access-control boundary.

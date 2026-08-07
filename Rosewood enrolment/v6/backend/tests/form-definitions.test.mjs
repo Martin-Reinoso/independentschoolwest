@@ -24,6 +24,19 @@ test("the launch contracts remain addressable with their original hashes", () =>
   assert.equal(getFormDefinition("application", "rosewood-application-2026.2").definitionHash, "2e3340b08eb416d2557d9f6037c4783dd1ae4d75f8933ff269dd62ab85efcf18");
   assert.equal(getFormDefinition("eoi", "rosewood-eoi-2026.3").definitionHash, "cb14ce24b9cfb2be599f4a545123182ebd483feb71af8a2cb1c4be79836eb5b8");
   assert.equal(getFormDefinition("application", "rosewood-application-2026.3").definitionHash, "51db852d22dc1ea8723b77cbc440be0f9c047ad7f94abb8c21a949036dbf65bf");
+  assert.equal(getFormDefinition("eoi", "rosewood-eoi-2026.4").definitionHash, "e73021e53fb5b52566b95ca27dd25b134785050b852d8722d81d76012d5d6560");
+  assert.equal(getFormDefinition("application", "rosewood-application-2026.4").definitionHash, "582a03e0cf4fdab80f1548cc23b48fc5d04a1accceb44f1289c627ddecc7e74b");
+  assert.equal(getFormDefinition("eoi", "rosewood-eoi-2026.5").definitionHash, "f95e94056ea537a4ab918207f5cd96f6668c5ea61a0eec0e22747a0e3a064f3d");
+  assert.equal(getFormDefinition("application", "rosewood-application-2026.5").definitionHash, "f7cfb4de813c69b9fc5ff15a195274be84667bc41e60cc2ca148ad7542e89885");
+});
+
+test("the current contracts pin every policy-reader release asset", () => {
+  for (const workflow of ["eoi", "application"]) {
+    const hashes = currentFormDefinition(workflow).source.frontendAssetHashes;
+    assert.equal(Object.keys(hashes).length, 10);
+    assert.equal(hashes["pages/rosewood-enrolment-policies-v6.js"], "8bf2abedcf2b9aa70e6ff55b3d837a96604dc06784d8f46b68b637056a4ce095");
+    assert.equal(hashes["pages/rosewood-policies/privacy-policy-rosewood-college.docx"], "f0cde7768b7ab470a41f95885f409797aacb9f3154cc2e58332144aaa6f26823");
+  }
 });
 
 test("legacy records resolve to the current workflow contract without changing answers", () => {

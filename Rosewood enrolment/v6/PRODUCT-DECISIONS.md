@@ -75,14 +75,35 @@ workflows into the current records or API.
 
 ## Application Gateway
 
-- Use a short welcome, the sentence linking the Enrolment Policy and Enrolment
-  Procedure, and one email field.
+- Use a short welcome, internal links to the approved Enrolment Policy, Enrolment
+  Procedure and Privacy Policy, and one email field.
 - Do not present a prominent "Important documents" section.
 - Do not show a document preparation checklist at the gateway. Families may complete
   the form until Documents and save their progress if they need to obtain a file.
 - Do not ask for interface language on the application gateway.
 - Label the email section "Enter your email" rather than "Email verification".
 - Do not imply that every invitee previously submitted an EOI.
+- Do not reference or link the Privacy Collection Notice in the welcome copy. This
+  decision does not remove privacy controls or documentation elsewhere.
+
+## Approved Policies And Reader
+
+- The approved source documents are the Rosewood College **Enrolment Policy**,
+  **Enrolment Procedure** and **Privacy Policy** supplied on 8 August 2026.
+- Preserve each original Word file byte-for-byte and provide a canonical PDF fallback.
+  The readable HTML projection must preserve approved wording and document order; it
+  must not summarise, rewrite or introduce policy language.
+- Policy review remains within the Application page. Use direct policy URLs, History
+  API navigation, browser Back and a clear Return to application action. Do not use a
+  popup, iframe or unnecessary new window.
+- Welcome values remain in browser memory while switching policies or returning. Policy
+  viewing performs no API request, draft save, analytics event or acknowledgement.
+- `aria-current`, labelled navigation, headings, landmarks, keyboard focus styles and
+  mobile table/list reflow are required. Reviewing a policy never constitutes
+  acceptance and must not create an acknowledgement checkbox.
+- Desktop retains the blue Rosewood information panel. Mobile replaces the columns with
+  a compact Rosewood header, sticky policy selector, reading progress and persistent
+  return action.
 
 ## OTP Resend Contract
 
@@ -228,6 +249,16 @@ Source: https://www.abs.gov.au/statistics/classifications/australian-standard-cl
   image locations are never included in the browser response.
 - If no second parent/guardian is included, Explanation only one signature becomes
   mandatory and explains why it is being requested.
+
+## Additional Guardian Signature Email
+
+- The request email explains why it was sent before the signing button, instructs an
+  unexpected recipient not to sign or forward the private link, and identifies
+  `enrolment@ffe.org.au` as the contact.
+- Keep the email concise. Do not include the student's name, family details, medical
+  information, application answers or internal identifiers in the subject or body.
+- The link remains a high-entropy, expiring signing-task link. Opening it does not expose
+  the application; the invited email and OTP are still required before review.
 
 ## Frontend and Backend Boundary
 
