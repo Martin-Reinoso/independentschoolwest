@@ -1,6 +1,6 @@
 # V6 Testing
 
-Test date: 7 August 2026
+Test date: 8 August 2026
 
 ## Static Checks
 
@@ -17,7 +17,7 @@ Test date: 7 August 2026
 - no inline styles are used in V6-rendered content
 - scans found no family-facing `Secure enrolment form`, backend-scope or
   `Progress saves when you continue` wording
-- the live page references V6 CSS `v=6` and JavaScript `v=10`
+- the live page references V6 CSS `v=6` and JavaScript `v=11`
 
 ## Browser Checks
 
@@ -129,7 +129,8 @@ Mobile viewport: 390 x 844.
 
 ## Backend Checks
 
-- twenty-four Node tests pass for Google Drive upload/confirmation, legacy-safe
+- thirty Node tests pass for immutable form definitions and stable hashes, Google Drive
+  upload/confirmation, legacy-safe
   document and family-invitation projection headers, direct invitation, explicit EOI
   linkage, exact invitation variants, 14-day expiry, fail-closed link errors,
   linked-email integrity, EOI normalization, conditional needs validation, dynamic
@@ -138,7 +139,8 @@ Mobile viewport: 390 x 844.
   response redaction, staff role restrictions, family multi-child isolation, resumed
   saved-section context, 20-minute sliding inactivity, eight-hour absolute session
   lifetime, explicit session revocation, atomic invitation-token rotation and
-  customer-managed KMS access in the Lambda runtime policy
+  customer-managed KMS access in the Lambda runtime policy, non-destructive partial
+  saves, form-version mismatch rejection and audited historical-revision retrieval
 - the production deployment bundle builds successfully and both family/admin browser
   scripts pass Node syntax checks
 - the AWS stack deployed successfully and `/v6/health` returns the expected schema
@@ -172,6 +174,32 @@ Mobile viewport: 390 x 844.
   checked against the canonical application state
 - the automated second-guardian mirror defect found by the canary was fixed, deployed
   and its synthetic row reconciled
+
+## Form Version And Migration Checks
+
+- EOI and Application use separate immutable `2026.1` form contracts with SHA-256
+  definition hashes; the production build fails if the pinned family HTML or JavaScript
+  changes without a deliberate form-definition update
+- partial-save tests prove that omitted and retired answer keys remain in the current
+  record and immutable revision; a mismatched browser version is rejected without a
+  write
+- staff detail returns revision metadata without historical values, and the separate
+  revision route returns one selected snapshot only after staff authorization and adds
+  an audit event
+- two fresh pre-migration DynamoDB backups completed in the locked Sydney vault, raising
+  the verified recovery-point count from four to six
+- the migration dry run identified five application records and one EOI; the apply run
+  pinned all six records without changing answers and created five immutable application
+  baseline revisions
+- the post-migration dry run reports zero unversioned applications and zero unversioned
+  EOIs; DynamoDB reports two stored form definitions and five baseline revisions
+- Google projections were rebuilt from DynamoDB after an aggregate-only dry run; EOI,
+  Application and Progress rows all report the expected record-specific form version
+  and definition hash
+- the production Lambda remained `Active`, CloudFormation reached `UPDATE_COMPLETE`,
+  and `/v6/health` returned both current workflow versions after deployment
+- local desktop and 390 x 844 review-mode checks loaded JavaScript `v=11` without console
+  errors or horizontal overflow
 
 ## Staff Portal Checks
 

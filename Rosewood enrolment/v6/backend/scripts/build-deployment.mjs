@@ -1,11 +1,14 @@
 import { spawnSync } from "node:child_process";
-import { copyFileSync, lstatSync, mkdirSync, readdirSync, rmSync } from "node:fs";
+import crypto from "node:crypto";
+import { copyFileSync, lstatSync, mkdirSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { currentFormDefinition } from "../form-definitions.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.join(root, "lambda-dist");
-const files = ["index.mjs", "service.mjs", "schema.mjs", "dynamo-store.mjs", "google-auth.mjs", "google-drive.mjs", "google-sheets.mjs", "ses-mailer.mjs", "email-templates.mjs", "package.json", "pnpm-lock.yaml"];
+const repositoryRoot = path.resolve(root, "../../..");
+const files = ["index.mjs", "service.mjs", "schema.mjs", "form-definitions.mjs", "dynamo-store.mjs", "google-auth.mjs", "google-drive.mjs", "google-sheets.mjs", "ses-mailer.mjs", "email-templates.mjs", "package.json", "pnpm-lock.yaml"];
 
 function run(command, args) {
   const result = spawnSync(command, args, { cwd: output, env: process.env, encoding: "utf8", stdio: "inherit" });
@@ -22,6 +25,15 @@ function assertNoSymlinks(directory) {
   }
 }
 
+function assertFormAssets() {
+  const expected = currentFormDefinition("application").source.frontendAssetHashes;
+  for (const [relativePath, expectedHash] of Object.entries(expected)) {
+    const actualHash = crypto.createHash("sha256").update(readFileSync(path.join(repositoryRoot, relativePath))).digest("hex");
+    if (actualHash !== expectedHash) throw new Error(`Form asset changed without a new immutable form definition: ${relativePath}`);
+  }
+}
+
+assertFormAssets();
 rmSync(output, { recursive: true, force: true });
 mkdirSync(output, { recursive: true });
 for (const file of files) copyFileSync(path.join(root, file), path.join(output, file));

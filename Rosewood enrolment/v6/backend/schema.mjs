@@ -14,6 +14,32 @@ export const EOI_REQUIRED = [
   "eoi_needs", "eoi_family_connection", "eoi_other_children", "eoi_discovery"
 ];
 
+export const APPLICATION_FIELD_PREFIXES = [
+  "student_", "app_guardian_", "emergency_", "previous_school_", "fee_", "application_", "sacrament_"
+];
+
+export const APPLICATION_STATIC_FIELDS = [
+  "app_guardians_complete", "current_level", "entry_year", "entry_level", "current_school", "current_school_other", "care_arrangement", "care_other",
+  "shared_parenting", "future_siblings", "future_sibling_count",
+  "residence_country", "birth_country", "nationality", "ethnicity", "arrival_date", "residency_status", "australian_citizen",
+  "residency_evidence", "visa_subclass", "visa_expiry", "previous_visa", "indigenous_status", "main_language", "other_languages",
+  "additional_needs", "need_categories", "need_other", "professional_categories", "professional_other", "reports_attached", "ndis_support",
+  "court_orders", "other_relevant_information", "parish", "medical_conditions", "other_medical_condition", "condition_details",
+  "allergy_details", "anaphylaxis_risk", "anaphylaxis_device", "immunisation", "humanitarian_health", "doctor_name", "doctor_address",
+  "doctor_phone", "medicare_number", "medicare_expiry", "private_insurance", "ambulance_cover", "healthcare_card"
+];
+
+export const APPLICATION_REQUIRED_FIELDS = [
+  "student_first", "student_last", "student_dob", "student_gender", "student_religion", "current_level", "entry_year",
+  "entry_level", "current_school", "student_address_share", "care_arrangement", "student_address", "student_suburb",
+  "student_state", "student_postcode", "student_country", "future_siblings", "residence_country", "birth_country", "nationality",
+  "residency_status", "australian_citizen", "indigenous_status", "main_language", "additional_needs",
+  "reports_attached", "ndis_support", "court_orders", "medical_conditions", "immunisation", "anaphylaxis_risk", "doctor_name", "doctor_address",
+  "ambulance_cover", "healthcare_card", "app_guardians_complete", "previous_school_permission", "previous_school_name",
+  "previous_school_address", "previous_school_interstate", "fee_option", "application_discovery", "application_influences",
+  "application_signature_ip", "application_signature_terms", "application_signature_date"
+];
+
 const MAX_TEXT = 5000;
 const MAX_LONG_TEXT = 12000;
 const MAX_ARRAY = 30;
@@ -52,16 +78,7 @@ export function validateEoi(input) {
 }
 
 function isApplicationField(key) {
-  return key.startsWith("student_") || key.startsWith("app_guardian_") || key.startsWith("emergency_") || key.startsWith("previous_school_") || key.startsWith("fee_") || key.startsWith("application_") || key.startsWith("sacrament_") || [
-    "app_guardians_complete", "current_level", "entry_year", "entry_level", "current_school", "current_school_other", "care_arrangement", "care_other",
-    "shared_parenting", "future_siblings", "future_sibling_count",
-    "residence_country", "birth_country", "nationality", "ethnicity", "arrival_date", "residency_status", "australian_citizen",
-    "residency_evidence", "visa_subclass", "visa_expiry", "previous_visa", "indigenous_status", "main_language", "other_languages",
-    "additional_needs", "need_categories", "need_other", "professional_categories", "professional_other", "reports_attached", "ndis_support",
-    "court_orders", "other_relevant_information", "parish", "medical_conditions", "other_medical_condition", "condition_details",
-    "allergy_details", "anaphylaxis_risk", "anaphylaxis_device", "immunisation", "humanitarian_health", "doctor_name", "doctor_address",
-    "doctor_phone", "medicare_number", "medicare_expiry", "private_insurance", "ambulance_cover", "healthcare_card"
-  ].includes(key);
+  return APPLICATION_FIELD_PREFIXES.some(prefix => key.startsWith(prefix)) || APPLICATION_STATIC_FIELDS.includes(key);
 }
 
 export function sanitizeApplication(input) {
@@ -73,17 +90,7 @@ export function sanitizeApplication(input) {
 
 export function validateApplicationForSubmission(input, guardianCount = 1, emergencyCount = 2) {
   const values = sanitizeApplication(input);
-  const required = [
-    "student_first", "student_last", "student_dob", "student_gender", "student_religion", "current_level", "entry_year",
-    "entry_level", "current_school", "student_address_share", "care_arrangement", "student_address", "student_suburb",
-    "student_state", "student_postcode", "student_country", "future_siblings", "residence_country", "birth_country", "nationality",
-    "residency_status", "australian_citizen", "indigenous_status", "main_language", "additional_needs",
-    "reports_attached", "ndis_support", "court_orders", "medical_conditions", "immunisation", "anaphylaxis_risk", "doctor_name", "doctor_address",
-    "ambulance_cover", "healthcare_card", "app_guardians_complete", "previous_school_permission", "previous_school_name",
-    "previous_school_address", "previous_school_interstate", "fee_option", "application_discovery", "application_influences",
-    "application_signature_ip", "application_signature_terms", "application_signature_date"
-  ];
-  const missing = required.filter(key => !truthy(values[key]));
+  const missing = APPLICATION_REQUIRED_FIELDS.filter(key => !truthy(values[key]));
   for (let index = 0; index < Math.max(1, Math.min(MAX_GUARDIANS, Number(guardianCount))); index += 1) {
     const prefix = `app_guardian_${index}_`;
     for (const suffix of ["first", "last", "email", "mobile", "relationship", "contact_type", "sms", "healthcare", "address", "suburb", "state", "postcode", "country", "occupation_group", "occupation", "school_education", "further_education", "birth_country", "nationality", "ethnicity", "languages", "residency", "indigenous"]) {

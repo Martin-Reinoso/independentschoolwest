@@ -68,6 +68,14 @@ uploads selected Documents-page files and revokes the browser sessions. Returnin
 OTP resumes the last acknowledged section. Acceptance, decline and post-offer Enrolment
 Agreement frames cannot write to the backend, send messages or create records.
 
+Every live EOI and application is pinned to an immutable form version and definition
+hash. Draft saves merge rather than replace the answer map, preserving fields omitted
+by a later page, and each acknowledged application save has a full append-only DynamoDB
+revision. The staff portal can retrieve selected historical answers through an audited
+request. Google Sheets show the record's actual form version but remain replaceable
+reports. `SCHEMA-EVOLUTION.md` defines the mandatory process for adding, removing,
+renaming or changing questions and for migrating existing records.
+
 The family-facing page has no environment or backend-status ribbon. Its compact sticky
 header shows the current workflow/section and truthful save or connectivity status on
 desktop and mobile. The non-writing internal review URL retains an explicit review

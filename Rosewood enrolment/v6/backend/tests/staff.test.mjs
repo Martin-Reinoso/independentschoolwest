@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { currentFormDefinition } from "../form-definitions.mjs";
 import { createApplicationInvitation, createService, resendApplicationInvitation } from "../service.mjs";
 
 const clock = () => Date.parse("2026-08-05T12:00:00.000Z");
@@ -23,6 +24,8 @@ class StaffStore {
     this.invitations = new Map();
     this.invitationIds = new Map();
     this.applications = new Map();
+    this.formDefinitions = new Map();
+    this.revisions = new Map();
   }
   async checkRateLimit() { return true; }
   async putChallenge(challenge) { this.challenges.set(challenge.id, challenge); }
@@ -45,27 +48,46 @@ class StaffStore {
   async listOperationalRecords() { return this.records; }
   async findApplicationBySourceEoi(sourceEoiId) { return this.records.find(item => item.entity === "application" && item.data.sourceEoiId === sourceEoiId)?.data || null; }
   async getEoi() { return null; }
+  async ensureFormDefinition(definition) {
+    const key = `${definition.workflow}:${definition.formVersion}`;
+    const existing = this.formDefinitions.get(key);
+    if (existing) assert.equal(existing.definitionHash, definition.definitionHash);
+    else this.formDefinitions.set(key, definition);
+    return definition;
+  }
+  addRevision(applicationId, revisionRecord) {
+    if (!revisionRecord) return;
+    const key = `REV#${String(revisionRecord.revision).padStart(8, "0")}#${String(revisionRecord.kind).toUpperCase()}`;
+    const records = this.revisions.get(applicationId) || [];
+    records.push({ revisionKey: key, ...structuredClone(revisionRecord) });
+    this.revisions.set(applicationId, records);
+  }
+  async listApplicationRevisions(applicationId, limit = 100) { return (this.revisions.get(applicationId) || []).slice(-limit).reverse(); }
+  async getApplicationRevision(applicationId, revisionKey) { return (this.revisions.get(applicationId) || []).find(record => record.revisionKey === revisionKey) || null; }
   async createInvitation(value) {
     this.created = value;
     this.invitations.set(value.tokenHash, value.invitation);
     this.invitationIds.set(value.invitation.id, value.invitation);
     this.applications.set(value.application.id, value.application);
+    this.addRevision(value.application.id, value.revisionRecord);
   }
   async getInvitation(tokenHash) { return this.invitations.get(tokenHash) || null; }
   async getInvitationById(id) { return this.invitationIds.get(id) || null; }
   async getApplication(id) { return this.applications.get(id) || null; }
-  async saveDraft({ applicationId, expectedRevision, values, screen, stage, percentComplete, guardianCount, emergencyCount, savedAt }) {
+  async saveDraft({ applicationId, expectedRevision, values, screen, stage, percentComplete, guardianCount, emergencyCount, savedAt, formVersion, formDefinitionHash, schemaVersion, revisionRecord }) {
     const current = this.applications.get(applicationId);
     assert.equal(current.revision, expectedRevision);
-    const next = { ...current, values, screen, currentStage: stage, percentComplete, guardianCount, emergencyCount, updatedAt: savedAt, status: "in_progress", revision: expectedRevision + 1 };
+    const next = { ...current, values, screen, currentStage: stage, percentComplete, guardianCount, emergencyCount, updatedAt: savedAt, status: "in_progress", revision: expectedRevision + 1, formVersion, formDefinitionHash, schemaVersion };
     this.applications.set(applicationId, next);
+    this.addRevision(applicationId, revisionRecord);
     return next;
   }
-  async addApplicationToInvitation({ invitation, expectedFamilyRevision, application }) {
+  async addApplicationToInvitation({ invitation, expectedFamilyRevision, application, revisionRecord }) {
     assert.equal(Number(this.invitationIds.get(invitation.id)?.familyRevision || 0), expectedFamilyRevision);
     this.invitationIds.set(invitation.id, invitation);
     this.invitations.set(invitation.tokenHash, invitation);
     this.applications.set(application.id, application);
+    this.addRevision(application.id, revisionRecord);
   }
 }
 
@@ -155,6 +177,71 @@ test("staff portal creates a parent-only direct invitation without returning its
   assert.equal(store.created.application.sourceEoiId, "");
   assert.equal(store.created.application.values.student_first, undefined);
   assert.ok(store.created.invitation.tokenHash);
+  const definition = currentFormDefinition("application");
+  assert.equal(store.created.application.formVersion, definition.formVersion);
+  assert.equal(store.created.application.formDefinitionHash, definition.definitionHash);
+  assert.equal((await store.listApplicationRevisions(store.created.application.id))[0].kind, "created");
+});
+
+test("draft saves preserve fields omitted by a newer client and create immutable history", async () => {
+  const { service, store } = staffService();
+  const created = await createApplicationInvitation({ store, recipientEmail: "family@example.com", firstName: "Alex", applicationUrl: "https://ffe.org.au/form", clock });
+  const invitationToken = new URL(created.invitationUrl).searchParams.get("invite");
+  const requested = JSON.parse((await service(event("/v6/application/access/request-code", "POST", { invitationToken, email: "family@example.com" }))).body);
+  const verified = JSON.parse((await service(event("/v6/application/access/verify-code", "POST", { invitationToken, challengeId: requested.challengeId, code: "123456" }))).body);
+  const started = JSON.parse((await service(event("/v6/application/records", "POST", { studentFirstName: "Avery", studentLastName: "Example" }, verified.familySessionToken))).body);
+  const app = store.applications.get(started.context.applicationId);
+  app.values.legacy_removed_question = "Preserve this historical answer";
+
+  const savedResponse = await service(event("/v6/application/draft", "PUT", {
+    expectedRevision: app.revision,
+    values: { student_first: "Avery-Rose" },
+    screen: 3,
+    stage: "student",
+    guardianCount: 2,
+    emergencyCount: 2,
+    percentComplete: 20,
+    saveMode: "autosave",
+    formVersion: app.formVersion,
+    formDefinitionHash: app.formDefinitionHash
+  }, started.sessionToken));
+  assert.equal(savedResponse.statusCode, 200);
+  const saved = store.applications.get(app.id);
+  assert.equal(saved.values.student_first, "Avery-Rose");
+  assert.equal(saved.values.student_last, "Example");
+  assert.equal(saved.values.legacy_removed_question, "Preserve this historical answer");
+  const revisions = await store.listApplicationRevisions(app.id);
+  assert.equal(revisions[0].kind, "draft_autosaved");
+  assert.equal(revisions[0].values.legacy_removed_question, "Preserve this historical answer");
+});
+
+test("a mismatched browser form contract cannot overwrite a version-pinned draft", async () => {
+  const { service, store } = staffService();
+  const created = await createApplicationInvitation({ store, recipientEmail: "family@example.com", firstName: "Alex", applicationUrl: "https://ffe.org.au/form", clock });
+  const invitationToken = new URL(created.invitationUrl).searchParams.get("invite");
+  const requested = JSON.parse((await service(event("/v6/application/access/request-code", "POST", { invitationToken, email: "family@example.com" }))).body);
+  const verified = JSON.parse((await service(event("/v6/application/access/verify-code", "POST", { invitationToken, challengeId: requested.challengeId, code: "123456" }))).body);
+  const started = JSON.parse((await service(event("/v6/application/records", "POST", { studentFirstName: "Avery", studentLastName: "Example" }, verified.familySessionToken))).body);
+  const response = await service(event("/v6/application/draft", "PUT", { expectedRevision: started.context.revision, values: { student_first: "Changed" }, screen: 3, stage: "student", guardianCount: 2, emergencyCount: 2, formVersion: "rosewood-application-future" }, started.sessionToken));
+  assert.equal(response.statusCode, 409);
+  assert.equal(JSON.parse(response.body).error, "FORM_VERSION_MISMATCH");
+  assert.equal(store.applications.get(started.context.applicationId).values.student_first, "Avery");
+});
+
+test("staff can retrieve an audited historical answer snapshot", async () => {
+  const { service, store } = staffService();
+  const sessionToken = await staffSession(service);
+  const definition = currentFormDefinition("application");
+  const app = { id: "app-history", invitationId: "invite-history", recipientEmail: "family@example.com", status: "in_progress", revision: 1, values: { student_first: "Current" }, createdAt: "2026-08-05T10:00:00.000Z", updatedAt: "2026-08-05T11:00:00.000Z", formVersion: definition.formVersion, formDefinitionHash: definition.definitionHash, schemaVersion: definition.schemaVersion };
+  store.applications.set(app.id, app);
+  store.addRevision(app.id, { applicationId: app.id, revision: 0, kind: "created", status: "invited", stage: "gateway", savedAt: app.createdAt, values: { student_first: "Earlier" }, formVersion: definition.formVersion, formDefinitionHash: definition.definitionHash, schemaVersion: definition.schemaVersion });
+  const detail = JSON.parse((await service(event("/v6/staff/applications/detail", "POST", { applicationId: app.id }, sessionToken))).body).application;
+  assert.equal(detail.revisions.length, 1);
+  assert.equal("values" in detail.revisions[0], false);
+  const response = await service(event("/v6/staff/applications/revision", "POST", { applicationId: app.id, revisionKey: detail.revisions[0].revisionKey }, sessionToken));
+  assert.equal(response.statusCode, 200);
+  assert.equal(JSON.parse(response.body).revision.values.student_first, "Earlier");
+  assert.ok(store.audit.some(audit => audit.type === "staff.application_revision_viewed"));
 });
 
 test("verified family can create separate child applications but cannot select an unrelated record", async () => {

@@ -9,6 +9,12 @@ function conflict(message = "The record changed while this operation was being c
   return Object.assign(new Error(message), { status: 409, code: "REVISION_CONFLICT" });
 }
 
+export function applicationRevisionKey(revision, kind = "saved") {
+  const sequence = String(Math.max(0, Number(revision) || 0)).padStart(8, "0");
+  const event = String(kind || "saved").toUpperCase().replace(/[^A-Z0-9_]/g, "_").slice(0, 40);
+  return `REV#${sequence}#${event}`;
+}
+
 export class DynamoStore {
   constructor({ tableName, auditTableName, client, now = () => Date.now() }) {
     if (!tableName) throw new Error("DynamoDB tableName is required.");
@@ -28,6 +34,8 @@ export class DynamoStore {
   getInvitation(tokenHash) { return this.get(`INVITE#${tokenHash}`); }
   getInvitationById(id) { return this.get(`INVITE_ID#${id}`); }
   getApplication(id) { return this.get(`APP#${id}`, "CURRENT"); }
+  getApplicationRevision(id, revisionKey) { return this.get(`APP#${id}`, revisionKey); }
+  getFormDefinition(workflow, formVersion) { return this.get(`FORM#${workflow}#${formVersion}`); }
   getChallenge(id) { return this.get(`CHALLENGE#${id}`); }
   getSession(tokenHash) { return this.get(`SESSION#${tokenHash}`); }
   getSignatureTask(tokenHash) { return this.get(`SIGN_TASK#${tokenHash}`); }
@@ -74,16 +82,51 @@ export class DynamoStore {
     return events.map(event => ({ Put: { TableName: this.tableName, Item: { ...this.key("OUTBOX", `PENDING#${event.createdAt}#${event.id}`), entity: "outbox", ttl: Math.floor((this.now() + 30 * 86400_000) / 1000), data: event }, ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)" } }));
   }
 
+  revisionAction(applicationId, revisionRecord) {
+    return { Put: {
+      TableName: this.tableName,
+      Item: {
+        ...this.key(`APP#${applicationId}`, applicationRevisionKey(revisionRecord.revision, revisionRecord.kind)),
+        entity: "application_revision",
+        data: revisionRecord
+      },
+      ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)"
+    } };
+  }
+
+  async ensureFormDefinition(definition) {
+    const PK = `FORM#${definition.workflow}#${definition.formVersion}`;
+    const existing = await this.get(PK);
+    if (existing) {
+      if (existing.definitionHash !== definition.definitionHash) throw conflict("The stored form definition does not match this release.");
+      return existing;
+    }
+    try {
+      await this.client.send(new PutCommand({
+        TableName: this.tableName,
+        Item: { ...this.key(PK), entity: "form_definition", data: definition },
+        ConditionExpression: "attribute_not_exists(PK)"
+      }));
+      return definition;
+    } catch (error) {
+      if (!conditional(error)) throw error;
+      const raced = await this.get(PK);
+      if (raced?.definitionHash === definition.definitionHash) return raced;
+      throw conflict("The stored form definition does not match this release.");
+    }
+  }
+
   async createEoi(eoi, outboxEvents, auditEvents = []) {
     await this.client.send(new TransactWriteCommand({ TransactItems: [{ Put: { TableName: this.tableName, Item: { ...this.key(`EOI#${eoi.id}`), entity: "eoi", data: eoi }, ConditionExpression: "attribute_not_exists(PK)" } }, ...this.outboxActions(outboxEvents), ...this.auditActions(auditEvents)] }));
     return eoi;
   }
 
-  async createInvitation({ invitation, tokenHash, application, outboxEvents, auditEvents = [] }) {
+  async createInvitation({ invitation, tokenHash, application, revisionRecord, outboxEvents, auditEvents = [] }) {
     await this.client.send(new TransactWriteCommand({ TransactItems: [
       { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE#${tokenHash}`), entity: "invitation", ttl: Math.floor(invitation.expiresAt / 1000) + 86400, data: invitation }, ConditionExpression: "attribute_not_exists(PK)" } },
       { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE_ID#${invitation.id}`), entity: "invitation_index", ttl: Math.floor(invitation.expiresAt / 1000) + 86400, data: invitation }, ConditionExpression: "attribute_not_exists(PK)" } },
       { Put: { TableName: this.tableName, Item: { ...this.key(`APP#${application.id}`, "CURRENT"), entity: "application", data: application }, ConditionExpression: "attribute_not_exists(PK)" } },
+      this.revisionAction(application.id, revisionRecord),
       ...this.outboxActions(outboxEvents),
       ...this.auditActions(auditEvents)
     ] }));
@@ -104,7 +147,7 @@ export class DynamoStore {
     } catch (error) { if (conditional(error)) throw conflict("This invitation changed before it could be resent. Refresh the portal and try again."); throw error; }
   }
 
-  async addApplicationToInvitation({ invitation, expectedFamilyRevision, application, outboxEvents, auditEvents = [] }) {
+  async addApplicationToInvitation({ invitation, expectedFamilyRevision, application, revisionRecord, outboxEvents, auditEvents = [] }) {
     const ttl = Math.floor(invitation.expiresAt / 1000) + 86400;
     const revisionCondition = expectedFamilyRevision === 0
       ? "attribute_not_exists(#data.#familyRevision) OR #data.#familyRevision = :familyRevision"
@@ -117,6 +160,7 @@ export class DynamoStore {
     try {
       await this.client.send(new TransactWriteCommand({ TransactItems: [
         { Put: { TableName: this.tableName, Item: { ...this.key(`APP#${application.id}`, "CURRENT"), entity: "application", data: application }, ConditionExpression: "attribute_not_exists(PK)" } },
+        this.revisionAction(application.id, revisionRecord),
         { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE#${invitation.tokenHash}`), entity: "invitation", ttl, data: invitation }, ...invitationCondition } },
         { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE_ID#${invitation.id}`), entity: "invitation_index", ttl, data: invitation }, ...invitationCondition } },
         ...this.outboxActions(outboxEvents),
@@ -185,17 +229,18 @@ export class DynamoStore {
     await this.client.send(new DeleteCommand({ TableName: this.tableName, Key: this.key(`UPLOAD#${id}`) }));
   }
 
-  async saveDraft({ applicationId, expectedRevision, values, screen, stage, percentComplete, guardianCount, emergencyCount, savedAt, outboxEvents, auditEvents = [] }) {
+  async saveDraft({ applicationId, expectedRevision, values, screen, stage, percentComplete, guardianCount, emergencyCount, savedAt, formVersion, formDefinitionHash, schemaVersion, revisionRecord, outboxEvents, auditEvents = [] }) {
     try {
       await this.client.send(new TransactWriteCommand({ TransactItems: [
         { Update: {
           TableName: this.tableName,
           Key: this.key(`APP#${applicationId}`, "CURRENT"),
-          UpdateExpression: "SET #data.#revision = #data.#revision + :one, #data.#values = :values, #data.#screen = :screen, #data.#currentStage = :stage, #data.#percentComplete = :percentComplete, #data.#guardianCount = :guardianCount, #data.#emergencyCount = :emergencyCount, #data.#updatedAt = :savedAt, #data.#status = :status",
+          UpdateExpression: "SET #data.#revision = #data.#revision + :one, #data.#values = :values, #data.#screen = :screen, #data.#currentStage = :stage, #data.#percentComplete = :percentComplete, #data.#guardianCount = :guardianCount, #data.#emergencyCount = :emergencyCount, #data.#updatedAt = :savedAt, #data.#status = :status, #data.#formVersion = :formVersion, #data.#formDefinitionHash = :formDefinitionHash, #data.#schemaVersion = :schemaVersion",
           ConditionExpression: "#data.#revision = :expected AND (#data.#status = :invited OR #data.#status = :inProgress)",
-          ExpressionAttributeNames: { "#data": "data", "#revision": "revision", "#values": "values", "#screen": "screen", "#currentStage": "currentStage", "#percentComplete": "percentComplete", "#guardianCount": "guardianCount", "#emergencyCount": "emergencyCount", "#updatedAt": "updatedAt", "#status": "status" },
-          ExpressionAttributeValues: { ":one": 1, ":values": values, ":screen": screen, ":stage": stage, ":percentComplete": percentComplete, ":guardianCount": guardianCount, ":emergencyCount": emergencyCount, ":savedAt": savedAt, ":status": "in_progress", ":expected": Number(expectedRevision), ":invited": "invited", ":inProgress": "in_progress" }
+          ExpressionAttributeNames: { "#data": "data", "#revision": "revision", "#values": "values", "#screen": "screen", "#currentStage": "currentStage", "#percentComplete": "percentComplete", "#guardianCount": "guardianCount", "#emergencyCount": "emergencyCount", "#updatedAt": "updatedAt", "#status": "status", "#formVersion": "formVersion", "#formDefinitionHash": "formDefinitionHash", "#schemaVersion": "schemaVersion" },
+          ExpressionAttributeValues: { ":one": 1, ":values": values, ":screen": screen, ":stage": stage, ":percentComplete": percentComplete, ":guardianCount": guardianCount, ":emergencyCount": emergencyCount, ":savedAt": savedAt, ":status": "in_progress", ":formVersion": formVersion, ":formDefinitionHash": formDefinitionHash, ":schemaVersion": schemaVersion, ":expected": Number(expectedRevision), ":invited": "invited", ":inProgress": "in_progress" }
         } },
+        this.revisionAction(applicationId, revisionRecord),
         ...this.outboxActions(outboxEvents),
         ...this.auditActions(auditEvents)
       ] }));
@@ -218,8 +263,11 @@ export class DynamoStore {
     } catch (error) { if (conditional(error)) throw conflict(); throw error; }
   }
 
-  async submitApplication({ applicationId, expectedRevision, application, signatureTasks, outboxEvents, auditEvents = [] }) {
-    const actions = [{ Put: { TableName: this.tableName, Item: { ...this.key(`APP#${applicationId}`, "CURRENT"), entity: "application", data: application }, ConditionExpression: "#data.#revision = :revision AND (#data.#status = :invited OR #data.#status = :inProgress)", ExpressionAttributeNames: { "#data": "data", "#revision": "revision", "#status": "status" }, ExpressionAttributeValues: { ":revision": Number(expectedRevision), ":invited": "invited", ":inProgress": "in_progress" } } }];
+  async submitApplication({ applicationId, expectedRevision, application, revisionRecord, signatureTasks, outboxEvents, auditEvents = [] }) {
+    const actions = [
+      { Put: { TableName: this.tableName, Item: { ...this.key(`APP#${applicationId}`, "CURRENT"), entity: "application", data: application }, ConditionExpression: "#data.#revision = :revision AND (#data.#status = :invited OR #data.#status = :inProgress)", ExpressionAttributeNames: { "#data": "data", "#revision": "revision", "#status": "status" }, ExpressionAttributeValues: { ":revision": Number(expectedRevision), ":invited": "invited", ":inProgress": "in_progress" } } },
+      this.revisionAction(applicationId, revisionRecord)
+    ];
     for (const task of signatureTasks) actions.push({ Put: { TableName: this.tableName, Item: { ...this.key(`SIGN_TASK#${task.tokenHash}`), entity: "signature_task", ttl: task.ttl, data: task }, ConditionExpression: "attribute_not_exists(PK)" } });
     actions.push(...this.outboxActions(outboxEvents), ...this.auditActions(auditEvents));
     try { await this.client.send(new TransactWriteCommand({ TransactItems: actions })); return application; }
@@ -294,6 +342,49 @@ export class DynamoStore {
 
   async listOperationalRecords() {
     return this.scanEntities(["eoi", "application", "invitation_index", "outbox_receipt"]);
+  }
+
+  async listApplicationRevisions(applicationId, limit = 100) {
+    const maximum = Math.max(1, Math.min(500, Number(limit) || 100));
+    const response = await this.client.send(new QueryCommand({
+      TableName: this.tableName,
+      KeyConditionExpression: "PK = :pk AND begins_with(SK, :prefix)",
+      ExpressionAttributeValues: { ":pk": `APP#${applicationId}`, ":prefix": "REV#" },
+      ScanIndexForward: false,
+      Limit: maximum,
+      ConsistentRead: true
+    }));
+    return (response.Items || []).map(item => ({ revisionKey: item.SK, ...item.data }));
+  }
+
+  async backfillApplicationVersion({ application, formVersion, formDefinitionHash, schemaVersion, revisionRecord }) {
+    const next = { ...application, formVersion, formDefinitionHash, schemaVersion };
+    try {
+      await this.client.send(new TransactWriteCommand({ TransactItems: [
+        { Put: {
+          TableName: this.tableName,
+          Item: { ...this.key(`APP#${application.id}`, "CURRENT"), entity: "application", data: next },
+          ConditionExpression: "#data.#revision = :revision AND attribute_not_exists(#data.#formVersion)",
+          ExpressionAttributeNames: { "#data": "data", "#revision": "revision", "#formVersion": "formVersion" },
+          ExpressionAttributeValues: { ":revision": Number(application.revision || 0) }
+        } },
+        this.revisionAction(application.id, revisionRecord)
+      ] }));
+      return next;
+    } catch (error) { if (conditional(error)) throw conflict("This application was already versioned or changed during migration."); throw error; }
+  }
+
+  async backfillEoiVersion({ eoi, formVersion, formDefinitionHash, schemaVersion }) {
+    const next = { ...eoi, formVersion, formDefinitionHash, schemaVersion };
+    try {
+      await this.client.send(new PutCommand({
+        TableName: this.tableName,
+        Item: { ...this.key(`EOI#${eoi.id}`), entity: "eoi", data: next },
+        ConditionExpression: "attribute_not_exists(#data.#formVersion)",
+        ExpressionAttributeNames: { "#data": "data", "#formVersion": "formVersion" }
+      }));
+      return next;
+    } catch (error) { if (conditional(error)) throw conflict("This expression of interest was already versioned during migration."); throw error; }
   }
 
   async findApplicationBySourceEoi(sourceEoiId) {

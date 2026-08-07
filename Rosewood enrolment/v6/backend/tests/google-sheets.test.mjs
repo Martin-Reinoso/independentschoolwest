@@ -28,7 +28,7 @@ test("document projection extends legacy headers without shifting existing colum
   const headerWrite = writes.find(write => write.method === "PUT");
   const appendWrite = writes.find(write => write.method === "POST");
   assert.deepEqual(headerWrite.body.values[0].slice(0, legacyHeaders.length), legacyHeaders);
-  assert.deepEqual(headerWrite.body.values[0].slice(legacyHeaders.length), ["storage_provider", "storage_key", "storage_version_id"]);
+  assert.deepEqual(headerWrite.body.values[0].slice(legacyHeaders.length), ["storage_provider", "storage_key", "storage_version_id", "form_version", "form_definition_hash"]);
   assert.equal(appendWrite.body.values[0][6], "drive-1");
   assert.equal(appendWrite.body.values[0][7], "2026-08-06");
   assert.equal(appendWrite.body.values[0][11], "google_drive");

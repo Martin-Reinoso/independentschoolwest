@@ -25,6 +25,14 @@ from DynamoDB; editing or deleting a Sheet row does not alter the AWS applicatio
 record. Canonical headers are repaired before writes so adding metadata cannot shift
 legacy columns.
 
+EOI and Application records are pinned to immutable form contracts with a form version
+and SHA-256 definition hash. Application saves merge into the existing answer map so a
+question omitted by a later browser cannot erase its earlier answer. Every
+server-acknowledged application create, start, save and submission also writes a full
+append-only DynamoDB revision. Staff can inspect a selected historical revision through
+an authorised, audited endpoint. See `../SCHEMA-EVOLUTION.md` before changing fields,
+options, validation or required status.
+
 ## Invitations And Staff Access
 
 - A direct invitation requires the parent/guardian first name and email; surname is
@@ -71,6 +79,7 @@ POST /v6/staff/access/request-code
 POST /v6/staff/access/verify-code
 GET  /v6/staff/dashboard
 POST /v6/staff/applications/detail
+POST /v6/staff/applications/revision
 POST /v6/staff/invitations
 POST /v6/staff/invitations/resend
 POST /v6/eoi
@@ -106,6 +115,14 @@ The projection rebuild is dry-run by default:
 ```text
 pnpm rebuild-projections
 pnpm rebuild-projections -- --apply --confirm=REBUILD_GOOGLE_PROJECTIONS
+```
+
+The one-time legacy form-version backfill is also dry-run by default. Create and verify
+a pre-migration backup before applying it:
+
+```text
+pnpm migrate-form-versioning -- --table=TABLE_NAME
+pnpm migrate-form-versioning -- --table=TABLE_NAME --apply
 ```
 
 Follow `../RECOVERY-RUNBOOK.md`. Secrets, active tokens, family answers and uploaded
