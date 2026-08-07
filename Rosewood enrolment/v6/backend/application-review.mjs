@@ -211,7 +211,7 @@ const GUARDIAN_FIELDS = [
   ["indigenous", "Aboriginal / Torres Strait Islander"]
 ];
 
-function guardianSection(values, guardianCount, signerGuardianIndex) {
+function guardianSection(app, values, guardianCount, signerGuardianIndex) {
   const groups = [];
   for (let index = 0; index < guardianCount; index += 1) {
     const prefix = `app_guardian_${index}_`;
@@ -239,7 +239,15 @@ function guardianSection(values, guardianCount, signerGuardianIndex) {
         field(values, `${prefix}visa_expiry`, "Visa expiry", { format: date })
       );
     }
-    if (index > 0) items.push(field(values, `${prefix}permission`, "Can the school contact this person about the student?"));
+    if (index > 0) {
+      const control = (app.signerControls || []).find(item => Number(item.guardianIndex) === index);
+      items.push(field(values, `${prefix}permission`, "Can the school contact this person?"));
+      if (control) {
+        items.push(answer("Contact permission", control.contactPermission ? "Contact permitted" : "Do not contact"));
+        items.push(answer("Separate signature request", control.contactPermission ? "Separate signature request required" : "Signature request suppressed"));
+        if (!control.contactPermission) items.push(answer("Application review", "Staff review required"));
+      }
+    }
     const name = [values[`${prefix}first`], values[`${prefix}last`]].filter(present).join(" ");
     groups.push(group(name || `Parent / Guardian ${index + 1}`, items, { badge: index === signerGuardianIndex ? "You" : "" }));
   }
@@ -331,7 +339,7 @@ function signatureSection(app, values, guardianCount) {
       field(values, "application_signature_ip", "IP address recording acknowledged", { format: confirmed }),
       field(values, "application_signature_terms", "Application declaration accepted", { format: confirmed }),
       field(values, "application_signature_date", "Signature date", { format: date }),
-      field(values, "application_one_signature_reason", "Explanation only one signature", { when: value => guardianCount <= 1 || present(value.application_one_signature_reason) }),
+      field(values, "application_one_signature_reason", "Explanation for only one signature", { when: value => guardianCount <= 1 || present(value.application_one_signature_reason) }),
       field(values, "application_additional_signature_later", "Additional parent/guardian signature request acknowledged", { format: confirmed, when: value => guardianCount > 1 || present(value.application_additional_signature_later) }),
       field(values, "application_additional_information", "Additional information")
     ]),
@@ -350,7 +358,7 @@ export function buildApplicationReview(app, signerGuardianIndex = 0) {
     submittedAt: timestamp(app?.submittedAt),
     sections: [
       ...studentSections(values),
-      guardianSection(values, guardianCount, signerGuardianIndex),
+      guardianSection(app || {}, values, guardianCount, signerGuardianIndex),
       emergencySection(values, emergencyCount),
       documentsSection(app?.documents),
       conditionsSection(values),

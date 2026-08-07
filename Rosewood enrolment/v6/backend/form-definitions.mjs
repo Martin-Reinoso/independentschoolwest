@@ -9,9 +9,11 @@ import {
 } from "./schema.mjs";
 
 export const CURRENT_FORM_VERSIONS = Object.freeze({
-  eoi: "rosewood-eoi-2026.5",
-  application: "rosewood-application-2026.5"
+  eoi: "rosewood-eoi-2026.6",
+  application: "rosewood-application-2026.6"
 });
+
+const LEGACY_SCHEMA_VERSION = "rosewood-v6-2026-08-05";
 
 function canonical(value) {
   if (Array.isArray(value)) return value.map(canonical);
@@ -58,7 +60,7 @@ const v5FrontendAssetHashes = freeze({
 const eoi2026v1 = complete({
   workflow: "eoi",
   formVersion: "rosewood-eoi-2026.1",
-  schemaVersion: SCHEMA_VERSION,
+  schemaVersion: LEGACY_SCHEMA_VERSION,
   releasedAt: "2026-08-08",
   source: {
     frontend: "pages/rosewood-enrolment-v6.html?workflow=eoi",
@@ -81,7 +83,7 @@ const eoi2026v1 = complete({
 const eoi2026v2 = complete({
   workflow: "eoi",
   formVersion: "rosewood-eoi-2026.2",
-  schemaVersion: SCHEMA_VERSION,
+  schemaVersion: LEGACY_SCHEMA_VERSION,
   releasedAt: "2026-08-08",
   source: {
     frontend: "pages/rosewood-enrolment-v6.html?workflow=eoi",
@@ -104,7 +106,7 @@ const eoi2026v2 = complete({
 const eoi2026v3 = complete({
   workflow: "eoi",
   formVersion: "rosewood-eoi-2026.3",
-  schemaVersion: SCHEMA_VERSION,
+  schemaVersion: LEGACY_SCHEMA_VERSION,
   releasedAt: "2026-08-08",
   source: {
     frontend: "pages/rosewood-enrolment-v6.html?workflow=eoi",
@@ -127,7 +129,7 @@ const eoi2026v3 = complete({
 const eoi2026v4 = complete({
   workflow: "eoi",
   formVersion: "rosewood-eoi-2026.4",
-  schemaVersion: SCHEMA_VERSION,
+  schemaVersion: LEGACY_SCHEMA_VERSION,
   releasedAt: "2026-08-08",
   source: {
     frontend: "pages/rosewood-enrolment-v6.html?workflow=eoi",
@@ -149,8 +151,8 @@ const eoi2026v4 = complete({
 
 const eoi2026v5 = complete({
   workflow: "eoi",
-  formVersion: CURRENT_FORM_VERSIONS.eoi,
-  schemaVersion: SCHEMA_VERSION,
+  formVersion: "rosewood-eoi-2026.5",
+  schemaVersion: LEGACY_SCHEMA_VERSION,
   releasedAt: "2026-08-08",
   source: {
     frontend: "pages/rosewood-enrolment-v6.html?workflow=eoi",
@@ -164,7 +166,7 @@ const eoi2026v5 = complete({
 const application2026v1 = complete({
   workflow: "application",
   formVersion: "rosewood-application-2026.1",
-  schemaVersion: SCHEMA_VERSION,
+  schemaVersion: LEGACY_SCHEMA_VERSION,
   releasedAt: "2026-08-08",
   source: {
     frontend: "pages/rosewood-enrolment-v6.html?workflow=application",
@@ -198,7 +200,7 @@ const application2026v1 = complete({
 const application2026v2 = complete({
   workflow: "application",
   formVersion: "rosewood-application-2026.2",
-  schemaVersion: SCHEMA_VERSION,
+  schemaVersion: LEGACY_SCHEMA_VERSION,
   releasedAt: "2026-08-08",
   source: {
     frontend: "pages/rosewood-enrolment-v6.html?workflow=application",
@@ -232,7 +234,7 @@ const application2026v2 = complete({
 const application2026v3 = complete({
   workflow: "application",
   formVersion: "rosewood-application-2026.3",
-  schemaVersion: SCHEMA_VERSION,
+  schemaVersion: LEGACY_SCHEMA_VERSION,
   releasedAt: "2026-08-08",
   source: {
     frontend: "pages/rosewood-enrolment-v6.html?workflow=application",
@@ -266,7 +268,7 @@ const application2026v3 = complete({
 const application2026v4 = complete({
   workflow: "application",
   formVersion: "rosewood-application-2026.4",
-  schemaVersion: SCHEMA_VERSION,
+  schemaVersion: LEGACY_SCHEMA_VERSION,
   releasedAt: "2026-08-08",
   source: {
     frontend: "pages/rosewood-enrolment-v6.html?workflow=application",
@@ -299,8 +301,8 @@ const application2026v4 = complete({
 
 const application2026v5 = complete({
   workflow: "application",
-  formVersion: CURRENT_FORM_VERSIONS.application,
-  schemaVersion: SCHEMA_VERSION,
+  formVersion: "rosewood-application-2026.5",
+  schemaVersion: LEGACY_SCHEMA_VERSION,
   releasedAt: "2026-08-08",
   source: {
     frontend: "pages/rosewood-enrolment-v6.html?workflow=application",
@@ -311,9 +313,69 @@ const application2026v5 = complete({
   contract: application2026v4.contract
 });
 
+const v6FrontendAssetHashes = freeze({
+  "pages/rosewood-enrolment-v6.html": "4aca040809f958c94327aa466cf0da14805237ee13bdbae6a4fd30eb1e5f2dc5",
+  "pages/rosewood-enrolment-v6.js": "71010e9e9d223404c8c38778b6ddc39729d286ec3e45dd10af2a21c750c2f28f",
+  "pages/rosewood-enrolment-v6.css": "bd39de88daf238117420909c90d09767a7f2186dfda2a62ec86aac57dfdbe71b",
+  "pages/rosewood-enrolment-admin-v6.html": "123619ac62efbe9aef6239b443e7fc68f801da0a7c406d3082dc88e7101bd00d",
+  "pages/rosewood-enrolment-admin-v6.js": "da573dec2d36dad58f8c55e529aa8c4670d0a2324f3d467a395122149dc1d08b",
+  "pages/rosewood-enrolment-admin-v6.css": "f78a0983c0a03a01421f4b268cd94646b26d1e7e9b464c10c92ef47d82d09bbd",
+  "pages/rosewood-application-sign-v6.html": "1a0b9025ab8a13e7dceafe3956dbcfe21835259363763262e08417684a5c1bb7",
+  "pages/rosewood-application-sign-v6.js": "37e6bcba94a1db59906abdfbf096cb45bdeda702a5973f35a751bf69094e0ff4",
+  "pages/rosewood-application-sign-v6.css": "ed34d10e52ef688f3c58ab9464c66528e7095f378fd74e9f090af8e04c3e403a",
+  "pages/rosewood-enrolment-policies-v6.js": "8bf2abedcf2b9aa70e6ff55b3d837a96604dc06784d8f46b68b637056a4ce095",
+  "pages/rosewood-policies/enrolment-policy-rosewood-college.docx": "e4f59b3928a36f98dc38392ca33ddef599bdca4be7c84eefa6a23dac5d91ca2a",
+  "pages/rosewood-policies/enrolment-policy-rosewood-college.pdf": "6b2d99d805ca87c71c4a774d07320786517b023ca6a82421fe18d060a6dd2f3d",
+  "pages/rosewood-policies/enrolment-procedure-rosewood-college.docx": "042abe1f25ccd8acfc640365ca3cfc4aaa5eb6ea5b25576e5d407e0d7778066f",
+  "pages/rosewood-policies/enrolment-procedure-rosewood-college.pdf": "88d011503e2184130d1a33ee3d6a074cd5d192ccf1da3a3f0a8a4700d2ce3097",
+  "pages/rosewood-policies/privacy-policy-rosewood-college.docx": "f0cde7768b7ab470a41f95885f409797aacb9f3154cc2e58332144aaa6f26823",
+  "pages/rosewood-policies/privacy-policy-rosewood-college.pdf": "cb7fa03cd8be070c3b31a6d48e1498f18a36b73f327d6d03bda5efc1bf348b99"
+});
+
+const eoi2026v6 = complete({
+  workflow: "eoi",
+  formVersion: CURRENT_FORM_VERSIONS.eoi,
+  schemaVersion: SCHEMA_VERSION,
+  releasedAt: "2026-08-08",
+  source: {
+    frontend: "pages/rosewood-enrolment-v6.html?workflow=eoi",
+    frontendRelease: "v6-js17-css11-contact-permission",
+    frontendAssetHashes: v6FrontendAssetHashes,
+    validator: "schema.mjs#validateEoi"
+  },
+  contract: eoi2026v5.contract
+});
+
+const application2026v6 = complete({
+  workflow: "application",
+  formVersion: CURRENT_FORM_VERSIONS.application,
+  schemaVersion: SCHEMA_VERSION,
+  releasedAt: "2026-08-08",
+  source: {
+    frontend: "pages/rosewood-enrolment-v6.html?workflow=application",
+    frontendRelease: "v6-js17-css11-contact-permission",
+    frontendAssetHashes: v6FrontendAssetHashes,
+    validator: "schema.mjs#validateApplicationForSubmission"
+  },
+  contract: {
+    ...application2026v5.contract,
+    contactPermission: {
+      field: "app_guardian_{index}_permission",
+      values: ["Yes, the school may contact this person", "No, do not contact this person"],
+      explicit: true,
+      signatureRequestSuppressedWhenProhibited: true
+    },
+    conditionalRules: [
+      ...application2026v5.contract.conditionalRules,
+      { when: { field: "app_guardian_{index}_permission", equals: "Yes, the school may contact this person" }, required: ["app_guardian_{index}_email", "application_additional_signature_later"] },
+      { when: { field: "app_guardian_{index}_permission", equals: "No, do not contact this person" }, required: ["application_one_signature_reason"] }
+    ]
+  }
+});
+
 export const FORM_DEFINITIONS = freeze({
-  eoi: { [eoi2026v1.formVersion]: eoi2026v1, [eoi2026v2.formVersion]: eoi2026v2, [eoi2026v3.formVersion]: eoi2026v3, [eoi2026v4.formVersion]: eoi2026v4, [eoi2026v5.formVersion]: eoi2026v5 },
-  application: { [application2026v1.formVersion]: application2026v1, [application2026v2.formVersion]: application2026v2, [application2026v3.formVersion]: application2026v3, [application2026v4.formVersion]: application2026v4, [application2026v5.formVersion]: application2026v5 }
+  eoi: { [eoi2026v1.formVersion]: eoi2026v1, [eoi2026v2.formVersion]: eoi2026v2, [eoi2026v3.formVersion]: eoi2026v3, [eoi2026v4.formVersion]: eoi2026v4, [eoi2026v5.formVersion]: eoi2026v5, [eoi2026v6.formVersion]: eoi2026v6 },
+  application: { [application2026v1.formVersion]: application2026v1, [application2026v2.formVersion]: application2026v2, [application2026v3.formVersion]: application2026v3, [application2026v4.formVersion]: application2026v4, [application2026v5.formVersion]: application2026v5, [application2026v6.formVersion]: application2026v6 }
 });
 
 export function getFormDefinition(workflow, formVersion = CURRENT_FORM_VERSIONS[workflow]) {

@@ -44,17 +44,27 @@ test("guardian signing requires server-side review acknowledgement", async () =>
   assert.equal(payload.error, "REVIEW_REQUIRED");
 });
 
-test("general contact preference does not suppress a required signature request", () => {
+test("explicit do-not-contact permission suppresses the signature recipient", () => {
   const recipients = additionalGuardianSignatureRecipients({
     app_guardian_1_first: "Taylor",
     app_guardian_1_email: " TAYLOR@EXAMPLE.TEST ",
-    app_guardian_1_permission: "No, do not contact them"
-  }, 2);
+    app_guardian_1_permission: "No, do not contact this person"
+  }, 2, "rosewood-application-2026.6");
 
-  assert.deepEqual(recipients, [{ index: 1, email: "taylor@example.test", firstName: "Taylor" }]);
+  assert.deepEqual(recipients, []);
 });
 
-test("missing guardian signature requests can be recovered without rewriting the application", async () => {
+test("explicit contact permission creates a required electronic signer", () => {
+  const recipients = additionalGuardianSignatureRecipients({
+    app_guardian_1_first: "Taylor",
+    app_guardian_1_email: " TAYLOR@EXAMPLE.TEST ",
+    app_guardian_1_permission: "Yes, the school may contact this person"
+  }, 2, "rosewood-application-2026.6");
+
+  assert.deepEqual(recipients, [{ index: 1, email: "taylor@example.test", firstName: "Taylor", contactPermission: true, signatureRequired: true }]);
+});
+
+test("recovery never queues a prohibited guardian signature request", async () => {
   let queued;
   const application = {
     id: "app-synthetic",
@@ -65,12 +75,13 @@ test("missing guardian signature requests can be recovered without rewriting the
     guardianCount: 2,
     guardianIds: ["guardian-primary", "guardian-additional"],
     signatures: [{ guardianId: "guardian-primary" }],
+    formVersion: "rosewood-application-2026.6",
     values: {
       student_first: "Avery",
       student_last: "Example",
       app_guardian_1_first: "Taylor",
       app_guardian_1_email: "taylor@example.test",
-      app_guardian_1_permission: "No, do not contact them"
+      app_guardian_1_permission: "No, do not contact this person"
     }
   };
   const store = {
@@ -87,12 +98,55 @@ test("missing guardian signature requests can be recovered without rewriting the
     clock: () => Date.parse("2026-08-08T00:00:00.000Z")
   });
 
+  assert.equal(result.queuedSignatureRequests, 0);
+  assert.equal(queued, undefined);
+  assert.equal(application.values.app_guardian_1_permission, "No, do not contact this person");
+});
+
+test("recovery atomically binds a permitted replacement task to its signer control", async () => {
+  let queued;
+  const application = {
+    id: "app-recovery-synthetic",
+    invitationId: "invite-recovery-synthetic",
+    status: "pending_signatures",
+    revision: 4,
+    revisionHash: "recovery-revision-hash",
+    formVersion: "rosewood-application-2026.6",
+    guardianCount: 2,
+    emergencyCount: 2,
+    guardianIds: ["guardian-primary", "guardian-additional"],
+    requiredSignatureCount: 2,
+    signatureControlRevision: 1,
+    signatures: [{ guardianId: "guardian-primary" }],
+    signerControls: [
+      { guardianId: "guardian-primary", guardianIndex: 0, contactPermission: true, signatureRequired: true, signatureStatus: "complete" },
+      { guardianId: "guardian-additional", guardianIndex: 1, contactPermission: true, signatureRequired: true, signatureStatus: "pending", requestGeneration: 0 }
+    ],
+    values: {
+      student_first: "Avery",
+      student_last: "Example",
+      app_guardian_0_first: "Alex",
+      app_guardian_0_last: "Applicant",
+      app_guardian_1_first: "Taylor",
+      app_guardian_1_last: "Guardian",
+      app_guardian_1_email: "taylor@example.test",
+      app_guardian_1_permission: "Yes, the school may contact this person"
+    }
+  };
+  const store = {
+    getApplication: async () => application,
+    listSignatureTasksForApplication: async () => [],
+    addSignatureTasks: async input => { queued = input; }
+  };
+
+  const result = await queueMissingGuardianSignatureInvitations({ store, applicationId: application.id, signingPageUrl: "https://ffe.org.au/pages/rosewood-application-sign-v6.html", clock: () => Date.parse("2026-08-08T00:00:00.000Z") });
+
   assert.equal(result.queuedSignatureRequests, 1);
-  assert.equal(queued.signatureTasks.length, 1);
-  assert.equal(queued.signatureTasks[0].guardianId, "guardian-additional");
+  assert.equal(queued.application.signerControls[1].taskTokenHash, queued.signatureTasks[0].tokenHash);
+  assert.equal(queued.application.signerControls[1].requestGenerated, true);
+  assert.equal(queued.application.signatureControlRevision, 2);
   assert.equal(queued.outboxEvents.filter(event => event.kind === "email").length, 1);
-  assert.equal(queued.auditEvents[0].type, "application.signature_invitations_recovered");
-  assert.equal(application.values.app_guardian_1_permission, "No, do not contact them");
+  assert.equal(queued.outboxEvents.find(event => event.kind === "email").payload._tracking.taskTokenHash, queued.signatureTasks[0].tokenHash);
 });
 
 test("guardian review contains the complete human-readable frozen application without internal storage data", () => {
@@ -303,7 +357,7 @@ test("verified signing context returns the complete review and no application id
   };
   const handler = createService({
     store: {
-      getChallenge: async () => ({ id: "challenge-synthetic", purpose: "application_signature", subjectHash: taskHash }),
+      getChallenge: async () => ({ id: "challenge-synthetic", purpose: "application_signature", subjectHash: taskHash, taskGeneration: 1 }),
       getSignatureTask: async () => ({ tokenHash: taskHash, applicationId: application.id, guardianId: "guardian-additional", guardianIndex: 1, email: "additional@example.test", status: "invited", expiresAt: now + 60_000, revisionHash: application.revisionHash }),
       consumeChallenge: async () => true,
       putSession: async () => {},

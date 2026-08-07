@@ -79,12 +79,16 @@ An unsigned drawing is kept only in the current browser session, survives naviga
 between application sections and is labelled `Signature ready`; it is recorded only
 after successful final validation and submission. Missing final answers are identified
 by field and section, with a direct review action and inline highlight.
-Each listed additional guardian receives a one-time signing request after primary
-submission, independently of their general contact preference. The family selector
-shows **Awaiting Parent/Guardian Signature** until every required signature is recorded
-and uses **Completed** only for the final `submitted` state. A dry-run-first operational
-command in `backend/scripts/repair-missing-signature-invitations.mjs` can recover a
-missing task without rewriting the frozen application answers.
+Each additional guardian has an explicit contact-permission value. A separate signing
+request is created only after submission and only when **Yes, the school may contact
+this person** is recorded. **No, do not contact this person** suppresses email, SMS, OTP
+and ordinary signature-request delivery, requires the applicant's one-signature
+explanation and flags the same submitted application for staff review. The family
+selector opens a secure read-only status page for submitted records; eligible pending
+signers show masked email and request progress plus step-up-OTP email correction and a
+rate-limited resend. Neither action reopens or duplicates the application. A dry-run-
+first recovery command can recover a missing permitted task, but must never bypass the
+stored contact permission.
 After the invited guardian verifies their email OTP, the dedicated signing page shows
 the complete frozen application as read-only sections: student, nationality and
 citizenship, additional needs, sacraments, medical details, every parent/guardian,
@@ -122,7 +126,11 @@ provides audited application review. It lists document metadata but does not cre
 document-sharing links; authorised staff access documents through the restricted
 enrolment Drive. Viewers cannot create invitations.
 The portal does not show raw invitation links, signature drawings or network
-fingerprints and does not link staff directly into editable Sheets.
+fingerprints and does not link staff directly into editable Sheets. It does show
+restricted signer controls, current and previous application email history, request
+delivery/open/verification status, link revocation, completion and staff-review reason.
+Admin/admissions staff can change a pending guardian's contact permission only after an
+exact explicit confirmation; the change is conditional, rate-limited and audited.
 Direct invitation staff fields are parent/guardian first name, optional surname and
 email only. The invitation lasts 14 days and the family supplies each child after OTP.
 Additional-guardian signing emails explain why the recipient was contacted before the

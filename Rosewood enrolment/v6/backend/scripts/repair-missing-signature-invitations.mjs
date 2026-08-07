@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { buildService, loadSecret } from "../index.mjs";
 import { DynamoStore } from "../dynamo-store.mjs";
+import { recordFormReference } from "../form-definitions.mjs";
 import { additionalGuardianSignatureRecipients, queueMissingGuardianSignatureInvitations } from "../service.mjs";
 
 function option(name) {
@@ -23,10 +24,11 @@ if (!application) throw new Error("Application not found.");
 const existingTasks = await store.listSignatureTasksForApplication(application.id);
 const existingGuardianIds = new Set(existingTasks.map(task => task.guardianId));
 const signedGuardianIds = new Set((application.signatures || []).map(signature => signature.guardianId));
-const missing = additionalGuardianSignatureRecipients(application.values || {}, application.guardianCount || 1)
+const missing = additionalGuardianSignatureRecipients(application.values || {}, application.guardianCount || 1, recordFormReference(application, "application").formVersion)
   .filter(recipient => {
     const guardianId = application.guardianIds?.[recipient.index];
-    return guardianId && !existingGuardianIds.has(guardianId) && !signedGuardianIds.has(guardianId);
+    const control = application.signerControls?.find(item => Number(item.guardianIndex) === Number(recipient.index));
+    return guardianId && control?.contactPermission !== false && !existingGuardianIds.has(guardianId) && !signedGuardianIds.has(guardianId);
   });
 
 console.log(JSON.stringify({ mode: apply ? "apply" : "dry-run", status: application.status, requiredSignatures: Number(application.requiredSignatureCount || 0), completedSignatures: (application.signatures || []).length, missingSignatureRequests: missing.length }));

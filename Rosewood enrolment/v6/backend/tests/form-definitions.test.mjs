@@ -33,7 +33,7 @@ test("the launch contracts remain addressable with their original hashes", () =>
 test("the current contracts pin every policy-reader release asset", () => {
   for (const workflow of ["eoi", "application"]) {
     const hashes = currentFormDefinition(workflow).source.frontendAssetHashes;
-    assert.equal(Object.keys(hashes).length, 10);
+    assert.equal(Object.keys(hashes).length, 16);
     assert.equal(hashes["pages/rosewood-enrolment-policies-v6.js"], "8bf2abedcf2b9aa70e6ff55b3d837a96604dc06784d8f46b68b637056a4ce095");
     assert.equal(hashes["pages/rosewood-policies/privacy-policy-rosewood-college.docx"], "f0cde7768b7ab470a41f95885f409797aacb9f3154cc2e58332144aaa6f26823");
   }

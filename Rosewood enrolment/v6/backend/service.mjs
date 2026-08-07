@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { buildApplicationReview } from "./application-review.mjs";
 import { applicationComplete, applicationInvitation, applicationOtp, applicationSubmitted, eoiAcknowledgement, signatureInvitation, signatureOtp, staffOtp } from "./email-templates.mjs";
 import { currentFormDefinition, FORM_DEFINITIONS, getFormDefinition, recordFormReference } from "./form-definitions.mjs";
-import { SCHEMA_VERSION, normalizeEmail, safeText, sanitizeApplication, splitApplication, truthy, validateApplicationForSubmission, validateEoi } from "./schema.mjs";
+import { CONTACT_PERMISSION_NO, CONTACT_PERMISSION_YES, SCHEMA_VERSION, contactPermissionAllowed, normalizeEmail, safeText, sanitizeApplication, splitApplication, truthy, validateApplicationForSubmission, validateEoi } from "./schema.mjs";
 import { sheetOperation } from "./google-sheets.mjs";
 
 const DOCUMENT_CATEGORIES = ["birth_certificate", "health_and_immunisation", "school_report", "sacramental", "residency"];
@@ -27,6 +27,75 @@ function id(prefix) { return `${prefix}-${token(10)}`; }
 function iso(now) { return new Date(now).toISOString(); }
 function json(value) { return JSON.stringify(value ?? {}); }
 function invitationDate(value) { return new Date(value).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric", timeZone: "Australia/Melbourne" }); }
+function maskEmail(value) {
+  const [local = "", domain = ""] = normalizeEmail(value).split("@");
+  if (!domain) return "Not provided";
+  return `${local.slice(0, 1)}${"*".repeat(Math.max(3, Math.min(8, local.length - 1)))}@${domain}`;
+}
+
+function contactPermissionLabel(allowed) { return allowed ? "Contact permitted" : "Do not contact"; }
+function signatureRequestLabel(control) {
+  if (control.signatureStatus === "complete") return "Complete";
+  if (!control.contactPermission) return "Signature request suppressed";
+  return ({ pending: "Signature request pending", sent: "Sent", opened: "Opened", verified: "Verified" })[control.requestStatus] || "Signature request pending";
+}
+
+function signerControl(app, guardianId, task = null) {
+  const stored = (app.signerControls || []).find(control => control.guardianId === guardianId);
+  if (stored) return stored;
+  if (!task || String(app.formVersion || "").endsWith(".6")) return null;
+  const index = Number(task.guardianIndex);
+  return {
+    guardianId,
+    guardianIndex: index,
+    name: `${app.values?.[`app_guardian_${index}_first`] || ""} ${app.values?.[`app_guardian_${index}_last`] || ""}`.trim(),
+    contactPermission: true,
+    contactPermissionValue: CONTACT_PERMISSION_YES,
+    signatureRequired: true,
+    signatureStatus: task.status === "signed" ? "complete" : "pending",
+    currentEmail: task.email,
+    taskTokenHash: task.tokenHash,
+    requestGeneration: task.generation || 1,
+    requestGenerated: true,
+    requestSent: true,
+    requestStatus: task.requestStatus || "sent"
+  };
+}
+
+function signerControlAt(app, guardianIndex) {
+  return (app.signerControls || []).find(control => Number(control.guardianIndex) === Number(guardianIndex)) || null;
+}
+
+function pendingElectronicControl(control) {
+  return Boolean(control?.contactPermission && control?.signatureRequired && control?.signatureStatus !== "complete");
+}
+
+function statusContext(app) {
+  return {
+    applicationId: app.id,
+    reference: app.reference,
+    status: app.status,
+    requiresStaffReview: Boolean(app.requiresStaffReview),
+    submittedAt: app.submittedAt,
+    signers: (app.signerControls || []).map(control => ({
+      guardianId: control.guardianId,
+      name: control.name,
+      maskedEmail: maskEmail(control.currentEmail),
+      contactPermission: contactPermissionLabel(control.contactPermission),
+      signatureRequired: Boolean(control.signatureRequired),
+      signatureStatus: control.signatureStatus === "complete" ? "Complete" : control.signatureStatus,
+      requestStatus: signatureRequestLabel(control),
+      requestGenerated: Boolean(control.requestGenerated),
+      requestSent: Boolean(control.requestSent),
+      requestSentAt: control.requestSentAt || "",
+      openedAt: control.openedAt || "",
+      emailVerifiedAt: control.emailVerifiedAt || "",
+      completedAt: control.completedAt || "",
+      canCorrectEmail: pendingElectronicControl(control),
+      canResend: pendingElectronicControl(control)
+    }))
+  };
+}
 
 function projectionVersion(record, workflow) {
   const reference = recordFormReference(record, workflow);
@@ -111,7 +180,7 @@ export function mapEoiRow(record) {
 }
 
 export function mapApplicationRow(app) {
-  return { application_id: app.id, invitation_id: app.invitationId, source_eoi_id: app.sourceEoiId, status: app.status, reference: app.reference, recipient_email: app.recipientEmail, student_id: app.studentId, student_first_name: app.values.student_first, student_last_name: app.values.student_last, created_at: app.createdAt, updated_at: app.updatedAt, submitted_at: app.submittedAt, completed_at: app.completedAt, revision: app.revision, required_signature_count: app.requiredSignatureCount || 0, completed_signature_count: app.signatures?.length || 0, snapshot_file_id: app.snapshotFileId, ...projectionVersion(app, "application") };
+  return { application_id: app.id, invitation_id: app.invitationId, source_eoi_id: app.sourceEoiId, status: app.status, reference: app.reference, recipient_email: app.recipientEmail, student_id: app.studentId, student_first_name: app.values.student_first, student_last_name: app.values.student_last, created_at: app.createdAt, updated_at: app.updatedAt, submitted_at: app.submittedAt, completed_at: app.completedAt, revision: app.revision, required_signature_count: app.requiredSignatureCount || 0, completed_signature_count: app.signatures?.length || 0, snapshot_file_id: app.snapshotFileId, requires_staff_review: app.requiresStaffReview ? "Yes" : "No", one_signature_explanation: app.oneSignatureExplanation || "", signature_control_revision: app.signatureControlRevision || 0, ...projectionVersion(app, "application") };
 }
 
 export function studentRow(app, values) {
@@ -120,7 +189,9 @@ export function studentRow(app, values) {
 }
 
 export function guardianRow(app, guardian, index, signatureStatus = "pending") {
-  return { application_id: app.id, guardian_id: app.guardianIds[index], position: index + 1, share_with_other_contacts: guardian.share, salutation: guardian.title, first_name: guardian.first, last_name: guardian.last, email: guardian.email, mobile_phone: guardian.mobile, home_phone: guardian.home, work_phone: guardian.work, relationship: guardian.relationship, contact_type: guardian.contact_type, marital_status: guardian.marital, religion: guardian.religion, sms_messaging: guardian.sms, health_care_card: guardian.healthcare, health_care_card_number: guardian.healthcare_number, health_care_card_expiry: guardian.healthcare_expiry, residential_address: guardian.address, suburb: guardian.suburb, state: guardian.state, postcode: guardian.postcode, country: guardian.country, postal_same_as_residential: guardian.postal_same, postal_address: guardian.postal_address, postal_suburb: guardian.postal_suburb, postal_state: guardian.postal_state, postal_postcode: guardian.postal_postcode, postal_country: guardian.postal_country, occupational_group: guardian.occupation_group, occupation: guardian.occupation, employer: guardian.employer, school_level_education: guardian.school_education, university_further_education: guardian.further_education, country_of_birth: guardian.birth_country, nationality: guardian.nationality, ethnicity: guardian.ethnicity, languages: guardian.languages, residency_status: guardian.residency, visa_subclass: guardian.visa_subclass, visa_expiry: guardian.visa_expiry, indigenous_status: guardian.indigenous, contact_permission: guardian.permission || "Yes", signature_required: index < app.requiredSignatureCount ? "Yes" : "No", signature_status: signatureStatus, ...projectionVersion(app, "application") };
+  const control = (app.signerControls || []).find(item => item.guardianIndex === index || item.guardianId === app.guardianIds[index]);
+  const currentEmail = control?.currentEmail || guardian.email;
+  return { application_id: app.id, guardian_id: app.guardianIds[index], position: index + 1, share_with_other_contacts: guardian.share, salutation: guardian.title, first_name: guardian.first, last_name: guardian.last, email: guardian.email, mobile_phone: guardian.mobile, home_phone: guardian.home, work_phone: guardian.work, relationship: guardian.relationship, contact_type: guardian.contact_type, marital_status: guardian.marital, religion: guardian.religion, sms_messaging: guardian.sms, health_care_card: guardian.healthcare, health_care_card_number: guardian.healthcare_number, health_care_card_expiry: guardian.healthcare_expiry, residential_address: guardian.address, suburb: guardian.suburb, state: guardian.state, postcode: guardian.postcode, country: guardian.country, postal_same_as_residential: guardian.postal_same, postal_address: guardian.postal_address, postal_suburb: guardian.postal_suburb, postal_state: guardian.postal_state, postal_postcode: guardian.postal_postcode, postal_country: guardian.postal_country, occupational_group: guardian.occupation_group, occupation: guardian.occupation, employer: guardian.employer, school_level_education: guardian.school_education, university_further_education: guardian.further_education, country_of_birth: guardian.birth_country, nationality: guardian.nationality, ethnicity: guardian.ethnicity, languages: guardian.languages, residency_status: guardian.residency, visa_subclass: guardian.visa_subclass, visa_expiry: guardian.visa_expiry, indigenous_status: guardian.indigenous, contact_permission: control ? contactPermissionLabel(control.contactPermission) : guardian.permission || "Yes", contact_permission_changed_at: control?.contactPermissionChangedAt || "", contact_permission_changed_by: control?.contactPermissionChangedBy || "", signature_required: control?.signatureRequired ? "Yes" : index < app.requiredSignatureCount ? "Yes" : "No", signature_status: control?.signatureStatus || signatureStatus, application_contact_email: currentEmail, previous_email_history_json: control?.previousEmails || [], email_corrected_at: control?.emailCorrectedAt || "", email_correction_requested_by: control?.emailCorrectionRequestedBy || "", signature_request_generated: control?.requestGenerated ? "Yes" : "No", signature_request_sent: control?.requestSent ? "Yes" : "No", signature_request_status: control ? signatureRequestLabel(control) : signatureStatus, signature_request_sent_at: control?.requestSentAt || "", signature_request_delivery_status: control?.deliveryStatus || (control?.requestSent ? "accepted_by_ses" : ""), signature_request_delivery_at: control?.deliveryAt || control?.requestSentAt || "", signature_request_opened_at: control?.openedAt || "", signing_email_verified_at: control?.emailVerifiedAt || "", signed_document_revision: control?.signedDocumentRevision || "", previous_link_revoked_at: control?.previousLinkRevokedAt || "", requires_staff_review: app.requiresStaffReview ? "Yes" : "No", ...projectionVersion(app, "application") };
 }
 
 export function emergencyRow(app, contact, index) {
@@ -170,13 +241,38 @@ function invitationApplicationIds(invitation) {
   return [...new Set([...(Array.isArray(invitation?.applicationIds) ? invitation.applicationIds : []), invitation?.applicationId].filter(Boolean))];
 }
 
-export function additionalGuardianSignatureRecipients(values, guardianCount) {
+export function additionalGuardianSignatureRecipients(values, guardianCount, formVersion = currentFormDefinition("application").formVersion) {
   const recipients = [];
   for (let index = 1; index < Math.max(1, Math.min(6, Number(guardianCount || 1))); index += 1) {
+    const permission = values[`app_guardian_${index}_permission`];
+    if (!contactPermissionAllowed(permission, formVersion)) continue;
     const email = normalizeEmail(values[`app_guardian_${index}_email`]);
-    if (email) recipients.push({ index, email, firstName: safeText(values[`app_guardian_${index}_first`], 120) });
+    if (email) recipients.push({ index, email, firstName: safeText(values[`app_guardian_${index}_first`], 120), contactPermission: true, signatureRequired: true });
   }
   return recipients;
+}
+
+export function guardianSignaturePlan(values, guardianCount, guardianIds = [], formVersion = currentFormDefinition("application").formVersion) {
+  const controls = [];
+  for (let index = 0; index < Math.max(1, Math.min(6, Number(guardianCount || 1))); index += 1) {
+    const permission = index === 0 || contactPermissionAllowed(values[`app_guardian_${index}_permission`], formVersion);
+    controls.push({
+      guardianId: guardianIds[index],
+      guardianIndex: index,
+      name: [values[`app_guardian_${index}_first`], values[`app_guardian_${index}_last`]].filter(Boolean).join(" "),
+      currentEmail: normalizeEmail(values[`app_guardian_${index}_email`]),
+      previousEmails: [],
+      contactPermission: permission,
+      contactPermissionValue: index === 0 ? CONTACT_PERMISSION_YES : values[`app_guardian_${index}_permission`],
+      signatureRequired: true,
+      signatureStatus: index === 0 ? "complete" : permission ? "pending" : "suppressed",
+      requestGenerated: false,
+      requestSent: false,
+      requestStatus: index === 0 ? "complete" : permission ? "pending" : "suppressed",
+      requestGeneration: 0
+    });
+  }
+  return controls;
 }
 
 async function getInvitationApplications(store, invitation) {
@@ -265,10 +361,11 @@ export async function queueMissingGuardianSignatureInvitations({ store, applicat
   const existingTasks = await store.listSignatureTasksForApplication(app.id);
   const existingGuardianIds = new Set(existingTasks.map(task => task.guardianId));
   const signedGuardianIds = new Set((app.signatures || []).map(signature => signature.guardianId));
-  const recipients = additionalGuardianSignatureRecipients(app.values || {}, app.guardianCount || 1)
+  const recipients = additionalGuardianSignatureRecipients(app.values || {}, app.guardianCount || 1, recordFormReference(app, "application").formVersion)
     .filter(recipient => {
       const guardianId = app.guardianIds?.[recipient.index];
-      return guardianId && !existingGuardianIds.has(guardianId) && !signedGuardianIds.has(guardianId);
+      const control = signerControlAt(app, recipient.index);
+      return guardianId && control?.contactPermission !== false && !existingGuardianIds.has(guardianId) && !signedGuardianIds.has(guardianId);
     });
   if (!recipients.length) return { applicationId: app.id, status: app.status, queuedSignatureRequests: 0 };
 
@@ -276,19 +373,29 @@ export async function queueMissingGuardianSignatureInvitations({ store, applicat
   const createdAt = iso(now);
   const signatureTasks = [];
   const emailEvents = [];
+  const signerControls = app.signerControls?.length
+    ? app.signerControls.map(control => ({ ...control }))
+    : guardianSignaturePlan(app.values || {}, app.guardianCount || 1, app.guardianIds || [], recordFormReference(app, "application").formVersion);
   for (const recipient of recipients) {
     const rawTask = token();
     const guardianId = app.guardianIds[recipient.index];
-    signatureTasks.push({ tokenHash: sha256(rawTask), applicationId: app.id, guardianId, guardianIndex: recipient.index, email: recipient.email, status: "invited", revision: app.revision, revisionHash: app.revisionHash, createdAt: now, expiresAt: now + 14 * 86400_000, ttl: Math.floor((now + 30 * 86400_000) / 1000) });
+    const taskHash = sha256(rawTask);
+    const generation = Number(signerControls[recipient.index]?.requestGeneration || 0) + 1;
+    signatureTasks.push({ tokenHash: taskHash, applicationId: app.id, guardianId, guardianIndex: recipient.index, email: recipient.email, status: "invited", requestStatus: "pending", requestGenerated: true, requestSent: false, generation, revision: app.revision, revisionHash: app.revisionHash, createdAt: now, expiresAt: now + 14 * 86400_000, ttl: Math.floor((now + 30 * 86400_000) / 1000) });
+    signerControls[recipient.index] = { ...signerControls[recipient.index], guardianId, guardianIndex: recipient.index, currentEmail: recipient.email, contactPermission: true, contactPermissionValue: CONTACT_PERMISSION_YES, signatureRequired: true, signatureStatus: "pending", taskTokenHash: taskHash, requestGenerated: true, requestSent: false, requestStatus: "pending", requestGeneration: generation, requestCreatedAt: createdAt };
     const signingUrl = `${signingPageUrl}?task=${encodeURIComponent(rawTask)}`;
-    emailEvents.push(emailOutbox({ to: recipient.email, ...signatureInvitation({ firstName: recipient.firstName, studentName: `${app.values.student_first} ${app.values.student_last}`, signingUrl }), tags: { workflow: "application", message_type: "signature_invitation" } }, now));
+    emailEvents.push(emailOutbox({ to: recipient.email, ...signatureInvitation({ firstName: recipient.firstName, studentName: `${app.values.student_first} ${app.values.student_last}`, signingUrl }), tags: { workflow: "application", message_type: "signature_invitation" }, _tracking: { kind: "signature_request", applicationId: app.id, guardianId, guardianIndex: recipient.index, taskTokenHash: taskHash } }, now));
   }
+  const next = { ...app, signerControls, signatureControlRevision: Number(app.signatureControlRevision || 0) + 1, requiredSignatureCount: Math.max(Number(app.requiredSignatureCount || 0), signerControls.filter(control => control.signatureRequired).length), updatedAt: createdAt };
   const audit = createAuditEvent({ workflow: "application", recordId: app.id, invitationId: app.invitationId, type: "application.signature_invitations_recovered", at: createdAt, actorType: "staff", actorId, stage: "guardian_signatures", details: { queuedSignatureRequests: signatureTasks.length, revision: app.revision } });
+  const guardians = splitApplication(app.values, app.id, app.guardianCount || 1, app.emergencyCount || 2).guardians;
   const operations = [
+    sheetOperation("application", "Applications", mapApplicationRow(next), ["application_id"]),
+    ...recipients.map(recipient => sheetOperation("application", "Guardians", guardianRow(next, guardians[recipient.index], recipient.index, "pending"), ["application_id", "guardian_id"])),
     auditSheetOperation(audit),
     ...recipients.map(recipient => emailEvent({ messageType: "signature_invitation", workflow: "application", recordId: app.id, recipientEmail: recipient.email, at: createdAt }))
   ];
-  await store.addSignatureTasks({ applicationId: app.id, revisionHash: app.revisionHash, signatureTasks, outboxEvents: [...emailEvents, ...operations.map(operation => sheetOutbox(operation, now))], auditEvents: [audit] });
+  await store.addSignatureTasks({ applicationId: app.id, revisionHash: app.revisionHash, expectedControlRevision: app.signatureControlRevision || 0, application: next, signatureTasks, outboxEvents: [...emailEvents, ...operations.map(operation => sheetOutbox(operation, now))], auditEvents: [audit] });
   return { applicationId: app.id, status: app.status, queuedSignatureRequests: signatureTasks.length };
 }
 
@@ -331,7 +438,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     let session = await store.getSession(tokenHash);
     const now = clock();
     if (!session || session.scope !== scope || session.expiresAt <= now) throw appError(401, "SESSION_EXPIRED", "Your secure session has expired. Verify your email address again.");
-    if (["application", "application_family"].includes(scope)) {
+    if (["application", "application_family", "application_status"].includes(scope)) {
       const absoluteExpiresAt = Number(session.absoluteExpiresAt || Number(session.createdAt) + APPLICATION_SESSION_ABSOLUTE_MS);
       const expiresAt = Math.min(now + APPLICATION_SESSION_IDLE_MS, absoluteExpiresAt);
       session = await store.touchSession(tokenHash, { expiresAt, absoluteExpiresAt, lastActivityAt: now, now, ttl: Math.floor((absoluteExpiresAt + 86400_000) / 1000) });
@@ -412,6 +519,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
         percentComplete: Math.max(0, Math.min(100, Number(application.percentComplete ?? (application.status === "submitted" ? 100 : 0)))),
         requiredSignatures: Number(application.requiredSignatureCount || 0),
         completedSignatures: Number(application.signatures?.length || 0),
+        requiresStaffReview: Boolean(application.requiresStaffReview),
         lastSentAt: invitation.lastSentAt || "",
         sendCount: Number(invitation.sendCount || 0),
         expiresAt: invitation.expiresAt ? iso(invitation.expiresAt) : "",
@@ -451,7 +559,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     const applicationId = safeText(body.applicationId, 200);
     const app = await store.getApplication(applicationId);
     if (!app) throw appError(404, "APPLICATION_NOT_FOUND", "The application was not found.");
-    const revisions = store.listApplicationRevisions ? await store.listApplicationRevisions(app.id, 100) : [];
+    const [revisions, signatureTasks] = await Promise.all([store.listApplicationRevisions ? store.listApplicationRevisions(app.id, 100) : [], store.listSignatureTasksForApplication ? store.listSignatureTasksForApplication(app.id) : []]);
     await recordAudit(createAuditEvent({ workflow: "application", recordId: app.id, invitationId: app.invitationId, type: "staff.application_viewed", at: nowIso(), actorType: "staff", actorId: session.email, details: { role: session.role } }));
     const formReference = recordFormReference(app, "application");
     return {
@@ -471,6 +579,9 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
         emergencyCount: app.emergencyCount || 2,
         requiredSignatureCount: app.requiredSignatureCount || 0,
         completedSignatureCount: app.signatures?.length || 0,
+        requiresStaffReview: Boolean(app.requiresStaffReview),
+        oneSignatureExplanation: app.oneSignatureExplanation || app.values?.application_one_signature_reason || "",
+        signatureControlRevision: app.signatureControlRevision || 0,
         ...formReference,
         values: app.values || {},
         documents: Object.values(app.documents || {}).flat().map(document => ({
@@ -484,6 +595,10 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
           storageProvider: document.storageProvider || "legacy"
         })),
         signatures: (app.signatures || []).map(signature => ({ guardianId: signature.guardianId, signerName: signature.signerName, signerEmail: signature.signerEmail, signedAt: signature.signedAt, revision: signature.revision })),
+        signerControls: (app.signerControls || []).map(control => {
+          const task = signatureTasks.find(item => item.guardianId === control.guardianId && item.tokenHash === control.taskTokenHash) || signatureTasks.filter(item => item.guardianId === control.guardianId).sort((a, b) => Number(b.generation || 0) - Number(a.generation || 0))[0];
+          return { guardianId: control.guardianId, guardianIndex: control.guardianIndex, name: control.name, contactPermission: contactPermissionLabel(control.contactPermission), contactPermissionChangedAt: control.contactPermissionChangedAt || "", contactPermissionChangedBy: control.contactPermissionChangedBy || "", currentEmail: control.currentEmail, previousEmails: control.previousEmails || [], emailCorrectedAt: control.emailCorrectedAt || "", emailCorrectionRequestedBy: control.emailCorrectionRequestedBy || "", signatureRequired: Boolean(control.signatureRequired), requestGenerated: Boolean(control.requestGenerated), requestSent: Boolean(control.requestSent), requestStatus: signatureRequestLabel(control), requestSentAt: control.requestSentAt || "", deliveryStatus: control.deliveryStatus || (control.requestSent ? "accepted_by_ses" : "not_sent"), deliveryAt: control.deliveryAt || control.requestSentAt || "", openedAt: control.openedAt || "", emailVerifiedAt: control.emailVerifiedAt || "", signatureStatus: control.signatureStatus === "complete" ? "Complete" : control.signatureStatus, completedAt: control.completedAt || "", signedDocumentRevision: control.signedDocumentRevision || "", previousLinkRevokedAt: control.previousLinkRevokedAt || "", activeTaskStatus: task?.status || "not_generated", activeTaskGeneration: task?.generation || control.requestGeneration || 0 };
+        }),
         revisions: revisions.map(revision => ({ revisionKey: revision.revisionKey, revision: revision.revision, kind: revision.kind, status: revision.status, stage: revision.stage, savedAt: revision.savedAt, saveMode: revision.saveMode, changedFields: revision.changedFields || [], formVersion: revision.formVersion, formDefinitionHash: revision.formDefinitionHash, schemaVersion: revision.schemaVersion }))
       }
     };
@@ -524,6 +639,50 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     const result = await resendApplicationInvitation({ store, invitationId: safeText(body.invitationId, 200), createdBy: session.email, applicationUrl: applicationPageUrl, clock });
     await dispatchOutbox(50);
     return { ...result, message: "A new private invitation link has been sent. The earlier link no longer works." };
+  }
+
+  async function changeStaffContactPermission(event) {
+    const session = await requireStaffSession(event, ["admin", "admissions"]);
+    const body = parseBody(event, 20_000);
+    const applicationId = safeText(body.applicationId, 200);
+    const guardianId = safeText(body.guardianId, 200);
+    const requested = safeText(body.permission, 120);
+    if (body.confirmation !== "I confirm this authorised contact-permission change") throw appError(422, "EXPLICIT_CONFIRMATION_REQUIRED", "Enter the required confirmation before changing contact permission.");
+    if (![CONTACT_PERMISSION_YES, CONTACT_PERMISSION_NO].includes(requested)) throw appError(422, "CONTACT_PERMISSION_INVALID", "Choose an explicit contact-permission value.");
+    const app = await store.getApplication(applicationId);
+    const control = app && signerControl(app, guardianId);
+    if (!app || !control || control.guardianIndex === 0) throw appError(404, "SIGNER_NOT_FOUND", "The additional parent or guardian was not found.");
+    const operation = requested === CONTACT_PERMISSION_YES ? "staff_contact_permission_enabled" : "staff_contact_permission_disabled";
+    const idempotency = operationIdempotency(event, operation, app.id, guardianId);
+    const previous = await store.getIdempotency?.(idempotency.keyHash);
+    if (previous?.result) return previous.result;
+    if (control.signatureStatus === "complete" || app.status === "submitted") throw appError(409, "SIGNATURE_COMPLETE", "Contact permission cannot be changed after this signature is complete.");
+    const allowed = requested === CONTACT_PERMISSION_YES;
+    if (allowed === control.contactPermission) return { applicationId, guardianId, status: statusContext(app), message: "Contact permission is already set to this value." };
+    if (!await store.checkRateLimit(`staff-contact-permission:${sha256(session.email)}`, 20, 3600)) throw appError(429, "STAFF_RATE_LIMIT", "The hourly contact-permission change limit has been reached.");
+    if (allowed) {
+      if (!/^\S+@\S+\.\S+$/.test(control.currentEmail)) throw appError(422, "SIGNATURE_RECIPIENT_REQUIRED", "A valid application contact email is required before contact can be permitted.");
+      const remainingSuppressed = app.signerControls.some(item => item.guardianId !== guardianId && item.signatureStatus === "suppressed");
+      const nextApp = { ...app, requiresStaffReview: remainingSuppressed };
+      const permittedControl = { ...control, contactPermission: true, contactPermissionValue: CONTACT_PERMISSION_YES, signatureStatus: "pending", requestStatus: "pending", contactPermissionChangedAt: nowIso(), contactPermissionChangedBy: session.email };
+      return replacePendingSignatureRequest({ event, app: nextApp, control: permittedControl, actorType: "staff", actorId: session.email, operation });
+    }
+    if (!pendingElectronicControl(control)) throw appError(409, "SIGNATURE_REQUEST_UNAVAILABLE", "There is no pending electronic request to suppress.");
+    const now = clock();
+    const changedAt = iso(now);
+    const nextControl = { ...control, contactPermission: false, contactPermissionValue: CONTACT_PERMISSION_NO, signatureStatus: "suppressed", requestStatus: "suppressed", taskTokenHash: "", previousLinkRevokedAt: changedAt, contactPermissionChangedAt: changedAt, contactPermissionChangedBy: session.email };
+    const controls = app.signerControls.map(item => item.guardianId === guardianId ? nextControl : item);
+    const hasPending = controls.some(pendingElectronicControl);
+    const next = { ...app, signerControls: controls, signatureControlRevision: Number(app.signatureControlRevision || 0) + 1, requiresStaffReview: true, status: hasPending ? "pending_signatures" : "staff_review_required", updatedAt: changedAt };
+    const result = { applicationId, guardianId, status: statusContext(next), message: "Contact permission was changed to Do not contact. The automated signing request was cancelled." };
+    idempotency.result = result;
+    const audit = createAuditEvent({ workflow: "application", recordId: app.id, invitationId: app.invitationId, type: "application.staff_contact_permission_disabled", at: changedAt, actorType: "staff", actorId: session.email, stage: "guardian_signatures", details: { guardianId, previousLinkRevoked: true, explicitConfirmation: true } });
+    const guardian = splitApplication(app.values, app.id, app.guardianCount, app.emergencyCount || 2).guardians[control.guardianIndex];
+    await store.replaceSignatureRequest({ applicationId: app.id, expectedControlRevision: app.signatureControlRevision || 0, previousTaskTokenHash: control.taskTokenHash, application: next, nextTask: null, idempotency, outboxEvents: [sheetOutbox(sheetOperation("application", "Applications", mapApplicationRow(next), ["application_id"]), now), sheetOutbox(sheetOperation("application", "Guardians", guardianRow(next, guardian, control.guardianIndex, "suppressed"), ["application_id", "guardian_id"]), now), sheetOutbox(auditSheetOperation(audit), now)], auditEvents: [audit] });
+    const revoked = await store.revokeSigningArtifacts?.(control.taskTokenHash, changedAt, "staff_contact_permission_disabled") || { challenges: 0, sessions: 0 };
+    await recordAudit(createAuditEvent({ workflow: "application", recordId: app.id, invitationId: app.invitationId, type: "application.signature_security_artifacts_revoked", at: nowIso(), actorType: "staff", actorId: session.email, stage: "guardian_signatures", details: { guardianId, challengesRevoked: revoked.challenges, sessionsRevoked: revoked.sessions } }));
+    await dispatchOutbox(20);
+    return result;
   }
 
   async function submitEoi(event) {
@@ -632,6 +791,14 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     return rawSession;
   }
 
+  async function issueStatusSession(invitation, application, email) {
+    const rawSession = token();
+    const createdAt = clock();
+    const absoluteExpiresAt = createdAt + APPLICATION_SESSION_ABSOLUTE_MS;
+    await store.putSession({ tokenHash: sha256(rawSession), scope: "application_status", applicationId: application.id, invitationId: invitation.id, email, applicantContactId: application.contactId, createdAt, lastActivityAt: createdAt, expiresAt: createdAt + APPLICATION_SESSION_IDLE_MS, absoluteExpiresAt, ttl: Math.floor((absoluteExpiresAt + 86400_000) / 1000) });
+    return rawSession;
+  }
+
   async function selectFamilyApplication(event) {
     const { session, invitation } = await requireFamilyInvitation(event);
     const body = parseBody(event, 20_000);
@@ -645,6 +812,135 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     const sessionToken = await issueApplicationSession(invitation, application, session.email);
     await recordAudit(createAuditEvent({ workflow: "application", recordId: application.id, invitationId: invitation.id, type: "application.selected", at: nowIso(), actorId: application.contactId, stage: "selector" }));
     return { sessionToken, expiresInSeconds: APPLICATION_SESSION_IDLE_MS / 1000, idleTimeoutSeconds: APPLICATION_SESSION_IDLE_MS / 1000, absoluteTimeoutSeconds: APPLICATION_SESSION_ABSOLUTE_MS / 1000, context: applicationContext(application) };
+  }
+
+  async function selectApplicationStatus(event) {
+    const { session, invitation } = await requireFamilyInvitation(event);
+    const body = parseBody(event, 20_000);
+    const applicationId = safeText(body.applicationId, 200);
+    if (!invitationApplicationIds(invitation).includes(applicationId)) throw appError(403, "APPLICATION_ACCESS_DENIED", "This application does not belong to the verified family invitation.");
+    const application = await store.getApplication(applicationId);
+    if (!application || application.invitationId !== invitation.id) throw appError(404, "APPLICATION_NOT_FOUND", "The selected application was not found.");
+    if (["invited", "in_progress"].includes(application.status || "invited")) throw appError(409, "APPLICATION_NOT_SUBMITTED", "This application is still editable. Open it from the family application list.");
+    const sessionToken = await issueStatusSession(invitation, application, session.email);
+    await recordAudit(createAuditEvent({ workflow: "application", recordId: application.id, invitationId: invitation.id, type: "application.status_viewed", at: nowIso(), actorId: application.contactId, stage: "status" }));
+    return { sessionToken, expiresInSeconds: APPLICATION_SESSION_IDLE_MS / 1000, idleTimeoutSeconds: APPLICATION_SESSION_IDLE_MS / 1000, absoluteTimeoutSeconds: APPLICATION_SESSION_ABSOLUTE_MS / 1000, status: statusContext(application) };
+  }
+
+  async function getApplicationStatus(event) {
+    const session = await requireSession(event, "application_status");
+    const app = await store.getApplication(session.applicationId);
+    if (!app || app.invitationId !== session.invitationId || app.contactId !== session.applicantContactId) throw appError(403, "APPLICATION_ACCESS_DENIED", "This status record is not available to this session.");
+    return statusContext(app);
+  }
+
+  function operationIdempotency(event, operation, applicationId, guardianId) {
+    const value = safeText(headers(event)["idempotency-key"], 200);
+    if (!value) throw appError(422, "IDEMPOTENCY_KEY_REQUIRED", "Refresh the page and try this action again.");
+    const keyHash = sha256(`${operation}:${applicationId}:${guardianId}:${value}`);
+    return { keyHash, operation, createdAt: nowIso(), ttl: Math.floor((clock() + 86400_000) / 1000) };
+  }
+
+  async function replacePendingSignatureRequest({ event, app, control, correctedEmail = "", actorType = "family", actorId, operation }) {
+    if (!pendingElectronicControl(control)) throw appError(409, "SIGNATURE_REQUEST_UNAVAILABLE", "This signature request cannot be changed.");
+    const idempotency = operationIdempotency(event, operation, app.id, control.guardianId);
+    const previous = await store.getIdempotency?.(idempotency.keyHash);
+    if (previous?.result) return previous.result;
+    const email = correctedEmail ? normalizeEmail(correctedEmail) : control.currentEmail;
+    if (!/^\S+@\S+\.\S+$/.test(email)) throw appError(422, "INVALID_EMAIL", "Enter a valid corrected email address.");
+    const now = clock();
+    const changedAt = iso(now);
+    const rawTask = token();
+    const taskHash = sha256(rawTask);
+    const nextGeneration = Number(control.requestGeneration || 1) + 1;
+    const previousEmails = correctedEmail && email !== control.currentEmail
+      ? [...(control.previousEmails || []), { email: control.currentEmail, changedAt, requestedBy: actorId, actorType }]
+      : [...(control.previousEmails || [])];
+    const nextControl = { ...control, currentEmail: email, previousEmails, taskTokenHash: taskHash, requestGeneration: nextGeneration, requestGenerated: true, requestSent: false, requestStatus: "pending", requestCreatedAt: changedAt, requestSentAt: "", openedAt: "", emailVerifiedAt: "", previousLinkRevokedAt: changedAt, emailCorrectedAt: correctedEmail ? changedAt : control.emailCorrectedAt || "", emailCorrectionRequestedBy: correctedEmail ? actorId : control.emailCorrectionRequestedBy || "" };
+    const signerControls = app.signerControls.map(item => item.guardianId === control.guardianId ? nextControl : item);
+    const next = { ...app, signerControls, signatureControlRevision: Number(app.signatureControlRevision || 0) + 1, status: "pending_signatures", updatedAt: changedAt };
+    const task = { tokenHash: taskHash, applicationId: app.id, guardianId: control.guardianId, guardianIndex: control.guardianIndex, email, status: "invited", requestStatus: "pending", requestGenerated: true, requestSent: false, generation: nextGeneration, revision: app.revision, revisionHash: app.revisionHash, createdAt: now, expiresAt: now + 14 * 86400_000, ttl: Math.floor((now + 30 * 86400_000) / 1000) };
+    const signingUrl = `${signingPageUrl}?task=${encodeURIComponent(rawTask)}`;
+    const message = { to: email, ...signatureInvitation({ firstName: app.values[`app_guardian_${control.guardianIndex}_first`], signingUrl }), tags: { workflow: "application", message_type: operation === "signature_email_corrected" ? "signature_email_corrected" : "signature_invitation_resent" }, _tracking: { kind: "signature_request", applicationId: app.id, guardianId: control.guardianId, guardianIndex: control.guardianIndex, taskTokenHash: taskHash } };
+    const result = { applicationId: app.id, guardianId: control.guardianId, status: statusContext(next), message: correctedEmail ? "The previous signing link was cancelled and a new request was sent to the corrected email address." : "A new signing link was sent. The previous link no longer works." };
+    idempotency.result = result;
+    const audit = createAuditEvent({ workflow: "application", recordId: app.id, invitationId: app.invitationId, type: `application.${operation}`, at: changedAt, actorType, actorId, stage: "guardian_signatures", details: { guardianId: control.guardianId, previousEmail: maskEmail(control.currentEmail), currentEmail: maskEmail(email), previousTaskRevoked: true, requestGeneration: nextGeneration } });
+    const operations = [
+      sheetOperation("application", "Applications", mapApplicationRow(next), ["application_id"]),
+      sheetOperation("application", "Guardians", guardianRow(next, splitApplication(app.values, app.id, app.guardianCount, app.emergencyCount || 2).guardians[control.guardianIndex], control.guardianIndex, "pending"), ["application_id", "guardian_id"]),
+      auditSheetOperation(audit),
+      emailEvent({ messageType: operation, workflow: "application", recordId: app.id, recipientEmail: email, at: changedAt })
+    ];
+    try {
+      await store.replaceSignatureRequest({ applicationId: app.id, expectedControlRevision: app.signatureControlRevision || 0, previousTaskTokenHash: control.taskTokenHash, application: next, nextTask: task, idempotency, outboxEvents: [emailOutbox(message, now), ...operations.map(item => sheetOutbox(item, now))], auditEvents: [audit] });
+    } catch (error) {
+      const duplicate = await store.getIdempotency?.(idempotency.keyHash);
+      if (duplicate?.result) return duplicate.result;
+      throw error;
+    }
+    const revoked = await store.revokeSigningArtifacts?.(control.taskTokenHash, changedAt, operation) || { challenges: 0, sessions: 0 };
+    await recordAudit(createAuditEvent({ workflow: "application", recordId: app.id, invitationId: app.invitationId, type: "application.signature_security_artifacts_revoked", at: nowIso(), actorType, actorId, stage: "guardian_signatures", details: { guardianId: control.guardianId, challengesRevoked: revoked.challenges, sessionsRevoked: revoked.sessions } }));
+    await dispatchOutbox(50);
+    return result;
+  }
+
+  async function resendSignatureRequest(event) {
+    const session = await requireSession(event, "application_status");
+    const body = parseBody(event, 20_000);
+    const app = await store.getApplication(session.applicationId);
+    const control = app && signerControl(app, safeText(body.guardianId, 200));
+    if (!app || app.contactId !== session.applicantContactId || !control) throw appError(403, "APPLICATION_ACCESS_DENIED", "This signature request is not available to this session.");
+    const idempotency = operationIdempotency(event, "signature_request_resent", app.id, control.guardianId);
+    const previous = await store.getIdempotency?.(idempotency.keyHash);
+    if (previous?.result) return previous.result;
+    for (const [key, limit, seconds] of [[`signature-resend-cooldown:${app.id}:${control.guardianId}`, 1, 60], [`signature-resend-day:${app.id}:${control.guardianId}`, 5, 86400]]) if (!await store.checkRateLimit(key, limit, seconds)) throw appError(429, "SIGNATURE_RESEND_RATE_LIMIT", "Please wait before sending another signature request.");
+    return replacePendingSignatureRequest({ event, app, control, actorId: session.email, operation: "signature_request_resent" });
+  }
+
+  async function requestCorrectionCode(event) {
+    const session = await requireSession(event, "application_status");
+    const body = parseBody(event, 20_000);
+    const app = await store.getApplication(session.applicationId);
+    const control = app && signerControl(app, safeText(body.guardianId, 200));
+    if (!app || app.contactId !== session.applicantContactId || !control || !pendingElectronicControl(control)) throw appError(409, "SIGNATURE_REQUEST_UNAVAILABLE", "This signer email cannot be corrected.");
+    for (const [key, limit, seconds] of [[`correction-otp-cooldown:${app.id}:${control.guardianId}`, 1, 30], [`correction-otp-day:${app.id}:${control.guardianId}`, 5, 86400]]) if (!await store.checkRateLimit(key, limit, seconds)) throw appError(429, "OTP_RATE_LIMIT", "Please wait before requesting another verification code.");
+    const challengeId = id("challenge");
+    const verificationCode = code();
+    await store.putChallenge({ id: challengeId, purpose: "signature_email_correction", subjectHash: sha256(`${app.id}:${control.guardianId}:${session.email}`), email: session.email, applicationId: app.id, guardianId: control.guardianId, requestGeneration: control.requestGeneration, codeHmac: hmac(otpSecret, `${challengeId}:${verificationCode}`), attempts: 0, maxAttempts: 5, createdAt: clock(), expiresAt: clock() + 600_000, ttl: Math.floor((clock() + 86400_000) / 1000) });
+    await mailer.send({ to: session.email, ...applicationOtp({ code: verificationCode }), tags: { workflow: "application", message_type: "signature_email_correction_otp" } });
+    return { challengeId, expiresInSeconds: 600, resendAfterSeconds: 30, message: "A verification code has been sent to your verified application email address." };
+  }
+
+  async function verifyCorrectionCode(event) {
+    const statusSession = await requireSession(event, "application_status");
+    const body = parseBody(event, 20_000);
+    const challenge = await store.getChallenge(safeText(body.challengeId, 200));
+    const app = await store.getApplication(statusSession.applicationId);
+    const control = app && signerControl(app, safeText(body.guardianId, 200));
+    if (!challenge || challenge.purpose !== "signature_email_correction" || challenge.applicationId !== app?.id || challenge.guardianId !== control?.guardianId || challenge.email !== statusSession.email || challenge.requestGeneration !== control.requestGeneration || !pendingElectronicControl(control)) throw appError(401, "OTP_INVALID", "The code is invalid or expired. Request a new code.");
+    const consumed = await store.consumeChallenge(challenge.id, hmac(otpSecret, `${challenge.id}:${safeText(body.code, 12)}`), clock());
+    if (!consumed) { await store.failChallenge(challenge.id); throw appError(401, "OTP_INVALID", "The code is invalid or expired. Request a new code."); }
+    const rawSession = token();
+    await store.putSession({ tokenHash: sha256(rawSession), scope: "signature_email_correction", applicationId: app.id, invitationId: app.invitationId, applicantContactId: app.contactId, guardianId: control.guardianId, email: statusSession.email, requestGeneration: control.requestGeneration, createdAt: clock(), expiresAt: clock() + 10 * 60_000, ttl: Math.floor((clock() + 86400_000) / 1000) });
+    return { correctionSessionToken: rawSession, expiresInSeconds: 600 };
+  }
+
+  async function confirmSignerEmailCorrection(event) {
+    const session = await requireSession(event, "signature_email_correction");
+    const body = parseBody(event, 20_000);
+    if (body.confirmed !== true) throw appError(422, "CORRECTION_CONFIRMATION_REQUIRED", "Confirm that the current signing link will be cancelled and replaced.");
+    const first = normalizeEmail(body.email);
+    const second = normalizeEmail(body.emailConfirmation);
+    if (!first || first !== second) throw appError(422, "EMAIL_CONFIRMATION_MISMATCH", "Enter the corrected email address twice and make sure both entries match.");
+    const app = await store.getApplication(session.applicationId);
+    const control = app && signerControl(app, session.guardianId);
+    const idempotency = app && control ? operationIdempotency(event, "signature_email_corrected", app.id, control.guardianId) : null;
+    const previous = idempotency && await store.getIdempotency?.(idempotency.keyHash);
+    if (previous?.result) return previous.result;
+    if (!app || app.contactId !== session.applicantContactId || !control || control.requestGeneration !== session.requestGeneration) throw appError(409, "SIGNATURE_REQUEST_UNAVAILABLE", "The signature request changed after verification. Return to the status page and try again.");
+    if (first === control.currentEmail) throw appError(422, "EMAIL_UNCHANGED", "The corrected email matches the current address. Use Resend signature request instead.");
+    if (!await store.checkRateLimit(`signature-correction-day:${app.id}:${control.guardianId}`, 3, 86400)) throw appError(429, "SIGNATURE_CORRECTION_RATE_LIMIT", "The correction limit has been reached. Contact Rosewood College for help.");
+    return replacePendingSignatureRequest({ event, app, control, correctedEmail: first, actorId: session.email, operation: "signature_email_corrected" });
   }
 
   async function startFamilyApplication(event) {
@@ -771,9 +1067,8 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     const definition = requireRecordDefinition(app, "application", body);
     await ensureDefinition(store, "application", definition.formVersion);
     const guardianCount = Math.max(1, Math.min(6, Number(app.guardianCount || 1)));
-    const values = applicationValidator(definition).validate(app.values, guardianCount, app.emergencyCount || 2);
-    const additionalSignatureRecipients = additionalGuardianSignatureRecipients(values, guardianCount);
-    if (additionalSignatureRecipients.length !== guardianCount - 1) throw appError(422, "SIGNATURE_RECIPIENT_REQUIRED", "Each additional parent or guardian needs a valid email address before the application can be submitted.");
+    const values = applicationValidator(definition).validate(app.values, guardianCount, app.emergencyCount || 2, definition.formVersion);
+    const additionalSignatureRecipients = additionalGuardianSignatureRecipients(values, guardianCount, definition.formVersion);
     if (!(app.documents?.birth_certificate || []).length) throw appError(422, "DOCUMENT_REQUIRED", "Upload the student's birth certificate before submitting.", { missing: ["birth_certificate"] });
     const unsafeDocuments = Object.values(app.documents || {}).flat().filter(document => document.malwareScanStatus !== "no_threats_found" && !(allowUnscannedGoogleDocuments && document.storageProvider === "google_drive"));
     if (unsafeDocuments.length) throw appError(422, "DOCUMENT_SCAN_REQUIRED", "Every uploaded document must pass its security check before the application can be submitted.");
@@ -785,6 +1080,8 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     const [snapshot, signatureFile] = await Promise.all([artifacts.storeApplicationSnapshot({ applicationId: app.id, revision: app.revision, snapshot: snapshotPayload }), artifacts.storeSignature({ applicationId: app.id, guardianId: primaryGuardianId, signatureId: primarySignatureId, data: bytes })]);
     const signedAt = nowIso();
     const primarySignature = { id: primarySignatureId, guardianId: primaryGuardianId, signerName: `${values.app_guardian_0_first} ${values.app_guardian_0_last}`.trim(), signerEmail: normalizeEmail(values.app_guardian_0_email), signedAt, revision: app.revision, revisionHash, fileId: signatureFile.id, storageProvider: signatureFile.storageProvider, storageVersionId: signatureFile.storageVersionId, networkFingerprint: networkFingerprint(event), ipAcknowledged: values.application_signature_ip, termsAcknowledged: values.application_signature_terms };
+    const signerControls = guardianSignaturePlan(values, guardianCount, app.guardianIds, definition.formVersion);
+    Object.assign(signerControls[0], { completedAt: signedAt, signedDocumentRevision: revisionHash });
     const signatureTasks = [];
     const taskEmails = [];
     for (const recipient of additionalSignatureRecipients) {
@@ -793,37 +1090,41 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
       app.guardianIds[index] = guardianId;
       const email = recipient.email;
       const rawTask = token();
-      const task = { tokenHash: sha256(rawTask), applicationId: app.id, guardianId, guardianIndex: index, email, status: "invited", revision: app.revision, revisionHash, createdAt: clock(), expiresAt: clock() + 14 * 86400_000, ttl: Math.floor((clock() + 30 * 86400_000) / 1000) };
+      const taskHash = sha256(rawTask);
+      const task = { tokenHash: taskHash, applicationId: app.id, guardianId, guardianIndex: index, email, status: "invited", requestStatus: "pending", requestGenerated: true, requestSent: false, generation: 1, revision: app.revision, revisionHash, createdAt: clock(), expiresAt: clock() + 14 * 86400_000, ttl: Math.floor((clock() + 30 * 86400_000) / 1000) };
       signatureTasks.push(task);
+      Object.assign(signerControls[index], { taskTokenHash: taskHash, requestGenerated: true, requestStatus: "pending", requestGeneration: 1, requestCreatedAt: signedAt });
       const signingUrl = `${signingPageUrl}?task=${encodeURIComponent(rawTask)}`;
-      taskEmails.push({ to: email, ...signatureInvitation({ firstName: recipient.firstName, studentName: `${values.student_first} ${values.student_last}`, signingUrl }), tags: { workflow: "application", message_type: "signature_invitation" } });
+      taskEmails.push({ to: email, ...signatureInvitation({ firstName: recipient.firstName, studentName: `${values.student_first} ${values.student_last}`, signingUrl }), tags: { workflow: "application", message_type: "signature_invitation" }, _tracking: { kind: "signature_request", applicationId: app.id, guardianId, guardianIndex: index, taskTokenHash: taskHash } });
     }
-    const requiredSignatureCount = 1 + signatureTasks.length;
-    const status = requiredSignatureCount > 1 ? "pending_signatures" : "submitted";
+    const requiredSignatureCount = signerControls.filter(control => control.signatureRequired).length;
+    const requiresStaffReview = signerControls.some(control => control.signatureStatus === "suppressed");
+    const status = signatureTasks.length ? "pending_signatures" : requiresStaffReview ? "staff_review_required" : "submitted";
     const reference = `APP-${new Date(clock()).getFullYear()}-${token(5).toUpperCase()}`;
-    const next = { ...app, values, status, reference, requiredSignatureCount, signatures: [primarySignature], snapshotFileId: snapshot.id, snapshotStorageProvider: snapshot.storageProvider, snapshotStorageVersionId: snapshot.storageVersionId, revisionHash, submittedAt: signedAt, completedAt: status === "submitted" ? signedAt : "", updatedAt: signedAt, formVersion: definition.formVersion, formDefinitionHash: definition.definitionHash, schemaVersion: definition.schemaVersion };
+    const next = { ...app, values, status, reference, requiredSignatureCount, signatures: [primarySignature], signerControls, signatureControlRevision: 1, requiresStaffReview, oneSignatureExplanation: values.application_one_signature_reason || "", snapshotFileId: snapshot.id, snapshotStorageProvider: snapshot.storageProvider, snapshotStorageVersionId: snapshot.storageVersionId, revisionHash, submittedAt: signedAt, completedAt: status === "submitted" ? signedAt : "", updatedAt: signedAt, formVersion: definition.formVersion, formDefinitionHash: definition.definitionHash, schemaVersion: definition.schemaVersion };
     const { guardians, emergencyContacts } = splitApplication(values, app.id, guardianCount, app.emergencyCount || 2);
     const invitation = await store.getInvitationById(app.invitationId);
     const audit = createAuditEvent({ workflow: "application", recordId: app.id, invitationId: app.invitationId, type: "application.submitted", at: signedAt, actorId: session.email, stage: "signature", details: { reference, status, revision: app.revision } });
     const operations = [
       sheetOperation("application", "Applications", mapApplicationRow(next), ["application_id"]),
       sheetOperation("application", "Student", studentRow(next, values), ["application_id"]),
-      ...guardians.map((guardian, index) => sheetOperation("application", "Guardians", guardianRow(next, guardian, index, index === 0 ? "signed" : "pending"), ["application_id", "guardian_id"])),
+      ...guardians.map((guardian, index) => sheetOperation("application", "Guardians", guardianRow(next, guardian, index, signerControls[index]?.signatureStatus || (index === 0 ? "complete" : "pending")), ["application_id", "guardian_id"])),
       ...emergencyContacts.map((contact, index) => sheetOperation("application", "Emergency Contacts", emergencyRow(next, contact, index), ["application_id", "emergency_contact_id"])),
       sheetOperation("application", "Conditions", conditionsRow(next, values), ["application_id"]),
       sheetOperation("application", "Signatures", { application_id: app.id, signature_id: primarySignature.id, guardian_id: primaryGuardianId, signer_name: primarySignature.signerName, signer_email: primarySignature.signerEmail, signature_status: "signed", signed_at: signedAt, revision: app.revision, revision_hash: revisionHash, signature_file_id: signatureFile.id, network_fingerprint: primarySignature.networkFingerprint, ip_recording_acknowledged: values.application_signature_ip, application_terms_acknowledged: values.application_signature_terms, one_signature_explanation: values.application_one_signature_reason, additional_information: values.application_additional_information, ...projectionVersion(next, "application") }, ["signature_id"]),
       ...Object.values(app.documents || {}).flat().map(document => sheetOperation("application", "Documents", { application_id: app.id, document_id: document.id, category: document.category, original_file_name: document.fileName, mime_type: document.mimeType, size_bytes: document.size, drive_file_id: document.storageProvider === "s3" ? "" : document.documentId, storage_provider: document.storageProvider || "legacy", storage_key: document.storageKey || "", storage_version_id: document.storageVersionId || "", uploaded_at: document.uploadedAt, sha256: document.checksum, malware_scan_status: document.malwareScanStatus, ...projectionVersion(next, "application") }, ["document_id"])),
       auditSheetOperation(audit),
-      sheetOperation("operations", "Progress", { application_id: app.id, current_stage: status === "submitted" ? "complete" : "guardian_signatures", status, revision: app.revision, last_saved_at: app.updatedAt, last_activity_at: signedAt, percent_complete: status === "submitted" ? 100 : 95, ...projectionVersion(next, "application") }, ["application_id"]),
+      sheetOperation("operations", "Progress", { application_id: app.id, current_stage: status === "submitted" ? "complete" : status === "staff_review_required" ? "staff_review" : "guardian_signatures", status, revision: app.revision, last_saved_at: app.updatedAt, last_activity_at: signedAt, percent_complete: status === "submitted" ? 100 : 95, ...projectionVersion(next, "application") }, ["application_id"]),
       sheetOperation("operations", "Application Invitations", { invitation_id: app.invitationId, application_id: invitation?.applicationId || app.id, application_ids_json: invitationApplicationIds(invitation || { applicationId: app.id }), recipient_contact_id: app.contactId, recipient_email: app.recipientEmail, student_id: invitation?.studentId || app.studentId, source_eoi_id: invitation?.sourceEoiId || app.sourceEoiId, status: invitation?.status || "active", created_at: invitation?.createdAt || app.createdAt, expires_at: invitation?.expiresAt ? iso(invitation.expiresAt) : "", first_sent_at: invitation?.firstSentAt || "", last_sent_at: invitation?.lastSentAt || "", send_count: invitation?.sendCount || 1, opened_at: invitation?.openedAt || "", verified_at: invitation?.verifiedAt || "", submitted_at: signedAt, ...projectionVersion(next, "application") }, ["invitation_id"]),
       emailEvent({ messageType: "application_submitted", workflow: "application", recordId: app.id, recipientEmail: app.recipientEmail, at: signedAt }),
       ...taskEmails.map(mail => emailEvent({ messageType: "signature_invitation", workflow: "application", recordId: app.id, recipientEmail: mail.to, at: signedAt }))
     ];
-    const confirmation = applicationSubmitted({ firstName: values.app_guardian_0_first, studentName: `${values.student_first} ${values.student_last}`, reference, pendingSignatures: status === "pending_signatures" });
+    const confirmation = applicationSubmitted({ firstName: values.app_guardian_0_first, studentName: `${values.student_first} ${values.student_last}`, reference, pendingSignatures: status !== "submitted" });
     const emailEvents = [emailOutbox({ to: app.recipientEmail, ...confirmation, tags: { workflow: "application", message_type: "submitted" } }, clock()), ...taskEmails.map(mail => emailOutbox(mail, clock()))];
     await store.submitApplication({ applicationId: app.id, expectedRevision: app.revision, application: next, revisionRecord: applicationRevision(next, { kind: "submitted", values, savedAt: signedAt, saveMode: "submission" }), signatureTasks, outboxEvents: [...emailEvents, ...operations.map(operation => sheetOutbox(operation, clock()))], auditEvents: [audit] });
     await dispatchOutbox(50);
-    return { applicationId: app.id, reference, status };
+    const statusSessionToken = await issueStatusSession(invitation || { id: app.invitationId }, next, session.email);
+    return { applicationId: app.id, reference, status, requiresStaffReview, statusSessionToken, expiresInSeconds: APPLICATION_SESSION_IDLE_MS / 1000, idleTimeoutSeconds: APPLICATION_SESSION_IDLE_MS / 1000, absoluteTimeoutSeconds: APPLICATION_SESSION_ABSOLUTE_MS / 1000, statusContext: statusContext(next) };
   }
 
   async function requestSignatureCode(event) {
@@ -833,14 +1134,30 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     const email = normalizeEmail(body.email);
     const task = await store.getSignatureTask(taskHash);
     for (const [key, limit, seconds] of [[`sign-cooldown:${taskHash}:${sha256(email)}`, 1, 30], [`sign-task:${taskHash}`, 5, 1800], [`sign-email:${sha256(email)}`, 5, 1800]]) if (!await store.checkRateLimit(key, limit, seconds)) throw appError(429, "OTP_RATE_LIMIT", "Please wait before requesting another verification code.");
-    const valid = task && task.status === "invited" && task.expiresAt > clock() && task.email === email;
+    const app = task ? await store.getApplication(task.applicationId) : null;
+    const control = app && task ? signerControl(app, task.guardianId, task) : null;
+    const valid = task && task.status === "invited" && task.expiresAt > clock() && task.email === email && app?.status === "pending_signatures" && control?.contactPermission && control.taskTokenHash === taskHash && control.currentEmail === email && control.signatureStatus === "pending";
     const challengeId = id("challenge");
     if (valid) {
       const verificationCode = code();
-      await store.putChallenge({ id: challengeId, purpose: "application_signature", subjectHash: taskHash, email, applicationId: task.applicationId, guardianId: task.guardianId, codeHmac: hmac(otpSecret, `${challengeId}:${verificationCode}`), attempts: 0, maxAttempts: 5, createdAt: clock(), expiresAt: clock() + 600_000, ttl: Math.floor((clock() + 86400_000) / 1000) });
+      await store.putChallenge({ id: challengeId, purpose: "application_signature", subjectHash: taskHash, email, applicationId: task.applicationId, guardianId: task.guardianId, taskGeneration: task.generation || 1, codeHmac: hmac(otpSecret, `${challengeId}:${verificationCode}`), attempts: 0, maxAttempts: 5, createdAt: clock(), expiresAt: clock() + 600_000, ttl: Math.floor((clock() + 86400_000) / 1000) });
       await mailer.send({ to: email, ...signatureOtp({ code: verificationCode }), tags: { workflow: "application", message_type: "signature_otp" } });
     }
     return { challengeId, expiresInSeconds: 600, resendAfterSeconds: 30, message: "If the signing request and email address match, a verification code has been sent." };
+  }
+
+  async function markSignatureOpened(event) {
+    const body = parseBody(event, 20_000);
+    const taskHash = sha256(safeText(body.taskToken, 1000));
+    const task = await store.getSignatureTask(taskHash);
+    if (task?.status === "invited" && task.expiresAt > clock()) {
+      const app = await store.getApplication(task.applicationId);
+      const control = app && signerControl(app, task.guardianId, task);
+      if (app?.status === "pending_signatures" && control?.contactPermission && control.taskTokenHash === taskHash && control.signatureStatus === "pending") {
+        await store.recordSignatureProgress?.({ applicationId: app.id, guardianIndex: task.guardianIndex, taskTokenHash: taskHash, requestStatus: "opened", at: nowIso() });
+      }
+    }
+    return { available: true };
   }
 
   async function verifySignatureCode(event) {
@@ -849,20 +1166,25 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     const challengeId = safeText(body.challengeId, 200);
     const challenge = await store.getChallenge(challengeId);
     const task = await store.getSignatureTask(taskHash);
-    if (!challenge || challenge.purpose !== "application_signature" || challenge.subjectHash !== taskHash || !task || task.status !== "invited" || task.expiresAt <= clock()) throw appError(401, "OTP_INVALID", "The code is invalid or expired. Request a new code.");
+    const app = task ? await store.getApplication(task.applicationId) : null;
+    const control = app && task ? signerControl(app, task.guardianId, task) : null;
+    if (!challenge || challenge.purpose !== "application_signature" || challenge.subjectHash !== taskHash || !task || task.status !== "invited" || task.expiresAt <= clock() || challenge.taskGeneration !== (task.generation || 1) || app?.status !== "pending_signatures" || !control?.contactPermission || control.taskTokenHash !== taskHash || control.currentEmail !== task.email || control.signatureStatus !== "pending") throw appError(401, "OTP_INVALID", "The code is invalid or expired. Request a new code.");
     const consumed = await store.consumeChallenge(challengeId, hmac(otpSecret, `${challengeId}:${safeText(body.code, 12)}`), clock());
     if (!consumed) { await store.failChallenge(challengeId); throw appError(401, "OTP_INVALID", "The code is invalid or expired. Request a new code."); }
     const rawSession = token();
-    await store.putSession({ tokenHash: sha256(rawSession), scope: "application_signature", applicationId: task.applicationId, taskTokenHash: taskHash, guardianId: task.guardianId, guardianIndex: task.guardianIndex, email: task.email, createdAt: clock(), expiresAt: clock() + 30 * 60_000, ttl: Math.floor((clock() + 86400_000) / 1000) });
+    await store.putSession({ tokenHash: sha256(rawSession), scope: "application_signature", applicationId: task.applicationId, taskTokenHash: taskHash, taskGeneration: task.generation || 1, guardianId: task.guardianId, guardianIndex: task.guardianIndex, email: task.email, createdAt: clock(), expiresAt: clock() + 30 * 60_000, ttl: Math.floor((clock() + 86400_000) / 1000) });
+    await store.recordSignatureProgress?.({ applicationId: app.id, guardianIndex: task.guardianIndex, taskTokenHash: taskHash, requestStatus: "verified", at: nowIso() });
     return { sessionToken: rawSession, expiresInSeconds: 1800, context: await signatureContext(task) };
   }
 
   async function signatureContext(task) {
     const app = await store.getApplication(task.applicationId);
-    if (!app || app.status !== "pending_signatures" || task.revisionHash !== app.revisionHash) throw appError(409, "SIGNATURE_TASK_UNAVAILABLE", "This signing request is no longer available.");
+    const control = app && signerControl(app, task.guardianId, task);
+    if (!app || app.status !== "pending_signatures" || task.revisionHash !== app.revisionHash || task.status !== "invited" || !control?.contactPermission || control.taskTokenHash !== task.tokenHash || control.currentEmail !== task.email || control.signatureStatus !== "pending") throw appError(409, "SIGNATURE_TASK_UNAVAILABLE", "This signing request is no longer available.");
     requireRecordDefinition(app, "application");
     const index = task.guardianIndex;
-    const review = buildApplicationReview(app, index);
+    const reviewApp = { ...app, values: { ...app.values, [`app_guardian_${index}_email`]: control.currentEmail } };
+    const review = buildApplicationReview(reviewApp, index);
     review.conditions = { previous_school_permission: app.values.previous_school_permission, fee_option: app.values.fee_option };
     return { reference: app.reference, revision: app.revision, studentName: `${app.values.student_first} ${app.values.student_last}`, signerName: `${app.values[`app_guardian_${index}_first`]} ${app.values[`app_guardian_${index}_last`]}`.trim(), signerEmail: task.email, declarations: { ip: "I acknowledge that my network address will be recorded securely for administrative, security and legal compliance purposes.", terms: "I have reviewed the Application for Enrolment and declare that I have read, understood and consented to the matters it contains." }, review };
   }
@@ -874,31 +1196,33 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     if (!truthy(body.ipAcknowledged) || !truthy(body.termsAcknowledged)) throw appError(422, "DECLARATION_REQUIRED", "Acknowledge both declarations before signing.");
     const app = await store.getApplication(session.applicationId);
     const task = await store.getSignatureTask(session.taskTokenHash);
-    if (!app || app.status !== "pending_signatures" || !task || task.status !== "invited" || task.revisionHash !== app.revisionHash) throw appError(409, "SIGNATURE_TASK_UNAVAILABLE", "This signing request is no longer available.");
+    const control = app && signerControl(app, session.guardianId, task);
+    if (!app || app.status !== "pending_signatures" || !task || task.status !== "invited" || task.revisionHash !== app.revisionHash || task.generation !== session.taskGeneration || !control?.contactPermission || control.taskTokenHash !== session.taskTokenHash || control.currentEmail !== session.email || control.signatureStatus !== "pending") throw appError(409, "SIGNATURE_TASK_UNAVAILABLE", "This signing request is no longer available.");
     const bytes = signatureBytes(body.signatureDataUrl);
     const signatureId = id("sig");
     const signatureFile = await artifacts.storeSignature({ applicationId: app.id, guardianId: session.guardianId, signatureId, data: bytes });
     const signedAt = nowIso();
     const signature = { id: signatureId, guardianId: session.guardianId, signerName: `${app.values[`app_guardian_${session.guardianIndex}_first`]} ${app.values[`app_guardian_${session.guardianIndex}_last`]}`.trim(), signerEmail: session.email, signedAt, revision: app.revision, revisionHash: app.revisionHash, fileId: signatureFile.id, storageProvider: signatureFile.storageProvider, storageVersionId: signatureFile.storageVersionId, networkFingerprint: networkFingerprint(event), reviewAcknowledged: true, ipAcknowledged: true, termsAcknowledged: true };
     const signatures = [...(app.signatures || []), signature];
-    const status = signatures.length >= app.requiredSignatureCount ? "submitted" : "pending_signatures";
-    const next = { ...app, signatures, status, completedAt: status === "submitted" ? signedAt : "", updatedAt: signedAt };
+    const signerControls = (app.signerControls || []).map(item => item.guardianId === session.guardianId ? { ...item, signatureStatus: "complete", requestStatus: "complete", completedAt: signedAt, signedDocumentRevision: app.revisionHash } : item);
+    const hasPendingElectronic = signerControls.some(pendingElectronicControl);
+    const status = hasPendingElectronic ? "pending_signatures" : app.requiresStaffReview ? "staff_review_required" : "submitted";
+    const next = { ...app, signatures, signerControls, signatureControlRevision: Number(app.signatureControlRevision || 0) + 1, status, completedAt: status === "submitted" ? signedAt : "", updatedAt: signedAt };
     const audit = createAuditEvent({ workflow: "application", recordId: app.id, invitationId: app.invitationId, type: "application.guardian_signed", at: signedAt, actorId: session.email, stage: "guardian_signature", details: { guardianId: session.guardianId, reviewAcknowledged: true, status } });
     const operations = [
       sheetOperation("application", "Applications", mapApplicationRow(next), ["application_id"]),
       sheetOperation("application", "Guardians", guardianRow(next, splitApplication(app.values, app.id, app.guardianCount, app.emergencyCount || 2).guardians[session.guardianIndex], session.guardianIndex, "signed"), ["application_id", "guardian_id"]),
       sheetOperation("application", "Signatures", { application_id: app.id, signature_id: signature.id, guardian_id: signature.guardianId, signer_name: signature.signerName, signer_email: signature.signerEmail, signature_status: "signed", signed_at: signedAt, revision: app.revision, revision_hash: app.revisionHash, signature_file_id: signature.fileId, network_fingerprint: signature.networkFingerprint, ip_recording_acknowledged: "Confirmed", application_terms_acknowledged: "Confirmed", ...projectionVersion(next, "application") }, ["signature_id"]),
       auditSheetOperation(audit),
-      sheetOperation("operations", "Progress", { application_id: app.id, current_stage: status === "submitted" ? "complete" : "guardian_signatures", status, revision: app.revision, last_saved_at: app.updatedAt, last_activity_at: signedAt, percent_complete: status === "submitted" ? 100 : 95, ...projectionVersion(next, "application") }, ["application_id"])
+      sheetOperation("operations", "Progress", { application_id: app.id, current_stage: status === "submitted" ? "complete" : status === "staff_review_required" ? "staff_review" : "guardian_signatures", status, revision: app.revision, last_saved_at: app.updatedAt, last_activity_at: signedAt, percent_complete: status === "submitted" ? 100 : 95, ...projectionVersion(next, "application") }, ["application_id"])
     ];
     const emails = [];
     if (status === "submitted") {
-      for (let index = 0; index < app.guardianCount; index += 1) {
-        const to = normalizeEmail(app.values[`app_guardian_${index}_email`]);
-        if (to) emails.push(emailOutbox({ to, ...applicationComplete({ firstName: app.values[`app_guardian_${index}_first`], studentName: `${app.values.student_first} ${app.values.student_last}`, reference: app.reference }), tags: { workflow: "application", message_type: "complete" } }, clock()));
+      for (const recipient of signerControls.filter(item => item.contactPermission)) {
+        if (recipient.currentEmail) emails.push(emailOutbox({ to: recipient.currentEmail, ...applicationComplete({ firstName: app.values[`app_guardian_${recipient.guardianIndex}_first`], studentName: `${app.values.student_first} ${app.values.student_last}`, reference: app.reference }), tags: { workflow: "application", message_type: "complete" } }, clock()));
       }
     }
-    await store.completeSignature({ applicationId: app.id, taskTokenHash: session.taskTokenHash, application: next, outboxEvents: [...emails, ...operations.map(operation => sheetOutbox(operation, clock()))], auditEvents: [audit] });
+    await store.completeSignature({ applicationId: app.id, taskTokenHash: session.taskTokenHash, guardianIndex: session.guardianIndex, application: next, outboxEvents: [...emails, ...operations.map(operation => sheetOutbox(operation, clock()))], auditEvents: [audit] });
     await dispatchOutbox(50);
     return { applicationId: app.id, reference: app.reference, status };
   }
@@ -910,7 +1234,21 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
       const claimed = await store.claimOutbox(item, clock());
       if (!claimed) continue;
       try {
+        const tracking = item.data.kind === "email" ? item.data.payload?._tracking : null;
+        if (tracking?.kind === "signature_request") {
+          const [task, app] = await Promise.all([store.getSignatureTask(tracking.taskTokenHash), store.getApplication(tracking.applicationId)]);
+          const control = app && signerControl(app, tracking.guardianId, task);
+          const deliverable = task?.status === "invited" && app?.status === "pending_signatures" && control?.contactPermission && control.taskTokenHash === tracking.taskTokenHash && control.signatureStatus === "pending";
+          if (!deliverable) {
+            await store.completeOutbox(item, { suppressed: true, reason: "signature_request_revoked" });
+            completed += 1;
+            continue;
+          }
+        }
         const result = item.data.kind === "email" ? await mailer.send(item.data.payload) : await sheets.apply(item.data.payload);
+        if (tracking?.kind === "signature_request") {
+          await store.recordSignatureProgress?.({ applicationId: tracking.applicationId, guardianIndex: tracking.guardianIndex, taskTokenHash: tracking.taskTokenHash, requestStatus: "sent", at: nowIso(), messageId: result?.messageId || "" });
+        }
         await store.completeOutbox(item, result || { completed: true });
         completed += 1;
       } catch (error) {
@@ -931,10 +1269,17 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     ["POST /v6/staff/applications/revision", getStaffApplicationRevision],
     ["POST /v6/staff/invitations", createStaffInvitation],
     ["POST /v6/staff/invitations/resend", resendStaffInvitation],
+    ["POST /v6/staff/applications/contact-permission", changeStaffContactPermission],
     ["POST /v6/eoi", submitEoi],
     ["POST /v6/application/access/request-code", requestApplicationCode],
     ["POST /v6/application/access/verify-code", verifyApplicationCode],
     ["POST /v6/application/records/select", selectFamilyApplication],
+    ["POST /v6/application/status/select", selectApplicationStatus],
+    ["GET /v6/application/status", getApplicationStatus],
+    ["POST /v6/application/status/signatures/resend", resendSignatureRequest],
+    ["POST /v6/application/status/signatures/correction/request-code", requestCorrectionCode],
+    ["POST /v6/application/status/signatures/correction/verify-code", verifyCorrectionCode],
+    ["POST /v6/application/status/signatures/correction/confirm", confirmSignerEmailCorrection],
     ["POST /v6/application/records", startFamilyApplication],
     ["GET /v6/application/context", getContext],
     ["PUT /v6/application/draft", saveDraft],
@@ -942,6 +1287,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     ["POST /v6/application/documents/confirm", confirmUpload],
     ["POST /v6/application/submit", submitApplication],
     ["POST /v6/application/signatures/request-code", requestSignatureCode],
+    ["POST /v6/application/signatures/opened", markSignatureOpened],
     ["POST /v6/application/signatures/verify-code", verifySignatureCode],
     ["POST /v6/application/signatures/submit", submitSignature]
   ]);

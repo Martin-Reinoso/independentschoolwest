@@ -64,6 +64,30 @@
 .signature-disclaimer { margin: 0 0 1rem; padding: .65rem .8rem; border-left: 2px solid var(--line-strong); color: var(--muted); font-size: .76rem; line-height: 1.55; }
 .guardian-signature-followup { margin: 1rem 0; }
 .guardian-signature-followup .review-card { margin-bottom: .75rem; }
+.contact-permission-notice { margin: .75rem 0 0; padding: .9rem 1rem; border: 1px solid #d9ad62; border-left: 4px solid var(--warning); border-radius: 10px; color: #53330d; background: #fff6e7; line-height: 1.55; }
+.contact-permission-notice strong { color: #74440c; }
+.contact-permission-notice p { margin: .25rem 0 0; }
+.signature-routing-card { margin: 0 0 .85rem; border-left: 4px solid var(--success); }
+.signature-routing-card.is-suppressed { border-left-color: var(--warning); background: #fffaf1; }
+.signature-routing-card > p { margin: .85rem 0 0; color: var(--text); line-height: 1.6; }
+.application-status-page { display: grid; gap: 1.15rem; }
+.compact-success { padding-bottom: 1.5rem; }
+.signature-status-section { display: grid; gap: .85rem; }
+.signature-status-section > h3 { margin: .3rem 0 0; color: var(--navy); font: 600 2rem Baskerville, serif; }
+.status-signer { padding: 1.15rem; border: 1px solid var(--line); border-left: 4px solid var(--sky); border-radius: 14px; background: white; box-shadow: 0 9px 26px rgba(21,35,59,.045); }
+.status-signer.is-complete { border-left-color: var(--success); }
+.status-signer.is-suppressed { border-left-color: var(--warning); background: #fffaf1; }
+.status-signer header { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; }
+.status-signer h4 { margin: 0; color: var(--navy); font: 600 1.45rem Baskerville, serif; }
+.status-signer dl { display: grid; grid-template-columns: minmax(150px,.55fr) minmax(0,1fr); gap: .45rem 1rem; margin: 1rem 0; }
+.status-signer dt { color: var(--muted); font-size: .76rem; font-weight: 700; }
+.status-signer dd { margin: 0; overflow-wrap: anywhere; color: var(--ink); }
+.status-signer-actions { display: flex; flex-wrap: wrap; gap: .65rem; padding-top: .3rem; }
+.complete-only { margin: 1rem 0 0; color: var(--success); font-size: 1.05rem; font-weight: 800; }
+.email-correction-panel { padding: clamp(1.1rem,3vw,1.65rem); border: 1px solid var(--sky); border-radius: 16px; background: var(--sky-pale); box-shadow: 0 12px 32px rgba(21,35,59,.07); }
+.email-correction-panel h3 { margin: 0 0 .7rem; color: var(--navy); font: 600 1.8rem Baskerville, serif; }
+.email-correction-panel > p { max-width: 760px; line-height: 1.6; }
+.correction-warning { padding: .8rem .9rem; border-left: 3px solid var(--warning); color: #53330d; background: #fff6e7; }
 .no-environment-ribbon .page-shell { padding-top: 0; }
 .no-environment-ribbon .story-panel { inset: 0 auto 0 0; }
 .no-environment-ribbon .form-panel { min-height: 100vh; }
@@ -203,6 +227,11 @@ body:not(.no-environment-ribbon).policy-reader-open .policy-reader-toolbar { top
   .form-header .header-title h2 { overflow: hidden; font-size: 1.25rem; text-overflow: ellipsis; white-space: nowrap; }
   .save-state { min-width: 92px; gap: .5rem; }
   .save-state strong { font-size: .78rem; white-space: nowrap; }
+  .status-signer header { display: grid; }
+  .status-signer dl { grid-template-columns: 1fr; gap: .15rem; }
+  .status-signer dd { margin-bottom: .55rem; }
+  .status-signer-actions { display: grid; }
+  .status-signer-actions .button { width: 100%; }
   .step-actions .left { width: 100%; flex-direction: column; }
   .document-card header, .upload-item-heading { align-items: flex-start; flex-direction: column; gap: .35rem; }
   .document-badge { white-space: normal; }

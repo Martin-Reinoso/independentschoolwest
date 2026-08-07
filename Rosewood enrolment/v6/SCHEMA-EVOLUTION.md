@@ -29,8 +29,8 @@ deliberately creating a new version.
 Current launch contracts:
 
 ```text
-EOI:         rosewood-eoi-2026.5
-Application: rosewood-application-2026.5
+EOI:         rosewood-eoi-2026.6
+Application: rosewood-application-2026.6
 ```
 
 The original `2026.1`, `2026.2`, `2026.3` and `2026.4` contracts and validators remain
@@ -51,6 +51,13 @@ additional-guardian request email without changing any question, answer key,
 validation rule, session boundary or signature-security control. It pins all reader,
 Word and PDF assets. New records receive `2026.5`; existing records remain pinned to
 their earlier contracts.
+The `2026.6` release makes additional-guardian contact permission explicit and
+authoritative. It separates contact permission, signature requirement, current signing
+email, historical emails, request generation/delivery/open/verification, signature
+completion, signed revision, revocation and staff review. A prohibited guardian cannot
+receive an automated request. Pending email correction is a conditional state change on
+the same submitted application and frozen revision; it is not a draft edit or new form
+revision. Earlier `2026.1` to `2026.5` definitions and hashes remain immutable.
 
 Acceptance, Decline and the Enrolment Agreement must receive their own independent
 version series when their backends are built. They must not reuse the Application
@@ -80,6 +87,20 @@ snapshot through a separately authorised and audited request.
 The final submitted Drive JSON snapshot also contains the form version, definition
 hash, schema version, revision and revision hash. Signatures continue to bind to the
 frozen submitted revision.
+
+Post-submission signer-control changes are stored outside the frozen answer revision in
+the application's versioned `signerControls` state. They cannot alter submitted answers
+or the primary signature. `signatureControlRevision` provides the compare-and-swap
+boundary for correction, resend and staff permission changes. Every prior signing task
+is revoked transactionally before a replacement task becomes current.
+
+Each signer control stores `contactPermission`, `signatureRequired`, `currentEmail`,
+restricted `previousEmails`, request generation and task hash, generated/sent state,
+SES-acceptance status/time, opened/verified/completed times, signed document revision,
+revocation time, and authorised permission-change attribution. The application stores
+`requiresStaffReview` and `oneSignatureExplanation`. Family status projections mask
+email addresses and never include history; authorised staff detail may return the
+restricted history and audit attribution.
 
 ## Rules For Changing Questions
 

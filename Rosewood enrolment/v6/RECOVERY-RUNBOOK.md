@@ -49,6 +49,31 @@ repairing canonical headers. Record only counts, not family values.
 - If a file cannot be safely recovered, record the incident and request a replacement
   from the family rather than copying from an unknown source.
 
+## Recover A Missing Signature Request
+
+1. Confirm the application is submitted and the signer is still pending.
+2. Confirm the authoritative signer control says contact is permitted. Stop if it says
+   **Do not contact**; neither staff nor the repair command may bypass that value.
+3. Confirm no current invited task exists before using the dry-run repair command.
+4. Prefer the applicant's read-only **Resend signature request** action for an ordinary
+   delivery problem. It rotates the task and is rate-limited and idempotent.
+5. If the email is wrong, the submitting applicant should use **Correct email address**
+   and step-up OTP. Do not edit DynamoDB or Sheets manually.
+6. If operational repair is necessary, run `pnpm repair-signature-invitations` without
+   apply first. Review aggregate output only, then use the documented explicit apply
+   confirmation. Re-run dry mode to confirm zero missing permitted tasks.
+
+An email correction keeps the application ID, submitted revision and primary signature.
+It must leave the old task `revoked`, expire matching OTP challenges and signing
+sessions, preserve the previous email in restricted history and record audit events for
+correction and revocation. If correction and signing race, exactly one conditional
+transaction succeeds; refresh the authoritative application before any further action.
+
+If the replacement email was accepted by SES but the family reports non-delivery, check
+the outbox receipt and SES feedback. `accepted_by_ses` is not proof that the recipient's
+mailbox accepted or displayed the message. Never expose a full historical email in an
+ordinary log or family-facing response.
+
 ## Recovery Drill
 
 Run a synthetic DynamoDB restore drill at least annually and after material storage
