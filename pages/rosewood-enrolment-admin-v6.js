@@ -54,8 +54,8 @@
     button.setAttribute("aria-busy", String(loading));
   }
 
-  async function api(path, { method = "GET", body, authenticated = true } = {}) {
-    const headers = { "Content-Type": "application/json" };
+  async function api(path, { method = "GET", body, authenticated = true, headers: extraHeaders = {} } = {}) {
+    const headers = { "Content-Type": "application/json", ...extraHeaders };
     if (authenticated && state.sessionToken) headers.Authorization = `Bearer ${state.sessionToken}`;
     const response = await fetch(`${API_BASE}${path}`, { method, headers, cache: "no-store", ...(body ? { body: JSON.stringify(body) } : {}) });
     const payload = await response.json().catch(() => ({}));
@@ -77,7 +77,7 @@
   }
 
   function statusLabel(status) {
-    return ({ invited: "Invited", in_progress: "In progress", pending_signatures: "Pending signatures", submitted: "Submitted" })[status] || String(status || "Unknown").replaceAll("_", " ");
+    return ({ invited: "Invited", in_progress: "In progress", pending_signatures: "Pending signatures", staff_review_required: "Staff review required", submitted: "Submitted" })[status] || String(status || "Unknown").replaceAll("_", " ");
   }
 
   function stageLabel(stage) {
@@ -225,7 +225,7 @@
   }
 
   function statusBadge(status) {
-    return element("span", `status-badge status-${["invited", "in_progress", "pending_signatures", "submitted"].includes(status) ? status : "default"}`, statusLabel(status));
+    return element("span", `status-badge status-${["invited", "in_progress", "pending_signatures", "staff_review_required", "submitted"].includes(status) ? status : "default"}`, statusLabel(status));
   }
 
   function renderApplications() {
@@ -437,6 +437,8 @@
       ["last_updated", formatDate(application.updatedAt, true)],
       ["submitted_at", formatDate(application.submittedAt, true)],
       ["signatures", `${application.completedSignatureCount} of ${application.requiredSignatureCount}`],
+      ["staff_review", application.requiresStaffReview ? "Required" : "Not required"],
+      ["one_signature_explanation", application.oneSignatureExplanation || "Not provided"],
       ["form_version", application.formVersion || "Legacy record"],
       ["schema_version", application.schemaVersion || "Legacy record"]
     ]);
@@ -472,10 +474,65 @@
       [`signed_at_${index + 1}`, formatDate(signature.signedAt, true)]
     ]));
     if (signatures) content.append(signatures);
+    (application.signerControls || []).forEach((control, index) => {
+      const previousEmails = (control.previousEmails || []).map(item => `${item.email} (${formatDate(item.changedAt, true)}, requested by ${item.requestedBy || "not recorded"})`).join("; ") || "None";
+      const section = detailSection(`Signature request: ${control.name || `Parent / guardian ${index + 1}`}`, [
+        ["contact_permission", control.contactPermission],
+        ["contact_permission_changed_at", formatDate(control.contactPermissionChangedAt, true)],
+        ["contact_permission_changed_by", control.contactPermissionChangedBy || "Not recorded"],
+        ["current_application_email", control.currentEmail || "Not provided"],
+        ["previous_email_history", previousEmails],
+        ["email_corrected_at", formatDate(control.emailCorrectedAt, true)],
+        ["correction_requested_by", control.emailCorrectionRequestedBy || "Not recorded"],
+        ["signature_required", control.signatureRequired ? "Yes" : "No"],
+        ["request_generated", control.requestGenerated ? "Yes" : "No"],
+        ["request_sent", control.requestSent ? "Yes" : "No"],
+        ["request_status", control.requestStatus],
+        ["delivery_status", control.deliveryStatus],
+        ["delivery_recorded_at", formatDate(control.deliveryAt, true)],
+        ["request_sent_at", formatDate(control.requestSentAt, true)],
+        ["request_opened_at", formatDate(control.openedAt, true)],
+        ["email_verified_during_signing", formatDate(control.emailVerifiedAt, true)],
+        ["signature_status", control.signatureStatus],
+        ["signature_completed_at", formatDate(control.completedAt, true)],
+        ["signed_document_revision", control.signedDocumentRevision || "Not recorded"],
+        ["previous_link_revoked_at", formatDate(control.previousLinkRevokedAt, true)],
+        ["active_task_status", control.activeTaskStatus]
+      ]);
+      if (section && index > 0 && control.signatureStatus !== "Complete" && ["admin", "admissions"].includes(state.dashboard?.staff?.role)) {
+        const actions = element("div", "detail-actions");
+        const enable = control.contactPermission === "Do not contact";
+        const button = element("button", "small-button", enable ? "Authorise contact and send request" : "Set Do not contact");
+        button.type = "button";
+        button.addEventListener("click", () => changeContactPermission(application, control, enable, button));
+        actions.append(button);
+        section.append(actions);
+      }
+      if (section) content.append(section);
+    });
     const history = renderRevisionHistory(application);
     if (history) content.append(history);
     byId("detail-loading").hidden = true;
     content.hidden = false;
+  }
+
+  async function changeContactPermission(application, control, enable, button) {
+    const confirmation = window.prompt('Type exactly: I confirm this authorised contact-permission change');
+    if (confirmation !== "I confirm this authorised contact-permission change") {
+      setNotice("detail-error", "The contact-permission change was cancelled because the required confirmation was not entered exactly.");
+      return;
+    }
+    setLoading(button, true);
+    clearNotices("detail-error");
+    try {
+      await api("/v6/staff/applications/contact-permission", { method: "POST", headers: { "Idempotency-Key": crypto.randomUUID() }, body: { applicationId: application.applicationId, guardianId: control.guardianId, permission: enable ? "Yes, the school may contact this person" : "No, do not contact this person", confirmation } });
+      const result = await api("/v6/staff/applications/detail", { method: "POST", body: { applicationId: application.applicationId } });
+      renderApplicationDetail(result.application);
+      await loadDashboard({ quiet: true });
+    } catch (error) {
+      setNotice("detail-error", error.message);
+      setLoading(button, false);
+    }
   }
 
   async function openApplicationDetail(record) {

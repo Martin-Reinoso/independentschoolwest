@@ -39,6 +39,7 @@ export class DynamoStore {
   getChallenge(id) { return this.get(`CHALLENGE#${id}`); }
   getSession(tokenHash) { return this.get(`SESSION#${tokenHash}`); }
   getSignatureTask(tokenHash) { return this.get(`SIGN_TASK#${tokenHash}`); }
+  getIdempotency(keyHash) { return this.get(`IDEMPOTENCY#${keyHash}`); }
   getUpload(id) { return this.get(`UPLOAD#${id}`); }
 
   auditActions(events = []) {
@@ -274,15 +275,67 @@ export class DynamoStore {
     catch (error) { if (conditional(error)) throw conflict(); throw error; }
   }
 
-  async completeSignature({ applicationId, taskTokenHash, application, outboxEvents, auditEvents = [] }) {
+  async completeSignature({ applicationId, taskTokenHash, guardianIndex, application, outboxEvents, auditEvents = [] }) {
     const actions = [
-      { Put: { TableName: this.tableName, Item: { ...this.key(`APP#${applicationId}`, "CURRENT"), entity: "application", data: application }, ConditionExpression: "#data.#revision = :revision AND (#data.#status = :pending)", ExpressionAttributeNames: { "#data": "data", "#revision": "revision", "#status": "status" }, ExpressionAttributeValues: { ":revision": application.revision, ":pending": "pending_signatures" } } },
+      { Put: { TableName: this.tableName, Item: { ...this.key(`APP#${applicationId}`, "CURRENT"), entity: "application", data: application }, ConditionExpression: "#data.#revision = :revision AND (#data.#status = :pending) AND (attribute_not_exists(#data.#signerControls) OR #data.#signerControls[" + Number(guardianIndex) + "].#taskTokenHash = :taskTokenHash)", ExpressionAttributeNames: { "#data": "data", "#revision": "revision", "#status": "status", "#signerControls": "signerControls", "#taskTokenHash": "taskTokenHash" }, ExpressionAttributeValues: { ":revision": application.revision, ":pending": "pending_signatures", ":taskTokenHash": taskTokenHash } } },
       { Update: { TableName: this.tableName, Key: this.key(`SIGN_TASK#${taskTokenHash}`), UpdateExpression: "SET #data.#status = :signed, #data.#signedAt = :signedAt", ConditionExpression: "#data.#status = :invited", ExpressionAttributeNames: { "#data": "data", "#status": "status", "#signedAt": "signedAt" }, ExpressionAttributeValues: { ":signed": "signed", ":signedAt": application.updatedAt, ":invited": "invited" } } },
       ...this.outboxActions(outboxEvents),
       ...this.auditActions(auditEvents)
     ];
     try { await this.client.send(new TransactWriteCommand({ TransactItems: actions })); return application; }
     catch (error) { if (conditional(error)) throw conflict("This signature request has already been completed or the application changed."); throw error; }
+  }
+
+  async recordSignatureProgress({ applicationId, guardianIndex, taskTokenHash, requestStatus, at, messageId = "" }) {
+    const index = Number(guardianIndex);
+    const eventField = requestStatus === "sent" ? "requestSentAt" : requestStatus === "opened" ? "openedAt" : "emailVerifiedAt";
+    const taskFields = `SET #data.#requestStatus = :requestStatus, #data.#eventField = if_not_exists(#data.#eventField, :at)${requestStatus === "sent" ? ", #data.#requestSent = :yes, #data.#messageId = :messageId, #data.#deliveryStatus = :deliveryStatus, #data.#deliveryAt = if_not_exists(#data.#deliveryAt, :at)" : ""}`;
+    const controlFields = `SET #data.#signerControls[${index}].#requestStatus = :requestStatus, #data.#signerControls[${index}].#eventField = if_not_exists(#data.#signerControls[${index}].#eventField, :at), #data.#updatedAt = :at${requestStatus === "sent" ? `, #data.#signerControls[${index}].#requestSent = :yes, #data.#signerControls[${index}].#deliveryStatus = :deliveryStatus, #data.#signerControls[${index}].#deliveryAt = if_not_exists(#data.#signerControls[${index}].#deliveryAt, :at)` : ""}`;
+    const controlNames = { "#data": "data", "#signerControls": "signerControls", "#taskTokenHash": "taskTokenHash", "#requestStatus": "requestStatus", "#eventField": eventField, "#updatedAt": "updatedAt", "#status": "status", ...(requestStatus === "sent" ? { "#requestSent": "requestSent", "#deliveryStatus": "deliveryStatus", "#deliveryAt": "deliveryAt" } : {}) };
+    const controlValues = { ":requestStatus": requestStatus, ":at": at, ":taskTokenHash": taskTokenHash, ":pending": "pending_signatures", ...(requestStatus === "sent" ? { ":yes": true, ":deliveryStatus": "accepted_by_ses" } : {}) };
+    const taskNames = { "#data": "data", "#requestStatus": "requestStatus", "#eventField": eventField, "#status": "status", ...(requestStatus === "sent" ? { "#requestSent": "requestSent", "#messageId": "messageId", "#deliveryStatus": "deliveryStatus", "#deliveryAt": "deliveryAt" } : {}) };
+    const taskValues = { ":requestStatus": requestStatus, ":at": at, ":invited": "invited", ...(requestStatus === "sent" ? { ":yes": true, ":messageId": messageId, ":deliveryStatus": "accepted_by_ses" } : {}) };
+    try {
+      await this.client.send(new TransactWriteCommand({ TransactItems: [
+        { Update: { TableName: this.tableName, Key: this.key(`APP#${applicationId}`, "CURRENT"), UpdateExpression: controlFields, ConditionExpression: `#data.#status = :pending AND #data.#signerControls[${index}].#taskTokenHash = :taskTokenHash`, ExpressionAttributeNames: controlNames, ExpressionAttributeValues: controlValues } },
+        { Update: { TableName: this.tableName, Key: this.key(`SIGN_TASK#${taskTokenHash}`), UpdateExpression: taskFields, ConditionExpression: "#data.#status = :invited", ExpressionAttributeNames: taskNames, ExpressionAttributeValues: taskValues } }
+      ] }));
+      return true;
+    } catch (error) { if (conditional(error)) return false; throw error; }
+  }
+
+  async replaceSignatureRequest({ applicationId, expectedControlRevision, previousTaskTokenHash, application, nextTask, idempotency, outboxEvents = [], auditEvents = [] }) {
+    const actions = [
+      { Put: { TableName: this.tableName, Item: { ...this.key(`APP#${applicationId}`, "CURRENT"), entity: "application", data: application }, ConditionExpression: "#data.#signatureControlRevision = :expected AND (#data.#status = :pending OR #data.#status = :staffReview)", ExpressionAttributeNames: { "#data": "data", "#signatureControlRevision": "signatureControlRevision", "#status": "status" }, ExpressionAttributeValues: { ":expected": Number(expectedControlRevision), ":pending": "pending_signatures", ":staffReview": "staff_review_required" } } }
+    ];
+    if (previousTaskTokenHash) actions.push({ Update: { TableName: this.tableName, Key: this.key(`SIGN_TASK#${previousTaskTokenHash}`), UpdateExpression: "SET #data.#status = :revoked, #data.#revokedAt = :revokedAt, #data.#revocationReason = :reason", ConditionExpression: "#data.#status = :invited", ExpressionAttributeNames: { "#data": "data", "#status": "status", "#revokedAt": "revokedAt", "#revocationReason": "revocationReason" }, ExpressionAttributeValues: { ":revoked": "revoked", ":revokedAt": application.updatedAt, ":reason": idempotency?.operation || "signature_request_replaced", ":invited": "invited" } } });
+    if (nextTask) actions.push({ Put: { TableName: this.tableName, Item: { ...this.key(`SIGN_TASK#${nextTask.tokenHash}`), entity: "signature_task", ttl: nextTask.ttl, data: nextTask }, ConditionExpression: "attribute_not_exists(PK)" } });
+    if (idempotency) actions.push({ Put: { TableName: this.tableName, Item: { ...this.key(`IDEMPOTENCY#${idempotency.keyHash}`), entity: "idempotency", ttl: idempotency.ttl, data: idempotency }, ConditionExpression: "attribute_not_exists(PK)" } });
+    actions.push(...this.outboxActions(outboxEvents), ...this.auditActions(auditEvents));
+    try { await this.client.send(new TransactWriteCommand({ TransactItems: actions })); return application; }
+    catch (error) { if (conditional(error)) throw conflict("The signature request changed before this operation completed. Refresh the status and try again."); throw error; }
+  }
+
+  async revokeSigningArtifacts(taskTokenHash, at, reason) {
+    let challenges = 0;
+    let sessions = 0;
+    let ExclusiveStartKey;
+    do {
+      const response = await this.client.send(new ScanCommand({
+        TableName: this.tableName,
+        FilterExpression: "(#entity = :challenge AND #data.#subjectHash = :taskHash) OR (#entity = :session AND #data.#taskTokenHash = :taskHash)",
+        ExpressionAttributeNames: { "#entity": "entity", "#data": "data", "#subjectHash": "subjectHash", "#taskTokenHash": "taskTokenHash" },
+        ExpressionAttributeValues: { ":challenge": "challenge", ":session": "session", ":taskHash": taskTokenHash },
+        ExclusiveStartKey
+      }));
+      for (const item of response.Items || []) {
+        if (item.entity === "challenge") challenges += 1;
+        if (item.entity === "session") sessions += 1;
+        await this.client.send(new UpdateCommand({ TableName: this.tableName, Key: this.key(item.PK, item.SK), UpdateExpression: "SET #data.#revokedAt = :at, #data.#revocationReason = :reason, #data.#expiresAt = :zero", ExpressionAttributeNames: { "#data": "data", "#revokedAt": "revokedAt", "#revocationReason": "revocationReason", "#expiresAt": "expiresAt" }, ExpressionAttributeValues: { ":at": at, ":reason": reason, ":zero": 0 } }));
+      }
+      ExclusiveStartKey = response.LastEvaluatedKey;
+    } while (ExclusiveStartKey);
+    return { challenges, sessions };
   }
 
   async listSignatureTasksForApplication(applicationId) {
@@ -303,13 +356,13 @@ export class DynamoStore {
     return items;
   }
 
-  async addSignatureTasks({ applicationId, revisionHash, signatureTasks, outboxEvents, auditEvents = [] }) {
-    const actions = [{ ConditionCheck: {
+  async addSignatureTasks({ applicationId, revisionHash, expectedControlRevision = 0, application, signatureTasks, outboxEvents, auditEvents = [] }) {
+    const actions = [{ Put: {
       TableName: this.tableName,
-      Key: this.key(`APP#${applicationId}`, "CURRENT"),
-      ConditionExpression: "#data.#status = :pending AND #data.#revisionHash = :revisionHash",
-      ExpressionAttributeNames: { "#data": "data", "#status": "status", "#revisionHash": "revisionHash" },
-      ExpressionAttributeValues: { ":pending": "pending_signatures", ":revisionHash": revisionHash }
+      Item: { ...this.key(`APP#${applicationId}`, "CURRENT"), entity: "application", data: application },
+      ConditionExpression: "#data.#status = :pending AND #data.#revisionHash = :revisionHash AND (attribute_not_exists(#data.#signatureControlRevision) OR #data.#signatureControlRevision = :controlRevision)",
+      ExpressionAttributeNames: { "#data": "data", "#status": "status", "#revisionHash": "revisionHash", "#signatureControlRevision": "signatureControlRevision" },
+      ExpressionAttributeValues: { ":pending": "pending_signatures", ":revisionHash": revisionHash, ":controlRevision": Number(expectedControlRevision) }
     } }];
     for (const task of signatureTasks) actions.push({ Put: { TableName: this.tableName, Item: { ...this.key(`SIGN_TASK#${task.tokenHash}`), entity: "signature_task", ttl: task.ttl, data: task }, ConditionExpression: "attribute_not_exists(PK)" } });
     actions.push(...this.outboxActions(outboxEvents), ...this.auditActions(auditEvents));

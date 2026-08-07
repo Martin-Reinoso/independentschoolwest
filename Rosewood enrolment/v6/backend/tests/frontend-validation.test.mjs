@@ -13,8 +13,12 @@ test("submission validation identifies the section and preserves an in-browser s
   assert.match(source, /Review \$\{esc\(first\.section\)\}/);
   assert.match(source, /Signature ready/);
   assert.match(source, /Awaiting Parent\/Guardian Signature/);
-  assert.match(source, /record\.status === "pending_signatures" \? "Awaiting parent\/guardian signature"/);
-  assert.match(source, /This preference applies to general communication/);
+  assert.match(source, /staff_review_required/);
+  assert.match(source, /Can the school contact this person\?/);
+  assert.match(source, /No, do not contact this person/);
+  assert.match(source, /This person will not receive messages or a separate signature request/);
+  assert.match(source, /Correct email address/);
+  assert.match(source, /Resend signature request/);
   assert.match(source, /isChecked\(`\$\{prefix\}_ip`\)/);
   assert.match(canvasBinding, /canvas\.toDataURL\("image\/png"\)/);
   assert.match(canvasBinding, /context\.drawImage\(image/);
@@ -36,7 +40,7 @@ test("guardian signing renders the complete server-provided application review",
   assert.doesNotMatch(source, /const conditions = context\.review\.conditions/);
   assert.doesNotMatch(source, /<h3>Previous school permission<\/h3>/);
   assert.match(html, /rosewood-application-sign-v6\.css\?v=2/);
-  assert.match(html, /rosewood-application-sign-v6\.js\?v=2/);
+  assert.match(html, /rosewood-application-sign-v6\.js\?v=3/);
   assert.match(css, /\.application-review-section/);
   assert.match(css, /\.review-answer \{ grid-template-columns: 1fr/);
 });

@@ -56,7 +56,8 @@
   }
 
   function complete() {
-    return `<div class="signing-complete"><div class="success-mark" aria-hidden="true">&#10003;</div><p class="eyebrow">Application for Enrolment</p><h2>Signature recorded</h2><p>Your signature has been securely recorded for ${esc(state.context.studentName)}.</p><div class="status-card"><strong>Reference ${esc(state.context.reference)}</strong><p>${state.submitStatus === "submitted" ? "All required signatures have now been received." : "The application is still waiting for another required signature."}</p></div><p>You can close this page safely.</p></div>`;
+    const statusMessage = state.submitStatus === "submitted" ? "All required signatures have now been received." : state.submitStatus === "staff_review_required" ? "Rosewood College will review the remaining consent requirements." : "The application is still waiting for another required signature.";
+    return `<div class="signing-complete"><div class="success-mark" aria-hidden="true">&#10003;</div><p class="eyebrow">Application for Enrolment</p><h2>Signature recorded</h2><p>Your signature has been securely recorded for ${esc(state.context.studentName)}.</p><div class="status-card"><strong>Reference ${esc(state.context.reference)}</strong><p>${statusMessage}</p></div><p>You can close this page safely.</p></div>`;
   }
 
   function render() {
@@ -108,5 +109,6 @@
     }
   });
 
+  if (taskToken) api("/v6/application/signatures/opened", { taskToken }).catch(() => {});
   render();
 })();

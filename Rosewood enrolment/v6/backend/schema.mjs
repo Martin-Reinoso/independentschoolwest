@@ -1,7 +1,9 @@
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-export const SCHEMA_VERSION = "rosewood-v6-2026-08-05";
+export const SCHEMA_VERSION = "rosewood-v6-2026-08-08-contact-permission";
+export const CONTACT_PERMISSION_YES = "Yes, the school may contact this person";
+export const CONTACT_PERMISSION_NO = "No, do not contact this person";
 export const EOI_FIELDS = [
   "eoi_language", "eoi_title", "eoi_first", "eoi_last", "eoi_relationship", "eoi_email", "eoi_mobile", "eoi_address",
   "eoi_suburb", "eoi_state", "eoi_postcode", "eoi_country", "eoi_student_first", "eoi_student_last", "eoi_dob", "eoi_gender",
@@ -88,19 +90,31 @@ export function sanitizeApplication(input) {
   return Object.fromEntries(Object.entries(input).map(([key, value]) => [key, cleanValue(value)]));
 }
 
-export function validateApplicationForSubmission(input, guardianCount = 1, emergencyCount = 2) {
+function usesExplicitContactPermission(formVersion) {
+  return String(formVersion || "").endsWith(".6");
+}
+
+export function contactPermissionAllowed(value, formVersion = "rosewood-application-2026.6") {
+  if (usesExplicitContactPermission(formVersion)) return value === CONTACT_PERMISSION_YES;
+  return !["No", "No, do not contact them", CONTACT_PERMISSION_NO].includes(String(value || "").trim());
+}
+
+export function validateApplicationForSubmission(input, guardianCount = 1, emergencyCount = 2, formVersion = "rosewood-application-2026.6") {
   const values = sanitizeApplication(input);
   const missing = APPLICATION_REQUIRED_FIELDS.filter(key => !truthy(values[key]));
   for (let index = 0; index < Math.max(1, Math.min(MAX_GUARDIANS, Number(guardianCount))); index += 1) {
     const prefix = `app_guardian_${index}_`;
-    for (const suffix of ["first", "last", "email", "mobile", "relationship", "contact_type", "sms", "healthcare", "address", "suburb", "state", "postcode", "country", "occupation_group", "occupation", "school_education", "further_education", "birth_country", "nationality", "ethnicity", "languages", "residency", "indigenous"]) {
+    for (const suffix of ["first", "last", "mobile", "relationship", "contact_type", "sms", "healthcare", "address", "suburb", "state", "postcode", "country", "occupation_group", "occupation", "school_education", "further_education", "birth_country", "nationality", "ethnicity", "languages", "residency", "indigenous"]) {
       if (!truthy(values[`${prefix}${suffix}`])) missing.push(`${prefix}${suffix}`);
     }
     if (values[`${prefix}healthcare`] === "Yes") for (const suffix of ["healthcare_number", "healthcare_expiry"]) if (!truthy(values[`${prefix}${suffix}`])) missing.push(`${prefix}${suffix}`);
     if (values[`${prefix}residency`] === "Temporary Resident") for (const suffix of ["visa_subclass", "visa_expiry"]) if (!truthy(values[`${prefix}${suffix}`])) missing.push(`${prefix}${suffix}`);
     if (values[`${prefix}postal_same`] === "No") for (const suffix of ["postal_address", "postal_suburb", "postal_state", "postal_postcode", "postal_country"]) if (!truthy(values[`${prefix}${suffix}`])) missing.push(`${prefix}${suffix}`);
     if (index > 0 && !truthy(values[`${prefix}permission`])) missing.push(`${prefix}permission`);
-    if (!EMAIL_PATTERN.test(normalizeEmail(values[`${prefix}email`]))) missing.push(`${prefix}email:invalid`);
+    if (index > 0 && usesExplicitContactPermission(formVersion) && ![CONTACT_PERMISSION_YES, CONTACT_PERMISSION_NO].includes(values[`${prefix}permission`])) missing.push(`${prefix}permission:invalid`);
+    const emailRequired = index === 0 || !usesExplicitContactPermission(formVersion) || contactPermissionAllowed(values[`${prefix}permission`], formVersion);
+    if (emailRequired && !truthy(values[`${prefix}email`])) missing.push(`${prefix}email`);
+    if (truthy(values[`${prefix}email`]) && !EMAIL_PATTERN.test(normalizeEmail(values[`${prefix}email`]))) missing.push(`${prefix}email:invalid`);
   }
   for (let index = 0; index < Math.max(2, Math.min(MAX_EMERGENCY_CONTACTS, Number(emergencyCount))); index += 1) {
     const prefix = `emergency_${index}_`;
@@ -122,8 +136,11 @@ export function validateApplicationForSubmission(input, guardianCount = 1, emerg
   if (values.fee_option === "One Parent / Guardian") for (const key of ["fee_one_nominee", "fee_one_date"]) if (!truthy(values[key])) missing.push(key);
   if (values.fee_option === "Percentage split with custodial court order") for (const key of ["fee_guardian_a", "fee_guardian_a_percent", "fee_guardian_b", "fee_guardian_b_percent", "fee_split_date"]) if (!truthy(values[key])) missing.push(key);
   if (Array.isArray(values.application_influences) && values.application_influences.length !== 3) missing.push("application_influences:three_required");
-  if (guardianCount <= 1 && !truthy(values.application_one_signature_reason)) missing.push("application_one_signature_reason");
-  if (guardianCount > 1 && !truthy(values.application_additional_signature_later)) missing.push("application_additional_signature_later");
+  const additionalPermissions = Array.from({ length: Math.max(0, guardianCount - 1) }, (_, offset) => values[`app_guardian_${offset + 1}_permission`]);
+  const hasSuppressedSignature = usesExplicitContactPermission(formVersion) && additionalPermissions.some(permission => permission === CONTACT_PERMISSION_NO);
+  const hasElectronicSignature = guardianCount > 1 && additionalPermissions.some(permission => contactPermissionAllowed(permission, formVersion));
+  if ((guardianCount <= 1 || hasSuppressedSignature) && !truthy(values.application_one_signature_reason)) missing.push("application_one_signature_reason");
+  if (hasElectronicSignature && !truthy(values.application_additional_signature_later)) missing.push("application_additional_signature_later");
   if (missing.length) throw validationError("Complete the required Application for Enrolment information.", { missing: [...new Set(missing)] });
   return values;
 }

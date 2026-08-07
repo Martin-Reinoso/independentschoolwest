@@ -234,11 +234,18 @@ Source: https://www.abs.gov.au/statistics/classifications/australian-standard-cl
   / Torres Strait Islander response are mandatory. Temporary Resident reveals
   mandatory Visa Subclass and Visa Expiry.
 - A second parent/guardian is the normal route and receives an independent signature
-  request after the primary applicant submits.
-- The additional guardian's contact-permission answer controls general communication
-  about the student. It does not suppress the one-time transactional request required
-  for that listed guardian to review and sign the submitted application. The form must
-  explain this distinction beside the permission question.
+  request after the primary applicant submits only when contact permission is Yes.
+- Contact permission is explicit and is not inferred from an entered email or mobile.
+  **No, do not contact this person** suppresses every automated email, SMS, OTP and
+  signature request to that person. It requires a one-signature explanation and staff
+  review; the College may contact the submitting applicant, not the prohibited person.
+- A submitted application remains read-only. While a permitted signature is pending,
+  the submitting applicant may re-authenticate by OTP, enter the replacement email
+  twice and rotate the signing request. This keeps the application ID, submitted answer
+  revision and primary signature unchanged and immediately invalidates the earlier
+  task, OTP challenges and signing sessions.
+- Correct email and resend disappear when contact is prohibited or the signature is
+  complete. There is no applicant-facing post-signature contact management.
 - A primary submission with outstanding guardian signatures is labelled **Awaiting
   Parent/Guardian Signature**, not Completed. Completed is shown only after every
   required signature has been recorded.

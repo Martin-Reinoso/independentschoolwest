@@ -1,6 +1,6 @@
 # Rosewood V6 Application Workflow and Data Process Map
 
-Document date: 7 August 2026
+Document date: 8 August 2026
 Implementation: Rosewood Enrolment V6
 Audience: Rosewood leadership, admissions, governance, privacy, records management,
 technology support and implementation partners
@@ -117,9 +117,13 @@ stateDiagram-v2
     Application_Invited --> Application_In_Progress: First successful section save
     Application_In_Progress --> Application_In_Progress: Revisioned section saves
     Application_In_Progress --> Pending_Signatures: Primary guardian submits and more signatures are required
+    Application_In_Progress --> Staff_Review: A required guardian is marked Do not contact
     Application_In_Progress --> Submitted: Primary guardian submits and is the only required signer
+    Pending_Signatures --> Pending_Signatures: Applicant corrects email or resends; old task revoked
     Pending_Signatures --> Pending_Signatures: A guardian signs but others remain
+    Pending_Signatures --> Staff_Review: Permitted signatures complete but suppressed consent remains
     Pending_Signatures --> Submitted: Final required guardian signs
+    Staff_Review --> Pending_Signatures: Authorised staff permits contact and issues request
     Submitted --> [*]
 ```
 
@@ -134,7 +138,8 @@ prefills approved values. The original EOI remains unchanged.
 2. Application access requires both a high-entropy invitation token and an OTP sent to
    the invitation email.
 3. Additional-guardian access requires both a high-entropy signing-task token and an OTP
-   sent to that guardian's email.
+   sent to that guardian's current permitted application email. No signing task or OTP
+   is issued when contact permission is No.
 4. Staff access requires an allowlisted email and OTP.
 5. Family and child-application sessions expire after 20 minutes of inactivity and
    cannot exceed eight hours after verification. Guardian-signing sessions expire
@@ -426,7 +431,7 @@ sensitivity in the application.
 | Residential and postal address | Residential address and whether postal is the same | Separate postal fields appear after No. | Draft `values`; final Guardians projection |
 | Occupation and education | Occupational group, occupation, employer, school and further education | Core government-reporting fields are required. | Draft `values`; final Guardians projection |
 | Residency | Birth country, nationality, ethnicity, languages, status, visa and Indigenous response | Temporary Resident reveals visa subclass and expiry. | Draft `values`; final Guardians projection |
-| Contact permission | Whether Rosewood may contact an additional guardian about the student generally | This preference does not suppress the one-time transactional request required for the listed guardian to review and sign. | Draft `values`; final Guardians projection |
+| Contact permission | Explicit Yes/No authority for Rosewood to contact an additional guardian | Yes requires an email for a separate request. No suppresses email, SMS, OTP, recovery and signing-request actions, requires an explanation and flags staff review. It is never inferred from entered contact details. | Draft `values`; final signer control and Guardians projection |
 | Guardian confirmation | Confirmation that all legal parents/guardians were entered | Required before moving on. | Draft `values` |
 | Emergency contacts | At least two names, relationships and phone details; email optional | Repeatable up to the server limit. | Draft `values`; final Emergency Contacts projection |
 
@@ -503,7 +508,9 @@ The primary guardian must:
 - provide a drawn or keyboard-accessible signature
 - provide the date
 - explain why only one guardian was entered, when applicable
-- otherwise acknowledge that an additional guardian will be contacted separately
+- explain why a listed guardian marked Do not contact will not sign electronically
+- otherwise acknowledge that each permitted additional guardian will receive a
+  separate request after submission
 
 The drawing remains only in browser memory while the guardian reviews other sections;
 declarations and date remain ordinary revisioned draft answers. The sticky indicator
@@ -533,14 +540,46 @@ sequenceDiagram
     API->>Drive: Store primary signature PNG
     API->>DB: Atomically store submitted state, signature tasks, audit and outbox
     Outbox->>SES: Send application receipt
-    Outbox->>SES: Send additional guardian signing requests
+    Outbox->>SES: Send requests only to permitted additional guardians
 ```
 
-Submission creates an `APP-...` reference. If only one signature is required, status
-becomes `submitted`. If more are required, status becomes `pending_signatures` and the
-family portal displays **Awaiting Parent/Guardian Signature**. It displays **Completed**
-only after the final required signature changes the authoritative status to `submitted`.
-Operational progress is reported as 95 percent while signatures remain outstanding.
+Submission creates an `APP-...` reference. A permitted additional signer creates
+`pending_signatures`. A listed guardian marked Do not contact creates no task and marks
+the submitted record `staff_review_required`; it is not reopened. With no additional
+signature or staff-review requirement, status becomes `submitted`. The read-only family
+status page shows required signers, masked email, explicit permission and request
+sent/opened/verified/completed progress. Completed is shown only for a completed signer.
+
+### Pending Signer Status, Correction and Resend
+
+```mermaid
+sequenceDiagram
+    actor Applicant
+    participant Status as Read-only status page
+    participant API as V6 Lambda
+    participant DB as DynamoDB
+    participant SES as SES
+    participant Guardian
+
+    Applicant->>Status: Select Correct email address
+    Status->>API: Request step-up OTP
+    API->>SES: Send OTP to submitting applicant
+    Applicant->>API: Verify OTP and enter corrected email twice
+    API->>DB: Conditional transaction revokes old task and creates replacement
+    API->>DB: Preserve prior email and audit correction/revocation
+    API->>SES: Send replacement request to corrected email
+    Guardian->>API: Open new link and verify corrected email by OTP
+    API-->>Guardian: Return frozen read-only application review
+```
+
+Correction and resend are available only while contact is permitted, an electronic
+signature is required and that signature is incomplete. Corrections, OTP requests and
+resends are rate-limited; replacement operations are idempotent. The previous task,
+OTP challenges and signing sessions are invalid immediately. A compare-and-swap
+`signatureControlRevision` plus old-task condition prevents correction and signing from
+both succeeding. The application identifier, frozen answer revision and submitting
+applicant signature remain unchanged. After completion, both actions disappear and the
+signer displays only Complete.
 
 ## Workflow 5: Additional Application Guardian Signing
 
@@ -599,6 +638,7 @@ The dashboard reads authoritative DynamoDB entities and returns:
 - contact/student names and recipient emails
 - references, stage, percentage, timestamps and invitation expiry/send count
 - required and completed signature counts
+- staff-review indicators for suppressed signature requirements
 - recent transactional email summaries
 
 The dashboard does not return medical answers, full application answers, documents,
@@ -610,6 +650,14 @@ An authorised staff member can request one application detail view. The backend 
 the current application answers plus document metadata and signature metadata, but not
 signature images or network fingerprints. Every detailed view appends a
 `staff.application_viewed` audit event with the staff identity and role.
+
+Signer detail includes explicit contact permission, current application email,
+restricted previous-email history, correction requester/time, request generation,
+SES-acceptance/open/verification state, link revocation, completion, signed revision,
+staff-review requirement and the applicant's one-signature explanation. Viewer staff
+cannot change permission. Admin/admissions must enter the exact confirmation before a
+conditional audited permission change; changing to No revokes the active task, while
+changing to Yes generates a new task only when a valid current email exists.
 
 ```mermaid
 flowchart LR
@@ -647,7 +695,9 @@ stateDiagram-v2
 | Application access | Invited family email | Six-digit OTP |
 | Staff access | Allowlisted staff email | Six-digit staff OTP |
 | Primary application submission | Primary guardian | Receipt, reference and signature status |
-| Additional guardian required | Each eligible additional guardian | Private application-signing link |
+| Additional guardian required | Each permitted eligible additional guardian | Private application-signing link |
+| Pending email correction | Submitting applicant | Step-up OTP before correction |
+| Corrected pending signer | Corrected permitted guardian email | Replacement link; prior task invalidated |
 | Guardian access | Invited guardian email | Six-digit signing OTP |
 | Final required signature | Guardian emails | Application complete confirmation |
 
@@ -672,10 +722,10 @@ an explicit apply confirmation is supplied.
 | Actor | EOI/Application access | Documents | Signatures | Audit/operations |
 | --- | --- | --- | --- | --- |
 | Public visitor | Can open static pages; can submit EOI | None without verified application session | None | None |
-| Verified application family | Its session-bound current application only | Can upload to authorised application folder session | Primary signature only during submission | Own save/status responses only |
+| Verified application family | Editable current application before submission; masked read-only status after submission | Can upload only before submission | Primary signature during submission; may step-up-authenticate to correct/resend a permitted pending signer | Own save/status responses only; no submitted-answer reopening |
 | Verified additional guardian | Frozen review context for its signature task | No document access | Can submit only its assigned signature | Own completion status only |
 | Viewer staff | Dashboard and detailed application review | Metadata in portal; restricted Drive only if separately authorised | Metadata only, no images | Read operational summaries; detailed view is audited |
-| Admissions/Admin staff | Viewer access plus create/resend invitations | Same Drive boundary | Same metadata boundary | Invitation actions and review are audited |
+| Admissions/Admin staff | Viewer access plus create/resend invitations | Same Drive boundary | Metadata plus explicit audited pending contact-permission change | Invitation, permission and review actions are audited |
 | Restricted Drive operator | Files within approved enrolment folders | Direct restricted access | Direct restricted access where authorised | No automatic DynamoDB authority from Drive access |
 | Google Sheets editor | Reporting projections | No file access from Sheet alone | Metadata only | Sheet edits do not alter authoritative records |
 | AWS operator | Infrastructure and authoritative stores under AWS account controls | File IDs/metadata, not Google file contents by AWS alone | Metadata, not Drive image content by AWS alone | Backup, restore, logs and alarms |
@@ -774,10 +824,10 @@ signature revision hashes also retain the form version and definition hash. See
 - Restricted Google Drive is the launch file store.
 - Proof of address is not collected.
 - Application terms and photography permission are deferred to the Enrolment Agreement.
-- General contact permission does not suppress the required transactional signing
-  request for an additional listed guardian. Primary submission remains
-  `pending_signatures` and is presented as Awaiting Parent/Guardian Signature until the
-  last required signer completes it.
+- Contact permission is explicit and suppresses all automated contact and signing
+  activity when No. Such records retain the one-signature explanation and require staff
+  review. Staff can change permission only through an explicit audited conditional
+  action; no-contact recovery is prohibited.
 - Missing signing tasks can be recovered by a dry-run-first operational command that
   preserves the frozen answers and records an append-only audit event.
 - GuardDuty, SQL and cross-region replication are outside launch scope.
@@ -790,8 +840,8 @@ signature revision hashes also retain the form version and definition hash. See
    processes across DynamoDB, Drive, Sheets, SES records and exports.
 3. Replace the shared staff mailbox with named staff identities, approved roles,
    offboarding and periodic access review.
-4. Decide how administrators correct submitted applications and reissue signatures
-   without weakening the frozen-revision evidence.
+4. Define any future submitted-answer correction workflow separately; V6 corrects only
+   a pending signer's application email and never reopens submitted answers.
 5. Define the business process after `submitted`: assessment, decision, offer,
    acceptance or decline, and family communications.
 6. Implement Acceptance, Enrolment Agreement signing and Decline as separate backend
@@ -816,6 +866,13 @@ signature revision hashes also retain the form version and definition hash. See
 | `POST /v6/application/documents/start` | Authorise a constrained encrypted staging upload |
 | `POST /v6/application/documents/confirm` | Verify staging, move to Drive and attach document metadata |
 | `POST /v6/application/submit` | Freeze revision, save primary signature and submit |
+| `POST /v6/application/records/status` | Open a secure read-only status session |
+| `GET /v6/application/status` | Return masked signature progress and eligible actions |
+| `POST /v6/application/status/signatures/resend` | Rate-limited idempotent task rotation and resend |
+| `POST /v6/application/status/signatures/correction/request-code` | Step-up OTP to submitting applicant |
+| `POST /v6/application/status/signatures/correction/verify-code` | Create short correction session |
+| `POST /v6/application/status/signatures/correction/confirm` | Correct email, revoke old task and send replacement |
+| `POST /v6/application/signatures/opened` | Record that the current private task link was opened |
 | `POST /v6/application/signatures/request-code` | Request additional-guardian OTP |
 | `POST /v6/application/signatures/verify-code` | Create signing session for assigned task |
 | `POST /v6/application/signatures/submit` | Validate and append guardian signature |
@@ -826,6 +883,7 @@ signature revision hashes also retain the form version and definition hash. See
 | `POST /v6/staff/applications/revision` | Return one authorised, audited immutable answer revision |
 | `POST /v6/staff/invitations` | Create direct or EOI-linked invitation |
 | `POST /v6/staff/invitations/resend` | Rotate token and resend active invitation |
+| `POST /v6/staff/applications/contact-permission` | Explicit audited pending-signer permission change |
 
 ## Related Records
 

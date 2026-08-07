@@ -85,6 +85,31 @@ authoritative application answers. Each detailed view creates an audit event.
 Google Sheets are replaceable reporting projections. Do not use a Sheet edit to correct
 an application or change Sheet sharing from `info@ffe.org.au` without approval.
 
+## Pending Guardian Signatures
+
+The application detail shows each required signer separately, including contact
+permission, current application email, restricted previous-email history, who requested
+a correction, request generation and SES acceptance, link opening, signing-email OTP
+verification, revocation, completion and the signed document revision. It also shows
+whether staff review is required and the applicant's explanation for one signature.
+
+- **Do not contact** means no ordinary email, SMS, OTP, signature request, resend or
+  repair may be sent to that guardian.
+- Do not use the recovery command, SES console or a copied address to bypass that rule.
+- The submitting applicant can correct only a permitted pending signer's email from the
+  read-only family status page after step-up OTP. The operation rotates the task but does
+  not reopen or duplicate the application.
+- After the guardian signs, email correction and resend are permanently unavailable to
+  the applicant. Do not treat the signing status page as contact-management software.
+
+Admin or admissions staff may change pending contact permission only when authorised to
+do so. Select the contact-permission action in application detail and type the exact
+confirmation requested. The backend rate-limits and conditionally applies the change,
+records staff identity/time and revokes the prior task when changing to No. Changing to
+Yes requires a valid current application email and creates a new request. Viewer staff
+cannot perform this action. Record the business authority outside the application if
+local governance requires supporting evidence.
+
 ## Incident Response
 
 If a staff code or session may be compromised:

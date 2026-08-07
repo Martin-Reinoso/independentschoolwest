@@ -16,7 +16,9 @@
   const invitationToken = params.get("invite") || "";
   const policyDocuments = window.rosewoodPolicyDocuments || {};
   const policyOrder = ["enrolment-policy", "enrolment-procedure", "privacy-policy"];
-  const SUPPORTED_APPLICATION_FORM_VERSIONS = new Set(["rosewood-application-2026.1", "rosewood-application-2026.2", "rosewood-application-2026.3", "rosewood-application-2026.4", "rosewood-application-2026.5"]);
+  const SUPPORTED_APPLICATION_FORM_VERSIONS = new Set(["rosewood-application-2026.1", "rosewood-application-2026.2", "rosewood-application-2026.3", "rosewood-application-2026.4", "rosewood-application-2026.5", "rosewood-application-2026.6"]);
+  const CONTACT_PERMISSION_YES = "Yes, the school may contact this person";
+  const CONTACT_PERMISSION_NO = "No, do not contact this person";
 
   const state = {
     workflow: params.get("workflow") || "application",
@@ -27,6 +29,7 @@
     challengeId: "",
     sessionToken: "",
     familySessionToken: "",
+    statusSessionToken: "",
     familyContext: null,
     revision: 0,
     formVersion: "",
@@ -34,6 +37,8 @@
     applicationContext: null,
     eoiResult: null,
     submitResult: null,
+    statusContext: null,
+    correction: null,
     serverValidation: [],
     saveStatus: "idle",
     lastSavedSnapshot: "",
@@ -383,12 +388,12 @@
       const family = state.familyContext || { recipientEmail: state.applicationContext.recipientEmail, parentGuardianName: "", applications: [{ applicationId: state.applicationContext.applicationId, studentName: state.applicationContext.studentName, status: state.applicationContext.status, sourceEoiId: state.applicationContext.sourceEoiId, editable: ["invited", "in_progress"].includes(state.applicationContext.status) }] };
       const applications = (family.applications || []).filter(record => record.studentName);
       const linked = applications.some(record => record.sourceEoiId);
-      const statusLabel = status => ({ invited: "Not Started", in_progress: "In Progress", pending_signatures: "Awaiting Parent/Guardian Signature", submitted: "Completed" })[status] || status;
+      const statusLabel = status => ({ invited: "Not Started", in_progress: "In Progress", pending_signatures: "Awaiting Parent/Guardian Signature", staff_review_required: "Staff Review Required", submitted: "Completed" })[status] || status;
       const rows = applications.map(record => {
         const statusClass = record.status === "submitted" ? " is-complete" : record.status === "pending_signatures" ? " is-pending" : "";
         const action = record.editable
           ? `<button type="button" class="button button-primary" data-select-application="${esc(record.applicationId)}">Continue</button>`
-          : record.status === "pending_signatures" ? "Awaiting parent/guardian signature" : record.status === "submitted" ? "Completed" : "Unavailable";
+          : ["pending_signatures", "staff_review_required", "submitted"].includes(record.status) ? `<button type="button" class="button button-secondary" data-view-application-status="${esc(record.applicationId)}">View status</button>` : "Unavailable";
         return `<tr><td>${esc(record.studentName)}</td><td>${record.sourceEoiId ? "Expression of Interest" : "Direct invitation"}</td><td><span class="status-pill${statusClass}">${esc(statusLabel(record.status))}</span></td><td>${action}</td></tr>`;
       }).join("");
       const records = applications.length ? section("Child applications", `<div class="record-table-wrap"><table class="record-table"><thead><tr><th>Student Name</th><th>Source</th><th>Application Status</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div>`) : "";
@@ -434,9 +439,11 @@
 
   function applicationGuardianFields(index) {
     const prefix = `app_guardian_${index}_`;
+    const permission = state.values[prefix + "permission"];
+    const emailRequired = index === 0 || permission === CONTACT_PERMISSION_YES;
     return choices(prefix + "share", "Share these details with other contacts?", ["Yes, share them", "No, keep them private"], { required: true, className: "span-three" }) +
       field(prefix + "title", "Title", { type: "select", options: titles, required: true }) + field(prefix + "first", "Given Name", { required: true }) + field(prefix + "last", "Surname", { required: true }) +
-      field(prefix + "email", "Email", { type: "email", required: true }) + field(prefix + "mobile", "Mobile Phone", { type: "tel", required: true }) + field(prefix + "home", "Home Phone", { type: "tel" }) + field(prefix + "work", "Work Phone", { type: "tel" }) +
+      field(prefix + "email", "Email", { type: "email", required: emailRequired, hint: index > 0 && permission === CONTACT_PERMISSION_NO ? "Stored with the application if provided. Rosewood College will not use it for automated contact or signing requests." : "" }) + field(prefix + "mobile", "Mobile Phone", { type: "tel", required: true }) + field(prefix + "home", "Home Phone", { type: "tel" }) + field(prefix + "work", "Work Phone", { type: "tel" }) +
       field(prefix + "relationship", "Relationship", { type: "select", options: relationships, required: true }) + field(prefix + "contact_type", "Contact Type", { type: "select", options: ["Primary", "Secondary"], required: true }) +
       field(prefix + "marital", "Marital Status", { type: "select", options: ["Married", "De-Facto", "Divorced", "Single", "Separated", "Widowed", "Engaged", "Other"] }) + field(prefix + "religion", "Religion", { type: "select", options: religions }) +
       choices(prefix + "sms", "SMS Messaging", yesNo, { required: true, className: "span-three" }) + choices(prefix + "healthcare", "Health Care Card", yesNo, { required: true, className: "span-three" }) +
@@ -451,7 +458,7 @@
       field(prefix + "birth_country", "Country of Birth", { list: "country-list", required: true }) + field(prefix + "nationality", "Nationality", { list: "country-list", required: true }) + field(prefix + "ethnicity", "Ethnicity", { required: true }) + field(prefix + "languages", "Languages", { list: "language-list", required: true }) +
       field(prefix + "residency", "Residency Status", { type: "select", options: ["Citizen", "Permanent Resident", "Temporary Resident"], required: true }) + `<div class="conditional-panel span-three" data-guardian-visa="${prefix}residency"><div class="field-grid two">${field(prefix + "visa_subclass", "Visa Subclass", { required: true })}${field(prefix + "visa_expiry", "Visa Expiry", { type: "date", required: true })}</div></div>` +
       choices(prefix + "indigenous", "Aboriginal / Torres Strait Islander", ["Aboriginal", "Torres Strait Islander", "Aboriginal and Torres Strait Islander", "Not Applicable"], { required: true, className: "span-three" }) +
-      (index > 0 ? choices(prefix + "permission", "Can the school contact this person about the student?", ["Yes", "No, do not contact them"], { required: true, className: "span-three", hint: "This preference applies to general communication. A listed additional parent/guardian will still receive the one-time signature request required to complete this application." }) : "");
+      (index > 0 ? choices(prefix + "permission", "Can the school contact this person?", [CONTACT_PERMISSION_YES, CONTACT_PERMISSION_NO], { required: true, className: "span-three" }) + `<div class="contact-permission-notice span-three" data-contact-permission-notice="${prefix}permission" role="status"><strong>Do not contact</strong><p>Please note: This person will not receive messages or a separate signature request. If their signature is required, Rosewood College will contact you to discuss the next steps.</p></div>` : "");
   }
 
   function renderApplicationGuardians() {
@@ -495,11 +502,17 @@
   }
 
   function renderApplicationSignature() {
-    const additionalName = [state.values.app_guardian_1_first, state.values.app_guardian_1_last].filter(Boolean).join(" ") || "Parent / Guardian B";
-    const additionalEmail = state.values.app_guardian_1_email || "Email entered in the Parent / Guardian section";
-    const explanation = state.counts.appGuardian === 1
-      ? `<div class="field-grid">${field("application_one_signature_reason", "Explanation only one signature", { type: "textarea", required: true, className: "span-three", hint: "Only one parent/guardian has been included in this application. Enter the reason above or call the College to discuss." })}</div>`
-      : `<div class="guardian-signature-followup"><div class="review-card"><h4>${esc(additionalName)}</h4><dl><dt>Email</dt><dd>${esc(additionalEmail)}</dd><dt>Signature</dt><dd>Requested after this application is submitted</dd></dl></div>${check("application_additional_signature_later", `I understand that ${esc(additionalName)} will be contacted separately to review and sign this application after I submit it.`, { required: true })}</div>`;
+    const additional = Array.from({ length: Math.max(0, state.counts.appGuardian - 1) }, (_, offset) => {
+      const index = offset + 1;
+      const prefix = `app_guardian_${index}_`;
+      return { index, name: [state.values[prefix + "first"], state.values[prefix + "last"]].filter(Boolean).join(" ") || `Parent / Guardian ${String.fromCharCode(65 + index)}`, email: state.values[prefix + "email"] || "Email not provided", permitted: state.values[prefix + "permission"] === CONTACT_PERMISSION_YES };
+    });
+    const permitted = additional.filter(item => item.permitted);
+    const suppressed = additional.filter(item => !item.permitted);
+    const cards = additional.map(item => `<article class="review-card signature-routing-card ${item.permitted ? "is-permitted" : "is-suppressed"}"><h4>${esc(item.name)}</h4><dl><dt>Contact permission</dt><dd>${item.permitted ? "Contact permitted" : "Do not contact"}</dd><dt>Email</dt><dd>${esc(item.email)}</dd><dt>Signature</dt><dd>${item.permitted ? "Separate signature request required" : "Signature request suppressed"}</dd>${item.permitted ? "" : "<dt>Application review</dt><dd>Staff review required</dd>"}</dl><p>${item.permitted ? "This person will receive a separate email requesting their signature after this application is submitted." : `Both parents or guardians are normally requested to sign. You have asked us not to contact ${esc(item.name)}, so no signature request will be sent to them. Please explain why only one signature is being provided. Rosewood College will contact you if further information or consent is required.`}</p></article>`).join("");
+    const needsExplanation = state.counts.appGuardian === 1 || suppressed.length > 0;
+    const reasonHint = state.counts.appGuardian === 1 ? "Only one parent/guardian has been included in this application. Enter the reason above or call the College to discuss." : "Only one signature is being provided for the parent or guardian marked Do not contact. Enter the reason above or call the College to discuss.";
+    const explanation = `<div class="guardian-signature-followup">${cards}${permitted.length ? check("application_additional_signature_later", "I understand that each parent or guardian marked Contact permitted will receive a separate signature request after I submit this application.", { required: true }) : ""}${needsExplanation ? `<div class="field-grid">${field("application_one_signature_reason", "Explanation for only one signature", { type: "textarea", required: true, className: "span-three", hint: reasonHint })}</div>` : ""}</div>`;
     return intro("Signature", "Completing, signing and lodging this application is required for consideration but does not guarantee enrolment. Enrolment is formalised only after an offer and Enrolment Agreement.", "Application for enrolment") +
       section("Signature of Parents / Guardians", `<p class="signature-disclaimer"><strong>Disclaimer:</strong> Personal information will be held, used and disclosed in accordance with the College Privacy Collection Notice and Privacy Policy.</p>${signaturePanel("application_signature", "I declare that I have read, understood and given consent to all matters contained in this application.", { title: "Parent / Guardian: Primary Contact" })}${explanation}<div class="field-grid">${field("application_additional_information", "Additional Information", { type: "textarea", className: "span-three" })}</div>`) + actions({ label: liveWorkflow() ? "Submit application" : "Submit application preview" });
   }
@@ -574,11 +587,45 @@
 
   function renderPendingSignatures() {
     const application = state.workflow === "application";
-    if (application && liveWorkflow() && state.submitResult) {
-      const pending = state.submitResult.status === "pending_signatures";
-      return `<div class="success-card"><div class="success-mark" aria-hidden="true">&#10003;</div><p class="eyebrow">Application for enrolment</p><h3>${pending ? "Primary application submitted" : "Application complete"}</h3><p>${pending ? "Your part of the Application for Enrolment has been submitted successfully." : "Your Application for Enrolment has been completed successfully."}</p><div class="status-card"><strong>Reference ${esc(state.submitResult.reference)}</strong><p>${pending ? "The application is awaiting the additional parent/guardian signature. A separate signature request will be sent to them." : "All required signatures have been recorded."}</p></div><p>A confirmation email has been sent. You can close this page safely.</p>${state.familySessionToken ? '<button type="button" class="button button-secondary" data-action="family-selector">View or add another child</button>' : ""}</div>`;
+    const reviewSuppressed = state.values.app_guardian_1_permission === CONTACT_PERMISSION_NO;
+    const reviewGuardianName = [state.values.app_guardian_1_first, state.values.app_guardian_1_last].filter(Boolean).join(" ") || "Parent / Guardian B";
+    const reviewContext = application && !liveWorkflow() ? {
+      reference: "APP-REVIEW",
+      status: reviewSuppressed ? "staff_review_required" : "pending_signatures",
+      requiresStaffReview: reviewSuppressed,
+      signers: [
+        { guardianId: "review-primary", name: "Primary Parent / Guardian", signatureStatus: "Complete" },
+        { guardianId: "review-additional", name: reviewGuardianName, maskedEmail: "p***@example.test", contactPermission: reviewSuppressed ? "Do not contact" : "Contact permitted", signatureRequired: true, signatureStatus: reviewSuppressed ? "suppressed" : "pending", requestStatus: reviewSuppressed ? "Signature request suppressed" : "Sent", requestSent: !reviewSuppressed, requestSentAt: reviewSuppressed ? "" : new Date().toISOString(), openedAt: "", emailVerifiedAt: "", canCorrectEmail: !reviewSuppressed, canResend: !reviewSuppressed }
+      ]
+    } : null;
+    if (application && (state.statusContext || reviewContext)) {
+      const context = state.statusContext || reviewContext;
+      const labels = { pending_signatures: "Awaiting parent/guardian signature", staff_review_required: "Staff review required", submitted: "Complete" };
+      const signerCards = (context.signers || []).map((signer, index) => {
+        const complete = signer.signatureStatus === "Complete";
+        const actionAttributes = liveWorkflow() ? `data-guardian-id="${esc(signer.guardianId)}"` : "data-static";
+        const actions = !complete && signer.canCorrectEmail ? `<div class="status-signer-actions"><button type="button" class="button button-secondary" data-action="correct-signer-email" ${actionAttributes}>Correct email address</button><button type="button" class="button button-quiet" data-action="resend-signature" ${actionAttributes}>Resend signature request</button></div>` : "";
+        return `<article class="status-signer ${complete ? "is-complete" : signer.contactPermission === "Do not contact" ? "is-suppressed" : "is-pending"}"><header><div><p class="eyebrow">${index === 0 ? "Submitting applicant" : "Required signer"}</p><h4>${esc(signer.name)}</h4></div><span class="status-pill${complete ? " is-complete" : " is-pending"}">${esc(complete ? "Complete" : signer.requestStatus)}</span></header>${complete ? "<p class=\"complete-only\">Complete</p>" : `<dl><dt>Email</dt><dd>${esc(signer.maskedEmail)}</dd><dt>Contact permission</dt><dd>${esc(signer.contactPermission)}</dd><dt>Signature required</dt><dd>${signer.signatureRequired ? "Yes" : "No"}</dd><dt>Request sent</dt><dd>${signer.requestSent ? `Yes${signer.requestSentAt ? `, ${esc(formatStatusDate(signer.requestSentAt))}` : ""}` : "No"}</dd><dt>Opened</dt><dd>${signer.openedAt ? formatStatusDate(signer.openedAt) : "Not yet"}</dd><dt>Email verified</dt><dd>${signer.emailVerifiedAt ? formatStatusDate(signer.emailVerifiedAt) : "Not yet"}</dd></dl>${actions}`}</article>`;
+      }).join("");
+      const liveActions = liveWorkflow() ? `<div class="step-actions"><div class="left">${state.familySessionToken ? '<button type="button" class="button button-secondary" data-action="family-selector">View or add another child</button>' : ""}</div><div class="right"><button type="button" class="button button-quiet" data-action="refresh-status">Refresh status</button></div></div>` : notice("Frontend review", "These status controls are displayed for review only. Nothing is sent, corrected or reopened.");
+      return `<div class="application-status-page" aria-live="polite"><div class="success-card compact-success"><div class="success-mark" aria-hidden="true">&#10003;</div><p class="eyebrow">Application for enrolment</p><h3>Application submitted</h3><div class="status-card"><strong>Reference ${esc(context.reference)}</strong><p>Application status: ${esc(labels[context.status] || context.status)}</p></div></div>${context.requiresStaffReview ? notice("Staff review required", "Rosewood College will review the signature and consent information provided with this application.", "contact-permission-notice") : ""}<section class="signature-status-section" aria-labelledby="signature-progress-title"><h3 id="signature-progress-title">Signature progress</h3>${signerCards}</section>${liveWorkflow() ? renderCorrectionPanel() : ""}${liveActions}</div>`;
     }
     return `<div class="success-card"><div class="success-mark" aria-hidden="true">&#10003;</div><p class="eyebrow">${application ? "Application for enrolment" : "Enrolment Agreement"}</p><h3>Current guardian step complete</h3><p>${application ? "The captured process completes the current guardian's application step and may request separate signatures from additional guardians." : "The captured process records the current guardian's acceptance and sends each additional guardian a separate signing request."}</p><div class="status-card"><strong>Nothing was submitted</strong><p>V6 has no backend. No record, invitation, email or legally effective signature was created.</p></div></div>`;
+  }
+
+  function formatStatusDate(value) {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? String(value || "") : date.toLocaleString("en-AU", { dateStyle: "medium", timeStyle: "short" });
+  }
+
+  function renderCorrectionPanel() {
+    const correction = state.correction;
+    if (!correction) return "";
+    const signer = state.statusContext?.signers?.find(item => item.guardianId === correction.guardianId);
+    const close = '<button type="button" class="button button-quiet" data-action="cancel-correction">Cancel</button>';
+    if (correction.step === "otp") return `<section class="email-correction-panel" aria-labelledby="correction-title"><p class="eyebrow">Step-up verification</p><h3 id="correction-title">Verify your application email</h3><p>A six-digit code was sent to the email address you used to submit this application.</p><div class="field-grid two">${field("signature_correction_code", "Verification code", { required: true, maxlength: 6 })}</div><div class="inline-actions"><button type="button" class="button button-primary" data-action="verify-correction-code">Verify code</button>${close}</div></section>`;
+    if (correction.step === "form") return `<section class="email-correction-panel" aria-labelledby="correction-title"><p class="eyebrow">Pending signer</p><h3 id="correction-title">Correct email address</h3><p class="correction-warning">Correcting this email will cancel the current signing link and send a new request to the corrected address. It will not reopen or create another application.</p><p>Current address: <strong>${esc(signer?.maskedEmail || "")}</strong></p><div class="field-grid two">${field("signature_corrected_email", "Corrected email address", { type: "email", required: true })}${field("signature_corrected_email_confirmation", "Enter corrected email again", { type: "email", required: true })}</div>${check("signature_correction_confirmed", "I understand that the current signing link will be cancelled and replaced.", { required: true })}<div class="inline-actions"><button type="button" class="button button-primary" data-action="confirm-email-correction">Confirm and send new request</button>${close}</div></section>`;
+    return "";
   }
 
   function renderSignedForm() {
@@ -855,6 +902,14 @@
     root.querySelectorAll("[data-sacrament]").forEach(container => setConditional(`[data-sacrament="${container.dataset.sacrament}"]`, root.querySelector(`[name="${CSS.escape(container.dataset.sacrament)}"]`)?.checked));
     root.querySelectorAll("[data-postal]").forEach(container => setConditional(`[data-postal="${container.dataset.postal}"]`, selected(container.dataset.postal) === "No"));
     root.querySelectorAll("[data-healthcare]").forEach(container => setConditional(`[data-healthcare="${container.dataset.healthcare}"]`, selected(container.dataset.healthcare) === "Yes"));
+    root.querySelectorAll("[data-contact-permission-notice]").forEach(container => {
+      const permissionField = container.dataset.contactPermissionNotice;
+      const prohibited = selected(permissionField) === CONTACT_PERMISSION_NO;
+      container.hidden = !prohibited;
+      const prefix = permissionField.replace(/permission$/, "");
+      const email = root.querySelector(`[name="${CSS.escape(prefix + "email")}"]`);
+      if (email) email.required = !prohibited;
+    });
     root.querySelectorAll("[data-guardian-visa]").forEach(container => {
       const fieldName = container.dataset.guardianVisa;
       setConditional(`[data-guardian-visa="${fieldName}"]`, root.querySelector(`[name="${CSS.escape(fieldName)}"]`)?.value === "Temporary Resident");
@@ -1472,8 +1527,87 @@
     }
   }
 
+  async function selectApplicationStatus(applicationId, button) {
+    const previous = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<span class="button-spinner" aria-hidden="true"></span> Opening...';
+    try {
+      const result = await api("/v6/application/status/select", { method: "POST", authToken: state.familySessionToken, body: JSON.stringify({ applicationId }) });
+      state.statusSessionToken = result.sessionToken;
+      state.statusContext = result.status;
+      state.correction = null;
+      state.screen = 8;
+      beginSessionExpiry(result);
+      render();
+    } catch (error) {
+      button.disabled = false;
+      button.innerHTML = previous;
+      showServiceError(error);
+    }
+  }
+
+  async function refreshApplicationStatus() {
+    if (!state.statusSessionToken) return;
+    state.statusContext = await api("/v6/application/status", { method: "GET", authToken: state.statusSessionToken });
+    render();
+  }
+
+  function idempotencyKey() {
+    return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+
+  async function resendPendingSignature(guardianId, button) {
+    const previous = button.textContent;
+    button.disabled = true;
+    button.innerHTML = '<span class="button-spinner" aria-hidden="true"></span> Sending...';
+    try {
+      const result = await api("/v6/application/status/signatures/resend", { method: "POST", authToken: state.statusSessionToken, headers: { "Idempotency-Key": idempotencyKey() }, body: JSON.stringify({ guardianId }) });
+      state.statusContext = result.status;
+      render();
+    } catch (error) {
+      button.disabled = false;
+      button.textContent = previous;
+      showServiceError(error);
+    }
+  }
+
+  async function beginEmailCorrection(guardianId) {
+    try {
+      const result = await api("/v6/application/status/signatures/correction/request-code", { method: "POST", authToken: state.statusSessionToken, body: JSON.stringify({ guardianId }) });
+      state.correction = { guardianId, step: "otp", challengeId: result.challengeId, sessionToken: "" };
+      render();
+      root.querySelector('[name="signature_correction_code"]')?.focus();
+    } catch (error) { showServiceError(error); }
+  }
+
+  async function verifyEmailCorrection() {
+    captureValues();
+    const code = String(state.values.signature_correction_code || "").trim();
+    if (code.length !== 6) return showServiceError(new Error("Enter the six-digit verification code."));
+    try {
+      const result = await api("/v6/application/status/signatures/correction/verify-code", { method: "POST", authToken: state.statusSessionToken, body: JSON.stringify({ guardianId: state.correction.guardianId, challengeId: state.correction.challengeId, code }) });
+      state.correction = { ...state.correction, step: "form", sessionToken: result.correctionSessionToken };
+      render();
+      root.querySelector('[name="signature_corrected_email"]')?.focus();
+    } catch (error) { showServiceError(error); }
+  }
+
+  async function confirmEmailCorrection() {
+    captureValues();
+    const email = String(state.values.signature_corrected_email || "").trim();
+    const emailConfirmation = String(state.values.signature_corrected_email_confirmation || "").trim();
+    const confirmed = Array.isArray(state.values.signature_correction_confirmed) && state.values.signature_correction_confirmed.length > 0;
+    if (!email || email !== emailConfirmation || !confirmed) return showServiceError(new Error("Enter the corrected email twice and confirm that the current link will be replaced."));
+    try {
+      const result = await api("/v6/application/status/signatures/correction/confirm", { method: "POST", authToken: state.correction.sessionToken, headers: { "Idempotency-Key": idempotencyKey() }, body: JSON.stringify({ email, emailConfirmation, confirmed }) });
+      state.statusContext = result.status;
+      state.correction = null;
+      render();
+    } catch (error) { showServiceError(error); }
+  }
+
   async function revokeBrowserSessions() {
-    const tokens = [...new Set([state.sessionToken, state.familySessionToken].filter(Boolean))];
+    const tokens = [...new Set([state.sessionToken, state.familySessionToken, state.statusSessionToken, state.correction?.sessionToken].filter(Boolean))];
     await Promise.allSettled(tokens.map(authToken => api("/v6/session/logout", { method: "POST", authToken, body: "{}" })));
   }
 
@@ -1483,8 +1617,12 @@
     resetDocumentUploads();
     state.sessionToken = "";
     state.familySessionToken = "";
+    state.statusSessionToken = "";
     state.familyContext = null;
     state.applicationContext = null;
+    state.statusContext = null;
+    state.correction = null;
+    state.submitResult = null;
     state.challengeId = "";
     state.revision = 0;
     state.formVersion = "";
@@ -1597,6 +1735,8 @@
       const canvas = root.querySelector('[data-signature="application_signature"] canvas');
       const signatureDataUrl = typeof state.signatures.application_signature === "string" ? state.signatures.application_signature : canvas.toDataURL("image/png");
       state.submitResult = await api("/v6/application/submit", { method: "POST", body: JSON.stringify({ expectedRevision: state.revision, formVersion: state.formVersion, formDefinitionHash: state.formDefinitionHash, signatureDataUrl }) });
+      state.statusSessionToken = state.submitResult.statusSessionToken || "";
+      state.statusContext = state.submitResult.statusContext || null;
       state.saveStatus = "saved";
       state.lastSavedLabel = "submitted";
       return next();
@@ -1649,6 +1789,7 @@
     const retryUpload = event.target.closest("[data-retry-upload]");
     const action = event.target.closest("[data-action]");
     const selectedApplication = event.target.closest("[data-select-application]");
+    const selectedStatus = event.target.closest("[data-view-application-status]");
     const add = event.target.closest("[data-add]");
     const remove = event.target.closest("[data-remove]");
     const clear = event.target.closest("[data-clear-signature]");
@@ -1670,17 +1811,28 @@
       return;
     }
     if (selectedApplication) return selectFamilyApplication(selectedApplication.dataset.selectApplication, selectedApplication);
+    if (selectedStatus) return selectApplicationStatus(selectedStatus.dataset.viewApplicationStatus, selectedStatus);
     if (action?.dataset.action === "sign-out") return signOut();
     if (action?.dataset.action === "save-close") return saveAndClose(action);
+    if (action?.dataset.action === "refresh-status") return refreshApplicationStatus().catch(showServiceError);
+    if (action?.dataset.action === "resend-signature") return resendPendingSignature(action.dataset.guardianId, action);
+    if (action?.dataset.action === "correct-signer-email") return beginEmailCorrection(action.dataset.guardianId);
+    if (action?.dataset.action === "verify-correction-code") return verifyEmailCorrection();
+    if (action?.dataset.action === "confirm-email-correction") return confirmEmailCorrection();
+    if (action?.dataset.action === "cancel-correction") { state.correction = null; return render(); }
     if (action?.dataset.action === "family-selector") {
-      if (state.familyContext && state.applicationContext) {
-        state.familyContext.applications = state.familyContext.applications.map(record => record.applicationId === state.applicationContext.applicationId ? { ...record, status: state.submitResult?.status || record.status, editable: false } : record);
+      const currentApplicationId = state.applicationContext?.applicationId || state.statusContext?.applicationId;
+      if (state.familyContext && currentApplicationId) {
+        state.familyContext.applications = state.familyContext.applications.map(record => record.applicationId === currentApplicationId ? { ...record, status: state.submitResult?.status || state.statusContext?.status || record.status, editable: false } : record);
       }
       const email = state.values.application_gateway_email;
       resetDocumentUploads();
       state.sessionToken = "";
+      state.statusSessionToken = "";
       state.applicationContext = null;
       state.submitResult = null;
+      state.statusContext = null;
+      state.correction = null;
       state.values = { application_gateway_email: email };
       state.screen = 2;
       return render();
@@ -1699,7 +1851,23 @@
     }
     if (remove) {
       captureValues();
-      state.counts[remove.dataset.remove] = Math.max(1, state.counts[remove.dataset.remove] - 1);
+      const kind = remove.dataset.remove;
+      const removedIndex = state.counts[kind] - 1;
+      const prefixes = {
+        appGuardian: `app_guardian_${removedIndex}_`,
+        emergency: `emergency_${removedIndex}_`,
+        acceptanceGuardian: `acceptance_guardian_${removedIndex}_`,
+        declineGuardian: `decline_guardian_${removedIndex}_`,
+        sibling: `sibling_${removedIndex}_`,
+        futureSibling: `future_sibling_${removedIndex}_`,
+        relative: `relative_${removedIndex}_`
+      };
+      for (const key of Object.keys(state.values)) {
+        if (prefixes[kind] && key.startsWith(prefixes[kind])) state.values[key] = Array.isArray(state.values[key]) ? [] : "";
+      }
+      state.counts[kind] = Math.max(1, removedIndex);
+      const confirmations = { appGuardian: "app_guardians_complete", acceptanceGuardian: "acceptance_guardians_complete", declineGuardian: "decline_guardians_complete" };
+      if (confirmations[kind]) state.values[confirmations[kind]] = [];
       render();
       scheduleAutosave();
       return;

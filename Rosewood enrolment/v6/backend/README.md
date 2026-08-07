@@ -36,9 +36,9 @@ server-acknowledged application create, start, save and submission also writes a
 append-only DynamoDB revision. Staff can inspect a selected historical revision through
 an authorised, audited endpoint. See `../SCHEMA-EVOLUTION.md` before changing fields,
 options, validation or required status.
-The current `2026.5` contracts also pin the family HTML, JavaScript, CSS, policy
-projection and all original Word/PDF policy assets. Policy viewing is frontend-only and
-does not create an application answer, acknowledgement or audit event.
+The current `2026.6` contracts pin the family, staff and signing HTML/JavaScript/CSS,
+policy projection and all original Word/PDF policy assets. Policy viewing is frontend-
+only and does not create an application answer, acknowledgement or audit event.
 
 ## Invitations And Staff Access
 
@@ -61,6 +61,14 @@ does not create an application answer, acknowledgement or audit event.
   the private action link and enrolment contact only. They do not include the student
   name, family answers, medical information or internal identifiers. Email and OTP
   verification remain mandatory before the frozen review is returned.
+- Contact permission and signature requirement are separate stored values. The backend
+  does not create, recover, resend or verify a signing task for a guardian marked **Do
+  not contact**. The applicant's explanation is retained and the application enters
+  staff review when no permitted electronic signature remains.
+- Submitted applications have a secure read-only family status session. Correcting a
+  permitted pending signer's email requires applicant step-up OTP, transactionally
+  revokes the old task and preserves restricted email history. It does not change the
+  application ID, frozen answer revision or submitting applicant's signature.
 
 ## Runtime
 
@@ -93,6 +101,7 @@ POST /v6/staff/applications/detail
 POST /v6/staff/applications/revision
 POST /v6/staff/invitations
 POST /v6/staff/invitations/resend
+POST /v6/staff/applications/contact-permission
 POST /v6/eoi
 POST /v6/application/access/request-code
 POST /v6/application/access/verify-code
@@ -103,6 +112,13 @@ PUT  /v6/application/draft
 POST /v6/application/documents/start
 POST /v6/application/documents/confirm
 POST /v6/application/submit
+POST /v6/application/records/status
+GET  /v6/application/status
+POST /v6/application/status/signatures/resend
+POST /v6/application/status/signatures/correction/request-code
+POST /v6/application/status/signatures/correction/verify-code
+POST /v6/application/status/signatures/correction/confirm
+POST /v6/application/signatures/opened
 POST /v6/application/signatures/request-code
 POST /v6/application/signatures/verify-code
 POST /v6/application/signatures/submit

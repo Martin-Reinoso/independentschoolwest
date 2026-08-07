@@ -18,8 +18,8 @@ Test date: 8 August 2026
 - no inline styles are used in V6-rendered content
 - scans found no family-facing `Secure enrolment form`, backend-scope or
   `Progress saves when you continue` wording
-- the release page references V6 CSS `v=10`, policy projection `v=1` and JavaScript
-  `v=15`
+- the release page references V6 CSS `v=11`, policy projection `v=1` and JavaScript
+  `v=17`
 - all three copied Word documents match their approved source SHA-256 hashes exactly;
   their canonical PDFs open as 8, 7 and 8-page documents
 
@@ -90,6 +90,14 @@ Tested through a local HTTP server in the Codex in-app browser.
   the signature section and has no website suffix
 - with two parent/guardian records, the second name and email populate the later-signing
   card and its acknowledgement is required
+- the second contact's explicit contact-permission choices switch the email requirement
+  and amber do-not-contact notice immediately without removing the stored contact record
+- the application Signature page shows either Separate signature request required or
+  Signature request suppressed and Staff review required, and the latter route requires
+  the one-signature explanation
+- the frontend-only Pending signatures frame mirrors the read-only production status
+  view; at 390 x 844 both signer cards and both action buttons fit without horizontal
+  overflow and retain full-width touch targets
 - after removing the second parent/guardian, the required one-signature explanation and
   revised reason appear instead
 - Acceptance Student contains only first name, last name, year level, commencement year
@@ -160,7 +168,7 @@ Mobile viewport: 390 x 844.
 
 ## Backend Checks
 
-- forty-four Node tests pass for immutable form definitions and stable hashes, approved
+- the complete Node test suite passes for immutable form definitions and stable hashes, approved
   policy source/asset hashes, guardian-email privacy, frontend
   submission guidance and in-browser signature continuity, Google Drive
   upload/confirmation, legacy-safe
@@ -174,9 +182,9 @@ Mobile viewport: 390 x 844.
   lifetime, explicit session revocation, atomic invitation-token rotation and
   customer-managed KMS access in the Lambda runtime policy, non-destructive partial
   saves, form-version mismatch rejection and audited historical-revision retrieval
-- regression coverage proves that a general no-contact preference does not suppress the
-  required additional-guardian signing request, and that a missing task can be recovered
-  transactionally without rewriting the submitted application answers
+- regression coverage proves that explicit Do not contact suppresses task creation,
+  outbox email, OTP, resend, correction and recovery, while a permitted missing task can
+  be recovered transactionally without rewriting submitted answers
 - the production deployment bundle builds successfully and both family/admin browser
   scripts pass Node syntax checks
 - the AWS stack deployed successfully and `/v6/health` returns the expected schema
@@ -265,9 +273,12 @@ Verified in production on 8 August 2026 without printing or exporting family ans
 - no production family record, answer, signature image, invitation token or identifier was
   written to this repository or included in the release evidence
 
-## Guardian Signature Workflow Release
+## Historical Guardian Signature Workflow Release (Superseded)
 
 Verified in production on 8 August 2026 without printing or exporting family answers.
+This records the earlier `2026.4` behaviour for audit history. Its no-contact handling
+was superseded by the explicit fail-closed `2026.6` contract and must not be used as
+current operational guidance.
 
 - production diagnosis found a primary-signed application with two required signatures,
   one recorded signature, no additional-guardian task and no signature-invitation email
@@ -277,8 +288,8 @@ Verified in production on 8 August 2026 without printing or exporting family ans
 - the family selector presents `pending_signatures` as **Awaiting Parent/Guardian
   Signature** in both status and action columns; **Completed** is reserved for the final
   `submitted` state
-- all additional listed guardians with valid email addresses receive the required
-  transactional signing task even when their general contact preference is No
+- at that historical release, all listed guardians with valid email addresses received
+  the transactional task even when the older preference was No; `2026.6` prohibits this
 - forty-one Node tests pass, including no-contact task creation, transactional
   missing-task recovery and frozen `2026.1` to `2026.3` definition hashes
 - the recovery command defaults to dry run and reported exactly one missing request for
@@ -377,6 +388,39 @@ answer, document, signature task or OTP.
   remained enabled and the Lambda error alarm remained `OK`
 - Amazon SES accepted the updated guardian template through the Sydney mailbox simulator
   from `enrolment@ffe.org.au`; no real recipient or application information was used
+
+## Explicit Contact Permission And Pending Signer Correction Release
+
+Verified locally and in production on 8 August 2026 using synthetic records only for
+automated workflow verification. No production application was reopened, duplicated or
+edited during release verification.
+
+- all 54 Node tests pass, including one guardian, permitted and prohibited second
+  guardians, repeated-contact removal, post-submission-only delivery, explanation and
+  staff-review enforcement, staff permission changes, OTP step-up, all pending correction
+  states, previous-link/session/challenge revocation, corrected-email signing, completion
+  lockout, duplicate requests, rate limits and correction/signing race conditions
+- the deployment bundle passed its supply-chain and pinned-asset gates; V6.6 pins family
+  JavaScript `v17`, CSS `v11`, the staff and signer assets, all policy-reader assets and
+  the six approved Word/PDF policy files
+- the reviewed CloudFormation changes modified Lambda code in place and its recalculated
+  EventBridge target/permission only; DynamoDB, the restricted audit table, KMS key,
+  backup plan/vault, document storage, secrets and public endpoint were not replaced
+- CloudFormation reached `UPDATE_COMPLETE`; Lambda remained `Active` with a successful
+  update and `/v6/health` returned schema
+  `rosewood-v6-2026-08-08-contact-permission` with both current `2026.6` contracts
+- the scheduled Sydney outbox remained enabled at one-minute intervals, the AWS Backup
+  plan remained present and the Lambda error alarm remained `OK`
+- desktop browser verification confirmed the exact permission values, calm amber notice,
+  dynamic email requirement, permitted/suppressed signature routes and required
+  one-signature explanation
+- the read-only status preview exposes a masked pending signer email, contact permission,
+  sent/opened/verified state and only eligible correction/resend actions; completed
+  signers display only Complete
+- mobile verification at 390 x 844 reported a 390px document width, no horizontal
+  overflow, 355px signer cards and two 313px action buttons
+- ordinary logs contain no complete correction email address; previous email values and
+  full audit history remain restricted to authorised staff detail views
 
 ## KMS Runtime Permission Incident
 
