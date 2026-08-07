@@ -17,7 +17,7 @@ Test date: 7 August 2026
 - no inline styles are used in V6-rendered content
 - scans found no family-facing `Secure enrolment form`, backend-scope or
   `Progress saves when you continue` wording
-- the live page references V6 CSS `v=5` and JavaScript `v=8`
+- the live page references V6 CSS `v=5` and JavaScript `v=9`
 
 ## Browser Checks
 
@@ -99,6 +99,8 @@ Tested through a local HTTP server in the Codex in-app browser.
   short family-facing save/connectivity states
 - every live Application section renders Save and continue later; the child selector
   renders Sign out and no Back control
+- the save indicator is absent from the gateway, OTP and child-selection screens, so an
+  authentication failure cannot be presented as a draft-save failure
 - debounced autosave uses a 1.2-second pause, an eight-second maximum wait, revision
   serialization and unchanged-snapshot suppression
 - offline, online, failed-save and expired-session paths update the sticky status; an

@@ -482,6 +482,9 @@
 
   function updateSaveState(screen) {
     const save = document.querySelector("#save-state");
+    const applicationDraftOpen = !(liveWorkflow() && state.workflow === "application") || state.screen >= 3;
+    save.hidden = !applicationDraftOpen;
+    if (!applicationDraftOpen) return;
     save.classList.remove("is-saved", "is-dirty", "is-saving", "is-offline", "is-error", "is-expired");
     if (state.paused) {
       save.classList.add("is-saved");
