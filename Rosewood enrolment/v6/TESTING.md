@@ -534,3 +534,25 @@ submitted, reopened or changed during release verification.
 - the public health endpoint returned `ok`, schema
   `rosewood-v6-2026-08-08-form-v7`, EOI `rosewood-eoi-2026.7` and Application
   `rosewood-application-2026.7` after the Pages release
+
+## Sender Recognition Release
+
+Verified and deployed in Sydney on 8 August 2026 without creating or changing a family
+application.
+
+- all 61 Node tests pass, including the SES request header and application invitation
+  MIME regression checks; the frozen-lockfile deployment build also passes
+- the application invitation HTML retains one `BEGIN APPLICATION` button and no
+  duplicate visible fallback URL; its plain-text alternative retains the private URL
+  exactly once
+- the reviewed CloudFormation change set modified Lambda code/environment in place and
+  dynamically recalculated only the existing outbox rule and permission; no database,
+  audit, KMS, backup, staging, Drive/Sheets or secret resource changed
+- CloudFormation reached `UPDATE_COMPLETE`; Lambda is `Active` with successful update,
+  `SENDER_NAME` is `Rosewood College Enrolment`, and `/v6/health` retains the V6.7
+  schema and form contracts
+- one synthetic staff-access canary reached the operations Inbox from
+  `Rosewood College Enrolment <enrolment@ffe.org.au>`; the original message passed SPF,
+  Rosewood DKIM and DMARC and retained the aligned `bounce.ffe.org.au` return path
+- the Lambda error alarm is `OK`, the one-minute outbox schedule remains enabled and
+  the existing daily/monthly backup plan remains present
