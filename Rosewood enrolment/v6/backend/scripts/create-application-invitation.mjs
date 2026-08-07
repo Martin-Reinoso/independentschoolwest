@@ -12,7 +12,7 @@ function args(argv) {
 }
 
 const options = args(process.argv.slice(2));
-if (!options.email) throw new Error("Use --email family@example.com. Optional: --eoi-id, --first, --last, --student-first, --student-last.");
+if (!options.email) throw new Error("Use --email family@example.com. Direct invitations also require --first; --last is encouraged. EOI-linked invitations use --eoi-id.");
 const config = { ...process.env, ...await loadSecret() };
 const store = new DynamoStore({ tableName: config.ROSEWOOD_TABLE_NAME });
 const result = await createApplicationInvitation({
@@ -20,8 +20,6 @@ const result = await createApplicationInvitation({
   recipientEmail: options.email,
   firstName: options.first || "",
   lastName: options.last || "",
-  studentFirstName: options["student-first"] || "",
-  studentLastName: options["student-last"] || "",
   sourceEoiId: options["eoi-id"] || "",
   createdBy: options["created-by"] || "staff-cli",
   applicationUrl: config.APPLICATION_PAGE_URL

@@ -20,6 +20,8 @@
     signatures: {},
     challengeId: "",
     sessionToken: "",
+    familySessionToken: "",
+    familyContext: null,
     revision: 0,
     applicationContext: null,
     eoiResult: null,
@@ -35,11 +37,12 @@
   }
 
   async function api(path, options = {}) {
+    const { authToken, ...requestOptions } = options;
     const response = await fetch(`${apiBase}${path}`, {
-      ...options,
+      ...requestOptions,
       headers: {
         "Content-Type": "application/json",
-        ...(state.sessionToken ? { Authorization: `Bearer ${state.sessionToken}` } : {}),
+        ...(authToken || state.sessionToken ? { Authorization: `Bearer ${authToken || state.sessionToken}` } : {}),
         ...(options.headers || {})
       }
     });
@@ -188,15 +191,17 @@
     const noun = kind === "application" ? "application" : kind === "acceptance" ? "enrolment agreement" : "decline record";
     const action = kind === "application" ? "Continue" : kind === "acceptance" ? "Start acceptance form" : "Start decline form";
     const newRecord = kind === "decline" ? "" : section(`Start a new ${noun}`, `<div class="field-grid two">${field(`${kind}_new_first`, "Student First Name", { required: true })}${field(`${kind}_new_last`, "Student Last Name", { required: true })}</div>`) + actions({ label: `Start ${noun}` });
-    if (kind === "application" && liveWorkflow() && state.applicationContext) {
-      const context = state.applicationContext;
-      const studentName = context.studentName || [state.values.student_first, state.values.student_last].filter(Boolean).join(" ");
-      const linked = Boolean(context.sourceEoiId);
-      const record = studentName
-        ? section("Student record", `<div class="record-table-wrap"><table class="record-table"><thead><tr><th>Student Name</th><th>Source</th><th>Application Status</th><th>Action</th></tr></thead><tbody><tr><td>${esc(studentName)}</td><td>${linked ? "Expression of Interest" : "Direct invitation"}</td><td><span class="status-pill">${esc(context.status === "in_progress" ? "In Progress" : "Not Started")}</span></td><td><button type="button" class="button button-primary" data-action="next">Continue</button></td></tr></tbody></table></div>`)
-        : section("Enter the student", `<p>This invitation was created without an earlier Expression of Interest. Enter the student's name to begin.</p><div class="field-grid two">${field("application_new_first", "Student First Name", { required: true })}${field("application_new_last", "Student Last Name", { required: true })}</div>`) + actions({ label: "Start application" });
-      return intro("Begin the application", linked ? "We found the Expression of Interest linked by Rosewood College. Review and update all prefilled information as you continue." : "This is a direct invitation to apply. A previous Expression of Interest is not required.", workflows[kind].label) +
-        section("Invited contact", `<div class="review-card"><dl><dt>Email</dt><dd>${esc(context.recipientEmail || state.values.application_gateway_email)}</dd><dt>Application ID</dt><dd>${esc(context.applicationId)}</dd></dl></div>`) + record;
+    if (kind === "application" && liveWorkflow() && (state.familyContext || state.applicationContext)) {
+      const family = state.familyContext || { recipientEmail: state.applicationContext.recipientEmail, parentGuardianName: "", applications: [{ applicationId: state.applicationContext.applicationId, studentName: state.applicationContext.studentName, status: state.applicationContext.status, sourceEoiId: state.applicationContext.sourceEoiId, editable: ["invited", "in_progress"].includes(state.applicationContext.status) }] };
+      const applications = (family.applications || []).filter(record => record.studentName);
+      const linked = applications.some(record => record.sourceEoiId);
+      const statusLabel = status => ({ invited: "Not Started", in_progress: "In Progress", pending_signatures: "Pending Signatures", submitted: "Submitted" })[status] || status;
+      const rows = applications.map(record => `<tr><td>${esc(record.studentName)}</td><td>${record.sourceEoiId ? "Expression of Interest" : "Direct invitation"}</td><td><span class="status-pill${record.editable ? "" : " is-complete"}">${esc(statusLabel(record.status))}</span></td><td>${record.editable ? `<button type="button" class="button button-primary" data-select-application="${esc(record.applicationId)}">Continue</button>` : "Completed"}</td></tr>`).join("");
+      const records = applications.length ? section("Child applications", `<div class="record-table-wrap"><table class="record-table"><thead><tr><th>Student Name</th><th>Source</th><th>Application Status</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div>`) : "";
+      const startCopy = applications.length ? "Add another child" : "Enter the first child";
+      return intro("Choose a child application", linked ? "We found the Expression of Interest linked by Rosewood College. You can continue that child’s application or start a separate application for another child." : "This is a direct family invitation. Add each child who will apply to Rosewood College; each child has a separate application record.", workflows[kind].label) +
+        section("Invited parent or guardian", `<div class="review-card"><dl>${family.parentGuardianName ? `<dt>Name</dt><dd>${esc(family.parentGuardianName)}</dd>` : ""}<dt>Email</dt><dd>${esc(family.recipientEmail || state.values.application_gateway_email)}</dd></dl></div>`) + records +
+        section(startCopy, `<p>${applications.length ? "Use this only for another child. Their medical details, documents, progress and signatures will remain separate from the applications above." : "Enter the child’s name to create their Application for Enrolment."}</p><div class="field-grid two">${field("application_new_first", "Student First Name", { required: true })}${field("application_new_last", "Student Last Name", { required: true })}</div>`) + actions({ label: applications.length ? "Start another application" : "Start application" });
     }
     return intro(kind === "application" ? "Select or enter a student" : kind === "acceptance" ? "Accept your offer" : "Decline an offer", `Your information was located. Select a student to continue the ${noun}.`, workflows[kind].label) +
       section("Matched contact", `<div class="record-table-wrap"><table class="record-table"><thead><tr><th>Name</th><th>Last Updated</th><th>Address</th><th>Email</th><th>Mobile Phone</th></tr></thead><tbody><tr><td>Alex Example</td><td>4 August 2026</td><td>Synthetic address</td><td>family@example.test</td><td>0400 000 000</td></tr></tbody></table></div>`) +
@@ -376,7 +381,7 @@
     const application = state.workflow === "application";
     if (application && liveWorkflow() && state.submitResult) {
       const pending = state.submitResult.status === "pending_signatures";
-      return `<div class="success-card"><div class="success-mark" aria-hidden="true">&#10003;</div><p class="eyebrow">Application for enrolment</p><h3>Application received</h3><p>Your Application for Enrolment has been submitted successfully.</p><div class="status-card"><strong>Reference ${esc(state.submitResult.reference)}</strong><p>${pending ? "A separate signature request has been sent to each additional parent or guardian who must sign." : "All required signatures have been recorded."}</p></div><p>A confirmation email has been sent. You can close this page safely.</p></div>`;
+      return `<div class="success-card"><div class="success-mark" aria-hidden="true">&#10003;</div><p class="eyebrow">Application for enrolment</p><h3>Application received</h3><p>Your Application for Enrolment has been submitted successfully.</p><div class="status-card"><strong>Reference ${esc(state.submitResult.reference)}</strong><p>${pending ? "A separate signature request has been sent to each additional parent or guardian who must sign." : "All required signatures have been recorded."}</p></div><p>A confirmation email has been sent. You can close this page safely.</p>${state.familySessionToken ? '<button type="button" class="button button-secondary" data-action="family-selector">View or add another child</button>' : ""}</div>`;
     }
     return `<div class="success-card"><div class="success-mark" aria-hidden="true">&#10003;</div><p class="eyebrow">${application ? "Application for enrolment" : "Enrolment Agreement"}</p><h3>Current guardian step complete</h3><p>${application ? "The captured process completes the current guardian's application step and may request separate signatures from additional guardians." : "The captured process records the current guardian's acceptance and sends each additional guardian a separate signing request."}</p><div class="status-card"><strong>Nothing was submitted</strong><p>V6 has no backend. No record, invitation, email or legally effective signature was created.</p></div></div>`;
   }
@@ -460,7 +465,7 @@
   function updateSaveState(screen) {
     const save = document.querySelector("#save-state");
     if (liveWorkflow()) {
-      const verified = state.workflow === "eoi" || Boolean(state.sessionToken);
+      const verified = state.workflow === "eoi" || Boolean(state.sessionToken || state.familySessionToken);
       const saved = state.saveStatus === "saved" || Boolean(state.eoiResult || state.submitResult);
       save.classList.toggle("is-saved", saved);
       save.classList.toggle("is-saving", state.saveStatus === "saving");
@@ -823,6 +828,31 @@
     }
   }
 
+  function applyApplicationSession(result) {
+    state.sessionToken = result.sessionToken;
+    state.applicationContext = result.context;
+    if (result.family) state.familyContext = result.family;
+    state.revision = result.context.revision;
+    state.values = { application_gateway_email: state.values.application_gateway_email, ...result.context.values };
+    state.counts.appGuardian = result.context.guardianCount || 1;
+    state.counts.emergency = result.context.emergencyCount || 2;
+  }
+
+  async function selectFamilyApplication(applicationId, button) {
+    const previous = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<span class="button-spinner" aria-hidden="true"></span> Opening...';
+    try {
+      const result = await api("/v6/application/records/select", { method: "POST", authToken: state.familySessionToken, body: JSON.stringify({ applicationId }) });
+      applyApplicationSession(result);
+      return next();
+    } catch (error) {
+      button.disabled = false;
+      button.innerHTML = previous;
+      showServiceError(error);
+    }
+  }
+
   async function handleLiveSubmit() {
     if (state.workflow === "eoi" && state.screen === 0) {
       setBusy(true, "Submitting...");
@@ -842,17 +872,27 @@
     if (state.screen === 1) {
       setBusy(true, "Verifying...");
       const result = await api("/v6/application/access/verify-code", { method: "POST", body: JSON.stringify({ invitationToken, challengeId: state.challengeId, code: state.values.application_code }) });
-      state.sessionToken = result.sessionToken;
+      state.familySessionToken = result.familySessionToken || "";
+      state.familyContext = result.family || null;
+      state.sessionToken = result.family ? "" : result.sessionToken;
       state.applicationContext = result.context;
       state.revision = result.context.revision;
-      state.values = { application_gateway_email: state.values.application_gateway_email, ...result.context.values };
-      state.counts.appGuardian = result.context.guardianCount || 1;
-      state.counts.emergency = result.context.emergencyCount || 2;
+      state.values = result.family ? { application_gateway_email: state.values.application_gateway_email } : { application_gateway_email: state.values.application_gateway_email, ...result.context.values };
+      if (!result.family) {
+        state.counts.appGuardian = result.context.guardianCount || 1;
+        state.counts.emergency = result.context.emergencyCount || 2;
+      }
       return next();
     }
     if (state.screen === 2) {
-      if (state.values.application_new_first) state.values.student_first = state.values.application_new_first;
-      if (state.values.application_new_last) state.values.student_last = state.values.application_new_last;
+      if (state.familyContext && state.familySessionToken) {
+        setBusy(true, "Creating application...");
+        const result = await api("/v6/application/records", { method: "POST", authToken: state.familySessionToken, body: JSON.stringify({ studentFirstName: state.values.application_new_first, studentLastName: state.values.application_new_last }) });
+        applyApplicationSession(result);
+      } else {
+        if (state.values.application_new_first) state.values.student_first = state.values.application_new_first;
+        if (state.values.application_new_last) state.values.student_last = state.values.application_new_last;
+      }
       return next();
     }
     if (state.screen === 5) {
@@ -900,11 +940,25 @@
     updateConditionals();
   });
 
-  form.addEventListener("click", event => {
+  form.addEventListener("click", async event => {
     const action = event.target.closest("[data-action]");
+    const selectedApplication = event.target.closest("[data-select-application]");
     const add = event.target.closest("[data-add]");
     const remove = event.target.closest("[data-remove]");
     const clear = event.target.closest("[data-clear-signature]");
+    if (selectedApplication) return selectFamilyApplication(selectedApplication.dataset.selectApplication, selectedApplication);
+    if (action?.dataset.action === "family-selector") {
+      if (state.familyContext && state.applicationContext) {
+        state.familyContext.applications = state.familyContext.applications.map(record => record.applicationId === state.applicationContext.applicationId ? { ...record, status: state.submitResult?.status || record.status, editable: false } : record);
+      }
+      const email = state.values.application_gateway_email;
+      state.sessionToken = "";
+      state.applicationContext = null;
+      state.submitResult = null;
+      state.values = { application_gateway_email: email };
+      state.screen = 2;
+      return render();
+    }
     if (action?.dataset.action === "next") next();
     if (action?.dataset.action === "back") { captureValues(); state.screen = Math.max(0, state.screen - 1); render(); }
     if (action?.dataset.action === "resend-code") resendCode(action.dataset.resendKind);

@@ -31,13 +31,15 @@ Use a direct invitation when a family has not submitted an EOI, or when Rosewood
 decided not to link an earlier EOI.
 
 1. Select **Create invitation** and **Direct invitation**.
-2. Enter the family email. Names are optional at invitation time and remain editable by
-   the family in the application.
+2. Enter the parent/guardian first name and family email. Surname is optional but
+   encouraged so the email can address the family clearly.
 3. Select **Send invitation** once.
 4. Confirm that the portal reports the recipient and that an application row appears.
 
-The backend creates new contact, student, invitation and application records with no
-`source_eoi_id`. Matching an existing EOI email never creates a link by itself.
+Do not enter a child name. After email OTP verification, the family enters each child
+and the backend gives each child a separate application record under the invitation.
+The initial record has no `source_eoi_id`; matching an existing EOI email never creates
+a link by itself.
 
 ## EOI-Linked Invitation
 
@@ -50,7 +52,9 @@ Use this path only when the specific EOI should prepopulate the new application.
 
 The EOI email must exactly match the invitation recipient. The portal blocks an EOI
 already linked to another application. The source EOI record remains separate and is
-not overwritten when a family edits prefilled application fields.
+not overwritten when a family edits prefilled application fields. The linked child's
+name, year level and entry year appear in the EOI-linked invitation. The family can add
+another child after login without linking that new child to the EOI.
 
 ## Resend
 
@@ -58,8 +62,9 @@ Use **Resend** only when a family confirms they cannot use the active invitation
 
 - The backend creates a new high-entropy token and invalidates the earlier link.
 - The link is delivered by SES and is never displayed in the staff browser.
-- Submitted applications and applications awaiting guardian signatures cannot be
-  resent from this portal.
+- The replacement link expires 14 days after resend. Initial links also last 14 days.
+- Resend is available while at least one child application under the invitation remains
+  editable. It is not available when the family has no editable application.
 - Earlier invitations created before token rotation was introduced may require a new
   invitation instead of a resend.
 

@@ -1,6 +1,6 @@
 # Rosewood V6 Application Workflow and Data Process Map
 
-Document date: 6 August 2026
+Document date: 7 August 2026
 Implementation: Rosewood Enrolment V6
 Audience: Rosewood leadership, admissions, governance, privacy, records management,
 technology support and implementation partners
@@ -227,10 +227,10 @@ The current production allowlist uses `info@ffe.org.au`. The backend supports
 flowchart TD
     Start["Staff chooses Create invitation"]
     Choice{"Link a specific EOI?"}
-    Direct["Direct invitation: enter email and optional names"]
+    Direct["Direct invitation: parent first name, optional surname and email"]
     Linked["EOI-linked invitation: select one unlinked EOI"]
     Checks["Validate staff role, email and EOI rules"]
-    Create["Create contact/student IDs, invitation and application"]
+    Create["Create contact, invitation and initial application"]
     Prefill["Reuse EOI IDs and copy approved prefill values"]
     Empty["Create new IDs and minimal initial values"]
     Email["Queue private invitation email"]
@@ -247,9 +247,14 @@ flowchart TD
 
 - Used when there is no EOI or Rosewood intentionally does not link an earlier EOI.
 - Matching an EOI email does not create an automatic link.
-- Backend creates new contact, student, invitation and application identifiers.
+- Staff do not enter a child name. Parent/guardian first name and email are mandatory;
+  surname is optional but encouraged.
+- Backend creates the family contact, invitation and a blank initial application/student
+  identifier. The Student projection is written after the family enters a child.
 - Initial application status is `invited`, revision `0`, with two guardian slots and
   two emergency-contact slots.
+- After OTP, the family can add multiple children. Every child receives an independent
+  application ID, student ID, draft, documents, signatures, progress and outcome.
 
 ### EOI-Linked Invitation
 
@@ -259,13 +264,24 @@ flowchart TD
 - Selected EOI contact, student, address, enrolment and additional-needs fields are
   copied into the editable application draft.
 - A Workflow Links projection records the relationship; the EOI itself is not changed.
+- The family may add another child after login. A later child is a new direct
+  application under the family invitation and is not silently linked to the EOI.
+
+### Invitation Email Variants
+
+- Both variants use `Invitation to Apply for Enrolment at Rosewood College`.
+- Direct invitations thank the family, explain how to begin and do not name a child.
+- EOI-linked invitations name the deliberately linked child, year level and entry year
+  and explain that approved EOI information may be prefilled.
+- Both include a button, a copy/paste private URL, `enrolment@ffe.org.au`, the Rosewood
+  College Enrolment Team sign-off and an explicit expiry date.
 
 ### Invitation Token Handling
 
 - The raw token appears only in the private email link and is returned internally to
   the email process, not to the staff browser.
 - DynamoDB stores a SHA-256 token hash.
-- Invitation expires after 30 days.
+- Initial and replacement invitations expire after 14 days.
 - Resend creates a new token, deletes the previous token-keyed record and invalidates
   the earlier URL atomically.
 
@@ -288,23 +304,34 @@ sequenceDiagram
     API->>SES: Send six-digit OTP
     Family->>Page: Enter OTP
     Page->>API: Verify one-time challenge
-    API->>DB: Consume challenge and create 30-minute session
+    API->>DB: Consume challenge and create 30-minute family session
     API->>Audit: Record email verification
-    API-->>Page: Return application context and editable values
+    API-->>Page: Return only applications attached to the family invitation
+    Family->>Page: Select an existing child or enter another child
+    Page->>API: Select or create a child application
+    API->>DB: Authorise invitation membership and create application session
+    API-->>Page: Return that child's application context and editable values
 ```
 
 The API returns a generic response when requesting a code so the endpoint does not
 confirm whether an invitation/email combination exists. The browser receives the raw
-session token and keeps it only in memory. Every subsequent draft, upload and submission
-request is scoped server-side to the application in that session.
+family and application session tokens and keeps them only in memory. The family token
+can list/select only the applications attached to its invitation. Every subsequent
+draft, upload and submission request is scoped server-side to the selected child
+application in its separate application session.
 
 ### Record Selection Screen
 
-- EOI-linked invitation: shows that Rosewood linked the prior EOI and allows the family
-  to review/edit prefilled values.
-- Direct invitation with known names: shows the invited student/application record.
-- Direct invitation without names: asks for student first and last name before the
-  five application sections.
+- EOI-linked invitation: shows the deliberately linked child and allows the family to
+  review/edit the prefilled application.
+- Direct invitation: asks for the first child's first and last name after OTP; staff do
+  not provide it in the invitation screen.
+- Returning families see every child application attached to the invitation and can
+  continue any editable record.
+- Families can add another child. The new child is created as a separate application;
+  medical details, documents, progress and signatures are never merged across children.
+- Server-side membership checks reject an application ID not attached to the verified
+  invitation. The launch limit is eight child applications per invitation.
 
 ## Workflow 4: Five Application Sections
 
@@ -544,7 +571,8 @@ stateDiagram-v2
 | Trigger | Recipient | Message |
 | --- | --- | --- |
 | EOI submission | Primary EOI contact | EOI acknowledgement and reference |
-| Application invitation | Invited family email | Private application link and expiry |
+| Direct application invitation | Invited family email | Parent-addressed private link, no child name and 14-day expiry |
+| EOI-linked application invitation | Invited EOI email | Linked child/year details, prefill explanation, private link and 14-day expiry |
 | Invitation resend | Invited family email | Replacement link; prior link invalidated |
 | Application access | Invited family email | Six-digit OTP |
 | Staff access | Allowlisted staff email | Six-digit staff OTP |
@@ -688,6 +716,8 @@ notifications, retention and the effect on the offer record.
 | `POST /v6/eoi` | Validate and submit EOI |
 | `POST /v6/application/access/request-code` | Validate invitation/email and request OTP |
 | `POST /v6/application/access/verify-code` | Consume OTP and create family session |
+| `POST /v6/application/records/select` | Authorise and open one existing child application |
+| `POST /v6/application/records` | Create or initialise a separate child application |
 | `GET /v6/application/context` | Reload session-bound application context |
 | `PUT /v6/application/draft` | Revisioned section save |
 | `POST /v6/application/documents/start` | Authorise a constrained Drive upload |

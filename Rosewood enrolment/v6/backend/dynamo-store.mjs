@@ -104,6 +104,28 @@ export class DynamoStore {
     } catch (error) { if (conditional(error)) throw conflict("This invitation changed before it could be resent. Refresh the portal and try again."); throw error; }
   }
 
+  async addApplicationToInvitation({ invitation, expectedFamilyRevision, application, outboxEvents, auditEvents = [] }) {
+    const ttl = Math.floor(invitation.expiresAt / 1000) + 86400;
+    const revisionCondition = expectedFamilyRevision === 0
+      ? "attribute_not_exists(#data.#familyRevision) OR #data.#familyRevision = :familyRevision"
+      : "#data.#familyRevision = :familyRevision";
+    const invitationCondition = {
+      ConditionExpression: `#data.#tokenHash = :tokenHash AND (${revisionCondition})`,
+      ExpressionAttributeNames: { "#data": "data", "#tokenHash": "tokenHash", "#familyRevision": "familyRevision" },
+      ExpressionAttributeValues: { ":tokenHash": invitation.tokenHash, ":familyRevision": expectedFamilyRevision }
+    };
+    try {
+      await this.client.send(new TransactWriteCommand({ TransactItems: [
+        { Put: { TableName: this.tableName, Item: { ...this.key(`APP#${application.id}`, "CURRENT"), entity: "application", data: application }, ConditionExpression: "attribute_not_exists(PK)" } },
+        { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE#${invitation.tokenHash}`), entity: "invitation", ttl, data: invitation }, ...invitationCondition } },
+        { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE_ID#${invitation.id}`), entity: "invitation_index", ttl, data: invitation }, ...invitationCondition } },
+        ...this.outboxActions(outboxEvents),
+        ...this.auditActions(auditEvents)
+      ] }));
+      return { invitation, application };
+    } catch (error) { if (conditional(error)) throw conflict("The family invitation changed before the child application could be added. Refresh and try again."); throw error; }
+  }
+
   async putChallenge(challenge) {
     await this.client.send(new PutCommand({ TableName: this.tableName, Item: { ...this.key(`CHALLENGE#${challenge.id}`), entity: "challenge", ttl: challenge.ttl, data: challenge }, ConditionExpression: "attribute_not_exists(PK)" }));
   }

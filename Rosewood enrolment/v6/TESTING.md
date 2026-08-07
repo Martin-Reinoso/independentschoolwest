@@ -1,6 +1,6 @@
 # V6 Testing
 
-Test date: 6 August 2026
+Test date: 7 August 2026
 
 ## Static Checks
 
@@ -85,6 +85,11 @@ Tested through a local HTTP server in the Codex in-app browser.
 - Decline Student has no Commencement Term and uses the captured year/year-level labels
 - no duplicate IDs or unlabelled controls were found on the inspected dynamic frames
 - no console warnings or errors were present after the final workflow checks
+- after email verification, Application shows a family-level child selector; a direct
+  invitation uses its initial blank record for the first child and can add further
+  children as separate application records
+- an EOI-linked invitation retains the linked child and allows the verified family to
+  add another child without linking that new application to the earlier EOI
 
 ## Responsive Checks
 
@@ -103,17 +108,22 @@ Mobile viewport: 390 x 844.
 
 ## Backend Checks
 
-- nineteen Node tests pass for Google Drive upload/confirmation, legacy-safe document
-  projection headers, direct invitation, explicit EOI linkage, fail-closed link
-  errors, linked-email integrity, EOI normalization, conditional needs validation,
-  dynamic application fields, Acceptance-field rejection, server-side guardian review
+- twenty-three Node tests pass for Google Drive upload/confirmation, legacy-safe
+  document and family-invitation projection headers, direct invitation, explicit EOI
+  linkage, exact invitation variants, 14-day expiry, fail-closed link errors,
+  linked-email integrity, EOI normalization, conditional needs validation, dynamic
+  application fields, Acceptance-field rejection, server-side guardian review
   acknowledgement, staff allowlisting, safe dashboard projection, staff invitation
-  response redaction, staff role restrictions, atomic invitation-token rotation and
-  customer-managed KMS access in the Lambda runtime policy
+  response redaction, staff role restrictions, family multi-child isolation, atomic
+  invitation-token rotation and customer-managed KMS access in the Lambda runtime
+  policy
 - the production deployment bundle builds successfully and both family/admin browser
   scripts pass Node syntax checks
 - the AWS stack deployed successfully and `/v6/health` returns the expected schema
   version, secure CORS and no-cache headers
+- the 7 August invitation release updated Lambda in place without replacing DynamoDB,
+  KMS, backup or endpoint resources; the Lambda remained `Active`, the scheduled
+  outbox rule remained enabled and the Lambda error alarm remained `OK`
 - the production Lambda uses restricted Google Drive for files and the staff portal no
   longer exposes a document-download endpoint
 - both authoritative DynamoDB tables are deletion-protected, use the retained
@@ -150,6 +160,8 @@ Mobile viewport: 390 x 844.
   signature-image, network-fingerprint or invitation-token data
 - direct and EOI-linked invitation panels rendered correctly; the already-linked EOI
   was disabled and no family invitation was sent during the UI verification
+- the direct-invitation form contains only family email, required parent/guardian first
+  name and optional parent/guardian last name; it does not request a child name
 - resend showed the explicit token-invalidation confirmation and was cancelled without
   sending an email
 - sign-out returned to the access screen and browser local/session storage remained
@@ -182,6 +194,11 @@ message.
 - the SES account is production-enabled and healthy in `ap-southeast-2`
 - controlled EOI, invitation, OTP, guardian-signature and completion messages arrived
   from `enrolment@ffe.org.au` at `info@ffe.org.au`
+- controlled inactive-link canaries for both new invitation variants arrived on
+  7 August 2026 with the exact title-case subject, approved direct or EOI-linked copy,
+  fallback URL, enrolment contact, Rosewood sign-off and 21 August 2026 expiry
+- the EOI-linked canary names Rosewood College and does not carry the reference
+  school name into the production invitation template
 - Gmail original headers passed SPF, DKIM and DMARC and used the aligned
   `bounce.ffe.org.au` return path
 - SES simulator success, permanent-bounce and complaint canaries completed; bounce and

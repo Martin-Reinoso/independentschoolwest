@@ -6,6 +6,8 @@ import { sheetOperation } from "./google-sheets.mjs";
 const DOCUMENT_CATEGORIES = ["birth_certificate", "health_and_immunisation", "school_report", "sacramental", "residency"];
 const MIME_TYPES = new Set(["application/pdf", "image/png", "image/jpeg"]);
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
+const INVITATION_LIFETIME_MS = 14 * 86400_000;
+const MAX_FAMILY_APPLICATIONS = 8;
 
 function appError(status, code, message, details) {
   return Object.assign(new Error(message), { status, code, details });
@@ -18,6 +20,7 @@ function code() { return String(crypto.randomInt(0, 1_000_000)).padStart(6, "0")
 function id(prefix) { return `${prefix}-${token(10)}`; }
 function iso(now) { return new Date(now).toISOString(); }
 function json(value) { return JSON.stringify(value ?? {}); }
+function invitationDate(value) { return new Date(value).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric", timeZone: "Australia/Melbourne" }); }
 
 function parseBody(event, maxBytes = 1_500_000) {
   const raw = event?.isBase64Encoded ? Buffer.from(event.body || "", "base64").toString("utf8") : event?.body || "{}";
@@ -103,42 +106,51 @@ function prefillFromEoi(eoi) {
   };
 }
 
-export async function createApplicationInvitation({ store, recipientEmail, firstName = "", lastName = "", studentFirstName = "", studentLastName = "", sourceEoiId = "", createdBy = "staff-cli", applicationUrl, clock = () => Date.now() }) {
+function invitationApplicationIds(invitation) {
+  return [...new Set([...(Array.isArray(invitation?.applicationIds) ? invitation.applicationIds : []), invitation?.applicationId].filter(Boolean))];
+}
+
+async function getInvitationApplications(store, invitation) {
+  return (await Promise.all(invitationApplicationIds(invitation).map(applicationId => store.getApplication(applicationId)))).filter(Boolean);
+}
+
+export async function createApplicationInvitation({ store, recipientEmail, firstName = "", lastName = "", sourceEoiId = "", createdBy = "staff-cli", applicationUrl, clock = () => Date.now() }) {
   const now = clock();
   const email = normalizeEmail(recipientEmail);
   if (!/^\S+@\S+\.\S+$/.test(email)) throw appError(422, "INVALID_EMAIL", "Provide a valid recipient email.");
   const eoi = sourceEoiId ? await store.getEoi(sourceEoiId) : null;
   if (sourceEoiId && !eoi) throw appError(404, "EOI_NOT_FOUND", "The requested EOI was not found. No invitation was created.");
   if (eoi && eoi.values.eoi_email !== email) throw appError(409, "EOI_EMAIL_MISMATCH", "The invitation email must match the linked EOI email unless the EOI is corrected first.");
+  if (!eoi && !safeText(firstName, 120)) throw appError(422, "PARENT_NAME_REQUIRED", "Enter the parent or guardian first name.");
   const rawToken = token();
   const invitationId = id("invite");
   const applicationId = id("app");
   const contactId = eoi?.contactId || id("contact");
   const studentId = eoi?.studentId || id("student");
   const values = { ...prefillFromEoi(eoi) };
-  if (!eoi) Object.assign(values, { app_guardian_0_first: firstName, app_guardian_0_last: lastName, app_guardian_0_email: email, student_first: studentFirstName, student_last: studentLastName });
+  if (!eoi) Object.assign(values, { app_guardian_0_first: firstName, app_guardian_0_last: lastName, app_guardian_0_email: email });
   const createdAt = iso(now);
-  const expiresAt = now + 30 * 86400_000;
+  const expiresAt = now + INVITATION_LIFETIME_MS;
   const tokenHash = sha256(rawToken);
-  const invitation = { id: invitationId, applicationId, contactId, studentId, recipientEmail: email, sourceEoiId: sourceEoiId || "", status: "active", createdAt, expiresAt, firstSentAt: createdAt, lastSentAt: createdAt, sendCount: 1, tokenHash };
+  const displayFirst = eoi?.values.eoi_first || firstName;
+  const displayLast = eoi?.values.eoi_last || lastName || "";
+  const invitation = { id: invitationId, applicationId, applicationIds: [applicationId], familyRevision: 0, contactId, studentId, recipientEmail: email, firstName: displayFirst, lastName: displayLast, sourceEoiId: sourceEoiId || "", status: "active", createdAt, expiresAt, firstSentAt: createdAt, lastSentAt: createdAt, sendCount: 1, tokenHash };
   const application = { id: applicationId, invitationId, sourceEoiId: sourceEoiId || "", contactId, studentId, recipientEmail: email, status: "invited", revision: 0, values, guardianCount: 2, emergencyCount: 2, documents: {}, signatures: [], guardianIds: [id("guardian"), id("guardian")], createdAt, updatedAt: createdAt, schemaVersion: SCHEMA_VERSION };
   const invitationUrl = `${applicationUrl}${applicationUrl.includes("?") ? "&" : "?"}workflow=application&invite=${encodeURIComponent(rawToken)}`;
-  const displayFirst = eoi?.values.eoi_first || firstName || "Parent/Guardian";
-  const displayLast = eoi?.values.eoi_last || lastName || "";
-  const studentFirst = eoi?.values.eoi_student_first || studentFirstName || "";
-  const studentLast = eoi?.values.eoi_student_last || studentLastName || "";
+  const studentFirst = eoi?.values.eoi_student_first || "";
+  const studentLast = eoi?.values.eoi_student_last || "";
   const studentName = [studentFirst, studentLast].filter(Boolean).join(" ");
-  const message = applicationInvitation({ firstName: displayFirst, studentName, invitationUrl, expiresAt: new Date(expiresAt).toLocaleDateString("en-AU"), linked: Boolean(eoi) });
+  const message = applicationInvitation({ firstName: displayFirst, studentName, entryLevel: eoi?.values.eoi_level || "", entryYear: eoi?.values.eoi_year || "", invitationUrl, expiresAt: invitationDate(expiresAt), linked: Boolean(eoi) });
   const audit = createAuditEvent({ workflow: "operations", recordId: applicationId, type: eoi ? "application.invited_from_eoi" : "application.invited_directly", at: createdAt, actorType: "staff", actorId: createdBy, details: { invitationId, sourceEoiId: sourceEoiId || null } });
   const operations = [
     sheetOperation("operations", "Contacts", { contact_id: contactId, email, first_name: displayFirst, last_name: displayLast, mobile_phone: eoi?.values.eoi_mobile || "", source: eoi ? "eoi" : "direct_invitation", created_at: eoi?.submittedAt || createdAt, updated_at: createdAt, schema_version: SCHEMA_VERSION }, ["contact_id"]),
-    sheetOperation("operations", "Students", { student_id: studentId, first_name: studentFirst, last_name: studentLast, date_of_birth: eoi?.values.eoi_dob || "", source: eoi ? "eoi" : "direct_invitation", created_at: eoi?.submittedAt || createdAt, updated_at: createdAt, schema_version: SCHEMA_VERSION }, ["student_id"]),
-    sheetOperation("operations", "Application Invitations", { invitation_id: invitationId, application_id: applicationId, recipient_contact_id: contactId, recipient_email: email, student_id: studentId, source_eoi_id: sourceEoiId, status: "active", created_at: createdAt, expires_at: iso(expiresAt), first_sent_at: createdAt, last_sent_at: createdAt, send_count: 1, schema_version: SCHEMA_VERSION }, ["invitation_id"]),
+    sheetOperation("operations", "Application Invitations", { invitation_id: invitationId, application_id: applicationId, application_ids_json: [applicationId], recipient_contact_id: contactId, recipient_email: email, student_id: studentId, source_eoi_id: sourceEoiId, status: "active", created_at: createdAt, expires_at: iso(expiresAt), first_sent_at: createdAt, last_sent_at: createdAt, send_count: 1, schema_version: SCHEMA_VERSION }, ["invitation_id"]),
     sheetOperation("operations", "Progress", { application_id: applicationId, current_stage: "gateway", status: "invited", revision: 0, last_activity_at: createdAt, percent_complete: 0, schema_version: SCHEMA_VERSION }, ["application_id"]),
     sheetOperation("application", "Applications", mapApplicationRow(application), ["application_id"]),
     auditSheetOperation(audit),
     emailEvent({ messageType: "application_invitation", workflow: "application", recordId: applicationId, recipientEmail: email, at: createdAt })
   ];
+  if (studentName) operations.splice(1, 0, sheetOperation("operations", "Students", { student_id: studentId, first_name: studentFirst, last_name: studentLast, date_of_birth: eoi?.values.eoi_dob || "", source: "eoi", created_at: eoi?.submittedAt || createdAt, updated_at: createdAt, schema_version: SCHEMA_VERSION }, ["student_id"]));
   if (eoi) operations.push(sheetOperation("operations", "Workflow Links", { link_id: id("link"), source_workflow: "eoi", source_record_id: sourceEoiId, target_workflow: "application", target_record_id: applicationId, linked_by: createdBy, linked_at: createdAt, prefill_fields_json: Object.keys(values), schema_version: SCHEMA_VERSION }, ["link_id"]));
   await store.createInvitation({ invitation, tokenHash, application, outboxEvents: [emailOutbox({ to: email, ...message, tags: { workflow: "application", message_type: "invitation" } }, now), ...operations.map(operation => sheetOutbox(operation, now))], auditEvents: [audit] });
   return { applicationId, invitationId, invitationUrl, sourceEoiId: sourceEoiId || null, recipientEmail: email };
@@ -149,21 +161,22 @@ export async function resendApplicationInvitation({ store, invitationId, created
   if (!current) throw appError(404, "INVITATION_NOT_FOUND", "The invitation was not found.");
   if (!current.tokenHash) throw appError(409, "INVITATION_NOT_ROTATABLE", "This earlier invitation cannot be resent safely. Create a new invitation instead.");
   if (current.status !== "active") throw appError(409, "INVITATION_NOT_ACTIVE", "Only active invitations can be resent.");
-  const application = await store.getApplication(current.applicationId);
-  if (!application || !["invited", "in_progress"].includes(application.status)) throw appError(409, "APPLICATION_NOT_EDITABLE", "This application has already been submitted or is no longer editable.");
+  const applications = await getInvitationApplications(store, current);
+  const application = applications.find(record => record.id === current.applicationId) || applications[0];
+  if (!applications.some(record => ["invited", "in_progress"].includes(record.status))) throw appError(409, "APPLICATION_NOT_EDITABLE", "This family has no editable application attached to the invitation.");
   const now = clock();
   const rawToken = token();
   const tokenHash = sha256(rawToken);
   const sentAt = iso(now);
-  const expiresAt = now + 30 * 86400_000;
+  const expiresAt = now + INVITATION_LIFETIME_MS;
   const invitation = { ...current, tokenHash, expiresAt, lastSentAt: sentAt, sendCount: Number(current.sendCount || 0) + 1 };
   const invitationUrl = `${applicationUrl}${applicationUrl.includes("?") ? "&" : "?"}workflow=application&invite=${encodeURIComponent(rawToken)}`;
-  const firstName = application.values?.app_guardian_0_first || "Parent/Guardian";
+  const firstName = current.firstName || application?.values?.app_guardian_0_first || "Parent/Guardian";
   const studentName = [application.values?.student_first, application.values?.student_last].filter(Boolean).join(" ");
-  const message = applicationInvitation({ firstName, studentName, invitationUrl, expiresAt: new Date(expiresAt).toLocaleDateString("en-AU"), linked: Boolean(application.sourceEoiId) });
+  const message = applicationInvitation({ firstName, studentName, entryLevel: application.values?.entry_level || "", entryYear: application.values?.entry_year || "", invitationUrl, expiresAt: invitationDate(expiresAt), linked: Boolean(application.sourceEoiId) });
   const audit = createAuditEvent({ workflow: "operations", recordId: current.applicationId, type: "application.invitation_resent", at: sentAt, actorType: "staff", actorId: createdBy, details: { invitationId: current.id, sendCount: invitation.sendCount } });
   const operations = [
-    sheetOperation("operations", "Application Invitations", { invitation_id: current.id, application_id: current.applicationId, recipient_contact_id: current.contactId, recipient_email: current.recipientEmail, student_id: current.studentId, source_eoi_id: current.sourceEoiId || "", status: "active", created_at: current.createdAt, expires_at: iso(expiresAt), first_sent_at: current.firstSentAt, last_sent_at: sentAt, send_count: invitation.sendCount, opened_at: current.openedAt || "", verified_at: current.verifiedAt || "", submitted_at: "", schema_version: SCHEMA_VERSION }, ["invitation_id"]),
+    sheetOperation("operations", "Application Invitations", { invitation_id: current.id, application_id: current.applicationId, application_ids_json: invitationApplicationIds(current), recipient_contact_id: current.contactId, recipient_email: current.recipientEmail, student_id: current.studentId, source_eoi_id: current.sourceEoiId || "", status: "active", created_at: current.createdAt, expires_at: iso(expiresAt), first_sent_at: current.firstSentAt, last_sent_at: sentAt, send_count: invitation.sendCount, opened_at: current.openedAt || "", verified_at: current.verifiedAt || "", submitted_at: "", schema_version: SCHEMA_VERSION }, ["invitation_id"]),
     auditSheetOperation(audit),
     emailEvent({ messageType: "application_invitation_resent", workflow: "application", recordId: current.applicationId, recipientEmail: current.recipientEmail, at: sentAt })
   ];
@@ -258,7 +271,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     const applicationRecords = records.filter(item => item.entity === "application").map(item => item.data);
     const invitationRecords = records.filter(item => item.entity === "invitation_index").map(item => item.data);
     const emailReceipts = records.filter(item => item.entity === "outbox_receipt" && item.data?.kind === "email").map(item => item.data);
-    const invitationByApplication = new Map(invitationRecords.map(invitation => [invitation.applicationId, invitation]));
+    const invitationByApplication = new Map(invitationRecords.flatMap(invitation => invitationApplicationIds(invitation).map(applicationId => [applicationId, invitation])));
     const applicationByEoi = new Map(applicationRecords.filter(application => application.sourceEoiId).map(application => [application.sourceEoiId, application]));
     const applications = applicationRecords.map(application => {
       const invitation = invitationByApplication.get(application.id) || {};
@@ -359,7 +372,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
       const existing = await store.findApplicationBySourceEoi(sourceEoiId);
       if (existing) throw appError(409, "EOI_ALREADY_LINKED", "This expression of interest is already linked to an application.", { applicationId: existing.id });
     }
-    const result = await createApplicationInvitation({ store, recipientEmail: body.recipientEmail, firstName: safeText(body.firstName, 120), lastName: safeText(body.lastName, 120), studentFirstName: safeText(body.studentFirstName, 120), studentLastName: safeText(body.studentLastName, 120), sourceEoiId, createdBy: session.email, applicationUrl: applicationPageUrl, clock });
+    const result = await createApplicationInvitation({ store, recipientEmail: body.recipientEmail, firstName: safeText(body.firstName, 120), lastName: safeText(body.lastName, 120), sourceEoiId, createdBy: session.email, applicationUrl: applicationPageUrl, clock });
     await dispatchOutbox(50);
     return { applicationId: result.applicationId, invitationId: result.invitationId, sourceEoiId: result.sourceEoiId, recipientEmail: result.recipientEmail, message: "The application invitation has been sent." };
   }
@@ -434,15 +447,104 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     if (!challenge || challenge.subjectHash !== inviteHash || challenge.purpose !== "application_access" || !invitation || invitation.status !== "active" || invitation.expiresAt <= clock()) throw appError(401, "OTP_INVALID", "The code is invalid or expired. Request a new code.");
     const consumed = await store.consumeChallenge(challengeId, hmac(otpSecret, `${challengeId}:${safeText(body.code, 12)}`), clock());
     if (!consumed) { await store.failChallenge(challengeId); throw appError(401, "OTP_INVALID", "The code is invalid or expired. Request a new code."); }
-    const rawSession = token();
-    await store.putSession({ tokenHash: sha256(rawSession), scope: "application", applicationId: invitation.applicationId, invitationId: invitation.id, email: challenge.email, createdAt: clock(), expiresAt: clock() + 30 * 60_000, ttl: Math.floor((clock() + 86400_000) / 1000) });
     const app = await store.getApplication(invitation.applicationId);
+    if (!app) throw appError(404, "APPLICATION_NOT_FOUND", "The application attached to this invitation was not found.");
+    const rawFamilySession = token();
+    const rawApplicationSession = token();
+    const sessionBase = { invitationId: invitation.id, email: challenge.email, createdAt: clock(), expiresAt: clock() + 30 * 60_000, ttl: Math.floor((clock() + 86400_000) / 1000) };
+    await Promise.all([
+      store.putSession({ ...sessionBase, tokenHash: sha256(rawFamilySession), scope: "application_family" }),
+      store.putSession({ ...sessionBase, tokenHash: sha256(rawApplicationSession), scope: "application", applicationId: app.id })
+    ]);
     await recordAudit(createAuditEvent({ workflow: "application", recordId: app.id, invitationId: invitation.id, type: "application.email_verified", at: nowIso(), actorId: app.contactId, stage: "gateway" }));
-    return { sessionToken: rawSession, expiresInSeconds: 1800, context: applicationContext(app) };
+    return { sessionToken: rawApplicationSession, familySessionToken: rawFamilySession, expiresInSeconds: 1800, context: applicationContext(app), family: await familyApplicationContext(invitation) };
   }
 
   function applicationContext(app) {
     return { applicationId: app.id, invitationId: app.invitationId, sourceEoiId: app.sourceEoiId || null, recipientEmail: app.recipientEmail, status: app.status, revision: app.revision, values: app.values || {}, guardianCount: app.guardianCount || 1, emergencyCount: app.emergencyCount || 2, documents: Object.values(app.documents || {}).flat().map(document => ({ category: document.category, documentId: document.documentId, fileName: document.fileName, size: document.size })), studentName: [app.values.student_first, app.values.student_last].filter(Boolean).join(" "), updatedAt: app.updatedAt };
+  }
+
+  function familyApplicationSummary(app) {
+    return { applicationId: app.id, studentName: [app.values?.student_first, app.values?.student_last].filter(Boolean).join(" "), status: app.status || "invited", sourceEoiId: app.sourceEoiId || null, updatedAt: app.updatedAt || app.createdAt, editable: ["invited", "in_progress"].includes(app.status || "invited") };
+  }
+
+  async function familyApplicationContext(invitation) {
+    const applications = await getInvitationApplications(store, invitation);
+    const primary = applications.find(app => app.id === invitation.applicationId) || applications[0];
+    const firstName = invitation.firstName || primary?.values?.app_guardian_0_first || "";
+    const lastName = invitation.lastName || primary?.values?.app_guardian_0_last || "";
+    return { invitationId: invitation.id, recipientEmail: invitation.recipientEmail, parentGuardianName: [firstName, lastName].filter(Boolean).join(" "), applications: applications.map(familyApplicationSummary) };
+  }
+
+  async function requireFamilyInvitation(event) {
+    const session = await requireSession(event, "application_family");
+    const invitation = await store.getInvitationById(session.invitationId);
+    if (!invitation || invitation.recipientEmail !== session.email) throw appError(401, "SESSION_EXPIRED", "Your secure family session is no longer valid. Verify your email address again.");
+    return { session, invitation };
+  }
+
+  async function issueApplicationSession(invitation, application, email) {
+    const rawSession = token();
+    await store.putSession({ tokenHash: sha256(rawSession), scope: "application", applicationId: application.id, invitationId: invitation.id, email, createdAt: clock(), expiresAt: clock() + 30 * 60_000, ttl: Math.floor((clock() + 86400_000) / 1000) });
+    return rawSession;
+  }
+
+  async function selectFamilyApplication(event) {
+    const { session, invitation } = await requireFamilyInvitation(event);
+    const body = parseBody(event, 20_000);
+    const applicationId = safeText(body.applicationId, 200);
+    if (!invitationApplicationIds(invitation).includes(applicationId)) throw appError(403, "APPLICATION_ACCESS_DENIED", "This application does not belong to the verified family invitation.");
+    const application = await store.getApplication(applicationId);
+    if (!application || application.invitationId !== invitation.id) throw appError(404, "APPLICATION_NOT_FOUND", "The selected application was not found.");
+    if (!["invited", "in_progress"].includes(application.status || "invited")) throw appError(409, "APPLICATION_NOT_EDITABLE", "This child application has already been submitted and cannot be reopened.");
+    const sessionToken = await issueApplicationSession(invitation, application, session.email);
+    await recordAudit(createAuditEvent({ workflow: "application", recordId: application.id, invitationId: invitation.id, type: "application.selected", at: nowIso(), actorId: application.contactId, stage: "selector" }));
+    return { sessionToken, expiresInSeconds: 1800, context: applicationContext(application) };
+  }
+
+  async function startFamilyApplication(event) {
+    const { session, invitation } = await requireFamilyInvitation(event);
+    const body = parseBody(event, 20_000);
+    const studentFirstName = safeText(body.studentFirstName, 120);
+    const studentLastName = safeText(body.studentLastName, 120);
+    if (!studentFirstName || !studentLastName) throw appError(422, "STUDENT_NAME_REQUIRED", "Enter the student's first and last name.");
+    const applications = await getInvitationApplications(store, invitation);
+    if (applications.length >= MAX_FAMILY_APPLICATIONS && !applications.some(app => !familyApplicationSummary(app).studentName)) throw appError(422, "FAMILY_APPLICATION_LIMIT", `A family invitation can contain no more than ${MAX_FAMILY_APPLICATIONS} child applications.`);
+    const blank = applications.find(app => ["invited", "in_progress"].includes(app.status) && !familyApplicationSummary(app).studentName);
+    const createdAt = nowIso();
+    let application;
+    if (blank) {
+      const values = { ...(blank.values || {}), student_first: studentFirstName, student_last: studentLastName };
+      const next = { ...blank, values, status: "in_progress", revision: Number(blank.revision) + 1, currentStage: "student", percentComplete: 0, updatedAt: createdAt };
+      const audit = createAuditEvent({ workflow: "application", recordId: blank.id, invitationId: invitation.id, type: "application.student_started", at: createdAt, actorId: blank.contactId, stage: "selector", details: { revision: next.revision } });
+      const operations = [
+        sheetOperation("operations", "Students", { student_id: blank.studentId, first_name: studentFirstName, last_name: studentLastName, date_of_birth: "", source: "family_entry", created_at: blank.createdAt, updated_at: createdAt, schema_version: SCHEMA_VERSION }, ["student_id"]),
+        sheetOperation("operations", "Progress", { application_id: blank.id, current_stage: "student", status: "in_progress", revision: next.revision, last_saved_at: createdAt, last_activity_at: createdAt, percent_complete: 0, schema_version: SCHEMA_VERSION }, ["application_id"]),
+        sheetOperation("application", "Applications", mapApplicationRow(next), ["application_id"]),
+        auditSheetOperation(audit)
+      ];
+      application = await store.saveDraft({ applicationId: blank.id, expectedRevision: blank.revision, values, screen: 2, stage: "student", percentComplete: 0, guardianCount: blank.guardianCount || 2, emergencyCount: blank.emergencyCount || 2, savedAt: createdAt, outboxEvents: operations.map(operation => sheetOutbox(operation, clock())), auditEvents: [audit] });
+    } else {
+      const source = applications.find(app => app.id === invitation.applicationId) || applications[0];
+      const guardianValues = Object.fromEntries(Object.entries(source?.values || {}).filter(([key]) => key.startsWith("app_guardian_0_")));
+      const applicationId = id("app");
+      const studentId = id("student");
+      const values = { ...guardianValues, app_guardian_0_first: invitation.firstName || guardianValues.app_guardian_0_first || "", app_guardian_0_last: invitation.lastName || guardianValues.app_guardian_0_last || "", app_guardian_0_email: invitation.recipientEmail, student_first: studentFirstName, student_last: studentLastName };
+      application = { id: applicationId, invitationId: invitation.id, sourceEoiId: "", contactId: invitation.contactId, studentId, recipientEmail: invitation.recipientEmail, status: "in_progress", revision: 0, values, guardianCount: 2, emergencyCount: 2, documents: {}, signatures: [], guardianIds: [id("guardian"), id("guardian")], currentStage: "student", percentComplete: 0, createdAt, updatedAt: createdAt, schemaVersion: SCHEMA_VERSION };
+      const expectedFamilyRevision = Number(invitation.familyRevision || 0);
+      const nextInvitation = { ...invitation, applicationIds: [...invitationApplicationIds(invitation), applicationId], familyRevision: expectedFamilyRevision + 1 };
+      const audit = createAuditEvent({ workflow: "application", recordId: applicationId, invitationId: invitation.id, type: "application.child_added", at: createdAt, actorId: invitation.contactId, stage: "selector", details: { familyApplicationCount: nextInvitation.applicationIds.length } });
+      const operations = [
+        sheetOperation("operations", "Students", { student_id: studentId, first_name: studentFirstName, last_name: studentLastName, date_of_birth: "", source: "family_entry", created_at: createdAt, updated_at: createdAt, schema_version: SCHEMA_VERSION }, ["student_id"]),
+        sheetOperation("operations", "Application Invitations", { invitation_id: invitation.id, application_id: invitation.applicationId, application_ids_json: nextInvitation.applicationIds, recipient_contact_id: invitation.contactId, recipient_email: invitation.recipientEmail, student_id: invitation.studentId, source_eoi_id: invitation.sourceEoiId || "", status: invitation.status, created_at: invitation.createdAt, expires_at: iso(invitation.expiresAt), first_sent_at: invitation.firstSentAt, last_sent_at: invitation.lastSentAt, send_count: invitation.sendCount, schema_version: SCHEMA_VERSION }, ["invitation_id"]),
+        sheetOperation("operations", "Progress", { application_id: applicationId, current_stage: "student", status: "in_progress", revision: 0, last_activity_at: createdAt, percent_complete: 0, schema_version: SCHEMA_VERSION }, ["application_id"]),
+        sheetOperation("application", "Applications", mapApplicationRow(application), ["application_id"]),
+        auditSheetOperation(audit)
+      ];
+      await store.addApplicationToInvitation({ invitation: nextInvitation, expectedFamilyRevision, application, outboxEvents: operations.map(operation => sheetOutbox(operation, clock())), auditEvents: [audit] });
+    }
+    const sessionToken = await issueApplicationSession(invitation, application, session.email);
+    return { sessionToken, expiresInSeconds: 1800, context: applicationContext(application), family: await familyApplicationContext(await store.getInvitationById(invitation.id)) };
   }
 
   async function getContext(event) {
@@ -549,7 +651,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
       ...Object.values(app.documents || {}).flat().map(document => sheetOperation("application", "Documents", { application_id: app.id, document_id: document.id, category: document.category, original_file_name: document.fileName, mime_type: document.mimeType, size_bytes: document.size, drive_file_id: document.storageProvider === "s3" ? "" : document.documentId, storage_provider: document.storageProvider || "legacy", storage_key: document.storageKey || "", storage_version_id: document.storageVersionId || "", uploaded_at: document.uploadedAt, sha256: document.checksum, malware_scan_status: document.malwareScanStatus, schema_version: SCHEMA_VERSION }, ["document_id"])),
       auditSheetOperation(audit),
       sheetOperation("operations", "Progress", { application_id: app.id, current_stage: status === "submitted" ? "complete" : "guardian_signatures", status, revision: app.revision, last_saved_at: app.updatedAt, last_activity_at: signedAt, percent_complete: status === "submitted" ? 100 : 95, schema_version: SCHEMA_VERSION }, ["application_id"]),
-      sheetOperation("operations", "Application Invitations", { invitation_id: app.invitationId, application_id: app.id, recipient_contact_id: app.contactId, recipient_email: app.recipientEmail, student_id: app.studentId, source_eoi_id: app.sourceEoiId, status, created_at: app.createdAt, expires_at: invitation?.expiresAt ? iso(invitation.expiresAt) : "", first_sent_at: invitation?.firstSentAt || "", last_sent_at: invitation?.lastSentAt || "", send_count: invitation?.sendCount || 1, opened_at: invitation?.openedAt || "", verified_at: invitation?.verifiedAt || "", submitted_at: signedAt, schema_version: SCHEMA_VERSION }, ["invitation_id"]),
+      sheetOperation("operations", "Application Invitations", { invitation_id: app.invitationId, application_id: invitation?.applicationId || app.id, application_ids_json: invitationApplicationIds(invitation || { applicationId: app.id }), recipient_contact_id: app.contactId, recipient_email: app.recipientEmail, student_id: invitation?.studentId || app.studentId, source_eoi_id: invitation?.sourceEoiId || app.sourceEoiId, status: invitation?.status || "active", created_at: invitation?.createdAt || app.createdAt, expires_at: invitation?.expiresAt ? iso(invitation.expiresAt) : "", first_sent_at: invitation?.firstSentAt || "", last_sent_at: invitation?.lastSentAt || "", send_count: invitation?.sendCount || 1, opened_at: invitation?.openedAt || "", verified_at: invitation?.verifiedAt || "", submitted_at: signedAt, schema_version: SCHEMA_VERSION }, ["invitation_id"]),
       emailEvent({ messageType: "application_submitted", workflow: "application", recordId: app.id, recipientEmail: app.recipientEmail, at: signedAt }),
       ...taskEmails.map(mail => emailEvent({ messageType: "signature_invitation", workflow: "application", recordId: app.id, recipientEmail: mail.to, at: signedAt }))
     ];
@@ -662,6 +764,8 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     ["POST /v6/eoi", submitEoi],
     ["POST /v6/application/access/request-code", requestApplicationCode],
     ["POST /v6/application/access/verify-code", verifyApplicationCode],
+    ["POST /v6/application/records/select", selectFamilyApplication],
+    ["POST /v6/application/records", startFamilyApplication],
     ["GET /v6/application/context", getContext],
     ["PUT /v6/application/draft", saveDraft],
     ["POST /v6/application/documents/start", startUpload],

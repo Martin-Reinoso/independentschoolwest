@@ -144,11 +144,9 @@
 
     <form id="direct-invite-form" class="invite-form" novalidate>
       <div class="form-row full-row"><label for="invite-email">Family email <span>*</span></label><input id="invite-email" type="email" autocomplete="off" required><small>The family will use this same email to receive their verification code.</small></div>
-      <div class="form-row"><label for="invite-first">Parent/guardian first name</label><input id="invite-first" type="text" autocomplete="off"></div>
-      <div class="form-row"><label for="invite-last">Parent/guardian last name</label><input id="invite-last" type="text" autocomplete="off"></div>
-      <div class="form-row"><label for="invite-student-first">Student first name</label><input id="invite-student-first" type="text" autocomplete="off"></div>
-      <div class="form-row"><label for="invite-student-last">Student last name</label><input id="invite-student-last" type="text" autocomplete="off"></div>
-      <div class="form-submit"><p>This creates a new application record without linking an EOI.</p><button class="primary-button" id="send-direct-invite" type="submit"><span>Send invitation</span><span class="button-loader" aria-hidden="true"></span></button></div>
+      <div class="form-row"><label for="invite-first">Parent/guardian first name <span>*</span></label><input id="invite-first" type="text" autocomplete="off" required></div>
+      <div class="form-row"><label for="invite-last">Parent/guardian last name</label><input id="invite-last" type="text" autocomplete="off"><small>Optional, but encouraged so the invitation can address the family clearly.</small></div>
+      <div class="form-submit"><p>The family adds each child after verifying the invited email. Each child receives a separate application record.</p><button class="primary-button" id="send-direct-invite" type="submit"><span>Send invitation</span><span class="button-loader" aria-hidden="true"></span></button></div>
     </form>
 
     <form id="eoi-invite-form" class="invite-form eoi-invite-form" novalidate hidden>
@@ -175,6 +173,6 @@
     <div class="detail-content" id="detail-content" hidden></div>
   </dialog>
 
-  <script src="rosewood-enrolment-admin-v6.js?v=2"></script>
+  <script src="rosewood-enrolment-admin-v6.js?v=3"></script>
 </body>
 </html>

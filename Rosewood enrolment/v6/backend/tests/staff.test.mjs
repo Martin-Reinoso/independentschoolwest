@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createService, resendApplicationInvitation } from "../service.mjs";
+import { createApplicationInvitation, createService, resendApplicationInvitation } from "../service.mjs";
 
 const clock = () => Date.parse("2026-08-05T12:00:00.000Z");
 
@@ -20,6 +20,9 @@ class StaffStore {
     this.created = null;
     this.records = [];
     this.audit = [];
+    this.invitations = new Map();
+    this.invitationIds = new Map();
+    this.applications = new Map();
   }
   async checkRateLimit() { return true; }
   async putChallenge(challenge) { this.challenges.set(challenge.id, challenge); }
@@ -34,7 +37,28 @@ class StaffStore {
   async listOperationalRecords() { return this.records; }
   async findApplicationBySourceEoi(sourceEoiId) { return this.records.find(item => item.entity === "application" && item.data.sourceEoiId === sourceEoiId)?.data || null; }
   async getEoi() { return null; }
-  async createInvitation(value) { this.created = value; }
+  async createInvitation(value) {
+    this.created = value;
+    this.invitations.set(value.tokenHash, value.invitation);
+    this.invitationIds.set(value.invitation.id, value.invitation);
+    this.applications.set(value.application.id, value.application);
+  }
+  async getInvitation(tokenHash) { return this.invitations.get(tokenHash) || null; }
+  async getInvitationById(id) { return this.invitationIds.get(id) || null; }
+  async getApplication(id) { return this.applications.get(id) || null; }
+  async saveDraft({ applicationId, expectedRevision, values, screen, stage, percentComplete, guardianCount, emergencyCount, savedAt }) {
+    const current = this.applications.get(applicationId);
+    assert.equal(current.revision, expectedRevision);
+    const next = { ...current, values, screen, currentStage: stage, percentComplete, guardianCount, emergencyCount, updatedAt: savedAt, status: "in_progress", revision: expectedRevision + 1 };
+    this.applications.set(applicationId, next);
+    return next;
+  }
+  async addApplicationToInvitation({ invitation, expectedFamilyRevision, application }) {
+    assert.equal(Number(this.invitationIds.get(invitation.id)?.familyRevision || 0), expectedFamilyRevision);
+    this.invitationIds.set(invitation.id, invitation);
+    this.invitations.set(invitation.tokenHash, invitation);
+    this.applications.set(application.id, application);
+  }
 }
 
 function staffService({ store = new StaffStore(), staffRoles = "info@ffe.org.au=admin" } = {}) {
@@ -112,16 +136,56 @@ test("viewer staff can see summaries but cannot create invitations", async () =>
   assert.equal(invitation.statusCode, 403);
 });
 
-test("staff portal creates a direct invitation without returning its private link", async () => {
+test("staff portal creates a parent-only direct invitation without returning its private link", async () => {
   const { service, store } = staffService();
   const sessionToken = await staffSession(service);
-  const response = await service(event("/v6/staff/invitations", "POST", { recipientEmail: "family@example.com", firstName: "Alex", studentFirstName: "Avery" }, sessionToken));
+  const response = await service(event("/v6/staff/invitations", "POST", { recipientEmail: "family@example.com", firstName: "Alex" }, sessionToken));
   assert.equal(response.statusCode, 200);
   const result = JSON.parse(response.body);
   assert.equal(result.recipientEmail, "family@example.com");
   assert.equal("invitationUrl" in result, false);
   assert.equal(store.created.application.sourceEoiId, "");
+  assert.equal(store.created.application.values.student_first, undefined);
   assert.ok(store.created.invitation.tokenHash);
+});
+
+test("verified family can create separate child applications but cannot select an unrelated record", async () => {
+  const { service, store } = staffService();
+  const created = await createApplicationInvitation({ store, recipientEmail: "family@example.com", firstName: "Alex", applicationUrl: "https://ffe.org.au/form", clock });
+  const invitationToken = new URL(created.invitationUrl).searchParams.get("invite");
+  const requested = JSON.parse((await service(event("/v6/application/access/request-code", "POST", { invitationToken, email: "family@example.com" }))).body);
+  const verifiedResponse = await service(event("/v6/application/access/verify-code", "POST", { invitationToken, challengeId: requested.challengeId, code: "123456" }));
+  assert.equal(verifiedResponse.statusCode, 200);
+  const verified = JSON.parse(verifiedResponse.body);
+  assert.equal(verified.family.applications.length, 1);
+  assert.equal(verified.family.applications[0].studentName, "");
+
+  const firstResponse = await service(event("/v6/application/records", "POST", { studentFirstName: "Avery", studentLastName: "Example" }, verified.familySessionToken));
+  assert.equal(firstResponse.statusCode, 200);
+  const first = JSON.parse(firstResponse.body);
+  assert.equal(first.context.studentName, "Avery Example");
+  assert.equal(first.family.applications.length, 1);
+
+  const secondResponse = await service(event("/v6/application/records", "POST", { studentFirstName: "Jordan", studentLastName: "Example" }, verified.familySessionToken));
+  assert.equal(secondResponse.statusCode, 200);
+  const second = JSON.parse(secondResponse.body);
+  assert.notEqual(second.context.applicationId, first.context.applicationId);
+  assert.equal(second.family.applications.length, 2);
+  assert.equal(store.invitationIds.get(created.invitationId).familyRevision, 1);
+
+  const selected = await service(event("/v6/application/records/select", "POST", { applicationId: first.context.applicationId }, verified.familySessionToken));
+  assert.equal(selected.statusCode, 200);
+  assert.equal(JSON.parse(selected.body).context.studentName, "Avery Example");
+
+  store.applications.set(first.context.applicationId, { ...store.applications.get(first.context.applicationId), status: "submitted" });
+  const completed = await service(event("/v6/application/records/select", "POST", { applicationId: first.context.applicationId }, verified.familySessionToken));
+  assert.equal(completed.statusCode, 409);
+  assert.equal(JSON.parse(completed.body).error, "APPLICATION_NOT_EDITABLE");
+
+  store.applications.set("app-unrelated", { id: "app-unrelated", invitationId: "another-invitation", values: {}, status: "invited" });
+  const denied = await service(event("/v6/application/records/select", "POST", { applicationId: "app-unrelated" }, verified.familySessionToken));
+  assert.equal(denied.statusCode, 403);
+  assert.equal(JSON.parse(denied.body).error, "APPLICATION_ACCESS_DENIED");
 });
 
 test("resending rotates the invitation token and invalidates the previous hash", async () => {
