@@ -31,6 +31,14 @@ class StaffStore {
   async failChallenge() {}
   async putSession(session) { this.sessions.set(session.tokenHash, session); }
   async getSession(tokenHash) { return this.sessions.get(tokenHash) || null; }
+  async touchSession(tokenHash, { expiresAt, absoluteExpiresAt, lastActivityAt, now, ttl }) {
+    const current = this.sessions.get(tokenHash);
+    if (!current || current.expiresAt <= now) return null;
+    const next = { ...current, expiresAt, absoluteExpiresAt, lastActivityAt, ttl };
+    this.sessions.set(tokenHash, next);
+    return next;
+  }
+  async deleteSession(tokenHash) { this.sessions.delete(tokenHash); }
   async enqueue() {}
   async recordAudit(event) { this.audit.push(event); }
   async listOutbox() { return []; }
@@ -61,7 +69,7 @@ class StaffStore {
   }
 }
 
-function staffService({ store = new StaffStore(), staffRoles = "info@ffe.org.au=admin" } = {}) {
+function staffService({ store = new StaffStore(), staffRoles = "info@ffe.org.au=admin", clockFn = clock } = {}) {
   const sent = [];
   const service = createService({
     store,
@@ -80,7 +88,7 @@ function staffService({ store = new StaffStore(), staffRoles = "info@ffe.org.au=
       GOOGLE_APPLICATION_SPREADSHEET_ID: "application-sheet",
       GOOGLE_OPERATIONS_SPREADSHEET_ID: "operations-sheet"
     },
-    clock
+    clock: clockFn
   });
   return { service, store, sent };
 }
@@ -166,6 +174,10 @@ test("verified family can create separate child applications but cannot select a
   assert.equal(first.context.studentName, "Avery Example");
   assert.equal(first.family.applications.length, 1);
 
+  const savedResponse = await service(event("/v6/application/draft", "PUT", { expectedRevision: first.context.revision, values: first.context.values, screen: 4, stage: "parent_guardian", guardianCount: 2, emergencyCount: 2, percentComplete: 40, saveMode: "autosave" }, first.sessionToken));
+  assert.equal(savedResponse.statusCode, 200);
+  assert.equal(JSON.parse(savedResponse.body).screen, 4);
+
   const secondResponse = await service(event("/v6/application/records", "POST", { studentFirstName: "Jordan", studentLastName: "Example" }, verified.familySessionToken));
   assert.equal(secondResponse.statusCode, 200);
   const second = JSON.parse(secondResponse.body);
@@ -176,6 +188,7 @@ test("verified family can create separate child applications but cannot select a
   const selected = await service(event("/v6/application/records/select", "POST", { applicationId: first.context.applicationId }, verified.familySessionToken));
   assert.equal(selected.statusCode, 200);
   assert.equal(JSON.parse(selected.body).context.studentName, "Avery Example");
+  assert.equal(JSON.parse(selected.body).context.screen, 4);
 
   store.applications.set(first.context.applicationId, { ...store.applications.get(first.context.applicationId), status: "submitted" });
   const completed = await service(event("/v6/application/records/select", "POST", { applicationId: first.context.applicationId }, verified.familySessionToken));
@@ -186,6 +199,35 @@ test("verified family can create separate child applications but cannot select a
   const denied = await service(event("/v6/application/records/select", "POST", { applicationId: "app-unrelated" }, verified.familySessionToken));
   assert.equal(denied.statusCode, 403);
   assert.equal(JSON.parse(denied.body).error, "APPLICATION_ACCESS_DENIED");
+});
+
+test("family sessions slide after activity, expire after inactivity and can be revoked", async () => {
+  let now = clock();
+  const clockFn = () => now;
+  const { service, store } = staffService({ clockFn });
+  const created = await createApplicationInvitation({ store, recipientEmail: "family@example.com", firstName: "Alex", applicationUrl: "https://ffe.org.au/form", clock: clockFn });
+  const invitationToken = new URL(created.invitationUrl).searchParams.get("invite");
+  const requested = JSON.parse((await service(event("/v6/application/access/request-code", "POST", { invitationToken, email: "family@example.com" }))).body);
+  const verified = JSON.parse((await service(event("/v6/application/access/verify-code", "POST", { invitationToken, challengeId: requested.challengeId, code: "123456" }))).body);
+  assert.equal(verified.idleTimeoutSeconds, 1200);
+  assert.equal(verified.absoluteTimeoutSeconds, 28800);
+
+  const familySession = [...store.sessions.values()].find(session => session.scope === "application_family");
+  assert.equal(familySession.expiresAt, now + 20 * 60_000);
+  now += 60_000;
+  const active = await service(event("/v6/application/records", "POST", { studentFirstName: "Avery", studentLastName: "Example" }, verified.familySessionToken));
+  assert.equal(active.statusCode, 200);
+  assert.equal([...store.sessions.values()].find(session => session.scope === "application_family").expiresAt, now + 20 * 60_000);
+
+  const applicationToken = JSON.parse(active.body).sessionToken;
+  const logout = await service(event("/v6/session/logout", "POST", {}, applicationToken));
+  assert.equal(logout.statusCode, 200);
+  assert.equal([...store.sessions.values()].some(session => session.scope === "application" && session.applicationId === created.applicationId), false);
+
+  now += 21 * 60_000;
+  const expired = await service(event("/v6/application/records", "POST", { studentFirstName: "Jordan", studentLastName: "Example" }, verified.familySessionToken));
+  assert.equal(expired.statusCode, 401);
+  assert.equal(JSON.parse(expired.body).error, "SESSION_EXPIRED");
 });
 
 test("resending rotates the invitation token and invalidates the previous hash", async () => {

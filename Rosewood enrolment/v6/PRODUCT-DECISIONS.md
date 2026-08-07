@@ -86,6 +86,27 @@ workflows into the current records or API.
 - Return a retry interval for throttled requests and keep the current valid code policy
   explicit in backend implementation and tests.
 
+## Draft Saving, Status and Session Contract
+
+- Do not expose backend deployment scope or inactive-workflow information to families.
+  The operational ribbon is visible only in explicit non-writing review mode.
+- The compact workflow/section header remains visible while scrolling on desktop and
+  mobile. Its indicator uses family-facing states: In progress, Saving, Saved, No
+  connection, Save failed and Session expired.
+- Saved means the backend acknowledged the exact current revision. A selected but not
+  yet uploaded file and a drawn but not submitted signature must not appear saved.
+- Application answers autosave 1.2 seconds after input pauses and at least every eight
+  seconds during continuous input. Identical snapshots are suppressed.
+- Navigation flushes pending changes. Every Application section provides **Save and
+  continue later**; on Documents it also uploads selected files before confirming save.
+- Save and continue later and Sign out revoke browser-held sessions and clear sensitive
+  values from page memory. The child selector uses Sign out rather than Back.
+- Family and child-application sessions expire after 20 minutes of inactivity and have
+  an eight-hour absolute lifetime after OTP. Activity refreshes the idle window only
+  when needed. Staff and guardian-signing sessions keep their separate policies.
+- Returning families resume at the last server-acknowledged application section after
+  using their private invitation and completing OTP again.
+
 ## Permanent Collection Decisions
 
 - Proof of address is not requested at the gateway, in Documents, or elsewhere in the

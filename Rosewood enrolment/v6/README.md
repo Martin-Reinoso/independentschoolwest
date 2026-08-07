@@ -59,10 +59,19 @@ replaceable reports rather than the application database. GuardDuty and active S
 document storage are outside the launch scope.
 
 The browser still does not use cookies, local storage, session storage or IndexedDB.
-Family and child-application sessions remain in memory. A family invitation and email
-OTP reveal only the child records attached to that invitation; selecting or creating a
-child produces a separate application-scoped session. Acceptance, decline and post-offer
-Enrolment Agreement frames cannot write to the backend, send messages or create records.
+Family and child-application sessions remain in memory and expire after 20 minutes of
+inactivity, with an eight-hour absolute limit. A family invitation and email OTP reveal
+only the child records attached to that invitation; selecting or creating a child
+produces a separate application-scoped session. Application answers autosave after a
+short pause and during continuous typing. **Save and continue later** flushes the draft,
+uploads selected Documents-page files and revokes the browser sessions. Returning after
+OTP resumes the last acknowledged section. Acceptance, decline and post-offer Enrolment
+Agreement frames cannot write to the backend, send messages or create records.
+
+The family-facing page has no environment or backend-status ribbon. Its compact sticky
+header shows the current workflow/section and truthful save or connectivity status on
+desktop and mobile. The non-writing internal review URL retains an explicit review
+warning.
 
 The staff portal also keeps its two-hour session in memory only. It displays operational
 summaries, creates direct or EOI-linked invitations, rotates tokens when resending and
