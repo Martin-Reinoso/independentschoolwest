@@ -214,6 +214,13 @@ Source: https://www.abs.gov.au/statistics/classifications/australian-standard-cl
   mandatory Visa Subclass and Visa Expiry.
 - A second parent/guardian is the normal route and receives an independent signature
   request after the primary applicant submits.
+- The additional guardian's contact-permission answer controls general communication
+  about the student. It does not suppress the one-time transactional request required
+  for that listed guardian to review and sign the submitted application. The form must
+  explain this distinction beside the permission question.
+- A primary submission with outstanding guardian signatures is labelled **Awaiting
+  Parent/Guardian Signature**, not Completed. Completed is shown only after every
+  required signature has been recorded.
 - If no second parent/guardian is included, Explanation only one signature becomes
   mandatory and explains why it is being requested.
 

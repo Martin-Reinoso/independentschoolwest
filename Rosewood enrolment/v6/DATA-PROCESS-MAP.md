@@ -417,7 +417,7 @@ sensitivity in the application.
 | Residential and postal address | Residential address and whether postal is the same | Separate postal fields appear after No. | Draft `values`; final Guardians projection |
 | Occupation and education | Occupational group, occupation, employer, school and further education | Core government-reporting fields are required. | Draft `values`; final Guardians projection |
 | Residency | Birth country, nationality, ethnicity, languages, status, visa and Indigenous response | Temporary Resident reveals visa subclass and expiry. | Draft `values`; final Guardians projection |
-| Contact permission | Whether Rosewood may contact an additional guardian | No suppresses the separate signature-request email. | Draft `values`; used during task creation |
+| Contact permission | Whether Rosewood may contact an additional guardian about the student generally | This preference does not suppress the one-time transactional request required for the listed guardian to review and sign. | Draft `values`; final Guardians projection |
 | Guardian confirmation | Confirmation that all legal parents/guardians were entered | Required before moving on. | Draft `values` |
 | Emergency contacts | At least two names, relationships and phone details; email optional | Repeatable up to the server limit. | Draft `values`; final Emergency Contacts projection |
 
@@ -529,7 +529,9 @@ sequenceDiagram
 
 Submission creates an `APP-...` reference. If only one signature is required, status
 becomes `submitted`. If more are required, status becomes `pending_signatures` and the
-operational progress is reported as 95 percent.
+family portal displays **Awaiting Parent/Guardian Signature**. It displays **Completed**
+only after the final required signature changes the authoritative status to `submitted`.
+Operational progress is reported as 95 percent while signatures remain outstanding.
 
 ## Workflow 5: Additional Application Guardian Signing
 

@@ -12,6 +12,9 @@ test("submission validation identifies the section and preserves an in-browser s
   assert.match(source, /data-validation-screen/);
   assert.match(source, /Review \$\{esc\(first\.section\)\}/);
   assert.match(source, /Signature ready/);
+  assert.match(source, /Awaiting Parent\/Guardian Signature/);
+  assert.match(source, /record\.status === "pending_signatures" \? "Awaiting parent\/guardian signature"/);
+  assert.match(source, /This preference applies to general communication/);
   assert.match(source, /isChecked\(`\$\{prefix\}_ip`\)/);
   assert.match(canvasBinding, /canvas\.toDataURL\("image\/png"\)/);
   assert.match(canvasBinding, /context\.drawImage\(image/);

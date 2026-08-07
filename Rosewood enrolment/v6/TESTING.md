@@ -140,7 +140,7 @@ Mobile viewport: 390 x 844.
 
 ## Backend Checks
 
-- thirty-six Node tests pass for immutable form definitions and stable hashes, frontend
+- thirty-eight Node tests pass for immutable form definitions and stable hashes, frontend
   submission guidance and in-browser signature continuity, Google Drive
   upload/confirmation, legacy-safe
   document and family-invitation projection headers, direct invitation, explicit EOI
@@ -153,6 +153,9 @@ Mobile viewport: 390 x 844.
   lifetime, explicit session revocation, atomic invitation-token rotation and
   customer-managed KMS access in the Lambda runtime policy, non-destructive partial
   saves, form-version mismatch rejection and audited historical-revision retrieval
+- regression coverage proves that a general no-contact preference does not suppress the
+  required additional-guardian signing request, and that a missing task can be recovered
+  transactionally without rewriting the submitted application answers
 - the production deployment bundle builds successfully and both family/admin browser
   scripts pass Node syntax checks
 - the AWS stack deployed successfully and `/v6/health` returns the expected schema
@@ -196,12 +199,12 @@ Mobile viewport: 390 x 844.
 
 ## Form Version And Migration Checks
 
-- EOI and Application use separate immutable `2026.3` form contracts with SHA-256
+- EOI and Application use separate immutable `2026.4` form contracts with SHA-256
   definition hashes; the production build fails if the pinned family HTML or JavaScript
   changes without a deliberate form-definition update
-- the original `2026.1` and `2026.2` definitions retain their exact hashes and validators;
-  the family browser supports all three Application versions so existing records are not
-  migrated or rewritten by later interaction fixes
+- the original `2026.1`, `2026.2` and `2026.3` definitions retain their exact hashes and
+  validators; the family browser supports all four Application versions so existing
+  records are not migrated or rewritten by later interaction fixes
 - partial-save tests prove that omitted and retired answer keys remain in the current
   record and immutable revision; a mismatched browser version is rejected without a
   write

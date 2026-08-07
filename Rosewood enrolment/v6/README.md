@@ -74,6 +74,12 @@ An unsigned drawing is kept only in the current browser session, survives naviga
 between application sections and is labelled `Signature ready`; it is recorded only
 after successful final validation and submission. Missing final answers are identified
 by field and section, with a direct review action and inline highlight.
+Each listed additional guardian receives a one-time signing request after primary
+submission, independently of their general contact preference. The family selector
+shows **Awaiting Parent/Guardian Signature** until every required signature is recorded
+and uses **Completed** only for the final `submitted` state. A dry-run-first operational
+command in `backend/scripts/repair-missing-signature-invitations.mjs` can recover a
+missing task without rewriting the frozen application answers.
 Acceptance, decline and post-offer Enrolment Agreement frames cannot write to the
 backend, send messages or create records.
 

@@ -14,7 +14,7 @@
   const reviewMode = params.get("review") === "1";
   const apiBase = "https://6zyzo44sdb5zmmx53toktqrnuu0sikyd.lambda-url.ap-southeast-2.on.aws";
   const invitationToken = params.get("invite") || "";
-  const SUPPORTED_APPLICATION_FORM_VERSIONS = new Set(["rosewood-application-2026.1", "rosewood-application-2026.2", "rosewood-application-2026.3"]);
+  const SUPPORTED_APPLICATION_FORM_VERSIONS = new Set(["rosewood-application-2026.1", "rosewood-application-2026.2", "rosewood-application-2026.3", "rosewood-application-2026.4"]);
 
   const state = {
     workflow: params.get("workflow") || "application",
@@ -314,8 +314,14 @@
       const family = state.familyContext || { recipientEmail: state.applicationContext.recipientEmail, parentGuardianName: "", applications: [{ applicationId: state.applicationContext.applicationId, studentName: state.applicationContext.studentName, status: state.applicationContext.status, sourceEoiId: state.applicationContext.sourceEoiId, editable: ["invited", "in_progress"].includes(state.applicationContext.status) }] };
       const applications = (family.applications || []).filter(record => record.studentName);
       const linked = applications.some(record => record.sourceEoiId);
-      const statusLabel = status => ({ invited: "Not Started", in_progress: "In Progress", pending_signatures: "Pending Signatures", submitted: "Submitted" })[status] || status;
-      const rows = applications.map(record => `<tr><td>${esc(record.studentName)}</td><td>${record.sourceEoiId ? "Expression of Interest" : "Direct invitation"}</td><td><span class="status-pill${record.editable ? "" : " is-complete"}">${esc(statusLabel(record.status))}</span></td><td>${record.editable ? `<button type="button" class="button button-primary" data-select-application="${esc(record.applicationId)}">Continue</button>` : "Completed"}</td></tr>`).join("");
+      const statusLabel = status => ({ invited: "Not Started", in_progress: "In Progress", pending_signatures: "Awaiting Parent/Guardian Signature", submitted: "Completed" })[status] || status;
+      const rows = applications.map(record => {
+        const statusClass = record.status === "submitted" ? " is-complete" : record.status === "pending_signatures" ? " is-pending" : "";
+        const action = record.editable
+          ? `<button type="button" class="button button-primary" data-select-application="${esc(record.applicationId)}">Continue</button>`
+          : record.status === "pending_signatures" ? "Awaiting parent/guardian signature" : record.status === "submitted" ? "Completed" : "Unavailable";
+        return `<tr><td>${esc(record.studentName)}</td><td>${record.sourceEoiId ? "Expression of Interest" : "Direct invitation"}</td><td><span class="status-pill${statusClass}">${esc(statusLabel(record.status))}</span></td><td>${action}</td></tr>`;
+      }).join("");
       const records = applications.length ? section("Child applications", `<div class="record-table-wrap"><table class="record-table"><thead><tr><th>Student Name</th><th>Source</th><th>Application Status</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div>`) : "";
       const startCopy = applications.length ? "Add another child" : "Enter the first child";
       return intro("Choose a child application", linked ? "We found the Expression of Interest linked by Rosewood College. You can continue that child’s application or start a separate application for another child." : "This is a direct family invitation. Add each child who will apply to Rosewood College; each child has a separate application record.", workflows[kind].label) +
@@ -376,7 +382,7 @@
       field(prefix + "birth_country", "Country of Birth", { list: "country-list", required: true }) + field(prefix + "nationality", "Nationality", { list: "country-list", required: true }) + field(prefix + "ethnicity", "Ethnicity", { required: true }) + field(prefix + "languages", "Languages", { list: "language-list", required: true }) +
       field(prefix + "residency", "Residency Status", { type: "select", options: ["Citizen", "Permanent Resident", "Temporary Resident"], required: true }) + `<div class="conditional-panel span-three" data-guardian-visa="${prefix}residency"><div class="field-grid two">${field(prefix + "visa_subclass", "Visa Subclass", { required: true })}${field(prefix + "visa_expiry", "Visa Expiry", { type: "date", required: true })}</div></div>` +
       choices(prefix + "indigenous", "Aboriginal / Torres Strait Islander", ["Aboriginal", "Torres Strait Islander", "Aboriginal and Torres Strait Islander", "Not Applicable"], { required: true, className: "span-three" }) +
-      (index > 0 ? choices(prefix + "permission", "Can the school contact this person about the student?", ["Yes", "No, do not contact them"], { required: true, className: "span-three", hint: "No also prevents a separate signature-request email." }) : "");
+      (index > 0 ? choices(prefix + "permission", "Can the school contact this person about the student?", ["Yes", "No, do not contact them"], { required: true, className: "span-three", hint: "This preference applies to general communication. A listed additional parent/guardian will still receive the one-time signature request required to complete this application." }) : "");
   }
 
   function renderApplicationGuardians() {
@@ -501,7 +507,7 @@
     const application = state.workflow === "application";
     if (application && liveWorkflow() && state.submitResult) {
       const pending = state.submitResult.status === "pending_signatures";
-      return `<div class="success-card"><div class="success-mark" aria-hidden="true">&#10003;</div><p class="eyebrow">Application for enrolment</p><h3>Application received</h3><p>Your Application for Enrolment has been submitted successfully.</p><div class="status-card"><strong>Reference ${esc(state.submitResult.reference)}</strong><p>${pending ? "A separate signature request has been sent to each additional parent or guardian who must sign." : "All required signatures have been recorded."}</p></div><p>A confirmation email has been sent. You can close this page safely.</p>${state.familySessionToken ? '<button type="button" class="button button-secondary" data-action="family-selector">View or add another child</button>' : ""}</div>`;
+      return `<div class="success-card"><div class="success-mark" aria-hidden="true">&#10003;</div><p class="eyebrow">Application for enrolment</p><h3>${pending ? "Primary application submitted" : "Application complete"}</h3><p>${pending ? "Your part of the Application for Enrolment has been submitted successfully." : "Your Application for Enrolment has been completed successfully."}</p><div class="status-card"><strong>Reference ${esc(state.submitResult.reference)}</strong><p>${pending ? "The application is awaiting the additional parent/guardian signature. A separate signature request will be sent to them." : "All required signatures have been recorded."}</p></div><p>A confirmation email has been sent. You can close this page safely.</p>${state.familySessionToken ? '<button type="button" class="button button-secondary" data-action="family-selector">View or add another child</button>' : ""}</div>`;
     }
     return `<div class="success-card"><div class="success-mark" aria-hidden="true">&#10003;</div><p class="eyebrow">${application ? "Application for enrolment" : "Enrolment Agreement"}</p><h3>Current guardian step complete</h3><p>${application ? "The captured process completes the current guardian's application step and may request separate signatures from additional guardians." : "The captured process records the current guardian's acceptance and sends each additional guardian a separate signing request."}</p><div class="status-card"><strong>Nothing was submitted</strong><p>V6 has no backend. No record, invitation, email or legally effective signature was created.</p></div></div>`;
   }

@@ -22,6 +22,8 @@ test("the launch contracts remain addressable with their original hashes", () =>
   assert.equal(getFormDefinition("application", "rosewood-application-2026.1").definitionHash, "110e0d4afeb3bb131d4372c27ced3f05aa0984d3050bf789cfe6cc9f52b215c8");
   assert.equal(getFormDefinition("eoi", "rosewood-eoi-2026.2").definitionHash, "cd6ac14d0dbfef137bf29c704e75df8ccddb054af1bf3cf95756e86a7ec27bd4");
   assert.equal(getFormDefinition("application", "rosewood-application-2026.2").definitionHash, "2e3340b08eb416d2557d9f6037c4783dd1ae4d75f8933ff269dd62ab85efcf18");
+  assert.equal(getFormDefinition("eoi", "rosewood-eoi-2026.3").definitionHash, "cb14ce24b9cfb2be599f4a545123182ebd483feb71af8a2cb1c4be79836eb5b8");
+  assert.equal(getFormDefinition("application", "rosewood-application-2026.3").definitionHash, "51db852d22dc1ea8723b77cbc440be0f9c047ad7f94abb8c21a949036dbf65bf");
 });
 
 test("legacy records resolve to the current workflow contract without changing answers", () => {
