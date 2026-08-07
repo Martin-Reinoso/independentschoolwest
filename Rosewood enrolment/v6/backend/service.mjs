@@ -8,6 +8,8 @@ const MIME_TYPES = new Set(["application/pdf", "image/png", "image/jpeg"]);
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const INVITATION_LIFETIME_MS = 14 * 86400_000;
 const MAX_FAMILY_APPLICATIONS = 8;
+const APPLICATION_SESSION_IDLE_MS = 20 * 60_000;
+const APPLICATION_SESSION_ABSOLUTE_MS = 8 * 60 * 60_000;
 
 function appError(status, code, message, details) {
   return Object.assign(new Error(message), { status, code, details });
@@ -219,9 +221,23 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
   async function requireSession(event, scope = "application") {
     const raw = safeText(headers(event).authorization, 1000).replace(/^Bearer\s+/i, "");
     if (!raw) throw appError(401, "SESSION_REQUIRED", "Verify your email address to continue.");
-    const session = await store.getSession(sha256(raw));
-    if (!session || session.scope !== scope || session.expiresAt <= clock()) throw appError(401, "SESSION_EXPIRED", "Your secure session has expired. Verify your email address again.");
+    const tokenHash = sha256(raw);
+    let session = await store.getSession(tokenHash);
+    const now = clock();
+    if (!session || session.scope !== scope || session.expiresAt <= now) throw appError(401, "SESSION_EXPIRED", "Your secure session has expired. Verify your email address again.");
+    if (["application", "application_family"].includes(scope)) {
+      const absoluteExpiresAt = Number(session.absoluteExpiresAt || Number(session.createdAt) + APPLICATION_SESSION_ABSOLUTE_MS);
+      const expiresAt = Math.min(now + APPLICATION_SESSION_IDLE_MS, absoluteExpiresAt);
+      session = await store.touchSession(tokenHash, { expiresAt, absoluteExpiresAt, lastActivityAt: now, now, ttl: Math.floor((absoluteExpiresAt + 86400_000) / 1000) });
+      if (!session) throw appError(401, "SESSION_EXPIRED", "Your secure session has expired. Verify your email address again.");
+    }
     return session;
+  }
+
+  async function logoutSession(event) {
+    const raw = safeText(headers(event).authorization, 1000).replace(/^Bearer\s+/i, "");
+    if (raw) await store.deleteSession(sha256(raw));
+    return { signedOut: true };
   }
 
   async function requireStaffSession(event, roles = ["admin", "admissions", "viewer"]) {
@@ -450,18 +466,16 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     const app = await store.getApplication(invitation.applicationId);
     if (!app) throw appError(404, "APPLICATION_NOT_FOUND", "The application attached to this invitation was not found.");
     const rawFamilySession = token();
-    const rawApplicationSession = token();
-    const sessionBase = { invitationId: invitation.id, email: challenge.email, createdAt: clock(), expiresAt: clock() + 30 * 60_000, ttl: Math.floor((clock() + 86400_000) / 1000) };
-    await Promise.all([
-      store.putSession({ ...sessionBase, tokenHash: sha256(rawFamilySession), scope: "application_family" }),
-      store.putSession({ ...sessionBase, tokenHash: sha256(rawApplicationSession), scope: "application", applicationId: app.id })
-    ]);
+    const sessionCreatedAt = clock();
+    const absoluteExpiresAt = sessionCreatedAt + APPLICATION_SESSION_ABSOLUTE_MS;
+    const sessionBase = { invitationId: invitation.id, email: challenge.email, createdAt: sessionCreatedAt, lastActivityAt: sessionCreatedAt, expiresAt: sessionCreatedAt + APPLICATION_SESSION_IDLE_MS, absoluteExpiresAt, ttl: Math.floor((absoluteExpiresAt + 86400_000) / 1000) };
+    await store.putSession({ ...sessionBase, tokenHash: sha256(rawFamilySession), scope: "application_family" });
     await recordAudit(createAuditEvent({ workflow: "application", recordId: app.id, invitationId: invitation.id, type: "application.email_verified", at: nowIso(), actorId: app.contactId, stage: "gateway" }));
-    return { sessionToken: rawApplicationSession, familySessionToken: rawFamilySession, expiresInSeconds: 1800, context: applicationContext(app), family: await familyApplicationContext(invitation) };
+    return { familySessionToken: rawFamilySession, expiresInSeconds: APPLICATION_SESSION_IDLE_MS / 1000, idleTimeoutSeconds: APPLICATION_SESSION_IDLE_MS / 1000, absoluteTimeoutSeconds: APPLICATION_SESSION_ABSOLUTE_MS / 1000, context: applicationContext(app), family: await familyApplicationContext(invitation) };
   }
 
   function applicationContext(app) {
-    return { applicationId: app.id, invitationId: app.invitationId, sourceEoiId: app.sourceEoiId || null, recipientEmail: app.recipientEmail, status: app.status, revision: app.revision, values: app.values || {}, guardianCount: app.guardianCount || 1, emergencyCount: app.emergencyCount || 2, documents: Object.values(app.documents || {}).flat().map(document => ({ category: document.category, documentId: document.documentId, fileName: document.fileName, size: document.size })), studentName: [app.values.student_first, app.values.student_last].filter(Boolean).join(" "), updatedAt: app.updatedAt };
+    return { applicationId: app.id, invitationId: app.invitationId, sourceEoiId: app.sourceEoiId || null, recipientEmail: app.recipientEmail, status: app.status, revision: app.revision, screen: Number(app.screen || 0), currentStage: app.currentStage || "gateway", percentComplete: Number(app.percentComplete || 0), values: app.values || {}, guardianCount: app.guardianCount || 1, emergencyCount: app.emergencyCount || 2, documents: Object.values(app.documents || {}).flat().map(document => ({ category: document.category, documentId: document.documentId, fileName: document.fileName, size: document.size })), studentName: [app.values.student_first, app.values.student_last].filter(Boolean).join(" "), updatedAt: app.updatedAt };
   }
 
   function familyApplicationSummary(app) {
@@ -485,7 +499,9 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
 
   async function issueApplicationSession(invitation, application, email) {
     const rawSession = token();
-    await store.putSession({ tokenHash: sha256(rawSession), scope: "application", applicationId: application.id, invitationId: invitation.id, email, createdAt: clock(), expiresAt: clock() + 30 * 60_000, ttl: Math.floor((clock() + 86400_000) / 1000) });
+    const createdAt = clock();
+    const absoluteExpiresAt = createdAt + APPLICATION_SESSION_ABSOLUTE_MS;
+    await store.putSession({ tokenHash: sha256(rawSession), scope: "application", applicationId: application.id, invitationId: invitation.id, email, createdAt, lastActivityAt: createdAt, expiresAt: createdAt + APPLICATION_SESSION_IDLE_MS, absoluteExpiresAt, ttl: Math.floor((absoluteExpiresAt + 86400_000) / 1000) });
     return rawSession;
   }
 
@@ -499,7 +515,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     if (!["invited", "in_progress"].includes(application.status || "invited")) throw appError(409, "APPLICATION_NOT_EDITABLE", "This child application has already been submitted and cannot be reopened.");
     const sessionToken = await issueApplicationSession(invitation, application, session.email);
     await recordAudit(createAuditEvent({ workflow: "application", recordId: application.id, invitationId: invitation.id, type: "application.selected", at: nowIso(), actorId: application.contactId, stage: "selector" }));
-    return { sessionToken, expiresInSeconds: 1800, context: applicationContext(application) };
+    return { sessionToken, expiresInSeconds: APPLICATION_SESSION_IDLE_MS / 1000, idleTimeoutSeconds: APPLICATION_SESSION_IDLE_MS / 1000, absoluteTimeoutSeconds: APPLICATION_SESSION_ABSOLUTE_MS / 1000, context: applicationContext(application) };
   }
 
   async function startFamilyApplication(event) {
@@ -544,7 +560,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
       await store.addApplicationToInvitation({ invitation: nextInvitation, expectedFamilyRevision, application, outboxEvents: operations.map(operation => sheetOutbox(operation, clock())), auditEvents: [audit] });
     }
     const sessionToken = await issueApplicationSession(invitation, application, session.email);
-    return { sessionToken, expiresInSeconds: 1800, context: applicationContext(application), family: await familyApplicationContext(await store.getInvitationById(invitation.id)) };
+    return { sessionToken, expiresInSeconds: APPLICATION_SESSION_IDLE_MS / 1000, idleTimeoutSeconds: APPLICATION_SESSION_IDLE_MS / 1000, absoluteTimeoutSeconds: APPLICATION_SESSION_ABSOLUTE_MS / 1000, context: applicationContext(application), family: await familyApplicationContext(await store.getInvitationById(invitation.id)) };
   }
 
   async function getContext(event) {
@@ -560,9 +576,10 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     const values = sanitizeApplication(body.values);
     const guardianCount = Math.max(1, Math.min(6, Number(body.guardianCount || 1)));
     const emergencyCount = Math.max(2, Math.min(6, Number(body.emergencyCount || 2)));
+    const saveMode = ["autosave", "navigation", "save_and_close", "submission"].includes(body.saveMode) ? body.saveMode : "navigation";
     const savedAt = nowIso();
     const nextRevision = Number(body.expectedRevision) + 1;
-    const audit = createAuditEvent({ workflow: "application", recordId: session.applicationId, invitationId: session.invitationId, type: "application.draft_saved", at: savedAt, actorId: session.email, stage: safeText(body.stage, 80), details: { revision: nextRevision } });
+    const audit = createAuditEvent({ workflow: "application", recordId: session.applicationId, invitationId: session.invitationId, type: saveMode === "autosave" ? "application.draft_autosaved" : "application.draft_saved", at: savedAt, actorId: session.email, stage: safeText(body.stage, 80), details: { revision: nextRevision, saveMode } });
     const operations = [
       sheetOperation("operations", "Progress", { application_id: session.applicationId, current_stage: safeText(body.stage, 80), status: "in_progress", revision: nextRevision, last_saved_at: savedAt, last_activity_at: savedAt, percent_complete: Math.max(0, Math.min(100, Number(body.percentComplete || 0))), schema_version: SCHEMA_VERSION }, ["application_id"]),
       auditSheetOperation(audit)
@@ -755,6 +772,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
 
   const routes = new Map([
     ["GET /v6/health", async () => ({ status: "ok", schemaVersion: SCHEMA_VERSION })],
+    ["POST /v6/session/logout", logoutSession],
     ["POST /v6/staff/access/request-code", requestStaffCode],
     ["POST /v6/staff/access/verify-code", verifyStaffCode],
     ["GET /v6/staff/dashboard", getStaffDashboard],

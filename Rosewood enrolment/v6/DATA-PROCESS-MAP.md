@@ -132,8 +132,9 @@ prefills approved values. The original EOI remains unchanged.
 3. Additional-guardian access requires both a high-entropy signing-task token and an OTP
    sent to that guardian's email.
 4. Staff access requires an allowlisted email and OTP.
-5. Family and guardian sessions expire after 30 minutes. Staff sessions expire after
-   two hours.
+5. Family and child-application sessions expire after 20 minutes of inactivity and
+   cannot exceed eight hours after verification. Guardian-signing sessions expire
+   after 30 minutes. Staff sessions expire after two hours.
 6. Session tokens stay in browser memory. V6 uses no cookies, local storage, session
    storage or IndexedDB.
 7. OTPs expire after 10 minutes, allow five attempts and are subject to server-side
@@ -304,7 +305,7 @@ sequenceDiagram
     API->>SES: Send six-digit OTP
     Family->>Page: Enter OTP
     Page->>API: Verify one-time challenge
-    API->>DB: Consume challenge and create 30-minute family session
+    API->>DB: Consume challenge and create 20-minute idle family session
     API->>Audit: Record email verification
     API-->>Page: Return only applications attached to the family invitation
     Family->>Page: Select an existing child or enter another child
@@ -315,7 +316,8 @@ sequenceDiagram
 
 The API returns a generic response when requesting a code so the endpoint does not
 confirm whether an invitation/email combination exists. The browser receives the raw
-family and application session tokens and keeps them only in memory. The family token
+family and application session tokens and keeps them only in memory. Activity refreshes
+their 20-minute idle window up to an eight-hour absolute limit. The family token
 can list/select only the applications attached to its invitation. Every subsequent
 draft, upload and submission request is scoped server-side to the selected child
 application in its separate application session.
@@ -347,21 +349,34 @@ sequenceDiagram
     participant Outbox as Outbox
     participant Sheets as Operations Sheets
 
-    Family->>Page: Select Next after completing a section
-    Page->>Page: Run visible required/conditional validation
-    Page->>API: PUT /v6/application/draft with expected revision
+    Family->>Page: Enter or change an answer
+    Page->>Page: Show In progress immediately
+    Page->>Page: Debounce 1.2 seconds; force after 8 seconds of continuous typing
+    Page->>API: PUT /v6/application/draft with expected revision and save mode
     API->>API: Sanitize allowed Application fields
     API->>DB: Conditional update to next revision
-    API->>Audit: Append draft-saved event
+    API->>Audit: Append autosave or explicit-save event
     API->>Outbox: Queue Progress and audit projections
     Outbox->>Sheets: Update operational progress asynchronously
     API-->>Page: Return server-acknowledged revision and saved time
+    Page->>Page: Show Saved only for the acknowledged revision
+    Family->>Page: Select Next or another completed section
+    Page->>API: Flush any pending revision before navigation
 ```
 
-V6 saves when the family moves forward from a section. It does not save every
-keystroke. The green Saved state means the server acknowledged a new DynamoDB revision.
-If the page is refreshed, the memory-only session is lost, but the last acknowledged
-server draft remains and can be reopened after OTP verification.
+V6 does not send a request for every keystroke. It saves shortly after the family pauses
+and at least every eight seconds during continuous typing. Identical drafts are not
+written twice. The compact sticky header shows In progress, Saving, Saved, No connection,
+Save failed or Session expired. The green Saved state means the server acknowledged the
+exact displayed revision; selected files remain In progress until uploaded.
+
+Every application section includes **Save and continue later**. It flushes the current
+answers, uploads files selected on the Documents page, revokes the browser-held family
+and application sessions and displays a close-safe confirmation. Reopening the private
+invitation and completing OTP returns the family to the last acknowledged section. The
+child selector has Sign out rather than Back, so it cannot return to an already-consumed
+OTP screen. If the page is refreshed or closed without using the control, the memory-only
+session is lost but the last acknowledged server draft remains.
 
 ### Section 1: Student
 
@@ -713,13 +728,14 @@ notifications, retention and the effect on the offer record.
 | Route | Purpose |
 | --- | --- |
 | `GET /v6/health` | Service and schema health |
+| `POST /v6/session/logout` | Revoke the supplied browser session |
 | `POST /v6/eoi` | Validate and submit EOI |
 | `POST /v6/application/access/request-code` | Validate invitation/email and request OTP |
 | `POST /v6/application/access/verify-code` | Consume OTP and create family session |
 | `POST /v6/application/records/select` | Authorise and open one existing child application |
 | `POST /v6/application/records` | Create or initialise a separate child application |
 | `GET /v6/application/context` | Reload session-bound application context |
-| `PUT /v6/application/draft` | Revisioned section save |
+| `PUT /v6/application/draft` | Revisioned autosave, navigation save or save-and-close |
 | `POST /v6/application/documents/start` | Authorise a constrained Drive upload |
 | `POST /v6/application/documents/confirm` | Validate and attach uploaded file metadata |
 | `POST /v6/application/submit` | Freeze revision, save primary signature and submit |

@@ -154,6 +154,25 @@ export class DynamoStore {
     await this.client.send(new PutCommand({ TableName: this.tableName, Item: { ...this.key(`SESSION#${session.tokenHash}`), entity: "session", ttl: session.ttl, data: session } }));
   }
 
+  async touchSession(tokenHash, { expiresAt, absoluteExpiresAt, lastActivityAt, now, ttl }) {
+    try {
+      const result = await this.client.send(new UpdateCommand({
+        TableName: this.tableName,
+        Key: this.key(`SESSION#${tokenHash}`),
+        UpdateExpression: "SET #data.#expiresAt = :expiresAt, #data.#absoluteExpiresAt = :absoluteExpiresAt, #data.#lastActivityAt = :lastActivityAt, #ttl = :ttl",
+        ConditionExpression: "attribute_exists(PK) AND #data.#expiresAt > :now",
+        ExpressionAttributeNames: { "#data": "data", "#expiresAt": "expiresAt", "#absoluteExpiresAt": "absoluteExpiresAt", "#lastActivityAt": "lastActivityAt", "#ttl": "ttl" },
+        ExpressionAttributeValues: { ":expiresAt": expiresAt, ":absoluteExpiresAt": absoluteExpiresAt, ":lastActivityAt": lastActivityAt, ":ttl": ttl, ":now": now },
+        ReturnValues: "ALL_NEW"
+      }));
+      return result.Attributes?.data || null;
+    } catch (error) { if (conditional(error)) return null; throw error; }
+  }
+
+  async deleteSession(tokenHash) {
+    await this.client.send(new DeleteCommand({ TableName: this.tableName, Key: this.key(`SESSION#${tokenHash}`) }));
+  }
+
   async putUpload(upload) {
     await this.client.send(new PutCommand({
       TableName: this.tableName,

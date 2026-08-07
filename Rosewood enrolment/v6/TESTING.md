@@ -15,6 +15,9 @@ Test date: 7 August 2026
 - content security policy permits only the V6 Lambda endpoint and the required Google
   upload endpoints; form actions, frames and objects remain blocked
 - no inline styles are used in V6-rendered content
+- scans found no family-facing `Secure enrolment form`, backend-scope or
+  `Progress saves when you continue` wording
+- the live page references V6 CSS `v=5` and JavaScript `v=8`
 
 ## Browser Checks
 
@@ -90,6 +93,16 @@ Tested through a local HTTP server in the Codex in-app browser.
   children as separate application records
 - an EOI-linked invitation retains the linked child and allows the verified family to
   add another child without linking that new application to the earlier EOI
+- the family-facing gateway has no environment ribbon or top offset; explicit review
+  mode retains its non-writing warning
+- the compact workflow/section header is sticky at the top of the family page and uses
+  short family-facing save/connectivity states
+- every live Application section renders Save and continue later; the child selector
+  renders Sign out and no Back control
+- debounced autosave uses a 1.2-second pause, an eight-second maximum wait, revision
+  serialization and unchanged-snapshot suppression
+- offline, online, failed-save and expired-session paths update the sticky status; an
+  unsaved close attempt invokes the browser's standard leave warning
 
 ## Responsive Checks
 
@@ -98,6 +111,8 @@ Desktop viewport: 1280 px wide.
 - story panel and form column meet without overlap
 - left-side copy is visible and not clipped
 - no horizontal overflow
+- the sticky header remains at viewport top while the form scrolls and is approximately
+  81 px high at the 1280 px test viewport
 
 Mobile viewport: 390 x 844.
 
@@ -108,15 +123,16 @@ Mobile viewport: 390 x 844.
 
 ## Backend Checks
 
-- twenty-three Node tests pass for Google Drive upload/confirmation, legacy-safe
+- twenty-four Node tests pass for Google Drive upload/confirmation, legacy-safe
   document and family-invitation projection headers, direct invitation, explicit EOI
   linkage, exact invitation variants, 14-day expiry, fail-closed link errors,
   linked-email integrity, EOI normalization, conditional needs validation, dynamic
   application fields, Acceptance-field rejection, server-side guardian review
   acknowledgement, staff allowlisting, safe dashboard projection, staff invitation
-  response redaction, staff role restrictions, family multi-child isolation, atomic
-  invitation-token rotation and customer-managed KMS access in the Lambda runtime
-  policy
+  response redaction, staff role restrictions, family multi-child isolation, resumed
+  saved-section context, 20-minute sliding inactivity, eight-hour absolute session
+  lifetime, explicit session revocation, atomic invitation-token rotation and
+  customer-managed KMS access in the Lambda runtime policy
 - the production deployment bundle builds successfully and both family/admin browser
   scripts pass Node syntax checks
 - the AWS stack deployed successfully and `/v6/health` returns the expected schema
@@ -124,6 +140,10 @@ Mobile viewport: 390 x 844.
 - the 7 August invitation release updated Lambda in place without replacing DynamoDB,
   KMS, backup or endpoint resources; the Lambda remained `Active`, the scheduled
   outbox rule remained enabled and the Lambda error alarm remained `OK`
+- the 7 August autosave release again updated Lambda in place; `/v6/health` and the new
+  idempotent session-revocation route returned HTTP 200, Lambda reported `Active` with a
+  successful update, the one-minute outbox rule remained enabled and the error alarm
+  remained `OK`
 - the production Lambda uses restricted Google Drive for files and the staff portal no
   longer exposes a document-download endpoint
 - both authoritative DynamoDB tables are deletion-protected, use the retained

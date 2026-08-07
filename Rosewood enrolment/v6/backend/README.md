@@ -52,13 +52,21 @@ legacy columns.
 - SNS email alerts for Lambda errors and failed backup/restore jobs
 
 Family OTP challenges expire after 10 minutes, allow five attempts and have resend and
-network throttles. Family sessions expire after 30 minutes; staff sessions expire after
-two hours. Sessions stay in browser memory only. Raw IP addresses are not stored.
+network throttles. Family and child-application sessions use a sliding 20-minute
+inactivity timeout with an eight-hour absolute limit; staff sessions expire after two
+hours and guardian-signing sessions retain their separate 30-minute limit. Sessions stay
+in browser memory only and can be explicitly revoked. Raw IP addresses are not stored.
+
+Application answers use revisioned autosave. The browser debounces edits, forces a save
+after eight seconds of continuous typing, suppresses unchanged drafts and identifies
+autosave, navigation, submission and save-and-close modes in audit events. The green
+Saved state is displayed only after the API acknowledges the exact revision.
 
 ## Routes
 
 ```text
 GET  /v6/health
+POST /v6/session/logout
 POST /v6/staff/access/request-code
 POST /v6/staff/access/verify-code
 GET  /v6/staff/dashboard

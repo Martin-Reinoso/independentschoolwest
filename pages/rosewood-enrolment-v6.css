@@ -63,11 +63,24 @@
 .signature-disclaimer { margin: 0 0 1rem; padding: .65rem .8rem; border-left: 2px solid var(--line-strong); color: var(--muted); font-size: .76rem; line-height: 1.55; }
 .guardian-signature-followup { margin: 1rem 0; }
 .guardian-signature-followup .review-card { margin-bottom: .75rem; }
+.no-environment-ribbon .page-shell { padding-top: 0; }
+.no-environment-ribbon .story-panel { inset: 0 auto 0 0; }
+.no-environment-ribbon .form-panel { min-height: 100vh; }
+.form-header { position: sticky; z-index: 24; top: 0; min-height: 76px; padding-top: .72rem; padding-bottom: .72rem; background: rgba(255,253,249,.94); box-shadow: 0 8px 24px rgba(21,35,59,.045); backdrop-filter: blur(14px); }
+body:not(.no-environment-ribbon) .form-header { top: 42px; }
+.form-header .header-title { min-width: 0; }
+.form-header .header-title h2 { font-size: clamp(1.35rem, 2.2vw, 1.8rem); }
+.save-state { flex: 0 0 auto; min-width: 150px; justify-content: flex-end; }
+.save-state > span { flex: 0 0 auto; background: var(--sky); box-shadow: 0 0 0 5px rgba(120,201,238,.14); transition: background-color .2s, box-shadow .2s; }
 .save-state.is-saved > span { background: var(--success); box-shadow: 0 0 0 5px rgba(32,112,82,.12); }
-.save-state.is-saving > span { background: var(--warning); box-shadow: 0 0 0 5px rgba(154,92,22,.12); }
-.preview-ribbon.is-live { background: linear-gradient(90deg, #e8f3ec, #f7fbf8); border-bottom-color: rgba(32,112,82,.2); }
+.save-state.is-dirty > span, .save-state.is-saving > span { background: var(--warning); box-shadow: 0 0 0 5px rgba(154,92,22,.12); }
+.save-state.is-saving > span { animation: status-pulse 1.15s ease-in-out infinite; }
+.save-state.is-offline > span, .save-state.is-error > span, .save-state.is-expired > span { background: var(--error); box-shadow: 0 0 0 5px rgba(180,35,24,.12); }
+.step-actions .left { display: flex; flex-wrap: wrap; gap: .65rem; }
+.save-later-button { color: var(--navy); }
 .uploaded-document { margin-top: .45rem; color: var(--success); font-weight: 700; }
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes status-pulse { 50% { opacity: .42; transform: scale(.82); } }
 @media (max-width: 760px) {
   .source-links, .fee-card-grid, .terms-heading-list, .signed-status { grid-template-columns: 1fr; }
   .preparation-list { columns: 1; }
@@ -75,4 +88,14 @@
   .v6-review-tools { align-items: stretch; }
   .v6-review-tools > a { text-align: center; }
 }
-@media (prefers-reduced-motion: reduce) { .busy-spinner, .button-spinner { animation: none; } }
+@media (max-width: 640px) {
+  .no-environment-ribbon .page-shell { padding-top: 0; }
+  .form-header { min-height: 68px; align-items: center; gap: .75rem; padding: .72rem 1rem; }
+  body:not(.no-environment-ribbon) .form-header { top: 58px; }
+  .form-header .eyebrow { margin-bottom: .2rem; font-size: .62rem; }
+  .form-header .header-title h2 { overflow: hidden; font-size: 1.25rem; text-overflow: ellipsis; white-space: nowrap; }
+  .save-state { min-width: 92px; gap: .5rem; }
+  .save-state strong { font-size: .78rem; white-space: nowrap; }
+  .step-actions .left { width: 100%; flex-direction: column; }
+}
+@media (prefers-reduced-motion: reduce) { .busy-spinner, .button-spinner, .save-state.is-saving > span { animation: none; } }

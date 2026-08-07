@@ -27,10 +27,18 @@
     eoiResult: null,
     submitResult: null,
     saveStatus: "idle",
+    lastSavedSnapshot: "",
+    changeVersion: 0,
+    paused: false,
     otpResends: {},
     counts: { appGuardian: 2, sibling: 1, futureSibling: 1, relative: 1, emergency: 2, acceptanceGuardian: 2, declineGuardian: 1 }
   };
   let resendTimer;
+  let autosaveTimer;
+  let autosaveMaxTimer;
+  let saveQueue = Promise.resolve();
+  const AUTOSAVE_DEBOUNCE_MS = 1200;
+  const AUTOSAVE_MAX_WAIT_MS = 8000;
 
   function liveWorkflow() {
     return !reviewMode && ["eoi", "application"].includes(state.workflow);
@@ -38,14 +46,20 @@
 
   async function api(path, options = {}) {
     const { authToken, ...requestOptions } = options;
-    const response = await fetch(`${apiBase}${path}`, {
-      ...requestOptions,
-      headers: {
-        "Content-Type": "application/json",
-        ...(authToken || state.sessionToken ? { Authorization: `Bearer ${authToken || state.sessionToken}` } : {}),
-        ...(options.headers || {})
-      }
-    });
+    let response;
+    try {
+      response = await fetch(`${apiBase}${path}`, {
+        ...requestOptions,
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken || state.sessionToken ? { Authorization: `Bearer ${authToken || state.sessionToken}` } : {}),
+          ...(options.headers || {})
+        }
+      });
+    } catch (error) {
+      error.code = "NETWORK_ERROR";
+      throw error;
+    }
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
       const error = new Error(payload.message || "The secure enrolment service could not complete this request.");
@@ -151,8 +165,12 @@
 
   function actions(options = {}) {
     const back = state.screen > 0 && options.back !== false ? '<button type="button" class="button button-secondary" data-action="back">Back</button>' : "<span></span>";
+    const saveLater = liveWorkflow() && state.workflow === "application" && state.screen >= 3 && state.screen <= 7
+      ? '<button type="button" class="button button-quiet save-later-button" data-action="save-close">Save and continue later</button>'
+      : "";
+    const left = options.left != null ? options.left : `${back}${saveLater}`;
     const label = options.label || "Next";
-    return `<div class="step-actions"><div>${back}</div><div class="right">${options.secondary || ""}<button type="submit" class="button button-primary"${options.disabled ? " disabled" : ""}>${label}</button></div></div>`;
+    return `<div class="step-actions"><div class="left">${left}</div><div class="right">${options.secondary || ""}<button type="submit" class="button button-primary"${options.disabled ? " disabled" : ""}>${label}</button></div></div>`;
   }
 
   function documentPlaceholder(title) {
@@ -201,7 +219,7 @@
       const startCopy = applications.length ? "Add another child" : "Enter the first child";
       return intro("Choose a child application", linked ? "We found the Expression of Interest linked by Rosewood College. You can continue that child’s application or start a separate application for another child." : "This is a direct family invitation. Add each child who will apply to Rosewood College; each child has a separate application record.", workflows[kind].label) +
         section("Invited parent or guardian", `<div class="review-card"><dl>${family.parentGuardianName ? `<dt>Name</dt><dd>${esc(family.parentGuardianName)}</dd>` : ""}<dt>Email</dt><dd>${esc(family.recipientEmail || state.values.application_gateway_email)}</dd></dl></div>`) + records +
-        section(startCopy, `<p>${applications.length ? "Use this only for another child. Their medical details, documents, progress and signatures will remain separate from the applications above." : "Enter the child’s name to create their Application for Enrolment."}</p><div class="field-grid two">${field("application_new_first", "Student First Name", { required: true })}${field("application_new_last", "Student Last Name", { required: true })}</div>`) + actions({ label: applications.length ? "Start another application" : "Start application" });
+        section(startCopy, `<p>${applications.length ? "Use this only for another child. Their medical details, documents, progress and signatures will remain separate from the applications above." : "Enter the child’s name to create their Application for Enrolment."}</p><div class="field-grid two">${field("application_new_first", "Student First Name", { required: true })}${field("application_new_last", "Student Last Name", { required: true })}</div>`) + actions({ label: applications.length ? "Start another application" : "Start application", back: false, left: '<button type="button" class="button button-secondary" data-action="sign-out">Sign out</button>' });
     }
     return intro(kind === "application" ? "Select or enter a student" : kind === "acceptance" ? "Accept your offer" : "Decline an offer", `Your information was located. Select a student to continue the ${noun}.`, workflows[kind].label) +
       section("Matched contact", `<div class="record-table-wrap"><table class="record-table"><thead><tr><th>Name</th><th>Last Updated</th><th>Address</th><th>Email</th><th>Mobile Phone</th></tr></thead><tbody><tr><td>Alex Example</td><td>4 August 2026</td><td>Synthetic address</td><td>family@example.test</td><td>0400 000 000</td></tr></tbody></table></div>`) +
@@ -279,7 +297,7 @@
   function renderApplicationDocuments() {
     const accept = ".pdf,.png,.jpg,.jpeg";
     const uploaded = state.applicationContext?.documents || [];
-    const note = liveWorkflow() ? notice("Save and return", "If you do not have every optional document now, continue with the documents available. Your completed sections are saved when you move forward.") : notice("Frontend review", "Files remain on your device in this review frame.");
+    const note = liveWorkflow() ? notice("Save and return", "If you do not have every optional document now, upload the documents available and use Save and continue later at the end of this page.") : notice("Frontend review", "Files remain on your device in this review frame.");
     return intro("Documents", "Upload the supporting documents available for this application.", "Application for enrolment") + note +
       `<div class="document-list">${applicationDocuments.map((document, index) => { const existing = uploaded.filter(item => item.category === document[3]); const alreadyUploaded = existing.length > 0; return `<article class="document-card"><header><div><h4>${document[0]}${document[2] ? ' <span class="required">*</span>' : ""}</h4><p>${document[1]}</p>${alreadyUploaded ? `<p class="uploaded-document">Uploaded: ${existing.map(item => esc(item.fileName)).join(", ")}</p>` : ""}</div><span class="document-badge">${alreadyUploaded ? "Uploaded" : document[2] ? "1 file required" : "Optional"}</span></header>${field(`application_document_${index}`, `Choose ${document[0]}`, { type: "file", required: document[2] && !alreadyUploaded, multiple: true, accept, hint: "Multiple files accepted, maximum 10 MB each." })}</article>`; }).join("")}</div>` + actions();
   }
@@ -464,28 +482,66 @@
 
   function updateSaveState(screen) {
     const save = document.querySelector("#save-state");
+    save.classList.remove("is-saved", "is-dirty", "is-saving", "is-offline", "is-error", "is-expired");
+    if (state.paused) {
+      save.classList.add("is-saved");
+      save.querySelector("strong").textContent = "Saved";
+      save.querySelector("small").textContent = `Last saved ${state.lastSavedLabel || "just now"}`;
+      return;
+    }
     if (liveWorkflow()) {
-      const verified = state.workflow === "eoi" || Boolean(state.sessionToken || state.familySessionToken);
-      const saved = state.saveStatus === "saved" || Boolean(state.eoiResult || state.submitResult);
-      save.classList.toggle("is-saved", saved);
-      save.classList.toggle("is-saving", state.saveStatus === "saving");
-      save.querySelector("strong").textContent = state.saveStatus === "saving" ? "Saving securely" : saved ? "Saved" : verified ? "Secure form" : "Secure access";
-      save.querySelector("small").textContent = state.saveStatus === "saving" ? "Please keep this page open" : saved ? `Last saved ${state.lastSavedLabel || "just now"}` : verified ? "Progress saves when you continue" : "Verify your invitation email to begin";
+      if (state.workflow === "eoi") {
+        const submitted = Boolean(state.eoiResult);
+        if (submitted) save.classList.add("is-saved");
+        save.querySelector("strong").textContent = submitted ? "Submitted" : "Not submitted";
+        save.querySelector("small").textContent = submitted ? "Your expression of interest was received" : "This one-page form is sent when you submit";
+        return;
+      }
+      if (pendingDocumentFiles() && ["idle", "saved", "dirty"].includes(state.saveStatus)) {
+        save.classList.add("is-dirty");
+        save.querySelector("strong").textContent = "In progress";
+        save.querySelector("small").textContent = "Files upload when you continue or save for later";
+        return;
+      }
+      if (state.screen === 7 && state.signatures.application_signature && ["idle", "saved", "dirty"].includes(state.saveStatus)) {
+        save.classList.add("is-dirty");
+        save.querySelector("strong").textContent = "In progress";
+        save.querySelector("small").textContent = "Your signature is recorded when you submit";
+        return;
+      }
+      const statuses = {
+        dirty: ["is-dirty", "In progress", "Saving after you pause"],
+        saving: ["is-saving", "Saving", "Sending changes"],
+        saved: ["is-saved", "Saved", `All changes saved ${state.lastSavedLabel || "just now"}`],
+        offline: ["is-offline", "No connection", "Changes are waiting to be saved"],
+        error: ["is-error", "Save failed", "Your latest changes are not saved"],
+        expired: ["is-expired", "Session expired", "Saved progress is safe; sign in again"]
+      };
+      const status = statuses[state.saveStatus];
+      if (status) {
+        save.classList.add(status[0]);
+        save.querySelector("strong").textContent = status[1];
+        save.querySelector("small").textContent = status[2];
+        return;
+      }
+      const verified = Boolean(state.sessionToken || state.familySessionToken);
+      save.querySelector("strong").textContent = verified ? "Connected" : "Not connected";
+      save.querySelector("small").textContent = verified ? "Choose a child to begin" : "Verify your invitation email to begin";
       return;
     }
     const isForm = screen.formStep != null && state.workflow !== "signing";
-    save.classList.toggle("is-saved", false);
-    save.classList.toggle("is-saving", false);
     save.querySelector("strong").textContent = "Frontend review";
     save.querySelector("small").textContent = isForm ? "Answers are simulated and not persisted" : "Not connected or saved";
   }
 
   function updateEnvironment() {
     const live = liveWorkflow();
-    document.querySelector("#environment-label").textContent = live ? "Secure enrolment form" : "Frontend review";
-    document.querySelector("#environment-copy").textContent = live ? "EOI and Application information is saved securely. Offer acceptance and decline are not active." : "Nothing entered in this review workflow is saved, uploaded, emailed or submitted.";
+    const ribbon = document.querySelector("#environment-ribbon");
+    ribbon.hidden = live;
+    document.body.classList.toggle("no-environment-ribbon", live);
+    document.querySelector("#environment-label").textContent = "Frontend review";
+    document.querySelector("#environment-copy").textContent = "Nothing entered in this review workflow is saved, uploaded, emailed or submitted.";
     document.querySelector("#footer-environment").textContent = live ? "Secure online form" : "Frontend review only";
-    document.querySelector("#environment-ribbon").classList.toggle("is-live", live);
   }
 
   function render() {
@@ -500,6 +556,15 @@
     document.querySelector("#story-copy").textContent = workflow.copy;
     document.querySelector("#story-promise-copy").textContent = workflow.promise;
     updateEnvironment();
+    if (state.paused) {
+      document.querySelector("#step-title").textContent = "Progress saved";
+      progress.hidden = true;
+      reviewTools.hidden = true;
+      errorSummary.hidden = true;
+      root.innerHTML = `<div class="success-card"><div class="success-mark" aria-hidden="true">&#10003;</div><p class="eyebrow">Application for enrolment</p><h3>Your progress is saved</h3><p>You can close this tab safely. To continue later, open your private invitation link and verify the same email address.</p><div class="status-card"><strong>Last saved ${esc(state.lastSavedLabel || "just now")}</strong><p>Your completed answers remain attached to this child’s application.</p></div></div>`;
+      updateSaveState(screen);
+      return;
+    }
     root.innerHTML = screen.render();
     errorSummary.hidden = true;
     renderProgress(screen);
@@ -632,6 +697,8 @@
           const date = root.querySelector(`[name="${container.dataset.signature}_date"]`);
           if (date) date.value = new Date().toISOString().slice(0, 10);
         }
+        captureValues();
+        scheduleAutosave();
         updateSignatureLocks();
       };
       canvas.addEventListener("pointerdown", event => { if (container.classList.contains("is-locked")) return; drawing = true; canvas.setPointerCapture(event.pointerId); const p = point(event); context.beginPath(); context.moveTo(p.x, p.y); });
@@ -688,6 +755,22 @@
   function next() {
     captureValues();
     if (state.screen < workflows[state.workflow].screens.length - 1) state.screen += 1;
+    render();
+  }
+
+  async function navigateToScreen(target) {
+    captureValues();
+    if (applicationDraftActive()) {
+      try {
+        await saveApplicationDraft(currentApplicationStage(), { mode: "navigation" });
+      } catch (error) {
+        state.screen = target;
+        render();
+        showServiceError(error);
+        return;
+      }
+    }
+    state.screen = target;
     render();
   }
 
@@ -764,27 +847,103 @@
     }
   }
 
-  async function saveApplicationDraft(stage) {
-    state.saveStatus = "saving";
+  function applicationDraftActive() {
+    return liveWorkflow() && state.workflow === "application" && Boolean(state.sessionToken && state.applicationContext) && state.screen >= 3 && state.screen <= 7 && !state.paused;
+  }
+
+  function currentApplicationStage() {
+    return workflows.application.screens[state.screen]?.label.toLowerCase().replaceAll(" ", "_") || "application";
+  }
+
+  function clearAutosaveTimers() {
+    clearTimeout(autosaveTimer);
+    clearTimeout(autosaveMaxTimer);
+    autosaveTimer = undefined;
+    autosaveMaxTimer = undefined;
+  }
+
+  function draftSnapshot({ values = state.values, screen = state.screen, guardianCount = state.counts.appGuardian, emergencyCount = state.counts.emergency } = {}) {
+    return JSON.stringify({ values, screen, guardianCount, emergencyCount });
+  }
+
+  function pendingDocumentFiles() {
+    return [...root.querySelectorAll('input[type="file"]')].some(input => input.files?.length);
+  }
+
+  function scheduleAutosave(markChange = true) {
+    if (!applicationDraftActive()) return;
+    if (markChange) state.changeVersion += 1;
+    state.saveStatus = navigator.onLine ? "dirty" : "offline";
     updateSaveState(workflows.application.screens[state.screen]);
-    const result = await api("/v6/application/draft", {
-      method: "PUT",
-      body: JSON.stringify({
-        expectedRevision: state.revision,
-        values: state.values,
-        screen: state.screen,
-        stage,
-        guardianCount: state.counts.appGuardian,
-        emergencyCount: state.counts.emergency,
-        percentComplete: Math.round((Math.max(0, state.screen - 2) / 5) * 100)
-      })
+    clearTimeout(autosaveTimer);
+    if (!navigator.onLine) return;
+    const run = () => {
+      clearAutosaveTimers();
+      saveApplicationDraft(currentApplicationStage(), { mode: "autosave" }).catch(() => {});
+    };
+    autosaveTimer = window.setTimeout(run, AUTOSAVE_DEBOUNCE_MS);
+    if (!autosaveMaxTimer) autosaveMaxTimer = window.setTimeout(run, AUTOSAVE_MAX_WAIT_MS);
+  }
+
+  async function saveApplicationDraft(stage, { mode = "navigation", force = false } = {}) {
+    if (!applicationDraftActive()) return state.applicationContext;
+    clearAutosaveTimers();
+    captureValues();
+    const version = state.changeVersion;
+    const payload = {
+      values: JSON.parse(JSON.stringify(state.values)),
+      screen: state.screen,
+      guardianCount: state.counts.appGuardian,
+      emergencyCount: state.counts.emergency
+    };
+    const snapshot = draftSnapshot(payload);
+    if (!force && snapshot === state.lastSavedSnapshot) {
+      state.saveStatus = "saved";
+      updateSaveState(workflows.application.screens[state.screen]);
+      return state.applicationContext;
+    }
+    const operation = saveQueue.catch(() => {}).then(async () => {
+      if (!force && snapshot === state.lastSavedSnapshot) {
+        state.saveStatus = version === state.changeVersion ? "saved" : navigator.onLine ? "dirty" : "offline";
+        updateSaveState(workflows.application.screens[state.screen]);
+        return state.applicationContext;
+      }
+      if (!navigator.onLine) {
+        const error = new Error("Your device is offline. Reconnect before closing this form.");
+        error.code = "NETWORK_OFFLINE";
+        throw error;
+      }
+      state.saveStatus = "saving";
+      updateSaveState(workflows.application.screens[state.screen]);
+      try {
+        const result = await api("/v6/application/draft", {
+          method: "PUT",
+          body: JSON.stringify({
+            expectedRevision: state.revision,
+            values: payload.values,
+            screen: payload.screen,
+            stage,
+            guardianCount: payload.guardianCount,
+            emergencyCount: payload.emergencyCount,
+            percentComplete: Math.round((Math.max(0, payload.screen - 2) / 5) * 100),
+            saveMode: mode
+          })
+        });
+        state.revision = result.revision;
+        state.applicationContext = { ...state.applicationContext, ...result };
+        state.lastSavedSnapshot = snapshot;
+        state.lastSavedLabel = new Date().toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" });
+        state.saveStatus = version === state.changeVersion ? "saved" : navigator.onLine ? "dirty" : "offline";
+        updateSaveState(workflows.application.screens[state.screen]);
+        return result;
+      } catch (error) {
+        state.saveStatus = ["SESSION_EXPIRED", "SESSION_REQUIRED"].includes(error.code) ? "expired" : (!navigator.onLine || ["NETWORK_ERROR", "NETWORK_OFFLINE"].includes(error.code)) ? "offline" : "error";
+        updateSaveState(workflows.application.screens[state.screen]);
+        throw error;
+      }
     });
-    state.revision = result.revision;
-    state.applicationContext = { ...state.applicationContext, ...result };
-    state.saveStatus = "saved";
-    state.lastSavedLabel = new Date().toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" });
-    updateSaveState(workflows.application.screens[state.screen]);
-    return result;
+    saveQueue = operation;
+    return operation;
   }
 
   function mimeTypeFor(file) {
@@ -836,6 +995,9 @@
     state.values = { application_gateway_email: state.values.application_gateway_email, ...result.context.values };
     state.counts.appGuardian = result.context.guardianCount || 1;
     state.counts.emergency = result.context.emergencyCount || 2;
+    state.lastSavedSnapshot = draftSnapshot({ values: state.values, screen: Number(result.context.screen || 2), guardianCount: state.counts.appGuardian, emergencyCount: state.counts.emergency });
+    state.saveStatus = "saved";
+    state.lastSavedLabel = result.context.updatedAt ? new Date(result.context.updatedAt).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" }) : "just now";
   }
 
   async function selectFamilyApplication(applicationId, button) {
@@ -845,10 +1007,61 @@
     try {
       const result = await api("/v6/application/records/select", { method: "POST", authToken: state.familySessionToken, body: JSON.stringify({ applicationId }) });
       applyApplicationSession(result);
-      return next();
+      state.screen = Math.max(3, Math.min(7, Number(result.context.screen || 3)));
+      return render();
     } catch (error) {
       button.disabled = false;
       button.innerHTML = previous;
+      showServiceError(error);
+    }
+  }
+
+  async function revokeBrowserSessions() {
+    const tokens = [...new Set([state.sessionToken, state.familySessionToken].filter(Boolean))];
+    await Promise.allSettled(tokens.map(authToken => api("/v6/session/logout", { method: "POST", authToken, body: "{}" })));
+  }
+
+  function clearApplicationSession() {
+    clearAutosaveTimers();
+    state.sessionToken = "";
+    state.familySessionToken = "";
+    state.familyContext = null;
+    state.applicationContext = null;
+    state.challengeId = "";
+    state.revision = 0;
+    state.values = {};
+    state.signatures = {};
+    state.lastSavedSnapshot = "";
+    state.changeVersion = 0;
+  }
+
+  async function signOut() {
+    await revokeBrowserSessions();
+    clearApplicationSession();
+    state.saveStatus = "idle";
+    state.paused = false;
+    state.screen = 0;
+    render();
+  }
+
+  async function saveAndClose(button) {
+    const previous = button.textContent;
+    button.disabled = true;
+    button.innerHTML = '<span class="button-spinner" aria-hidden="true"></span> Saving...';
+    try {
+      captureValues();
+      if (state.screen === 5 && pendingDocumentFiles()) await uploadApplicationDocuments();
+      await saveApplicationDraft(currentApplicationStage(), { mode: "save_and_close" });
+      const savedLabel = state.lastSavedLabel;
+      await revokeBrowserSessions();
+      clearApplicationSession();
+      state.lastSavedLabel = savedLabel;
+      state.saveStatus = "saved";
+      state.paused = true;
+      render();
+    } catch (error) {
+      button.disabled = false;
+      button.textContent = previous;
       showServiceError(error);
     }
   }
@@ -881,6 +1094,8 @@
       if (!result.family) {
         state.counts.appGuardian = result.context.guardianCount || 1;
         state.counts.emergency = result.context.emergencyCount || 2;
+        state.lastSavedSnapshot = draftSnapshot({ values: state.values, screen: Number(result.context.screen || 2), guardianCount: state.counts.appGuardian, emergencyCount: state.counts.emergency });
+        state.saveStatus = "saved";
       }
       return next();
     }
@@ -898,12 +1113,12 @@
     if (state.screen === 5) {
       setBusy(true, "Uploading securely...");
       await uploadApplicationDocuments();
-      await saveApplicationDraft("documents");
+      await saveApplicationDraft("documents", { mode: "navigation" });
       return next();
     }
     if (state.screen === 7) {
       setBusy(true, "Submitting...");
-      await saveApplicationDraft("signature");
+      await saveApplicationDraft("signature", { mode: "submission" });
       const canvas = root.querySelector('[data-signature="application_signature"] canvas');
       state.submitResult = await api("/v6/application/submit", { method: "POST", body: JSON.stringify({ expectedRevision: state.revision, signatureDataUrl: canvas.toDataURL("image/png") }) });
       state.saveStatus = "saved";
@@ -912,7 +1127,7 @@
     }
     const stage = workflows.application.screens[state.screen].label.toLowerCase().replaceAll(" ", "_");
     setBusy(true, "Saving...");
-    await saveApplicationDraft(stage);
+    await saveApplicationDraft(stage, { mode: "navigation" });
     return next();
   }
 
@@ -938,6 +1153,7 @@
     }
     captureValues();
     updateConditionals();
+    scheduleAutosave();
   });
 
   form.addEventListener("click", async event => {
@@ -947,6 +1163,8 @@
     const remove = event.target.closest("[data-remove]");
     const clear = event.target.closest("[data-clear-signature]");
     if (selectedApplication) return selectFamilyApplication(selectedApplication.dataset.selectApplication, selectedApplication);
+    if (action?.dataset.action === "sign-out") return signOut();
+    if (action?.dataset.action === "save-close") return saveAndClose(action);
     if (action?.dataset.action === "family-selector") {
       if (state.familyContext && state.applicationContext) {
         state.familyContext.applications = state.familyContext.applications.map(record => record.applicationId === state.applicationContext.applicationId ? { ...record, status: state.submitResult?.status || record.status, editable: false } : record);
@@ -959,17 +1177,25 @@
       state.screen = 2;
       return render();
     }
-    if (action?.dataset.action === "next") next();
-    if (action?.dataset.action === "back") { captureValues(); state.screen = Math.max(0, state.screen - 1); render(); }
-    if (action?.dataset.action === "resend-code") resendCode(action.dataset.resendKind);
+    if (action?.dataset.action === "next") return next();
+    if (action?.dataset.action === "back") return navigateToScreen(Math.max(0, state.screen - 1));
+    if (action?.dataset.action === "resend-code") return resendCode(action.dataset.resendKind);
     if (add) {
       captureValues();
       state.counts[add.dataset.add] += 1;
       const confirmations = { appGuardian: "app_guardians_complete", acceptanceGuardian: "acceptance_guardians_complete", declineGuardian: "decline_guardians_complete" };
       if (confirmations[add.dataset.add]) state.values[confirmations[add.dataset.add]] = [];
       render();
+      scheduleAutosave();
+      return;
     }
-    if (remove) { captureValues(); state.counts[remove.dataset.remove] = Math.max(1, state.counts[remove.dataset.remove] - 1); render(); }
+    if (remove) {
+      captureValues();
+      state.counts[remove.dataset.remove] = Math.max(1, state.counts[remove.dataset.remove] - 1);
+      render();
+      scheduleAutosave();
+      return;
+    }
     if (clear) {
       const prefix = clear.dataset.clearSignature;
       state.signatures[prefix] = false;
@@ -977,18 +1203,33 @@
       canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
       const date = root.querySelector(`[name="${prefix}_date"]`);
       if (date && root.querySelector(`[data-signature="${prefix}"]`).dataset.autoDate === "true") date.value = "";
+      captureValues();
+      scheduleAutosave();
       updateSignatureLocks();
     }
   });
 
-  document.querySelector("#step-list").addEventListener("click", event => {
+  document.querySelector("#step-list").addEventListener("click", async event => {
     const target = event.target.closest("[data-goto]");
     if (!target) return;
-    captureValues();
-    state.screen = Number(target.dataset.goto);
-    render();
+    await navigateToScreen(Number(target.dataset.goto));
   });
 
   frameSelect.addEventListener("change", () => { captureValues(); state.screen = Number(frameSelect.value); render(); });
+  window.addEventListener("offline", () => {
+    if (!applicationDraftActive()) return;
+    clearAutosaveTimers();
+    state.saveStatus = "offline";
+    updateSaveState(workflows.application.screens[state.screen]);
+  });
+  window.addEventListener("online", () => {
+    if (!applicationDraftActive() || !["offline", "error"].includes(state.saveStatus)) return;
+    scheduleAutosave(false);
+  });
+  window.addEventListener("beforeunload", event => {
+    if (!applicationDraftActive() || (!["dirty", "saving", "offline", "error"].includes(state.saveStatus) && !pendingDocumentFiles() && !state.signatures.application_signature)) return;
+    event.preventDefault();
+    event.returnValue = "";
+  });
   render();
 })();
