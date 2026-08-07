@@ -28,9 +28,15 @@ contract and deliberately creating a new version.
 Current launch contracts:
 
 ```text
-EOI:         rosewood-eoi-2026.1
-Application: rosewood-application-2026.1
+EOI:         rosewood-eoi-2026.2
+Application: rosewood-application-2026.2
 ```
+
+The original `2026.1` contracts and validators remain addressable for existing records.
+The `2026.2` release changes document-upload interaction and transport without changing
+question meaning, required answers or stored answer keys. Existing `2026.1`
+applications use the corrected uploader and remain pinned to their original contract;
+new records receive `2026.2`.
 
 Acceptance, Decline and the Enrolment Agreement must receive their own independent
 version series when their backends are built. They must not reuse the Application

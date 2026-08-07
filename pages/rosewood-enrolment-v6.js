@@ -14,7 +14,7 @@
   const reviewMode = params.get("review") === "1";
   const apiBase = "https://6zyzo44sdb5zmmx53toktqrnuu0sikyd.lambda-url.ap-southeast-2.on.aws";
   const invitationToken = params.get("invite") || "";
-  const SUPPORTED_APPLICATION_FORM_VERSIONS = new Set(["rosewood-application-2026.1"]);
+  const SUPPORTED_APPLICATION_FORM_VERSIONS = new Set(["rosewood-application-2026.1", "rosewood-application-2026.2"]);
 
   const state = {
     workflow: params.get("workflow") || "application",
@@ -44,6 +44,7 @@
   let autosaveMaxTimer;
   let sessionExpiryTimer;
   let saveQueue = Promise.resolve();
+  const documentUploads = new Map();
   const AUTOSAVE_DEBOUNCE_MS = 1200;
   const AUTOSAVE_MAX_WAIT_MS = 8000;
   const APPLICATION_IDLE_SECONDS = 20 * 60;
@@ -356,7 +357,7 @@
     const uploaded = state.applicationContext?.documents || [];
     const note = liveWorkflow() ? notice("Save and return", "If you do not have every optional document now, upload the documents available and use Save and continue later at the end of this page.") : notice("Frontend review", "Files remain on your device in this review frame.");
     return intro("Documents", "Upload the supporting documents available for this application.", "Application for enrolment") + note +
-      `<div class="document-list">${applicationDocuments.map((document, index) => { const existing = uploaded.filter(item => item.category === document[3]); const alreadyUploaded = existing.length > 0; return `<article class="document-card"><header><div><h4>${document[0]}${document[2] ? ' <span class="required">*</span>' : ""}</h4><p>${document[1]}</p>${alreadyUploaded ? `<p class="uploaded-document">Uploaded: ${existing.map(item => esc(item.fileName)).join(", ")}</p>` : ""}</div><span class="document-badge">${alreadyUploaded ? "Uploaded" : document[2] ? "1 file required" : "Optional"}</span></header>${field(`application_document_${index}`, `Choose ${document[0]}`, { type: "file", required: document[2] && !alreadyUploaded, multiple: true, accept, hint: "Multiple files accepted, maximum 10 MB each." })}</article>`; }).join("")}</div>` + actions();
+      `<div class="document-list">${applicationDocuments.map((document, index) => { const existing = uploaded.filter(item => item.category === document[3]); const alreadyUploaded = existing.length > 0; return `<article class="document-card" data-document-category="${document[3]}"><header><div><h4>${document[0]}${document[2] ? ' <span class="required">*</span>' : ""}</h4><p>${document[1]}</p>${alreadyUploaded ? `<p class="uploaded-document">Uploaded: ${existing.map(item => esc(item.fileName)).join(", ")}</p>` : ""}</div><span class="document-badge" data-document-badge>${alreadyUploaded ? "Uploaded" : document[2] ? "1 file required" : "Optional"}</span></header>${field(`application_document_${index}`, `Choose ${document[0]}`, { type: "file", required: document[2] && !alreadyUploaded, multiple: true, accept, hint: "Multiple files accepted, maximum 10 MB each. Upload begins as soon as you choose a file." })}<div class="upload-list" data-upload-list="${document[3]}" aria-live="polite">${documentUploadRows(document[3])}</div><p class="upload-card-error" data-upload-error="${document[3]}" role="alert" hidden></p></article>`; }).join("")}</div>` + actions();
   }
 
   function termsHeadings(count) {
@@ -557,10 +558,19 @@
         save.querySelector("small").textContent = submitted ? "Your expression of interest was received" : "This one-page form is sent when you submit";
         return;
       }
-      if (pendingDocumentFiles() && ["idle", "saved", "dirty"].includes(state.saveStatus)) {
-        save.classList.add("is-dirty");
-        save.querySelector("strong").textContent = "In progress";
-        save.querySelector("small").textContent = "Files upload when you continue or save for later";
+      const activeUploads = [...documentUploads.values()].filter(upload => ["preparing", "uploading", "confirming"].includes(upload.status));
+      const failedUploads = [...documentUploads.values()].filter(upload => upload.status === "error");
+      if (activeUploads.length) {
+        const average = Math.round(activeUploads.reduce((total, upload) => total + upload.progress, 0) / activeUploads.length);
+        save.classList.add("is-saving");
+        save.querySelector("strong").textContent = "Uploading";
+        save.querySelector("small").textContent = `${activeUploads.length} file${activeUploads.length === 1 ? "" : "s"} in progress${average ? `, ${average}%` : ""}`;
+        return;
+      }
+      if (failedUploads.length) {
+        save.classList.add("is-error");
+        save.querySelector("strong").textContent = "Upload failed";
+        save.querySelector("small").textContent = "Review the file message below";
         return;
       }
       if (state.screen === 7 && state.signatures.application_signature && ["idle", "saved", "dirty"].includes(state.saveStatus)) {
@@ -926,10 +936,6 @@
     return JSON.stringify({ values, screen, guardianCount, emergencyCount });
   }
 
-  function pendingDocumentFiles() {
-    return [...root.querySelectorAll('input[type="file"]')].some(input => input.files?.length);
-  }
-
   function scheduleAutosave(markChange = true) {
     if (!applicationDraftActive()) return;
     if (markChange) state.changeVersion += 1;
@@ -1035,25 +1041,175 @@
     throw new Error("The document security check is taking longer than expected. Please try again shortly.");
   }
 
-  async function uploadApplicationDocuments() {
-    for (let index = 0; index < applicationDocuments.length; index += 1) {
-      const input = root.querySelector(`[name="application_document_${index}"]`);
-      if (!input?.files?.length) continue;
-      const category = applicationDocuments[index][3];
-      for (const file of input.files) {
-        const mimeType = mimeTypeFor(file);
-        const checksumSha256 = await sha256Base64(file);
-        const started = await api("/v6/application/documents/start", { method: "POST", body: JSON.stringify({ category, fileName: file.name, mimeType, size: file.size, checksumSha256 }) });
-        const uploaded = await fetch(started.uploadUrl, { method: "PUT", headers: started.uploadHeaders || { "Content-Type": mimeType }, body: file });
-        if (!uploaded.ok) throw new Error(`The file ${file.name} could not be uploaded. Please try again.`);
-        const documentId = started.documentId || (await uploaded.json()).id;
-        const confirmed = await confirmDocumentAfterScan(category, documentId);
-        state.applicationContext.documents = [...(state.applicationContext.documents || []), { category, documentId: confirmed.document.documentId, fileName: confirmed.document.fileName, size: confirmed.document.size }];
+  function documentUploadKey(category, file) {
+    return `${category}:${file.name}:${file.size}:${file.lastModified}`;
+  }
+
+  function documentUploadLabel(upload) {
+    const labels = {
+      preparing: "Preparing file",
+      uploading: `Uploading ${upload.progress}%`,
+      confirming: "Securing file",
+      uploaded: "Uploaded",
+      error: "Upload failed"
+    };
+    return labels[upload.status] || "Waiting";
+  }
+
+  function documentUploadRows(category) {
+    return [...documentUploads.values()].filter(upload => upload.category === category).map(upload => {
+      const retry = upload.status === "error" ? `<button type="button" class="button button-quiet upload-retry" data-retry-upload="${esc(upload.key)}">Retry</button>` : "";
+      return `<div class="upload-item is-${upload.status}" data-upload-item="${esc(upload.key)}"><div class="upload-item-heading"><span class="upload-file-name">${esc(upload.file.name)}</span><strong>${documentUploadLabel(upload)}</strong></div><progress max="100" value="${upload.progress}">${upload.progress}%</progress>${retry}</div>`;
+    }).join("");
+  }
+
+  function renderDocumentUploadState(category) {
+    const card = root.querySelector(`[data-document-category="${CSS.escape(category)}"]`);
+    if (!card) return;
+    const uploads = [...documentUploads.values()].filter(upload => upload.category === category);
+    const failed = uploads.find(upload => upload.status === "error");
+    const list = card.querySelector(`[data-upload-list="${CSS.escape(category)}"]`);
+    const message = card.querySelector(`[data-upload-error="${CSS.escape(category)}"]`);
+    if (list) list.innerHTML = documentUploadRows(category);
+    card.classList.toggle("has-upload-error", Boolean(failed));
+    card.classList.toggle("has-upload-active", uploads.some(upload => ["preparing", "uploading", "confirming"].includes(upload.status)));
+    if (message) {
+      message.hidden = !failed;
+      message.textContent = failed?.error || "";
+    }
+    if (uploads.some(upload => upload.status === "uploaded")) {
+      const badge = card.querySelector("[data-document-badge]");
+      if (badge) badge.textContent = "Uploaded";
+    }
+    updateSaveState(workflows.application.screens[state.screen]);
+  }
+
+  function setDocumentUploadState(upload, status, progress = upload.progress) {
+    upload.status = status;
+    upload.progress = Math.max(0, Math.min(100, Math.round(progress)));
+    renderDocumentUploadState(upload.category);
+  }
+
+  function uploadWithProgress(upload, url, headers, file, onProgress) {
+    return new Promise((resolve, reject) => {
+      const request = new XMLHttpRequest();
+      request.open("PUT", url);
+      Object.entries(headers || {}).forEach(([name, value]) => request.setRequestHeader(name, value));
+      request.timeout = 10 * 60 * 1000;
+      request.upload.addEventListener("progress", event => {
+        if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100));
+      });
+      request.addEventListener("load", () => {
+        if (request.status >= 200 && request.status < 300) resolve();
+        else {
+          const error = new Error("The secure file service did not accept this upload. Please try again.");
+          error.code = "UPLOAD_REJECTED";
+          reject(error);
+        }
+      });
+      request.addEventListener("error", () => {
+        const error = new Error("The connection was interrupted while uploading this file. Check your connection and try again.");
+        error.code = "NETWORK_ERROR";
+        reject(error);
+      });
+      request.addEventListener("timeout", () => {
+        const error = new Error("The file upload took too long. Please try again.");
+        error.code = "UPLOAD_TIMEOUT";
+        reject(error);
+      });
+      request.addEventListener("abort", () => {
+        const error = new Error("The file upload was cancelled.");
+        error.code = "UPLOAD_ABORTED";
+        reject(error);
+      });
+      upload.request = request;
+      request.send(file);
+    });
+  }
+
+  function uploadErrorMessage(error, file) {
+    if (error.code === "INVALID_DOCUMENT") return error.message;
+    if (["SESSION_EXPIRED", "SESSION_REQUIRED"].includes(error.code)) return "Your session expired before this file finished. Sign in again to continue.";
+    if (error.code === "UPLOAD_ABORTED") return "This upload was cancelled. Select Retry to upload it again.";
+    return `${file.name} was not uploaded. ${error.message || "Please check the file and try again."}`;
+  }
+
+  function startDocumentUpload(upload) {
+    if (upload.promise) return upload.promise;
+    upload.error = "";
+    setDocumentUploadState(upload, "preparing", 1);
+    const operation = (async () => {
+      const mimeType = mimeTypeFor(upload.file);
+      if (!["application/pdf", "image/png", "image/jpeg"].includes(mimeType) || upload.file.size < 1 || upload.file.size > 10 * 1024 * 1024) {
+        const error = new Error("Use a PDF, PNG or JPEG file no larger than 10 MB.");
+        error.code = "INVALID_DOCUMENT";
+        throw error;
       }
+      const checksumSha256 = await sha256Base64(upload.file);
+      const started = await api("/v6/application/documents/start", { method: "POST", body: JSON.stringify({ category: upload.category, fileName: upload.file.name, mimeType, size: upload.file.size, checksumSha256 }) });
+      setDocumentUploadState(upload, "uploading", 3);
+      await uploadWithProgress(upload, started.uploadUrl, started.uploadHeaders || { "Content-Type": mimeType }, upload.file, progressValue => setDocumentUploadState(upload, "uploading", Math.max(3, progressValue)));
+      setDocumentUploadState(upload, "confirming", 100);
+      const confirmed = await confirmDocumentAfterScan(upload.category, started.documentId);
+      const document = { category: upload.category, documentId: confirmed.document.documentId, fileName: confirmed.document.fileName, size: confirmed.document.size };
+      const documents = state.applicationContext.documents || [];
+      state.applicationContext.documents = documents.some(item => item.documentId === document.documentId) ? documents : [...documents, document];
+      upload.document = document;
+      setDocumentUploadState(upload, "uploaded", 100);
+      return document;
+    })().catch(error => {
+      upload.error = uploadErrorMessage(error, upload.file);
+      setDocumentUploadState(upload, "error", upload.progress);
+      if (["SESSION_EXPIRED", "SESSION_REQUIRED"].includes(error.code)) showSessionExpired(true);
+      throw error;
+    }).finally(() => {
+      upload.promise = null;
+      upload.request = null;
+    });
+    upload.promise = operation;
+    operation.catch(() => {});
+    return operation;
+  }
+
+  function startSelectedDocumentUploads(input) {
+    if (!applicationDraftActive() || state.screen !== 5) return;
+    const match = input.name.match(/^application_document_(\d+)$/);
+    const category = match ? applicationDocuments[Number(match[1])]?.[3] : "";
+    if (!category) return;
+    for (const file of input.files || []) {
+      const key = documentUploadKey(category, file);
+      const existing = documentUploads.get(key);
+      if (existing?.status === "uploaded" || existing?.promise) continue;
+      const upload = existing || { key, category, file, status: "waiting", progress: 0, error: "", promise: null, request: null };
+      documentUploads.set(key, upload);
+      startDocumentUpload(upload);
     }
   }
 
+  async function finishDocumentUploads() {
+    root.querySelectorAll('input[type="file"][name^="application_document_"]').forEach(startSelectedDocumentUploads);
+    const active = [...documentUploads.values()].map(upload => upload.promise).filter(Boolean);
+    if (active.length) await Promise.allSettled(active);
+    const failed = [...documentUploads.values()].filter(upload => upload.status === "error");
+    if (failed.length) {
+      renderDocumentUploadState(failed[0].category);
+      const error = new Error(`${failed.length} selected file${failed.length === 1 ? " has" : "s have"} not uploaded. Review the message in the Documents section and select Retry.`);
+      error.code = "DOCUMENT_UPLOAD_FAILED";
+      throw error;
+    }
+  }
+
+  function resetDocumentUploads() {
+    documentUploads.forEach(upload => upload.request?.abort());
+    documentUploads.clear();
+  }
+
+  function documentUploadsNeedAttention() {
+    return [...documentUploads.values()].some(upload => ["preparing", "uploading", "confirming", "error"].includes(upload.status));
+  }
+
   function applyApplicationSession(result) {
+    resetDocumentUploads();
     applyFormContract(result.context);
     state.sessionToken = result.sessionToken;
     state.applicationContext = result.context;
@@ -1092,6 +1248,7 @@
   function clearApplicationSession() {
     clearAutosaveTimers();
     clearSessionExpiryTimer();
+    resetDocumentUploads();
     state.sessionToken = "";
     state.familySessionToken = "";
     state.familyContext = null;
@@ -1133,7 +1290,7 @@
     button.innerHTML = '<span class="button-spinner" aria-hidden="true"></span> Saving...';
     try {
       captureValues();
-      if (state.screen === 5 && pendingDocumentFiles()) await uploadApplicationDocuments();
+      if (state.screen === 5) await finishDocumentUploads();
       await saveApplicationDraft(currentApplicationStage(), { mode: "save_and_close" });
       const savedLabel = state.lastSavedLabel;
       await revokeBrowserSessions();
@@ -1196,8 +1353,8 @@
       return next();
     }
     if (state.screen === 5) {
-      setBusy(true, "Uploading securely...");
-      await uploadApplicationDocuments();
+      setBusy(true, "Finishing uploads...");
+      await finishDocumentUploads();
       await saveApplicationDraft("documents", { mode: "navigation" });
       return next();
     }
@@ -1224,7 +1381,7 @@
     try {
       await handleLiveSubmit();
     } catch (error) {
-      state.saveStatus = ["SESSION_EXPIRED", "SESSION_REQUIRED"].includes(error.code) ? "expired" : "error";
+      if (error.code !== "DOCUMENT_UPLOAD_FAILED") state.saveStatus = ["SESSION_EXPIRED", "SESSION_REQUIRED"].includes(error.code) ? "expired" : "error";
       setBusy(false);
       updateSaveState(workflows[state.workflow].screens[state.screen]);
       showServiceError(error);
@@ -1235,6 +1392,8 @@
     if (event.target.type === "file") {
       const output = event.target.closest(".field")?.querySelector("[data-file-state]");
       if (output) output.textContent = event.target.files[0] ? `${event.target.files.length} file${event.target.files.length === 1 ? "" : "s"} selected` : "Nothing selected";
+      startSelectedDocumentUploads(event.target);
+      return;
     }
     captureValues();
     updateConditionals();
@@ -1242,11 +1401,19 @@
   });
 
   form.addEventListener("click", async event => {
+    const retryUpload = event.target.closest("[data-retry-upload]");
     const action = event.target.closest("[data-action]");
     const selectedApplication = event.target.closest("[data-select-application]");
     const add = event.target.closest("[data-add]");
     const remove = event.target.closest("[data-remove]");
     const clear = event.target.closest("[data-clear-signature]");
+    if (retryUpload) {
+      const upload = documentUploads.get(retryUpload.dataset.retryUpload);
+      if (!upload) return;
+      errorSummary.hidden = true;
+      startDocumentUpload(upload);
+      return;
+    }
     if (selectedApplication) return selectFamilyApplication(selectedApplication.dataset.selectApplication, selectedApplication);
     if (action?.dataset.action === "sign-out") return signOut();
     if (action?.dataset.action === "save-close") return saveAndClose(action);
@@ -1255,6 +1422,7 @@
         state.familyContext.applications = state.familyContext.applications.map(record => record.applicationId === state.applicationContext.applicationId ? { ...record, status: state.submitResult?.status || record.status, editable: false } : record);
       }
       const email = state.values.application_gateway_email;
+      resetDocumentUploads();
       state.sessionToken = "";
       state.applicationContext = null;
       state.submitResult = null;
@@ -1314,7 +1482,7 @@
     scheduleAutosave(false);
   });
   window.addEventListener("beforeunload", event => {
-    if (!applicationDraftActive() || (!["dirty", "saving", "offline", "error"].includes(state.saveStatus) && !pendingDocumentFiles() && !state.signatures.application_signature)) return;
+    if (!applicationDraftActive() || (!["dirty", "saving", "offline", "error"].includes(state.saveStatus) && !documentUploadsNeedAttention() && !state.signatures.application_signature)) return;
     event.preventDefault();
     event.returnValue = "";
   });

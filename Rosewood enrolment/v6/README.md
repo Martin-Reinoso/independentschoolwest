@@ -55,18 +55,23 @@ EOI and Application for Enrolment now use the production V6 backend documented i
 records application signatures and documents in restricted Google Drive folders and
 writes normalized reporting projections to private Google Sheets owned by
 `info@ffe.org.au`. DynamoDB is authoritative for operational records; the Sheets are
-replaceable reports rather than the application database. GuardDuty and active S3
-document storage are outside the launch scope.
+replaceable reports rather than the application database. Browser uploads use a
+private, KMS-encrypted Sydney S3 staging bucket before Lambda verifies and moves each
+file into Drive. The staging object is deleted after a successful move and abandoned
+objects expire after one day; S3 is not an authoritative or staff-facing file store.
+GuardDuty and long-term S3 document storage are outside the launch scope.
 
 The browser still does not use cookies, local storage, session storage or IndexedDB.
 Family and child-application sessions remain in memory and expire after 20 minutes of
 inactivity, with an eight-hour absolute limit. A family invitation and email OTP reveal
 only the child records attached to that invitation; selecting or creating a child
 produces a separate application-scoped session. Application answers autosave after a
-short pause and during continuous typing. **Save and continue later** flushes the draft,
-uploads selected Documents-page files and revokes the browser sessions. Returning after
-OTP resumes the last acknowledged section. Acceptance, decline and post-offer Enrolment
-Agreement frames cannot write to the backend, send messages or create records.
+short pause and during continuous typing. Selecting a document starts its upload
+immediately and displays per-file progress and inline retryable errors. Next and **Save
+and continue later** wait for any active transfer, flush the draft and, for save-later,
+revoke the browser sessions. Returning after OTP resumes the last acknowledged section.
+Acceptance, decline and post-offer Enrolment Agreement frames cannot write to the
+backend, send messages or create records.
 
 Every live EOI and application is pinned to an immutable form version and definition
 hash. Draft saves merge rather than replace the answer map, preserving fields omitted

@@ -18,7 +18,8 @@ the Google Drive controls documented in `../GOOGLE-DRIVE-INTERIM-GUIDELINES.md`.
 Family browser
   -> Lambda authorization, OTP, validation and revision checks
   -> DynamoDB authoritative records and append-only audit events
-  -> restricted Google Drive documents, snapshots and signatures
+  -> private encrypted S3 upload staging
+  -> Lambda-verified restricted Google Drive documents, snapshots and signatures
 
 Staff browser
   -> staff OTP and role check
@@ -43,7 +44,8 @@ replaceable reporting projections. A Sheet edit cannot update an AWS record.
 | Staff access | Allowlisted OTP, memory-only sessions and role checks |
 | Shared reporting damage | Projection rebuild from authoritative AWS records |
 | Staff record inspection | Separate append-only DynamoDB audit table |
-| Uploaded files | Restricted Drive folder, PDF/JPG/PNG only and 10 MB server limit |
+| Uploaded files | Immediate progress to KMS-encrypted private staging; server verification; restricted Drive final storage; PDF/JPG/PNG only and 10 MB limit |
+| Abandoned staging uploads | Opaque keys, 15-minute upload authorisation and one-day lifecycle expiry |
 | Public file access | No public or link-wide Drive sharing |
 | Regional disaster | Accepted residual risk; no cross-region copy at current scale |
 
@@ -59,8 +61,10 @@ copies for 35 days and monthly copies for 366 days in the Sydney region. These a
 operational recovery controls, not Rosewood's legal-retention schedule.
 
 Google Drive recovery and retention remain governed by the organisation account and
-the approved enrolment-folder process. A future move to S3 requires a separate design,
-migration and approval; no unused S3 bucket is part of the V6 runtime.
+the approved enrolment-folder process. The S3 staging bucket is not backed up because
+it contains only incomplete transport objects; successful objects are deleted after
+Drive confirmation and abandoned objects expire after one day. A future move to S3 as
+the authoritative file store requires a separate design, migration and approval.
 
 ## Cost Position
 
@@ -70,7 +74,7 @@ plus stored backups and normal request traffic. Costs must still be monitored in
 
 ## Deferred
 
-- GuardDuty and S3 document storage
+- GuardDuty and authoritative/long-term S3 document storage
 - cross-region backup or replication
 - a relational SQL database
 - automated legal-retention deletion
