@@ -127,6 +127,60 @@ Resources:
         SSEType: KMS
         KMSMasterKeyId: !If [CreateRecordsKey, !GetAtt RosewoodKey.Arn, !Ref RecordsKmsKeyArn]
 
+  RosewoodDocumentStagingBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !If [CreateRecordsKey, !GetAtt RosewoodKey.Arn, !Ref RecordsKmsKeyArn]
+            BucketKeyEnabled: true
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - "*"
+            AllowedMethods:
+              - PUT
+            AllowedOrigins:
+              - !Ref AllowedOrigins
+            ExposedHeaders:
+              - ETag
+              - x-amz-checksum-sha256
+            MaxAge: 3000
+      LifecycleConfiguration:
+        Rules:
+          - Id: RemoveTemporaryUploads
+            Status: Enabled
+            ExpirationInDays: 1
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  RosewoodDocumentStagingBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref RosewoodDocumentStagingBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource:
+              - !GetAtt RosewoodDocumentStagingBucket.Arn
+              - !Sub ${RosewoodDocumentStagingBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
   RosewoodSecurityTopic:
     Type: AWS::SNS::Topic
     Properties:
@@ -313,6 +367,13 @@ Resources:
                   - kms:ReEncryptFrom
                   - kms:ReEncryptTo
                 Resource: !If [CreateRecordsKey, !GetAtt RosewoodKey.Arn, !Ref RecordsKmsKeyArn]
+              - Sid: TemporaryDocumentStaging
+                Effect: Allow
+                Action:
+                  - s3:DeleteObject
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: !Sub ${RosewoodDocumentStagingBucket.Arn}/pending/*
               - Effect: Allow
                 Action: secretsmanager:GetSecretValue
                 Resource: !Sub "${ConfigSecretArn}*"
@@ -356,6 +417,8 @@ Resources:
           GOOGLE_EOI_SPREADSHEET_ID: !Ref GoogleEoiSpreadsheetId
           GOOGLE_APPLICATION_SPREADSHEET_ID: !Ref GoogleApplicationSpreadsheetId
           GOOGLE_OPERATIONS_SPREADSHEET_ID: !Ref GoogleOperationsSpreadsheetId
+          DOCUMENT_STAGING_BUCKET: !Ref RosewoodDocumentStagingBucket
+          RECORDS_KMS_KEY_ARN: !If [CreateRecordsKey, !GetAtt RosewoodKey.Arn, !Ref RecordsKmsKeyArn]
           ALLOWED_ORIGINS: !Ref AllowedOrigins
           STAFF_EMAILS: !Ref StaffEmails
           STAFF_ROLES: !Ref StaffRoles
@@ -429,6 +492,8 @@ Outputs:
     Value: !Ref RosewoodTable
   AuditTableName:
     Value: !If [CreateAuditTable, !Ref RosewoodAuditTable, !Ref ExistingAuditTableName]
+  DocumentStagingBucketName:
+    Value: !Ref RosewoodDocumentStagingBucket
   BackupVaultName:
     Value: !If [CreateBackupVault, !Ref RosewoodBackupVault, !Ref ExistingBackupVaultName]
   BackupRoleArn:

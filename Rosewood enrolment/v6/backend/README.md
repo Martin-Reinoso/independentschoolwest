@@ -18,7 +18,11 @@ AWS in `ap-southeast-2` is authoritative for operational records:
 Google Drive is the approved launch file store for documents, JSON snapshots and
 signature images. Files are written only to the restricted enrolment folders owned by
 the delegated `info@ffe.org.au` identity. V6 accepts PDF, JPG and PNG files up to 10 MB.
-GuardDuty and active S3 document storage are outside the launch scope.
+The browser uploads to a private KMS-encrypted S3 staging object with a 15-minute
+authorisation. Lambda verifies size, type and SHA-256 before moving the bytes to Drive,
+then deletes the staging object. A one-day lifecycle removes abandoned objects. This
+bucket is a transport buffer, not an authoritative document store. GuardDuty and
+long-term S3 document storage are outside the launch scope.
 
 The three private Google Sheets are reporting projections only. They can be rebuilt
 from DynamoDB; editing or deleting a Sheet row does not alter the AWS application
@@ -100,6 +104,9 @@ POST /v6/application/signatures/submit
 Every application, draft, upload, document and signature request is authorised on the
 server. Family record selection is checked against the invitation's server-side
 application list; the browser cannot select another family's application ID.
+Document start records use opaque application/upload identifiers in S3 keys. The
+presigned PUT is constrained by the approved MIME type, SHA-256 checksum and KMS
+encryption; confirmation is idempotent at the Drive upload identifier boundary.
 
 ## Build And Recovery
 

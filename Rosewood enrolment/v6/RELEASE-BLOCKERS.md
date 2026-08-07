@@ -26,7 +26,9 @@ real family information until the applicable blockers are closed.
 - idempotent EOI/contact/student/application linking and direct-invite record creation
 - server-side record and workflow authorisation on every request
 - durable, revisioned autosave with truthful saving, saved and failure states
-- restricted Google Drive uploads limited to PDF, JPG and PNG files up to 10 MB
+- immediate browser uploads with per-file progress and inline retry, limited to PDF,
+  JPG and PNG files up to 10 MB, through private KMS-encrypted staging into restricted
+  Google Drive
 - customer-managed KMS encryption for authoritative DynamoDB records and backups
 - DynamoDB point-in-time recovery plus locked daily/monthly same-region backups
 - separate append-only audit table and role-ready staff controls

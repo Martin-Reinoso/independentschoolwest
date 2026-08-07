@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { applicationComplete, applicationInvitation, applicationOtp, applicationSubmitted, eoiAcknowledgement, signatureInvitation, signatureOtp, staffOtp } from "./email-templates.mjs";
-import { currentFormDefinition, getFormDefinition, recordFormReference } from "./form-definitions.mjs";
+import { currentFormDefinition, FORM_DEFINITIONS, getFormDefinition, recordFormReference } from "./form-definitions.mjs";
 import { SCHEMA_VERSION, normalizeEmail, safeText, sanitizeApplication, splitApplication, truthy, validateApplicationForSubmission, validateEoi } from "./schema.mjs";
 import { sheetOperation } from "./google-sheets.mjs";
 
@@ -11,12 +11,8 @@ const INVITATION_LIFETIME_MS = 14 * 86400_000;
 const MAX_FAMILY_APPLICATIONS = 8;
 const APPLICATION_SESSION_IDLE_MS = 20 * 60_000;
 const APPLICATION_SESSION_ABSOLUTE_MS = 8 * 60 * 60_000;
-const APPLICATION_VALIDATORS = new Map([
-  [currentFormDefinition("application").formVersion, { sanitize: sanitizeApplication, validate: validateApplicationForSubmission }]
-]);
-const EOI_VALIDATORS = new Map([
-  [currentFormDefinition("eoi").formVersion, validateEoi]
-]);
+const APPLICATION_VALIDATORS = new Map(Object.keys(FORM_DEFINITIONS.application).map(formVersion => [formVersion, { sanitize: sanitizeApplication, validate: validateApplicationForSubmission }]));
+const EOI_VALIDATORS = new Map(Object.keys(FORM_DEFINITIONS.eoi).map(formVersion => [formVersion, validateEoi]));
 
 function appError(status, code, message, details) {
   return Object.assign(new Error(message), { status, code, details });

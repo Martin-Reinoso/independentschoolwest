@@ -12,12 +12,12 @@ Test date: 8 August 2026
 - application-only scans found no proof of address, St Lawrence application terms,
   photography controls, Victorian guidance, parent Past Student, parent Spouse,
   emergency sharing, Current School Family, Social Media or Tour controls
-- content security policy permits only the V6 Lambda endpoint and the required Google
-  upload endpoints; form actions, frames and objects remain blocked
+- content security policy permits only the V6 Lambda endpoint and Sydney S3 upload
+  endpoints; form actions, frames and objects remain blocked
 - no inline styles are used in V6-rendered content
 - scans found no family-facing `Secure enrolment form`, backend-scope or
   `Progress saves when you continue` wording
-- the live page references V6 CSS `v=6` and JavaScript `v=11`
+- the release page references V6 CSS `v=7` and JavaScript `v=12`
 
 ## Browser Checks
 
@@ -60,6 +60,9 @@ Tested through a local HTTP server in the Codex in-app browser.
 - Emergency Contacts has no sharing question
 - Application Documents contains five categories, uses School and latest-report wording,
   and contains no Proof of Address category
+- each document control explains that upload starts immediately; live uploads render a
+  per-file progress bar, preparation/securing/uploaded state and an inline retryable
+  error within the relevant document card
 - Application Conditions contains only previous-school permission, fee responsibility
   and survey; it has no Enrolment Agreement terms or photography permissions
 - selecting One Parent / Guardian reveals only its nominee/date branch and disables the
@@ -129,7 +132,7 @@ Mobile viewport: 390 x 844.
 
 ## Backend Checks
 
-- thirty Node tests pass for immutable form definitions and stable hashes, Google Drive
+- thirty-five Node tests pass for immutable form definitions and stable hashes, Google Drive
   upload/confirmation, legacy-safe
   document and family-invitation projection headers, direct invitation, explicit EOI
   linkage, exact invitation variants, 14-day expiry, fail-closed link errors,
@@ -154,6 +157,13 @@ Mobile viewport: 390 x 844.
   remained `OK`
 - the production Lambda uses restricted Google Drive for files and the staff portal no
   longer exposes a document-download endpoint
+- the production upload transport uses a private KMS-encrypted Sydney S3 staging bucket
+  restricted to `https://ffe.org.au` PUTs; its 15-minute presigned upload requires the
+  signed SHA-256 and encryption headers, successful confirmation moves the file to
+  restricted Drive and deletes staging, and abandoned objects expire after one day
+- a synthetic production transport canary passed S3 preflight and upload with HTTP 200,
+  created a verified Drive document, confirmed the staging object was removed and then
+  deleted the synthetic Drive document; no family file was used
 - both authoritative DynamoDB tables are deletion-protected, use the retained
   customer-managed KMS key and have point-in-time recovery enabled
 - the Sydney backup vault is KMS-encrypted and locked; its backup plan covers both
@@ -177,9 +187,12 @@ Mobile viewport: 390 x 844.
 
 ## Form Version And Migration Checks
 
-- EOI and Application use separate immutable `2026.1` form contracts with SHA-256
+- EOI and Application use separate immutable `2026.2` form contracts with SHA-256
   definition hashes; the production build fails if the pinned family HTML or JavaScript
   changes without a deliberate form-definition update
+- the original `2026.1` definitions retain their exact hashes and validators; the family
+  browser supports both Application versions so existing records are not migrated or
+  rewritten by the upload interaction fix
 - partial-save tests prove that omitted and retired answer keys remain in the current
   record and immutable revision; a mismatched browser version is rejected without a
   write
@@ -198,7 +211,7 @@ Mobile viewport: 390 x 844.
   and definition hash
 - the production Lambda remained `Active`, CloudFormation reached `UPDATE_COMPLETE`,
   and `/v6/health` returned both current workflow versions after deployment
-- local desktop and 390 x 844 review-mode checks loaded JavaScript `v=11` without console
+- local desktop and 390 x 844 review-mode checks loaded JavaScript `v=12` without console
   errors or horizontal overflow
 
 ## Staff Portal Checks

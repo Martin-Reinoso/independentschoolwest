@@ -17,6 +17,11 @@ test("definition hashes are stable regardless of object key ordering", () => {
   assert.equal(definitionHash({ b: 2, a: { d: 4, c: 3 } }), definitionHash({ a: { c: 3, d: 4 }, b: 2 }));
 });
 
+test("the launch contracts remain addressable with their original hashes", () => {
+  assert.equal(getFormDefinition("eoi", "rosewood-eoi-2026.1").definitionHash, "ada72bcafedfd2ccdd7058a545a3ff44b1ed0916c5d1c9e7d7d639d85ef2d633");
+  assert.equal(getFormDefinition("application", "rosewood-application-2026.1").definitionHash, "110e0d4afeb3bb131d4372c27ced3f05aa0984d3050bf789cfe6cc9f52b215c8");
+});
+
 test("legacy records resolve to the current workflow contract without changing answers", () => {
   const reference = recordFormReference({ schemaVersion: "legacy-schema", values: { retired_question: "retained" } }, "application");
   assert.equal(reference.formVersion, CURRENT_FORM_VERSIONS.application);

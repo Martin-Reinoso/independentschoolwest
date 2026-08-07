@@ -79,6 +79,24 @@ body:not(.no-environment-ribbon) .form-header { top: 42px; }
 .step-actions .left { display: flex; flex-wrap: wrap; gap: .65rem; }
 .save-later-button { color: var(--navy); }
 .uploaded-document { margin-top: .45rem; color: var(--success); font-weight: 700; }
+.document-card { transition: border-color .2s, box-shadow .2s; }
+.document-card.has-upload-active { border-color: rgba(120,201,238,.75); box-shadow: 0 0 0 3px rgba(120,201,238,.12); }
+.document-card.has-upload-error { border-color: rgba(180,35,24,.58); box-shadow: 0 0 0 3px rgba(180,35,24,.08); }
+.document-card .upload-list { gap: .6rem; margin-top: .85rem; }
+.upload-item { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .45rem .8rem; padding: .75rem .85rem; border: 1px solid var(--line); border-radius: 10px; background: #fbfaf7; }
+.upload-item-heading { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; }
+.upload-file-name { min-width: 0; overflow-wrap: anywhere; color: var(--navy); font-size: .8rem; font-weight: 700; }
+.upload-item-heading strong { flex: 0 0 auto; color: var(--muted); font-size: .72rem; }
+.upload-item progress { width: 100%; height: 8px; align-self: center; border: 0; border-radius: 999px; overflow: hidden; color: var(--sky); background: #e8e4dc; accent-color: var(--sky); }
+.upload-item progress::-webkit-progress-bar { border-radius: 999px; background: #e8e4dc; }
+.upload-item progress::-webkit-progress-value { border-radius: 999px; background: var(--sky); transition: width .18s ease-out; }
+.upload-item progress::-moz-progress-bar { border-radius: 999px; background: var(--sky); }
+.upload-item.is-confirming progress, .upload-item.is-uploaded progress { accent-color: var(--success); }
+.upload-item.is-confirming progress::-webkit-progress-value, .upload-item.is-uploaded progress::-webkit-progress-value, .upload-item.is-confirming progress::-moz-progress-bar, .upload-item.is-uploaded progress::-moz-progress-bar { background: var(--success); }
+.upload-item.is-error progress { accent-color: var(--error); }
+.upload-item.is-error progress::-webkit-progress-value, .upload-item.is-error progress::-moz-progress-bar { background: var(--error); }
+.upload-retry { min-height: 34px; padding: .35rem .7rem; }
+.upload-card-error { margin: .65rem 0 0 !important; padding: .65rem .75rem; border-left: 3px solid var(--error); border-radius: 0 8px 8px 0; color: var(--error) !important; background: #fff2f0; font-weight: 700; line-height: 1.45; }
 .session-expired-dialog { width: min(520px, calc(100% - 2rem)); margin: auto; padding: 0; border: 0; border-radius: 18px; color: var(--ink); background: var(--paper); box-shadow: 0 30px 90px rgba(21,35,59,.3); }
 .session-expired-dialog::backdrop { background: rgba(15,27,47,.68); backdrop-filter: blur(5px); }
 .session-expired-card { padding: clamp(1.5rem, 5vw, 2.5rem); }
@@ -103,5 +121,8 @@ body:not(.no-environment-ribbon) .form-header { top: 42px; }
   .save-state { min-width: 92px; gap: .5rem; }
   .save-state strong { font-size: .78rem; white-space: nowrap; }
   .step-actions .left { width: 100%; flex-direction: column; }
+  .document-card header, .upload-item-heading { align-items: flex-start; flex-direction: column; gap: .35rem; }
+  .document-badge { white-space: normal; }
+  .upload-item { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { .busy-spinner, .button-spinner, .save-state.is-saving > span { animation: none; } }

@@ -56,6 +56,7 @@ flowchart LR
     Lambda["Rosewood V6 Lambda in Sydney"]
     MainDB["Authoritative DynamoDB records"]
     AuditDB["Append-only DynamoDB audit"]
+    Staging["Private encrypted S3 upload staging"]
     Drive["Restricted Google Drive files"]
     Outbox["Durable DynamoDB outbox"]
     SES["Amazon SES email"]
@@ -67,9 +68,12 @@ flowchart LR
     Guardian --> Pages
     Staff --> Pages
     Pages -->|"HTTPS API requests"| Lambda
+    Pages -->|"Short-lived presigned file PUT"| Staging
     Lambda -->|"Validated transactional writes"| MainDB
     Lambda -->|"Attributable events"| AuditDB
-    Lambda -->|"Snapshots, uploads and signatures"| Drive
+    Staging -->|"Verified bytes"| Lambda
+    Lambda -->|"Documents, snapshots and signatures"| Drive
+    Lambda -->|"Delete successful staging object"| Staging
     MainDB --> Outbox
     Outbox -->|"Retry every minute"| SES
     Outbox -->|"Replaceable reporting rows"| Sheets
@@ -96,7 +100,7 @@ store for documents, JSON snapshots and signature images.
 | Verified session | Main DynamoDB table and browser memory | None | Raw session token stays in browser memory; only its hash is stored. |
 | Application draft and revision | Main DynamoDB table | Progress and audit projections | Full draft answers are not written to a draft Sheet. |
 | Submitted application | Main DynamoDB table | Normalised Application Sheets | A frozen JSON snapshot is stored in restricted Drive. |
-| Supporting documents | Restricted Google Drive | DynamoDB and Sheet metadata | Portal lists metadata; staff open files through restricted Drive. |
+| Supporting documents | Restricted Google Drive | DynamoDB and Sheet metadata | Private S3 is a temporary upload buffer only; portal lists metadata and staff open files through restricted Drive. |
 | Signature image | Restricted Google Drive | DynamoDB and Sheet metadata | Staff API does not return the image. |
 | Audit events | Separate append-only DynamoDB table | EOI, Application and Operations audit tabs | Detailed application views and state changes create events. |
 | Email work and receipts | DynamoDB outbox/receipts plus SES | Operations Email Events | Outbox is retried every minute. |
@@ -364,19 +368,21 @@ sequenceDiagram
     Page->>API: Flush any pending revision before navigation
 ```
 
-V6 does not send a request for every keystroke. It saves shortly after the family pauses
+V6 does not send a draft request for every keystroke. It saves shortly after the family pauses
 and at least every eight seconds during continuous typing. Identical drafts are not
 written twice. The compact sticky header shows In progress, Saving, Saved, No connection,
-Save failed or Session expired. The green Saved state means the server acknowledged the
-exact displayed revision; selected files remain In progress until uploaded.
+Save failed or Session expired. On Documents it also shows Uploading or Upload failed.
+The green Saved state means the server acknowledged the exact displayed revision;
+selecting a file immediately starts a separately authorised upload.
 
 Every application section includes **Save and continue later**. It flushes the current
-answers, uploads files selected on the Documents page, revokes the browser-held family
-and application sessions and displays a close-safe confirmation. Reopening the private
-invitation and completing OTP returns the family to the last acknowledged section. The
-child selector has Sign out rather than Back, so it cannot return to an already-consumed
-OTP screen. If the page is refreshed or closed without using the control, the memory-only
-session is lost but the last acknowledged server draft remains.
+answers, waits for any active Documents-page transfer, revokes the browser-held family
+and application sessions and displays a close-safe confirmation. Next can be selected
+while a file is uploading and waits for that transfer before navigation. Reopening the
+private invitation and completing OTP returns the family to the last acknowledged
+section. The child selector has Sign out rather than Back, so it cannot return to an
+already-consumed OTP screen. If the page is refreshed or closed without using the
+control, the memory-only session is lost but the last acknowledged server draft remains.
 
 The browser mirrors the server's sliding 20-minute inactivity period. A successful
 authenticated request resets the browser timer. If the timer elapses, or the API reports
@@ -437,20 +443,32 @@ sequenceDiagram
     participant Page as Application page
     participant API as V6 Lambda
     participant DB as DynamoDB
+    participant S3 as Private encrypted staging
     participant Drive as Restricted Drive
     participant Audit as Audit table
 
-    Page->>Page: Calculate browser SHA-256 and read type/size
+    Family->>Page: Select file
+    Page->>Page: Show preparing/progress state and calculate SHA-256
     Page->>API: Start upload with category and metadata
     API->>API: Validate category, PDF/JPG/PNG, checksum shape and 10 MB limit
-    API->>Drive: Create short-lived resumable upload session
+    API->>S3: Authorise 15-minute KMS-encrypted PUT with checksum
     API->>DB: Store short-lived upload authorisation record
-    Page->>Drive: Upload file directly
-    Page->>API: Confirm Drive file ID and category
-    API->>Drive: Verify parent folder and application/category/type/size metadata
+    API-->>Page: Return presigned staging URL and required headers
+    Page->>S3: Upload bytes while displaying percentage
+    Page->>API: Confirm upload ID and category
+    API->>S3: Read and verify type, size and SHA-256
+    API->>Drive: Upload to restricted application folder
+    API->>Drive: Verify application/category/type/size metadata
+    API->>S3: Delete successful staging object
     API->>DB: Attach document metadata to the application
     API->>Audit: Append document-uploaded event
+    API-->>Page: Return Drive-backed document metadata
+    Page->>Page: Show Uploaded or inline retryable error
 ```
+
+Staging keys contain opaque application/upload identifiers rather than filenames. They
+are not exposed to staff, are not backed up and expire after one day if an interrupted
+upload cannot be confirmed. Google Drive remains the authoritative file store.
 
 The staff portal returns document metadata only. It does not generate public or
 temporary download links. Authorised operators use the restricted enrolment Drive.
@@ -763,8 +781,8 @@ signature revision hashes also retain the form version and definition hash. See
 | `POST /v6/application/records` | Create or initialise a separate child application |
 | `GET /v6/application/context` | Reload session-bound application context |
 | `PUT /v6/application/draft` | Revisioned autosave, navigation save or save-and-close |
-| `POST /v6/application/documents/start` | Authorise a constrained Drive upload |
-| `POST /v6/application/documents/confirm` | Validate and attach uploaded file metadata |
+| `POST /v6/application/documents/start` | Authorise a constrained encrypted staging upload |
+| `POST /v6/application/documents/confirm` | Verify staging, move to Drive and attach document metadata |
 | `POST /v6/application/submit` | Freeze revision, save primary signature and submit |
 | `POST /v6/application/signatures/request-code` | Request additional-guardian OTP |
 | `POST /v6/application/signatures/verify-code` | Create signing session for assigned task |
