@@ -29,7 +29,7 @@ question and is therefore not carried into V6.
 | V6 area | Captured content represented | V5 correction |
 | --- | --- | --- |
 | EOI | Language, contact identity and relationship, email/mobile, communication notice, full contact address, student identity, religion, enrolment year/level, current school/year, additional needs, family connection, other children, discovery and questions | Removes middle/preferred name, connection detail, Unsure and decision-factor additions; restores missing source questions; returns to one form page |
-| Application access | Brief welcome, subtle policy/procedure sentence, invitation email, separate OTP, matched contact, student/application statuses, Start/View/Continue and new-student start | Supports either an EOI-linked invitation or a direct staff invitation without asking the family which path applies; removes gateway language and document-preparation sections |
+| Application access | Brief welcome, approved Enrolment Policy, Enrolment Procedure and Privacy Policy, invitation email, separate OTP, matched contact, student/application statuses, Start/View/Continue and new-student start | Supports either an EOI-linked invitation or a direct staff invitation without asking the family which path applies; uses an internal Rosewood policy reader and removes gateway language and document-preparation sections |
 | Application Student | Identity and conditional Other details, current schooling, Entry Year/Year Level of Entry, separate residence/address/family sections, multi-select care branches, other-child count, government-labelled nationality/citizenship/residency evidence and visa logic, full ASCL language catalogue, fourteen support categories, source duty-of-care wording, always-visible professional/report/NDIS/order controls, sacraments and medical record | Removes Commencement Term; temporarily hides Family Connection, Siblings Already Attending and Other Relatives for a new school; simplifies future siblings to a count; restores source labels, required controls, conditional Other/shared-care branches and the passport exception for visa details |
 | Application Parent / Guardian | Full repeatable source contact, conditional postal/card/visa details, mandatory residential address, occupation/education/residency sections, contact permission, completeness confirmation and two emergency contacts | No longer shares the smaller acceptance/decline component; removes Past Student, Spouse and emergency-sharing questions by Rosewood decision |
 | Application Documents | Five retained categories, multiple-file behavior, 10 MB guidance and broad captured extension list | Corrects School Reports wording, requests the latest report and excludes Proof of Address permanently |
@@ -70,6 +70,8 @@ These differ from the source and are explicit rather than accidental:
   was not observed.
 - Preview-mode acknowledgement and completion cards explicitly state when a frame did
   not submit or send anything.
+- Policy review is a separate, non-writing interface transaction and never records
+  acceptance. The approved Rosewood wording replaces the former source placeholders.
 
 ## Known Fidelity Limits
 
@@ -81,8 +83,8 @@ These differ from the source and are explicit rather than accidental:
 - Google Maps address autocomplete is represented by ordinary address fields
 - translation refresh is structural only because only English is available
 - invisible Turnstile/reCAPTCHA and transient network states are not executed
-- source policy and conduct files are represented by unavailable Rosewood-document
-  positions until approved Rosewood versions exist
+- approved Rosewood Enrolment Policy, Enrolment Procedure and Privacy Policy are live;
+  conduct documents and the post-offer agreement remain governed separately
 - only captured agreement headings are shown; third-party legal wording is not
   republished as Rosewood terms
 - Acceptance, decline and post-offer agreement persistence remain intentionally absent;

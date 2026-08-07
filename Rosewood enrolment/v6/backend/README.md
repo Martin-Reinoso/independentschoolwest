@@ -36,6 +36,9 @@ server-acknowledged application create, start, save and submission also writes a
 append-only DynamoDB revision. Staff can inspect a selected historical revision through
 an authorised, audited endpoint. See `../SCHEMA-EVOLUTION.md` before changing fields,
 options, validation or required status.
+The current `2026.5` contracts also pin the family HTML, JavaScript, CSS, policy
+projection and all original Word/PDF policy assets. Policy viewing is frontend-only and
+does not create an application answer, acknowledgement or audit event.
 
 ## Invitations And Staff Access
 
@@ -54,6 +57,10 @@ options, validation or required status.
 - Documents are listed in the portal but accessed only through the restricted Drive.
 - Raw invitation links, signature drawings and network fingerprints are not returned
   by staff APIs.
+- Additional-guardian request emails contain a concise purpose and safety explanation,
+  the private action link and enrolment contact only. They do not include the student
+  name, family answers, medical information or internal identifiers. Email and OTP
+  verification remain mandatory before the frozen review is returned.
 
 ## Runtime
 
@@ -145,7 +152,7 @@ files do not belong in Git or command output.
 - Approve legal retention and deletion rules.
 - Replace the shared staff identity with approved named accounts and access reviews.
 - Correlate SES bounce and complaint feedback into operational records automatically.
-- Approve Rosewood policy, privacy, consent and signature wording.
+- Approve remaining collection-notice, consent and signature wording.
 - Build Acceptance, Decline and Enrolment Agreement persistence as separate workflows.
 
 See `../ARCHITECTURE-HARDENING.md`, `../RECOVERY-RUNBOOK.md` and

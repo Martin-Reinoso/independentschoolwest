@@ -53,6 +53,7 @@ test("invitation emails use the approved direct and EOI-linked variants", () => 
   const application = applicationInvitation({ firstName: "Alex", invitationUrl: applicationUrl, expiresAt: "4 September 2026", linked: false });
   const linked = applicationInvitation({ firstName: "Alex", studentName: "Avery Example", entryLevel: "Foundation", entryYear: "2027", invitationUrl: applicationUrl, expiresAt: "4 September 2026", linked: true });
   const signature = signatureInvitation({ firstName: "Alex", studentName: "Avery", signingUrl });
+  const signatureExplanation = "You are receiving this email because you were listed as a parent or guardian in a Rosewood College Application for Enrolment and your signature has been requested. Please use the private link below to verify your email, review the application and provide your signature. If you did not expect this request, please do not sign or forward the link and contact enrolment@ffe.org.au.";
   assert.equal(application.subject, "Invitation to Apply for Enrolment at Rosewood College");
   assert.match(application.text, /Thank you for considering Rosewood College for your child’s education/);
   assert.match(application.text, /same email address that received this invitation/);
@@ -64,6 +65,10 @@ test("invitation emails use the approved direct and EOI-linked variants", () => 
   assert.equal(application.html.split(applicationUrl).length - 1, 3);
   assert.match(signature.html, /copy and paste this private link into your browser/i);
   assert.equal(signature.html.split(signingUrl).length - 1, 3);
+  assert.equal(signature.subject, "Signature requested for a Rosewood College Application for Enrolment");
+  assert.match(signature.text, new RegExp(signatureExplanation.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.ok(signature.html.indexOf(signatureExplanation) < signature.html.indexOf("Review application and sign"));
+  assert.doesNotMatch(`${signature.subject}\n${signature.text}\n${signature.html}`, /Avery|medical|family details/i);
 });
 
 test("invitation email escapes names before rendering HTML", () => {

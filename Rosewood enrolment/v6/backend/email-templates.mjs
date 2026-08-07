@@ -1,5 +1,6 @@
-function frame(content) {
-  return `<!doctype html><html><body style="margin:0;background:#f4f1e9;font-family:Arial,sans-serif;color:#14233d"><div style="max-width:640px;margin:0 auto;padding:32px 20px"><div style="background:#fff;border:1px solid #ddd4c4;border-radius:16px;padding:32px"><p style="margin:0 0 20px;font:700 13px Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#a84b34">Rosewood College</p>${content}<hr style="border:0;border-top:1px solid #e4ded3;margin:28px 0"><p style="font-size:13px;color:#566070">This is a private enrolment message. If you did not expect it, reply to enrolment@ffe.org.au.</p></div></div></body></html>`;
+function frame(content, { privateFooter = true } = {}) {
+  const footer = privateFooter ? '<hr style="border:0;border-top:1px solid #e4ded3;margin:28px 0"><p style="font-size:13px;color:#566070">This is a private enrolment message. If you did not expect it, reply to enrolment@ffe.org.au.</p>' : "";
+  return `<!doctype html><html><body style="margin:0;background:#f4f1e9;font-family:Arial,sans-serif;color:#14233d"><div style="max-width:640px;margin:0 auto;padding:32px 20px"><div style="background:#fff;border:1px solid #ddd4c4;border-radius:16px;padding:32px"><p style="margin:0 0 20px;font:700 13px Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#a84b34">Rosewood College</p>${content}${footer}</div></div></body></html>`;
 }
 
 function htmlEscape(value) {
@@ -57,10 +58,12 @@ export function applicationSubmitted({ firstName, studentName, reference, pendin
   return { subject, text, html: frame(`<h1 style="font:700 28px Georgia,serif">Application received</h1><p>Dear ${firstName},</p><p>We received the Application for Enrolment for <strong>${studentName}</strong>.</p><p>Reference: <strong>${reference}</strong></p><p>${status}</p>`) };
 }
 
-export function signatureInvitation({ firstName, studentName, signingUrl }) {
-  const subject = `Signature requested for ${studentName}'s Rosewood College application`;
-  const text = `Dear ${firstName},\n\nYou have been asked to review and sign the Application for Enrolment for ${studentName}. Use this private link: ${signingUrl}\n\nRosewood College`;
-  return { subject, text, html: frame(`<h1 style="font:700 28px Georgia,serif">Signature requested</h1><p>Dear ${firstName},</p><p>You have been asked to review and sign the Application for Enrolment for <strong>${studentName}</strong>.</p>${button("Review and sign", signingUrl)}${fallbackLink(signingUrl)}`) };
+export function signatureInvitation({ firstName, signingUrl }) {
+  const subject = "Signature requested for a Rosewood College Application for Enrolment";
+  const explanation = "You are receiving this email because you were listed as a parent or guardian in a Rosewood College Application for Enrolment and your signature has been requested. Please use the private link below to verify your email, review the application and provide your signature. If you did not expect this request, please do not sign or forward the link and contact enrolment@ffe.org.au.";
+  const text = `Dear ${firstName},\n\n${explanation}\n\nREVIEW APPLICATION AND SIGN\n${signingUrl}\n\nRosewood College Enrolment Team`;
+  const content = `<h1 style="font:700 28px Georgia,serif">Signature requested</h1><p>Dear ${htmlEscape(firstName)},</p><p>${htmlEscape(explanation)}</p>${button("Review application and sign", signingUrl)}${fallbackLink(signingUrl)}<p>Kind regards,</p><p>Rosewood College Enrolment Team</p>`;
+  return { subject, text, html: frame(content, { privateFooter: false }) };
 }
 
 export function signatureOtp({ code }) {

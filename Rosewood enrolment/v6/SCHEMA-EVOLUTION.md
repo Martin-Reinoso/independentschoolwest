@@ -21,19 +21,20 @@ Every EOI and application records:
 The definitions are in `backend/form-definitions.mjs` and are also stored once in
 DynamoDB under `FORM#workflow#formVersion`. An existing definition must never be edited
 in place. Its hash makes accidental reuse of a version identifier fail closed.
-The deployment build also verifies the pinned SHA-256 hashes of the family HTML and
-JavaScript, so a question or interaction cannot change without updating the form
-contract and deliberately creating a new version.
+The deployment build also verifies the pinned SHA-256 hashes of the family HTML,
+JavaScript, CSS, policy projection and original policy assets, so a question,
+interaction or approved policy cannot change without updating the form contract and
+deliberately creating a new version.
 
 Current launch contracts:
 
 ```text
-EOI:         rosewood-eoi-2026.4
-Application: rosewood-application-2026.4
+EOI:         rosewood-eoi-2026.5
+Application: rosewood-application-2026.5
 ```
 
-The original `2026.1`, `2026.2` and `2026.3` contracts and validators remain addressable
-for existing records.
+The original `2026.1`, `2026.2`, `2026.3` and `2026.4` contracts and validators remain
+addressable for existing records.
 The `2026.2` release changes document-upload interaction and transport without changing
 question meaning, required answers or stored answer keys. Existing `2026.1`
 applications use the corrected uploader and remain pinned to their original contract;
@@ -45,6 +46,11 @@ The `2026.4` release clarifies that an additional guardian's general contact pre
 does not suppress the required transactional signing request, and corrects family-facing
 status labels so `pending_signatures` is never presented as Completed. No stored answer
 key is removed or reinterpreted. New records receive `2026.4`.
+The `2026.5` release adds the approved three-policy reader and updates the
+additional-guardian request email without changing any question, answer key,
+validation rule, session boundary or signature-security control. It pins all reader,
+Word and PDF assets. New records receive `2026.5`; existing records remain pinned to
+their earlier contracts.
 
 Acceptance, Decline and the Enrolment Agreement must receive their own independent
 version series when their backends are built. They must not reuse the Application

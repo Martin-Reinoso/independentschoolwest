@@ -5,8 +5,10 @@ real family information until the applicable blockers are closed.
 
 ## Rosewood Content And Governance
 
-- approve the complete Rosewood enrolment policy, procedure and Enrolment Agreement
-- approve the Privacy Policy and point-of-collection Privacy Collection Notice
+- approve the Enrolment Agreement; the approved Enrolment Policy and Enrolment
+  Procedure are now version-pinned in the Application reader
+- approve the point-of-collection Privacy Collection Notice; the approved Privacy
+  Policy is now version-pinned in the Application reader and its welcome link is live
 - approve Parent/Guardian/Carer Code, Student Code, ICT acceptable-use and child-safety
   documents with version identifiers
 - approve application and signature declarations, photography/recording permissions,
@@ -45,13 +47,15 @@ real family information until the applicable blockers are closed.
 - automatic SES bounce/complaint correlation into Operations records
 - approved legal retention/deletion and incident-response rules; current AWS backup
   periods are operational recovery controls only
-- approved immutable policy/document version catalogue for real-family submissions
+- extend the approved immutable document catalogue as conduct and post-offer documents
+  are approved; the three Application-welcome policies are already pinned
 
 ## Deployment Gate
 
 - remove or staff-gate `review=1`
 - replace every synthetic value and pending-document placeholder
-- connect only approved, versioned Rosewood documents
+- connect only approved, versioned Rosewood documents; the three Application-welcome
+  policies satisfy this gate for their current scope
 - complete synthetic end-to-end tests for session recovery, expiry and all failure paths
 - retain preview-only treatment for Acceptance and Decline until their separate backends
   and governance gates are complete

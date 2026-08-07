@@ -14,11 +14,14 @@
   const reviewMode = params.get("review") === "1";
   const apiBase = "https://6zyzo44sdb5zmmx53toktqrnuu0sikyd.lambda-url.ap-southeast-2.on.aws";
   const invitationToken = params.get("invite") || "";
-  const SUPPORTED_APPLICATION_FORM_VERSIONS = new Set(["rosewood-application-2026.1", "rosewood-application-2026.2", "rosewood-application-2026.3", "rosewood-application-2026.4"]);
+  const policyDocuments = window.rosewoodPolicyDocuments || {};
+  const policyOrder = ["enrolment-policy", "enrolment-procedure", "privacy-policy"];
+  const SUPPORTED_APPLICATION_FORM_VERSIONS = new Set(["rosewood-application-2026.1", "rosewood-application-2026.2", "rosewood-application-2026.3", "rosewood-application-2026.4", "rosewood-application-2026.5"]);
 
   const state = {
     workflow: params.get("workflow") || "application",
     screen: 0,
+    policySlug: params.get("policy") || "",
     values: {},
     signatures: {},
     challengeId: "",
@@ -52,6 +55,25 @@
 
   function liveWorkflow() {
     return !reviewMode && ["eoi", "application"].includes(state.workflow);
+  }
+
+  function policySlugFromLocation() {
+    const current = new URLSearchParams(location.search);
+    const slug = current.get("policy") || "";
+    return current.get("workflow") === "application" && policyDocuments[slug] ? slug : "";
+  }
+
+  function activePolicy() {
+    return state.workflow === "application" ? policyDocuments[state.policySlug] || null : null;
+  }
+
+  function policyHref(slug = "") {
+    const url = new URL(location.href);
+    url.searchParams.set("workflow", "application");
+    if (slug) url.searchParams.set("policy", slug);
+    else url.searchParams.delete("policy");
+    url.hash = "";
+    return `${url.pathname}${url.search}${url.hash}`;
   }
 
   function applyFormContract(context) {
@@ -278,8 +300,55 @@
     return `<span class="source-link" aria-disabled="true"><span><strong>${title}</strong><small>Rosewood-approved document pending</small></span><span>Unavailable</span></span>`;
   }
 
-  function documentTextLink(title) {
-    return `<span class="document-text-link" aria-disabled="true">${title}<small>Rosewood document pending</small></span>`;
+  function welcomePolicyLinks() {
+    return `<nav class="welcome-policy-links" aria-label="Rosewood College enrolment policies">${policyOrder.map((slug, index) => {
+      const policy = policyDocuments[slug];
+      if (!policy) return "";
+      return `<a class="welcome-policy-link" href="${esc(policyHref(slug))}" data-policy-link="${esc(slug)}"><span class="welcome-policy-number" aria-hidden="true">0${index + 1}</span><span><strong>${esc(policy.title)}</strong><small>Read within the application</small></span><span class="welcome-policy-arrow" aria-hidden="true">&#8594;</span></a>`;
+    }).join("")}</nav>`;
+  }
+
+  function policyTabs(activeSlug) {
+    return policyOrder.map(slug => {
+      const policy = policyDocuments[slug];
+      if (!policy) return "";
+      const current = slug === activeSlug ? ' aria-current="page"' : "";
+      return `<a href="${esc(policyHref(slug))}" data-policy-link="${esc(slug)}"${current}>${esc(policy.title)}</a>`;
+    }).join("");
+  }
+
+  function policyContents(policy) {
+    return `<details class="policy-contents"><summary>Contents</summary><ol>${policy.headings.map(heading => `<li class="policy-contents-level-${heading.level}"><a href="#${esc(heading.id)}"><span>${esc(heading.number)}</span>${esc(heading.title)}</a></li>`).join("")}</ol></details>`;
+  }
+
+  function renderPolicyViewer(policy) {
+    const options = policyOrder.map(slug => {
+      const item = policyDocuments[slug];
+      if (!item) return "";
+      return `<option value="${esc(slug)}"${slug === policy.slug ? " selected" : ""}>${esc(item.title)}</option>`;
+    }).join("");
+    return `<article class="policy-reader" aria-labelledby="policy-reader-title">
+      <div class="policy-reader-toolbar">
+        <div class="policy-reading-progress" aria-hidden="true"><span data-policy-progress></span></div>
+        <a class="policy-return" href="${esc(policyHref())}" data-policy-return><span aria-hidden="true">&#8592;</span><span>Return to application</span></a>
+        <nav class="policy-tabs" aria-label="Choose a Rosewood College policy">${policyTabs(policy.slug)}</nav>
+        <label class="policy-mobile-selector"><span>Choose policy</span><select data-policy-select aria-label="Choose a Rosewood College policy">${options}</select></label>
+      </div>
+      <header class="policy-reader-heading">
+        <p class="eyebrow">Rosewood College policy</p>
+        <h2 id="policy-reader-title" tabindex="-1">${esc(policy.title)}</h2>
+        <p>Read the approved policy below. Reviewing a policy does not accept it or submit your application.</p>
+      </header>
+      <div class="policy-reader-utilities">
+        ${policyContents(policy)}
+        <div class="policy-original-actions" aria-label="Original ${esc(policy.title)} document">
+          <a class="button button-secondary" href="${esc(policy.sourcePdf)}">View original layout (PDF)</a>
+          <a class="button button-quiet" href="${esc(policy.sourceFile)}" download>Download original Word document</a>
+        </div>
+      </div>
+      <div class="policy-document" data-policy-document>${policy.html}</div>
+      <footer class="policy-reader-footer"><a class="button button-secondary" href="${esc(policyHref())}" data-policy-return><span aria-hidden="true">&#8592;</span> Return to application</a></footer>
+    </article>`;
   }
 
   function communicationNotice() {
@@ -291,7 +360,7 @@
     if (kind === "application") {
       const invitationNotice = liveWorkflow() && !invitationToken ? notice("Private invitation required", "Open the unique Application for Enrolment link sent by Rosewood College. A general link cannot start an application.", "legal-note") : "";
       return intro("Welcome to your enrolment application", "Dear Parent/Guardian,", workflows[kind].label) +
-        invitationNotice + `<div class="gateway-welcome-copy"><p>Please enter the email address that received your invitation to begin applying for your child's admission to Rosewood College.</p><p>If you have previously submitted an Expression of Interest or provided information to Rosewood College, please use the same email address. We may use the information already provided to prepopulate parts of your application.</p><p>If this is your first contact with Rosewood College, entering the email address that received the invitation will create a new application for you.</p><p>Before beginning, please familiarise yourself with our ${documentTextLink("Enrolment Policy")} and ${documentTextLink("Enrolment Procedure")}.</p><p>Supporting documents will be requested later in the application. You can save your progress and return if you need time to obtain them.</p><p>Information provided through this application will be managed in accordance with our ${documentTextLink("Privacy Policy")} and ${documentTextLink("Privacy Collection Notice")}.</p></div>` +
+        invitationNotice + `<div class="gateway-welcome-copy"><p>Please enter the email address that received your invitation to begin applying for your child's admission to Rosewood College.</p><p>If you have previously submitted an Expression of Interest or provided information to Rosewood College, please use the same email address. We may use the information already provided to prepopulate parts of your application.</p><p>If this is your first contact with Rosewood College, entering the email address that received the invitation will create a new application for you.</p><p>Before beginning, please familiarise yourself with the following Rosewood College policies.</p>${welcomePolicyLinks()}<p>Supporting documents will be requested later in the application. You can save your progress and return if you need time to obtain them.</p><p>Information provided through this application will be managed in accordance with the Privacy Policy.</p></div>` +
         section("Enter your email", `<div class="field-grid two">${field(`${kind}_gateway_email`, "Email", { type: "email", required: true, autocomplete: "email", disabled: liveWorkflow() && !invitationToken })}</div>`) + actions({ label: "Next", back: false, disabled: liveWorkflow() && !invitationToken });
     }
     return intro(kind === "acceptance" ? "Accept an enrolment offer" : "Decline an enrolment offer", `Parent / Guardian, enter the email address used for your Rosewood College invitation to ${labels[kind]}.`, workflows[kind].label) +
@@ -552,6 +621,7 @@
   };
 
   if (!workflows[state.workflow]) state.workflow = "application";
+  state.policySlug = policySlugFromLocation();
 
   function captureValues() {
     const data = new FormData(form);
@@ -561,6 +631,38 @@
       state.values[control.name] = control.value;
     });
     checkboxNames.forEach(name => { state.values[name] = data.getAll(name); });
+  }
+
+  function navigatePolicy(slug) {
+    captureValues();
+    const nextSlug = policyDocuments[slug] ? slug : "";
+    const url = new URL(location.href);
+    url.searchParams.set("workflow", "application");
+    if (nextSlug) url.searchParams.set("policy", nextSlug);
+    else url.searchParams.delete("policy");
+    url.hash = "";
+    history.pushState({ policy: nextSlug }, "", `${url.pathname}${url.search}${url.hash}`);
+    state.policySlug = nextSlug;
+    render();
+    window.requestAnimationFrame(() => {
+      const heading = nextSlug ? document.querySelector("#policy-reader-title") : document.querySelector("#form-root .section-intro h3");
+      if (heading) {
+        if (!heading.hasAttribute("tabindex")) heading.setAttribute("tabindex", "-1");
+        heading.focus({ preventScroll: true });
+      }
+      window.scrollTo({ top: 0, behavior: "auto" });
+    });
+  }
+
+  function updatePolicyReadingProgress() {
+    const documentBody = root.querySelector("[data-policy-document]");
+    const indicator = root.querySelector("[data-policy-progress]");
+    if (!documentBody || !indicator) return;
+    const bounds = documentBody.getBoundingClientRect();
+    const documentTop = window.scrollY + bounds.top;
+    const available = Math.max(1, documentBody.offsetHeight - window.innerHeight * 0.55);
+    const progressValue = Math.min(1, Math.max(0, (window.scrollY - documentTop + 170) / available));
+    indicator.style.transform = `scaleX(${progressValue})`;
   }
 
   function renderProgress(screen) {
@@ -667,6 +769,27 @@
   function render() {
     clearInterval(resendTimer);
     const workflow = workflows[state.workflow];
+    const policy = activePolicy();
+    if (policy) {
+      document.body.classList.add("policy-reader-open");
+      document.title = `${policy.title} | Rosewood College Enrolment`;
+      document.querySelector("#workflow-label").textContent = "Application for enrolment";
+      document.querySelector("#step-title").textContent = policy.title;
+      document.querySelector("#story-kicker").textContent = workflow.label;
+      document.querySelector("#story-title").textContent = workflow.title;
+      document.querySelector("#story-copy").textContent = workflow.copy;
+      document.querySelector("#story-promise-copy").textContent = "Reviewing a policy does not accept it or submit the application.";
+      updateEnvironment();
+      document.querySelector("#save-state").hidden = true;
+      progress.hidden = true;
+      reviewTools.hidden = true;
+      errorSummary.hidden = true;
+      root.innerHTML = renderPolicyViewer(policy);
+      window.requestAnimationFrame(updatePolicyReadingProgress);
+      return;
+    }
+    document.body.classList.remove("policy-reader-open");
+    document.title = "Enrolment | Rosewood College";
     state.screen = Math.max(0, Math.min(state.screen, workflow.screens.length - 1));
     const screen = workflow.screens[state.screen];
     document.querySelector("#workflow-label").textContent = workflow.label;
@@ -1521,12 +1644,24 @@
   });
 
   form.addEventListener("click", async event => {
+    const policyLink = event.target.closest("[data-policy-link]");
+    const policyReturn = event.target.closest("[data-policy-return]");
     const retryUpload = event.target.closest("[data-retry-upload]");
     const action = event.target.closest("[data-action]");
     const selectedApplication = event.target.closest("[data-select-application]");
     const add = event.target.closest("[data-add]");
     const remove = event.target.closest("[data-remove]");
     const clear = event.target.closest("[data-clear-signature]");
+    if (policyLink) {
+      event.preventDefault();
+      navigatePolicy(policyLink.dataset.policyLink);
+      return;
+    }
+    if (policyReturn) {
+      event.preventDefault();
+      navigatePolicy("");
+      return;
+    }
     if (retryUpload) {
       const upload = documentUploads.get(retryUpload.dataset.retryUpload);
       if (!upload) return;
@@ -1582,6 +1717,11 @@
     }
   });
 
+  form.addEventListener("change", event => {
+    const selector = event.target.closest("[data-policy-select]");
+    if (selector) navigatePolicy(selector.value);
+  });
+
   document.querySelector("#step-list").addEventListener("click", async event => {
     const target = event.target.closest("[data-goto]");
     if (!target) return;
@@ -1601,6 +1741,13 @@
     if (!applicationDraftActive() || !["offline", "error"].includes(state.saveStatus)) return;
     scheduleAutosave(false);
   });
+  window.addEventListener("popstate", () => {
+    state.policySlug = policySlugFromLocation();
+    render();
+    window.requestAnimationFrame(updatePolicyReadingProgress);
+  });
+  window.addEventListener("scroll", updatePolicyReadingProgress, { passive: true });
+  window.addEventListener("resize", updatePolicyReadingProgress);
   window.addEventListener("beforeunload", event => {
     if (!applicationDraftActive() || (!["dirty", "saving", "offline", "error"].includes(state.saveStatus) && !documentUploadsNeedAttention() && !state.signatures.application_signature)) return;
     event.preventDefault();
