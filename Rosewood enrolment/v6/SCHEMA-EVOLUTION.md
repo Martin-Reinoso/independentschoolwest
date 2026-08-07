@@ -29,8 +29,8 @@ deliberately creating a new version.
 Current launch contracts:
 
 ```text
-EOI:         rosewood-eoi-2026.6
-Application: rosewood-application-2026.6
+EOI:         rosewood-eoi-2026.7
+Application: rosewood-application-2026.7
 ```
 
 The original `2026.1`, `2026.2`, `2026.3` and `2026.4` contracts and validators remain
@@ -58,6 +58,16 @@ completion, signed revision, revocation and staff review. A prohibited guardian 
 receive an automated request. Pending email correction is a conditional state change on
 the same submitted application and frozen revision; it is not a draft edit or new form
 revision. Earlier `2026.1` to `2026.5` definitions and hashes remain immutable.
+The `2026.7` release introduces the revised student, education, citizenship, needs,
+medical, guardian and Conditions contract. It removes fee responsibility, the
+application survey and previous-school permission from the visible/required
+Application contract; adds previous-attendance, interrupted-schooling, formal-
+assessment, adjustment, Medicare-reference, split insurance and conditional student
+Health Care Card fields; makes guardian marital status/religion and doctor phone
+required; and makes guardian ethnicity optional. The server sets the signing date.
+Editable `2026.1`-`2026.6` applications are upgraded transactionally on their next
+verified open, preserving every existing answer and adding an immutable upgrade
+revision/audit event. Submitted applications and their definitions never upgrade.
 
 Acceptance, Decline and the Enrolment Agreement must receive their own independent
 version series when their backends are built. They must not reuse the Application

@@ -249,6 +249,24 @@ export class DynamoStore {
     } catch (error) { if (conditional(error)) throw conflict(); throw error; }
   }
 
+  async upgradeApplicationDefinition({ application, expectedRevision, expectedFormVersion, revisionRecord, outboxEvents = [], auditEvents = [] }) {
+    try {
+      await this.client.send(new TransactWriteCommand({ TransactItems: [
+        { Put: {
+          TableName: this.tableName,
+          Item: { ...this.key(`APP#${application.id}`, "CURRENT"), entity: "application", data: application },
+          ConditionExpression: "#data.#revision = :revision AND #data.#formVersion = :formVersion AND (#data.#status = :invited OR #data.#status = :inProgress)",
+          ExpressionAttributeNames: { "#data": "data", "#revision": "revision", "#formVersion": "formVersion", "#status": "status" },
+          ExpressionAttributeValues: { ":revision": Number(expectedRevision), ":formVersion": expectedFormVersion, ":invited": "invited", ":inProgress": "in_progress" }
+        } },
+        this.revisionAction(application.id, revisionRecord),
+        ...this.outboxActions(outboxEvents),
+        ...this.auditActions(auditEvents)
+      ] }));
+      return application;
+    } catch (error) { if (conditional(error)) throw conflict("The application changed while its form definition was being updated. Reload and try again."); throw error; }
+  }
+
   async attachDocument({ applicationId, document, uploadId, outboxEvents = [], auditEvents = [] }) {
     const app = await this.getApplication(applicationId);
     if (!app || !["invited", "in_progress"].includes(app.status)) throw conflict("The application is no longer editable.");

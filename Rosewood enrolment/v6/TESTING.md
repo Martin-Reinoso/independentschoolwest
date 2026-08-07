@@ -485,3 +485,42 @@ All canary records are explicitly labelled synthetic and contain no family data.
 GuardDuty, uploaded-file malware scanning and cross-region protection are deliberately
 outside the small-scale launch scope. Named multi-user staff accounts and automatic SES
 feedback ingestion remain documented production gaps.
+
+## V6.7 Application Contract Release
+
+Verified locally and deployed in Sydney on 8 August 2026. No real-family form was
+submitted, reopened or changed during release verification.
+
+- all 60 Node tests pass, including legacy V6 contact-permission/signature security,
+  V6.7 conditional education/assessment/Health Care Card validation, future-sacrament
+  rejection, authoritative server signing date, old-draft transactional upgrade,
+  answer preservation, two-hour remembered staff sessions and append-only Student
+  projection headers
+- bundled Node syntax checks and `git diff --check` pass; the production deployment
+  bundle passes its frozen-lockfile and immutable-asset gates
+- V6.7 pins 18 release assets, adding the inherited base CSS and 444-language catalogue
+  to the family/admin/signer/policy/document asset set
+- local browser verification at 390 x 844 found a 390px document width with no
+  horizontal overflow; child cards were 321px, action buttons 290px and all student,
+  guardian, Conditions and Signature frames fit the viewport
+- the selector review and production paths both use icon-led child cards showing name,
+  source, status and action; the stale review-only student table was removed
+- the live Student frame exposes 250 country entries and 444 language entries, defaults
+  Rosewood entry year to 2027, uses one Home Care radio group and permits EpiPen/Anapen
+  to be selected and cleared
+- the Melbourne date boundary was tested around UTC offset: the sacrament maximum and
+  read-only display both resolve to 8 August in Melbourne, and Lambda overwrites a
+  synthetic `1999-01-01` browser signing date with the server submission date
+- adding Contact 3 on mobile leaves focus on Contact 3 rather than returning to Contact
+  1; guardian ethnicity is optional, marital status/religion are required, and all six
+  ACARA occupational choices plus the St Lawrence occupation catalogue are present
+- Conditions contains exactly three required agreement acknowledgements and no fee or
+  previous-school-contact permission control
+- the reviewed CloudFormation change modified the Lambda in place and recalculated the
+  existing outbox rule/permission only; DynamoDB, audit, KMS, backup, staging and secret
+  resources were not replaced
+- CloudFormation reached `UPDATE_COMPLETE`; Lambda is `Active` with successful update,
+  `/v6/health` reports schema `rosewood-v6-2026-08-08-form-v7` and both current
+  `2026.7` contracts
+- the Lambda error alarm is `OK`, the EventBridge outbox rule remains enabled at one
+  minute and the same-region daily/monthly backup plan remains present

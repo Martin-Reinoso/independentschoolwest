@@ -410,13 +410,14 @@ from browser memory and returns to the private Application gateway for a new OTP
 | Subsection | Data categories | Important conditions | Destination |
 | --- | --- | --- | --- |
 | Student Details | Names, preferred name, DOB, gender, religion, current school/year and intended entry | Religion Other and Current School Other reveal required text fields. | Draft `values`; final Student projection |
+| Previous Education | Whether the student attended an early learning centre, kindergarten or school; institution/year level when Yes; interrupted schooling and details | Institution/year level are hidden after No. Interruption details appear after Yes. No permission to contact the previous institution is collected here. | Draft `values`; final Student projection |
 | Student Residence | Address-sharing choice and home-care arrangements | Other care requires details; Shared Custody requires a parenting schedule. | Draft `values`; final Student projection |
 | Student Primary Address | Address, suburb, state, postcode and country | Required | Draft `values`; final Student projection |
 | Family | Whether other children may attend and how many | Count appears only after Yes. | Draft `values`; final Student projection |
 | Nationality and Citizenship | Residence, birth, nationality, ethnicity, arrival/return date, residency, citizenship, evidence, visas, Indigenous status and languages | Non-citizen paths reveal residency evidence; most evidence choices require visa subclass/expiry. | Draft `values`; final Student projection |
-| General / Additional Needs | Need categories, professionals, reports, NDIS, court/parenting orders and other information | Need category appears after Yes; several support fields remain visible regardless. | Draft `values`; final Student projection |
-| Sacraments | Parish and sacrament date/location details | Date/location appears for each selected sacrament. | Draft `values`; final Student projection as sacrament JSON |
-| Medical Details | Conditions, allergies, anaphylaxis, immunisation, humanitarian health, doctor, Medicare, insurance, ambulance and Health Care Card | Other condition reveals text; doctor name/address, ambulance and card response are required. | Draft `values`; final Student projection |
+| General / Additional Needs | Formal assessment/report availability, need categories, current and possible Rosewood adjustments, professionals, reports, NDIS, court/parenting orders and other information | Assessment details appear after Yes. Need category and adjustment questions appear after additional-needs Yes; several support fields remain visible regardless. | Draft `values`; final Student projection |
+| Sacraments | Parish and optional sacrament date/location details | Date/location appears for each selected sacrament; future dates are rejected in the browser and backend. | Draft `values`; final Student projection as sacrament JSON |
+| Medical Details | Conditions, allergies, optional EpiPen/Anapen choice, immunisation, humanitarian health, doctor, Medicare number/reference, insurance provider/policy, ambulance and Health Care Card | Other condition reveals text; doctor name/address/phone, Medicare number/reference, ambulance and card response are required; card details appear after Yes. | Draft `values`; final Student projection |
 
 This section contains identity, health, disability/support, religious, Indigenous,
 residency and court/parenting information and therefore has the highest privacy
@@ -430,7 +431,7 @@ sensitivity in the application.
 | Messaging and Health Care Card | SMS choice and Health Care Card status | Card number/expiry appear after Yes. | Draft `values`; final Guardians projection |
 | Residential and postal address | Residential address and whether postal is the same | Separate postal fields appear after No. | Draft `values`; final Guardians projection |
 | Occupation and education | Occupational group, occupation, employer, school and further education | Core government-reporting fields are required. | Draft `values`; final Guardians projection |
-| Residency | Birth country, nationality, ethnicity, languages, status, visa and Indigenous response | Temporary Resident reveals visa subclass and expiry. | Draft `values`; final Guardians projection |
+| Residency | Birth country, nationality, optional ethnicity, languages, status, visa and Indigenous response | Temporary Resident reveals visa subclass and expiry. Country inputs use the shared searchable 249+ catalogue. | Draft `values`; final Guardians projection |
 | Contact permission | Explicit Yes/No authority for Rosewood to contact an additional guardian | Yes requires an email for a separate request. No suppresses email, SMS, OTP, recovery and signing-request actions, requires an explanation and flags staff review. It is never inferred from entered contact details. | Draft `values`; final signer control and Guardians projection |
 | Guardian confirmation | Confirmation that all legal parents/guardians were entered | Required before moving on. | Draft `values` |
 | Emergency contacts | At least two names, relationships and phone details; email optional | Repeatable up to the server limit. | Draft `values`; final Emergency Contacts projection |
@@ -492,9 +493,9 @@ Automated malware scanning is outside the current launch scope.
 
 | Subsection | Data and decision | Destination |
 | --- | --- | --- |
-| Previous School Permission | Consent to contact prior school, school name/address and interstate status | Draft `values`; final Conditions projection |
-| School Fee Responsibility | Both guardians, one guardian, or court-ordered percentage split; nominee/percentages and date | Draft `values`; final Conditions projection |
-| Application Survey | Discovery source and exactly three decision influences | Draft `values`; final Conditions projection |
+| Student commitments | HHC student commitments with Rosewood College substituted | Draft `values`; final Conditions projection |
+| Parent / Carer commitments | HHC parent/carer commitments with Rosewood College substituted | Draft `values`; final Conditions projection |
+| Acknowledgement | Confirmation that the applicant read the form particulars and obligations | Draft `values`; final Conditions projection |
 
 This is not the Enrolment Agreement. Terms and Conditions of Enrolment and photography
 permissions are deliberately excluded and belong to the future post-offer workflow.
@@ -506,7 +507,8 @@ The primary guardian must:
 - acknowledge network-address recording language
 - accept the application declaration
 - provide a drawn or keyboard-accessible signature
-- provide the date
+- view the current signing date; the backend replaces any browser value with the
+  Australia/Melbourne date at successful submission
 - explain why only one guardian was entered, when applicable
 - explain why a listed guardian marked Do not contact will not sign electronically
 - otherwise acknowledge that each permitted additional guardian will receive a
@@ -859,6 +861,7 @@ signature revision hashes also retain the form version and definition hash. See
 | `POST /v6/eoi` | Validate and submit EOI |
 | `POST /v6/application/access/request-code` | Validate invitation/email and request OTP |
 | `POST /v6/application/access/verify-code` | Consume OTP and create family session |
+| `GET /v6/application/family` | Restore an active family selector session after a same-tab refresh |
 | `POST /v6/application/records/select` | Authorise and open one existing child application |
 | `POST /v6/application/records` | Create or initialise a separate child application |
 | `GET /v6/application/context` | Reload session-bound application context |

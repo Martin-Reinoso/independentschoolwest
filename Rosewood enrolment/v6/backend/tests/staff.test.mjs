@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { currentFormDefinition } from "../form-definitions.mjs";
+import { currentFormDefinition, getFormDefinition } from "../form-definitions.mjs";
 import { createApplicationInvitation, createService, resendApplicationInvitation } from "../service.mjs";
 
 const clock = () => Date.parse("2026-08-05T12:00:00.000Z");
@@ -74,6 +74,15 @@ class StaffStore {
   async getInvitation(tokenHash) { return this.invitations.get(tokenHash) || null; }
   async getInvitationById(id) { return this.invitationIds.get(id) || null; }
   async getApplication(id) { return this.applications.get(id) || null; }
+  async upgradeApplicationDefinition({ application, expectedRevision, expectedFormVersion, revisionRecord, auditEvents = [] }) {
+    const current = this.applications.get(application.id);
+    assert.equal(current.revision, expectedRevision);
+    assert.equal(current.formVersion, expectedFormVersion);
+    this.applications.set(application.id, structuredClone(application));
+    this.addRevision(application.id, revisionRecord);
+    this.audit.push(...auditEvents.map(event => structuredClone(event)));
+    return structuredClone(application);
+  }
   async saveDraft({ applicationId, expectedRevision, values, screen, stage, percentComplete, guardianCount, emergencyCount, savedAt, formVersion, formDefinitionHash, schemaVersion, revisionRecord }) {
     const current = this.applications.get(applicationId);
     assert.equal(current.revision, expectedRevision);
@@ -315,6 +324,47 @@ test("family sessions slide after activity, expire after inactivity and can be r
   const expired = await service(event("/v6/application/records", "POST", { studentFirstName: "Jordan", studentLastName: "Example" }, verified.familySessionToken));
   assert.equal(expired.statusCode, 401);
   assert.equal(JSON.parse(expired.body).error, "SESSION_EXPIRED");
+});
+
+test("an active older draft is upgraded once with every saved answer preserved", async () => {
+  const { service, store } = staffService();
+  const created = await createApplicationInvitation({ store, recipientEmail: "family@example.com", firstName: "Alex", applicationUrl: "https://ffe.org.au/form", clock });
+  const legacy = getFormDefinition("application", "rosewood-application-2026.6");
+  const original = store.applications.get(created.applicationId);
+  store.applications.set(original.id, {
+    ...original,
+    formVersion: legacy.formVersion,
+    formDefinitionHash: legacy.definitionHash,
+    schemaVersion: legacy.schemaVersion,
+    values: { ...original.values, student_first: "Avery", legacy_removed_question: "Preserve this answer" }
+  });
+  const invitationToken = new URL(created.invitationUrl).searchParams.get("invite");
+  const requested = JSON.parse((await service(event("/v6/application/access/request-code", "POST", { invitationToken, email: "family@example.com" }))).body);
+  const verified = JSON.parse((await service(event("/v6/application/access/verify-code", "POST", { invitationToken, challengeId: requested.challengeId, code: "123456" }))).body);
+  const upgraded = store.applications.get(created.applicationId);
+  assert.equal(upgraded.formVersion, currentFormDefinition("application").formVersion);
+  assert.equal(upgraded.values.student_first, "Avery");
+  assert.equal(upgraded.values.legacy_removed_question, "Preserve this answer");
+  assert.equal(verified.context.formVersion, currentFormDefinition("application").formVersion);
+  assert.equal((await store.listApplicationRevisions(created.applicationId))[0].kind, "form_definition_upgraded");
+  assert.ok(store.audit.some(eventRecord => eventRecord.type === "application.form_definition_upgraded"));
+});
+
+test("remembered staff sessions slide for two hours after each authorised activity", async () => {
+  let now = clock();
+  const { service, store } = staffService({ clockFn: () => now });
+  const requested = JSON.parse((await service(event("/v6/staff/access/request-code", "POST", { email: "info@ffe.org.au" }))).body);
+  const verified = JSON.parse((await service(event("/v6/staff/access/verify-code", "POST", { email: "info@ffe.org.au", challengeId: requested.challengeId, code: "123456", rememberMe: true }))).body);
+  assert.equal(verified.rememberMe, true);
+  const session = [...store.sessions.values()].find(item => item.scope === "staff");
+  assert.equal(session.expiresAt, now + 2 * 60 * 60_000);
+  now += 90 * 60_000;
+  const dashboard = await service(event("/v6/staff/dashboard", "GET", null, verified.sessionToken));
+  assert.equal(dashboard.statusCode, 200);
+  assert.equal([...store.sessions.values()].find(item => item.scope === "staff").expiresAt, now + 2 * 60 * 60_000);
+  now += 2 * 60 * 60_000 + 1;
+  const expired = await service(event("/v6/staff/dashboard", "GET", null, verified.sessionToken));
+  assert.equal(expired.statusCode, 401);
 });
 
 test("resending rotates the invitation token and invalidates the previous hash", async () => {

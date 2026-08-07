@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import test from "node:test";
 import { currentFormDefinition } from "../form-definitions.mjs";
-import { APPLICATION_REQUIRED_FIELDS } from "../schema.mjs";
+import { APPLICATION_V7_REQUIRED_FIELDS } from "../schema.mjs";
 import { createService } from "../service.mjs";
 
 const NOW = Date.parse("2026-08-08T06:00:00.000Z");
@@ -216,16 +216,22 @@ function signingTokenFrom(message) {
 }
 
 function validSubmissionValues(permission) {
-  const values = Object.fromEntries(APPLICATION_REQUIRED_FIELDS.map(field => [field, "Synthetic"]));
-  values.application_influences = ["Reputation", "Location", "Fees"];
+  const values = Object.fromEntries(APPLICATION_V7_REQUIRED_FIELDS.map(field => [field, "Synthetic"]));
   values.application_signature_ip = ["Confirmed"];
   values.application_signature_terms = ["Confirmed"];
-  values.application_signature_date = "2026-08-08";
+  values.application_signature_date = "1999-01-01";
+  values.application_student_agreement = ["Confirmed"];
+  values.application_parent_agreement = ["Confirmed"];
+  values.application_agreement_acknowledgement = ["Confirmed"];
   values.application_additional_signature_later = ["Confirmed"];
   values.application_one_signature_reason = permission === "No, do not contact this person" ? "The applicant asked Rosewood College to review consent arrangements." : "";
+  values.previous_school_attended = "No";
+  values.interrupted_schooling = "No";
+  values.formal_assessment = "No";
+  values.healthcare_card = "No";
   for (let index = 0; index < 2; index += 1) {
     const prefix = `app_guardian_${index}_`;
-    for (const suffix of ["first", "last", "mobile", "relationship", "contact_type", "sms", "healthcare", "address", "suburb", "state", "postcode", "country", "occupation_group", "occupation", "school_education", "further_education", "birth_country", "nationality", "ethnicity", "languages", "residency", "indigenous"]) values[`${prefix}${suffix}`] = "Synthetic";
+    for (const suffix of ["first", "last", "mobile", "relationship", "contact_type", "sms", "healthcare", "address", "suburb", "state", "postcode", "country", "occupation_group", "occupation", "school_education", "further_education", "birth_country", "nationality", "languages", "residency", "indigenous", "marital", "religion"]) values[`${prefix}${suffix}`] = "Synthetic";
     values[`${prefix}first`] = index ? "Taylor" : "Alex";
     values[`${prefix}last`] = index ? "Guardian" : "Applicant";
   }
@@ -263,6 +269,7 @@ test("signature delivery is created only by submission and is suppressed for do-
     const response = await service(request("/v6/application/submit", "POST", { expectedRevision: draft.revision, formVersion: draft.formVersion, formDefinitionHash: draft.formDefinitionHash, signatureDataUrl: `data:image/png;base64,${signatureBytes.toString("base64")}` }, applicationSession));
     assert.equal(response.statusCode, 200);
     const submitted = store.applications.get(app.id);
+    assert.equal(submitted.values.application_signature_date, "2026-08-08", "the backend replaces any browser-supplied signing date");
     const guardianMessages = sent.filter(message => message.to === "guardian@example.test" && message.tags?.message_type === "signature_invitation");
     if (permission.startsWith("Yes")) {
       assert.equal(submitted.status, "pending_signatures");

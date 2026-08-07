@@ -185,7 +185,7 @@ export function mapApplicationRow(app) {
 
 export function studentRow(app, values) {
   const sacraments = Object.fromEntries(Object.entries(values).filter(([key]) => key.startsWith("sacrament_")));
-  return { application_id: app.id, student_id: app.studentId, first_name: values.student_first, middle_name: values.student_middle, last_name: values.student_last, preferred_name: values.student_preferred, date_of_birth: values.student_dob, gender: values.student_gender, religion: values.student_religion, religion_other: values.student_religion_other, current_year_level: values.current_level, entry_year: values.entry_year, entry_year_level: values.entry_level, current_school: values.current_school, current_school_other: values.current_school_other, share_address_with_guardians: values.student_address_share, care_arrangement: values.care_arrangement, care_arrangement_other: values.care_other, shared_parenting_schedule: values.shared_parenting, address: values.student_address, suburb: values.student_suburb, state: values.student_state, postcode: values.student_postcode, country: values.student_country, future_siblings: values.future_siblings, future_sibling_count: values.future_sibling_count, country_of_residence: values.residence_country, country_of_birth: values.birth_country, nationality: values.nationality, ethnicity: values.ethnicity, arrival_or_return_date: values.arrival_date, residency_status: values.residency_status, australian_citizen: values.australian_citizen, residency_evidence: values.residency_evidence, visa_subclass: values.visa_subclass, visa_expiry: values.visa_expiry, previous_visa_subclass: values.previous_visa, indigenous_status: values.indigenous_status, main_language: values.main_language, other_languages: values.other_languages, additional_needs: values.additional_needs, need_categories: values.need_categories, need_other: values.need_other, health_professionals: values.professional_categories, health_professional_other: values.professional_other, reports_attached: values.reports_attached, ndis_support: values.ndis_support, court_or_parenting_orders: values.court_orders, other_relevant_information: values.other_relevant_information, parish: values.parish, sacraments_json: sacraments, medical_conditions: values.medical_conditions, other_medical_condition: values.other_medical_condition, condition_details: values.condition_details, allergy_details: values.allergy_details, anaphylaxis_risk: values.anaphylaxis_risk, anaphylaxis_device: values.anaphylaxis_device, immunisation_status: values.immunisation, humanitarian_health_check: values.humanitarian_health, doctor_name: values.doctor_name, doctor_practice_address: values.doctor_address, doctor_phone: values.doctor_phone, medicare_number: values.medicare_number, medicare_expiry: values.medicare_expiry, private_health_insurance: values.private_insurance, ambulance_cover: values.ambulance_cover, health_care_card: values.healthcare_card, ...projectionVersion(app, "application") };
+  return { application_id: app.id, student_id: app.studentId, first_name: values.student_first, middle_name: values.student_middle, last_name: values.student_last, preferred_name: values.student_preferred, date_of_birth: values.student_dob, gender: values.student_gender, religion: values.student_religion, religion_other: values.student_religion_other, current_year_level: values.current_level, entry_year: values.entry_year, entry_year_level: values.entry_level, current_school: values.current_school, current_school_other: values.current_school_other, share_address_with_guardians: values.student_address_share, care_arrangement: values.care_arrangement, care_arrangement_other: values.care_other, shared_parenting_schedule: values.shared_parenting, address: values.student_address, suburb: values.student_suburb, state: values.student_state, postcode: values.student_postcode, country: values.student_country, future_siblings: values.future_siblings, future_sibling_count: values.future_sibling_count, country_of_residence: values.residence_country, country_of_birth: values.birth_country, nationality: values.nationality, ethnicity: values.ethnicity, arrival_or_return_date: values.arrival_date, residency_status: values.residency_status, australian_citizen: values.australian_citizen, residency_evidence: values.residency_evidence, visa_subclass: values.visa_subclass, visa_expiry: values.visa_expiry, previous_visa_subclass: values.previous_visa, indigenous_status: values.indigenous_status, main_language: values.main_language, other_languages: values.other_languages, additional_needs: values.additional_needs, need_categories: values.need_categories, need_other: values.need_other, health_professionals: values.professional_categories, health_professional_other: values.professional_other, reports_attached: values.reports_attached, ndis_support: values.ndis_support, court_or_parenting_orders: values.court_orders, other_relevant_information: values.other_relevant_information, parish: values.parish, sacraments_json: sacraments, medical_conditions: values.medical_conditions, other_medical_condition: values.other_medical_condition, condition_details: values.condition_details, allergy_details: values.allergy_details, anaphylaxis_risk: values.anaphylaxis_risk, anaphylaxis_device: values.anaphylaxis_device, immunisation_status: values.immunisation, humanitarian_health_check: values.humanitarian_health, doctor_name: values.doctor_name, doctor_practice_address: values.doctor_address, doctor_phone: values.doctor_phone, medicare_number: values.medicare_number, medicare_expiry: values.medicare_expiry, private_health_insurance: values.private_insurance, ambulance_cover: values.ambulance_cover, health_care_card: values.healthcare_card, previous_school_attended: values.previous_school_attended, previous_school_name: values.previous_school_name, previous_school_year_level: values.previous_school_year_level, interrupted_schooling: values.interrupted_schooling, interrupted_schooling_details: values.interrupted_schooling_details, formal_assessment: values.formal_assessment, formal_assessment_details: values.formal_assessment_details, formal_assessment_report_available: values.formal_assessment_report, current_adjustments: values.current_adjustments, rosewood_adjustments: values.rosewood_adjustments, medicare_reference_number: values.medicare_reference, private_health_insurance_provider: values.private_insurance_provider, private_health_insurance_policy_number: values.private_insurance_policy, health_care_card_number: values.student_healthcare_number, health_care_card_expiry: values.student_healthcare_expiry, ...projectionVersion(app, "application") };
 }
 
 export function guardianRow(app, guardian, index, signatureStatus = "pending") {
@@ -201,7 +201,7 @@ export function emergencyRow(app, contact, index) {
 export function conditionsRow(app, values) {
   const both = values.fee_option === "Both Parents / Guardian";
   const one = values.fee_option === "One Parent / Guardian";
-  return { application_id: app.id, previous_school_permission: values.previous_school_permission, previous_school_name: values.previous_school_name, previous_school_address: values.previous_school_address, previous_school_interstate: values.previous_school_interstate, fee_option: values.fee_option, fee_account_recipient: both ? values.fee_both_nominee : one ? values.fee_one_nominee : "", guardian_a_name: values.fee_guardian_a, guardian_a_percentage: values.fee_guardian_a_percent, guardian_b_name: values.fee_guardian_b, guardian_b_percentage: values.fee_guardian_b_percent, fee_responsibility_date: values.fee_both_date || values.fee_one_date || values.fee_split_date, discovery_source: values.application_discovery, influence_factors: values.application_influences, ...projectionVersion(app, "application") };
+  return { application_id: app.id, previous_school_permission: values.previous_school_permission, previous_school_name: values.previous_school_name, previous_school_address: values.previous_school_address, previous_school_interstate: values.previous_school_interstate, fee_option: values.fee_option, fee_account_recipient: both ? values.fee_both_nominee : one ? values.fee_one_nominee : "", guardian_a_name: values.fee_guardian_a, guardian_a_percentage: values.fee_guardian_a_percent, guardian_b_name: values.fee_guardian_b, guardian_b_percentage: values.fee_guardian_b_percent, fee_responsibility_date: values.fee_both_date || values.fee_one_date || values.fee_split_date, discovery_source: values.application_discovery, influence_factors: values.application_influences, previous_school_attended: values.previous_school_attended, previous_school_year_level: values.previous_school_year_level, student_commitments_accepted: values.application_student_agreement, parent_carer_commitments_accepted: values.application_parent_agreement, parent_carer_agreement_acknowledged: values.application_agreement_acknowledgement, ...projectionVersion(app, "application") };
 }
 
 function createAuditEvent({ workflow, recordId, type, at, actorType = "family", actorId = "", details = {}, stage = "", invitationId = "" }) {
@@ -443,6 +443,10 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
       const expiresAt = Math.min(now + APPLICATION_SESSION_IDLE_MS, absoluteExpiresAt);
       session = await store.touchSession(tokenHash, { expiresAt, absoluteExpiresAt, lastActivityAt: now, now, ttl: Math.floor((absoluteExpiresAt + 86400_000) / 1000) });
       if (!session) throw appError(401, "SESSION_EXPIRED", "Your secure session has expired. Verify your email address again.");
+    } else if (scope === "staff" && session.rememberMe) {
+      const expiresAt = now + 2 * 60 * 60_000;
+      session = await store.touchSession(tokenHash, { expiresAt, absoluteExpiresAt: expiresAt, lastActivityAt: now, now, ttl: Math.floor((expiresAt + 60 * 60_000) / 1000) });
+      if (!session) throw appError(401, "SESSION_EXPIRED", "Your secure session has expired. Verify your email address again.");
     }
     return session;
   }
@@ -488,9 +492,10 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     if (!consumed) { await store.failChallenge(challengeId); throw appError(401, "OTP_INVALID", "The code is invalid or expired. Request a new code."); }
     const rawSession = token();
     const role = staffRoles.get(email);
-    await store.putSession({ tokenHash: sha256(rawSession), scope: "staff", email, role, createdAt: clock(), expiresAt: clock() + 2 * 60 * 60_000, ttl: Math.floor((clock() + 3 * 60 * 60_000) / 1000) });
-    await recordAudit(createAuditEvent({ workflow: "operations", recordId: "staff-portal", type: "staff.session_started", at: nowIso(), actorType: "staff", actorId: email, details: { role } }));
-    return { sessionToken: rawSession, expiresInSeconds: 7200, staff: { email, role } };
+    const rememberMe = body.rememberMe === true;
+    await store.putSession({ tokenHash: sha256(rawSession), scope: "staff", email, role, rememberMe, createdAt: clock(), lastActivityAt: clock(), expiresAt: clock() + 2 * 60 * 60_000, ttl: Math.floor((clock() + 3 * 60 * 60_000) / 1000) });
+    await recordAudit(createAuditEvent({ workflow: "operations", recordId: "staff-portal", type: "staff.session_started", at: nowIso(), actorType: "staff", actorId: email, details: { role, rememberMe } }));
+    return { sessionToken: rawSession, expiresInSeconds: 7200, rememberMe, staff: { email, role } };
   }
 
   async function getStaffDashboard(event) {
@@ -747,8 +752,9 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     if (!challenge || challenge.subjectHash !== inviteHash || challenge.purpose !== "application_access" || !invitation || invitation.status !== "active" || invitation.expiresAt <= clock()) throw appError(401, "OTP_INVALID", "The code is invalid or expired. Request a new code.");
     const consumed = await store.consumeChallenge(challengeId, hmac(otpSecret, `${challengeId}:${safeText(body.code, 12)}`), clock());
     if (!consumed) { await store.failChallenge(challengeId); throw appError(401, "OTP_INVALID", "The code is invalid or expired. Request a new code."); }
-    const app = await store.getApplication(invitation.applicationId);
+    let app = await store.getApplication(invitation.applicationId);
     if (!app) throw appError(404, "APPLICATION_NOT_FOUND", "The application attached to this invitation was not found.");
+    app = await upgradeEditableApplication(app);
     const definition = requireRecordDefinition(app, "application");
     await ensureDefinition(store, "application", definition.formVersion);
     const rawFamilySession = token();
@@ -762,6 +768,20 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
 
   function applicationContext(app) {
     return { applicationId: app.id, invitationId: app.invitationId, sourceEoiId: app.sourceEoiId || null, recipientEmail: app.recipientEmail, status: app.status, revision: app.revision, screen: Number(app.screen || 0), currentStage: app.currentStage || "gateway", percentComplete: Number(app.percentComplete || 0), values: app.values || {}, guardianCount: app.guardianCount || 1, emergencyCount: app.emergencyCount || 2, documents: Object.values(app.documents || {}).flat().map(document => ({ category: document.category, documentId: document.documentId, fileName: document.fileName, size: document.size })), studentName: [app.values.student_first, app.values.student_last].filter(Boolean).join(" "), updatedAt: app.updatedAt, ...recordFormReference(app, "application") };
+  }
+
+  async function upgradeEditableApplication(app) {
+    if (!app || !["invited", "in_progress"].includes(app.status || "invited") || app.formVersion === currentFormDefinition("application").formVersion) return app;
+    const definition = await ensureDefinition(store, "application", currentFormDefinition("application").formVersion);
+    const updatedAt = nowIso();
+    const next = { ...app, revision: Number(app.revision || 0) + 1, updatedAt, formVersion: definition.formVersion, formDefinitionHash: definition.definitionHash, schemaVersion: definition.schemaVersion };
+    const audit = createAuditEvent({ workflow: "application", recordId: app.id, invitationId: app.invitationId, type: "application.form_definition_upgraded", at: updatedAt, actorType: "system", actorId: "form-version-service", stage: app.currentStage || "gateway", details: { fromFormVersion: app.formVersion || "legacy", toFormVersion: definition.formVersion, answersPreserved: true } });
+    const operations = [
+      sheetOperation("application", "Applications", mapApplicationRow(next), ["application_id"]),
+      sheetOperation("operations", "Progress", { application_id: app.id, current_stage: app.currentStage || "gateway", status: app.status || "invited", revision: next.revision, last_saved_at: updatedAt, last_activity_at: updatedAt, percent_complete: Number(app.percentComplete || 0), ...projectionVersion(next, "application") }, ["application_id"]),
+      auditSheetOperation(audit)
+    ];
+    return store.upgradeApplicationDefinition({ application: next, expectedRevision: app.revision || 0, expectedFormVersion: app.formVersion, revisionRecord: applicationRevision(next, { kind: "form_definition_upgraded", values: next.values, savedAt: updatedAt, changed: [] }), outboxEvents: operations.map(operation => sheetOutbox(operation, clock())), auditEvents: [audit] });
   }
 
   function familyApplicationSummary(app) {
@@ -781,6 +801,11 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     const invitation = await store.getInvitationById(session.invitationId);
     if (!invitation || invitation.recipientEmail !== session.email) throw appError(401, "SESSION_EXPIRED", "Your secure family session is no longer valid. Verify your email address again.");
     return { session, invitation };
+  }
+
+  async function getFamilyContext(event) {
+    const { invitation } = await requireFamilyInvitation(event);
+    return { family: await familyApplicationContext(invitation), idleTimeoutSeconds: APPLICATION_SESSION_IDLE_MS / 1000 };
   }
 
   async function issueApplicationSession(invitation, application, email) {
@@ -804,9 +829,10 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     const body = parseBody(event, 20_000);
     const applicationId = safeText(body.applicationId, 200);
     if (!invitationApplicationIds(invitation).includes(applicationId)) throw appError(403, "APPLICATION_ACCESS_DENIED", "This application does not belong to the verified family invitation.");
-    const application = await store.getApplication(applicationId);
+    let application = await store.getApplication(applicationId);
     if (!application || application.invitationId !== invitation.id) throw appError(404, "APPLICATION_NOT_FOUND", "The selected application was not found.");
     if (!["invited", "in_progress"].includes(application.status || "invited")) throw appError(409, "APPLICATION_NOT_EDITABLE", "This child application has already been submitted and cannot be reopened.");
+    application = await upgradeEditableApplication(application);
     const definition = requireRecordDefinition(application, "application", body);
     await ensureDefinition(store, "application", definition.formVersion);
     const sessionToken = await issueApplicationSession(invitation, application, session.email);
@@ -994,8 +1020,9 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
 
   async function getContext(event) {
     const session = await requireSession(event);
-    const app = await store.getApplication(session.applicationId);
+    let app = await store.getApplication(session.applicationId);
     if (!app) throw appError(404, "APPLICATION_NOT_FOUND", "The application was not found.");
+    app = await upgradeEditableApplication(app);
     const definition = requireRecordDefinition(app, "application");
     await ensureDefinition(store, "application", definition.formVersion);
     return applicationContext(app);
@@ -1067,7 +1094,10 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     const definition = requireRecordDefinition(app, "application", body);
     await ensureDefinition(store, "application", definition.formVersion);
     const guardianCount = Math.max(1, Math.min(6, Number(app.guardianCount || 1)));
-    const values = applicationValidator(definition).validate(app.values, guardianCount, app.emergencyCount || 2, definition.formVersion);
+    const signedAt = nowIso();
+    const serverSigningDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Melbourne", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(signedAt));
+    const submissionValues = definition.formVersion.endsWith(".7") ? { ...app.values, application_signature_date: serverSigningDate } : app.values;
+    const values = applicationValidator(definition).validate(submissionValues, guardianCount, app.emergencyCount || 2, definition.formVersion);
     const additionalSignatureRecipients = additionalGuardianSignatureRecipients(values, guardianCount, definition.formVersion);
     if (!(app.documents?.birth_certificate || []).length) throw appError(422, "DOCUMENT_REQUIRED", "Upload the student's birth certificate before submitting.", { missing: ["birth_certificate"] });
     const unsafeDocuments = Object.values(app.documents || {}).flat().filter(document => document.malwareScanStatus !== "no_threats_found" && !(allowUnscannedGoogleDocuments && document.storageProvider === "google_drive"));
@@ -1076,9 +1106,8 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     const primaryGuardianId = app.guardianIds[0];
     const primarySignatureId = id("sig");
     const revisionHash = sha256(json({ values, documents: app.documents, revision: app.revision, formVersion: definition.formVersion, formDefinitionHash: definition.definitionHash }));
-    const snapshotPayload = { applicationId: app.id, invitationId: app.invitationId, sourceEoiId: app.sourceEoiId || null, revision: app.revision, revisionHash, values, documents: app.documents, submittedAt: nowIso(), formVersion: definition.formVersion, formDefinitionHash: definition.definitionHash, schemaVersion: definition.schemaVersion };
+    const snapshotPayload = { applicationId: app.id, invitationId: app.invitationId, sourceEoiId: app.sourceEoiId || null, revision: app.revision, revisionHash, values, documents: app.documents, submittedAt: signedAt, formVersion: definition.formVersion, formDefinitionHash: definition.definitionHash, schemaVersion: definition.schemaVersion };
     const [snapshot, signatureFile] = await Promise.all([artifacts.storeApplicationSnapshot({ applicationId: app.id, revision: app.revision, snapshot: snapshotPayload }), artifacts.storeSignature({ applicationId: app.id, guardianId: primaryGuardianId, signatureId: primarySignatureId, data: bytes })]);
-    const signedAt = nowIso();
     const primarySignature = { id: primarySignatureId, guardianId: primaryGuardianId, signerName: `${values.app_guardian_0_first} ${values.app_guardian_0_last}`.trim(), signerEmail: normalizeEmail(values.app_guardian_0_email), signedAt, revision: app.revision, revisionHash, fileId: signatureFile.id, storageProvider: signatureFile.storageProvider, storageVersionId: signatureFile.storageVersionId, networkFingerprint: networkFingerprint(event), ipAcknowledged: values.application_signature_ip, termsAcknowledged: values.application_signature_terms };
     const signerControls = guardianSignaturePlan(values, guardianCount, app.guardianIds, definition.formVersion);
     Object.assign(signerControls[0], { completedAt: signedAt, signedDocumentRevision: revisionHash });
@@ -1273,6 +1302,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     ["POST /v6/eoi", submitEoi],
     ["POST /v6/application/access/request-code", requestApplicationCode],
     ["POST /v6/application/access/verify-code", verifyApplicationCode],
+    ["GET /v6/application/family", getFamilyContext],
     ["POST /v6/application/records/select", selectFamilyApplication],
     ["POST /v6/application/status/select", selectApplicationStatus],
     ["GET /v6/application/status", getApplicationStatus],

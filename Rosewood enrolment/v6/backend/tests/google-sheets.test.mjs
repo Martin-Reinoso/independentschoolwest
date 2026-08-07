@@ -53,3 +53,25 @@ test("family application IDs extend invitation projections without shifting lega
   assert.equal(appendWrite.body.values[0][1], "app-1");
   assert.equal(appendWrite.body.values[0][16], '["app-1","app-2"]');
 });
+
+test("V7 student projection appends new education and medical fields without shifting legacy columns", async () => {
+  const writes = [];
+  const legacyHeaders = ["application_id", "student_id", "first_name", "middle_name", "last_name", "preferred_name"];
+  const fetchImpl = async (url, options = {}) => {
+    const value = String(url);
+    if (value.includes("oauth2.googleapis.com")) return new Response(JSON.stringify({ access_token: "token", expires_in: 3600 }), { status: 200, headers: { "Content-Type": "application/json" } });
+    if ((options.method || "GET") === "GET") return new Response(JSON.stringify({ values: [legacyHeaders] }), { status: 200, headers: { "Content-Type": "application/json" } });
+    writes.push({ method: options.method, body: JSON.parse(options.body) });
+    return new Response("{}", { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+  const store = new GoogleSheetsStore({ auth, eoiSpreadsheetId: "eoi", applicationSpreadsheetId: "application", operationsSpreadsheetId: "operations", fetchImpl });
+  await store.append("application", "Student", { application_id: "app-1", student_id: "student-1", first_name: "Synthetic", schema_version: "v7", form_version: "2026.7", form_definition_hash: "synthetic", previous_school_attended: "Yes", previous_school_name: "Synthetic School", previous_school_year_level: "Foundation", medicare_reference_number: "1" });
+  const headerWrite = writes.find(write => write.method === "PUT");
+  const appendWrite = writes.find(write => write.method === "POST");
+  assert.deepEqual(headerWrite.body.values[0].slice(0, legacyHeaders.length), legacyHeaders);
+  assert.ok(headerWrite.body.values[0].includes("previous_school_attended"));
+  assert.ok(headerWrite.body.values[0].includes("medicare_reference_number"));
+  assert.ok(headerWrite.body.values[0].indexOf("previous_school_attended") > headerWrite.body.values[0].indexOf("form_definition_hash"));
+  assert.equal(appendWrite.body.values[0][0], "app-1");
+  assert.equal(appendWrite.body.values[0][2], "Synthetic");
+});
