@@ -104,6 +104,11 @@ POST /v6/application/signatures/submit
 Every application, draft, upload, document and signature request is authorised on the
 server. Family record selection is checked against the invitation's server-side
 application list; the browser cannot select another family's application ID.
+After a signature OTP is verified, `signatures/verify-code` returns a human-readable,
+read-only projection of every relevant answer in the frozen submitted revision,
+repeated guardian/emergency records, document file names and recorded primary-signature
+metadata. It does not return the raw draft answer map, internal IDs, object or Drive locations,
+revision hashes, network fingerprints or signature file identifiers.
 Document start records use opaque application/upload identifiers in S3 keys. The
 presigned PUT is constrained by the approved MIME type, SHA-256 checksum and KMS
 encryption; confirmation is idempotent at the Drive upload identifier boundary.

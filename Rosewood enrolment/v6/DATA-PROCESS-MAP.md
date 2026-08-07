@@ -554,8 +554,8 @@ sequenceDiagram
     API->>SES: Send OTP
     Guardian->>Page: Verify OTP
     API->>DB: Consume challenge and create 30-minute signing session
-    API-->>Page: Return frozen revision review context
-    Guardian->>Page: Review student, signer, previous-school and fee information
+    API-->>Page: Return complete human-readable frozen revision review
+    Guardian->>Page: Review every submitted application section and document name
     Guardian->>Page: Confirm ready, accept declarations and sign
     Page->>API: Submit signature
     API->>DB: Recheck task status and frozen revision hash
@@ -567,7 +567,12 @@ sequenceDiagram
 
 The guardian cannot edit the submitted application from the signing page. The task is
 bound to the application ID, guardian ID, email, revision and revision hash. It expires
-after 14 days and cannot be reused after signing.
+after 14 days and cannot be reused after signing. The OTP-authenticated review contains
+the student, nationality/citizenship, additional-needs, sacrament, medical,
+parent/guardian, emergency-contact, document, condition and primary-signature sections.
+It is projected from the frozen application into human-readable labels. Internal IDs,
+Drive/S3 locations, revision hashes, network fingerprints and signature image metadata
+remain server-side.
 
 ## Workflow 6: Staff Dashboard and Review
 

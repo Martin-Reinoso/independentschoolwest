@@ -8,7 +8,7 @@ import { currentFormDefinition } from "../form-definitions.mjs";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.join(root, "lambda-dist");
 const repositoryRoot = path.resolve(root, "../../..");
-const files = ["index.mjs", "service.mjs", "schema.mjs", "form-definitions.mjs", "dynamo-store.mjs", "google-auth.mjs", "google-drive.mjs", "staged-google-drive.mjs", "google-sheets.mjs", "ses-mailer.mjs", "email-templates.mjs", "package.json", "pnpm-lock.yaml"];
+const files = ["index.mjs", "service.mjs", "application-review.mjs", "schema.mjs", "form-definitions.mjs", "dynamo-store.mjs", "google-auth.mjs", "google-drive.mjs", "staged-google-drive.mjs", "google-sheets.mjs", "ses-mailer.mjs", "email-templates.mjs", "package.json", "pnpm-lock.yaml"];
 
 function run(command, args) {
   const result = spawnSync(command, args, { cwd: output, env: process.env, encoding: "utf8", stdio: "inherit" });

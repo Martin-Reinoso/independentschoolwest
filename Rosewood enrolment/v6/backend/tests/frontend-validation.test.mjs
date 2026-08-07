@@ -20,3 +20,23 @@ test("submission validation identifies the section and preserves an in-browser s
   assert.match(canvasBinding, /context\.drawImage\(image/);
   assert.doesNotMatch(canvasBinding, /scheduleAutosave/);
 });
+
+test("guardian signing renders the complete server-provided application review", async () => {
+  const [source, html, css] = await Promise.all([
+    readFile(new URL("../../../../pages/rosewood-application-sign-v6.js", import.meta.url), "utf8"),
+    readFile(new URL("../../../../pages/rosewood-application-sign-v6.html", import.meta.url), "utf8"),
+    readFile(new URL("../../../../pages/rosewood-application-sign-v6.css", import.meta.url), "utf8")
+  ]);
+
+  assert.match(source, /Review the complete submitted application/);
+  assert.match(source, /sections\.map\(reviewSection\)/);
+  assert.match(source, /groups\.map\(reviewGroup\)/);
+  assert.match(source, /I have reviewed the complete submitted application/);
+  assert.match(source, /Do not proceed to signing without the complete application/);
+  assert.doesNotMatch(source, /const conditions = context\.review\.conditions/);
+  assert.doesNotMatch(source, /<h3>Previous school permission<\/h3>/);
+  assert.match(html, /rosewood-application-sign-v6\.css\?v=2/);
+  assert.match(html, /rosewood-application-sign-v6\.js\?v=2/);
+  assert.match(css, /\.application-review-section/);
+  assert.match(css, /\.review-answer \{ grid-template-columns: 1fr/);
+});

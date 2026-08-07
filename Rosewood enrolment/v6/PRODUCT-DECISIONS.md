@@ -221,6 +221,11 @@ Source: https://www.abs.gov.au/statistics/classifications/australian-standard-cl
 - A primary submission with outstanding guardian signatures is labelled **Awaiting
   Parent/Guardian Signature**, not Completed. Completed is shown only after every
   required signature has been recorded.
+- After OTP verification, an additional guardian reviews the complete frozen submitted
+  application, not a reduced summary. All application sections, repeated contacts,
+  document file names, conditions and the primary signature record are visible but
+  read-only. Internal identifiers, storage metadata, network fingerprints and signature
+  image locations are never included in the browser response.
 - If no second parent/guardian is included, Explanation only one signature becomes
   mandatory and explains why it is being requested.
 

@@ -258,7 +258,7 @@ Verified in production on 8 August 2026 without printing or exporting family ans
   `submitted` state
 - all additional listed guardians with valid email addresses receive the required
   transactional signing task even when their general contact preference is No
-- thirty-eight Node tests pass, including no-contact task creation, transactional
+- forty-one Node tests pass, including no-contact task creation, transactional
   missing-task recovery and frozen `2026.1` to `2026.3` definition hashes
 - the recovery command defaults to dry run and reported exactly one missing request for
   the affected test application without changing or exposing its answers
@@ -267,8 +267,28 @@ Verified in production on 8 August 2026 without printing or exporting family ans
 - CloudFormation reached `UPDATE_COMPLETE`, Lambda remained `Active`, `/v6/health`
   returned both `2026.4` form versions, the outbox schedule remained enabled and the
   Lambda error alarm remained `OK`
-- no recovery email was sent during verification; applying the recovery requires an
-  explicit operator confirmation because it creates an external message
+- after explicit operator authorisation, recovery created exactly one missing guardian
+  task and SES accepted exactly one signature-invitation email; a repeat dry run found
+  zero missing requests and the frozen answers remained unchanged
+
+## Complete Guardian Review Release
+
+Verified locally on 8 August 2026 with synthetic answers only.
+
+- after OTP verification, the signing page renders ten read-only sections: Student,
+  Nationality and Citizenship, General / Additional Needs, Sacraments, Medical Details,
+  Parent / Guardian, Emergency Contacts, Documents, Conditions and Signature
+- every repeated parent/guardian and emergency contact is displayed; the current signer
+  is marked in their existing guardian record
+- uploaded documents are represented only by original file name and the recorded primary
+  signature is represented by status, timestamp and application revision
+- tests confirm application IDs, revision hashes, Drive IDs, signature file IDs and
+  network fingerprints do not enter the guardian review projection
+- desktop and 390 x 844 mobile checks show the full review with no horizontal overflow;
+  mobile question-and-answer rows collapse to a single readable column
+- signing assets are cache-versioned as JavaScript `v=2` and CSS `v=2`
+- forty-one Node tests pass, including the complete review projection, verified signing
+  response boundary and browser renderer
 
 ## Staff Portal Checks
 
