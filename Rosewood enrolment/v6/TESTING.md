@@ -346,6 +346,38 @@ Verified locally and in production on 8 August 2026 with synthetic answers only.
   window;
   its CloudWatch error alarm remained `OK`
 
+## Approved Policy Reader And Guardian Email Release
+
+Verified locally and in production on 8 August 2026 without using a family invitation,
+answer, document, signature task or OTP.
+
+- all 44 Node tests pass, including the three byte-identical approved Word sources,
+  immutable `2026.1` to `2026.5` definition hashes, welcome-copy boundary and exact
+  additional-guardian explanation/privacy assertions
+- the deployment bundle passed its pinned-asset gate for the HTML, JavaScript, CSS,
+  generated policy projection and all six Word/PDF policy files
+- GitHub Pages serves all ten assets with SHA-256 hashes identical to commit `16b5555`;
+  the original Word downloads retain the approved source hashes and the PDFs open with
+  8, 7 and 8 pages
+- the live desktop reader at 1280 x 720 retained the blue Rosewood panel, all three
+  policy tabs, active-policy semantics, direct URLs and zero horizontal overflow
+- the live mobile reader at 390 x 844 used the compact header, sticky return/selector
+  toolbar, natural-height contents control and stacked document register with zero
+  horizontal overflow
+- live Return to application and browser Back preserved the entered review-mode email;
+  the welcome contained no Privacy Collection Notice reference and policy review added
+  no acknowledgement control
+- the live browser reported no console errors, and the original PDF opened in the same
+  tab and returned to the selected policy through browser Back
+- the reviewed CloudFormation change set modified Lambda code and its recalculated
+  EventBridge target/permission only; it did not replace DynamoDB, KMS, backup, S3 or
+  endpoint resources
+- CloudFormation reached `UPDATE_COMPLETE`, Lambda remained `Active` with a successful
+  update, `/v6/health` returned both `2026.5` contracts, the one-minute outbox rule
+  remained enabled and the Lambda error alarm remained `OK`
+- Amazon SES accepted the updated guardian template through the Sydney mailbox simulator
+  from `enrolment@ffe.org.au`; no real recipient or application information was used
+
 ## KMS Runtime Permission Incident
 
 Resolved 6 August 2026 after the staff portal returned the generic service-error
