@@ -754,6 +754,12 @@ signature revision hashes also retain the form version and definition hash. See
 - Restricted Google Drive is the launch file store.
 - Proof of address is not collected.
 - Application terms and photography permission are deferred to the Enrolment Agreement.
+- General contact permission does not suppress the required transactional signing
+  request for an additional listed guardian. Primary submission remains
+  `pending_signatures` and is presented as Awaiting Parent/Guardian Signature until the
+  last required signer completes it.
+- Missing signing tasks can be recovered by a dry-run-first operational command that
+  preserves the frozen answers and records an append-only audit event.
 - GuardDuty, SQL and cross-region replication are outside launch scope.
 
 ### Stakeholder Decisions Still Required
@@ -764,17 +770,13 @@ signature revision hashes also retain the form version and definition hash. See
    processes across DynamoDB, Drive, Sheets, SES records and exports.
 3. Replace the shared staff mailbox with named staff identities, approved roles,
    offboarding and periodic access review.
-4. Decide whether an additional guardian marked "No, do not contact them" remains a
-   required signer. The current implementation counts every entered guardian as
-   required but creates no signing task when contact permission is No; that combination
-   can leave an application permanently `pending_signatures`.
-5. Decide how administrators correct submitted applications and reissue signatures
+4. Decide how administrators correct submitted applications and reissue signatures
    without weakening the frozen-revision evidence.
-6. Define the business process after `submitted`: assessment, decision, offer,
+5. Define the business process after `submitted`: assessment, decision, offer,
    acceptance or decline, and family communications.
-7. Implement Acceptance, Enrolment Agreement signing and Decline as separate backend
+6. Implement Acceptance, Enrolment Agreement signing and Decline as separate backend
    workflows only after their governance contracts are approved.
-8. Decide whether automated upload scanning becomes necessary if volume, risk or file
+7. Decide whether automated upload scanning becomes necessary if volume, risk or file
    types expand.
 9. Add automatic SES bounce/complaint correlation into Operations records.
 

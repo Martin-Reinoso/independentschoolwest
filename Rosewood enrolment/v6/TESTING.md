@@ -244,6 +244,32 @@ Verified in production on 8 August 2026 without printing or exporting family ans
 - no production family record, answer, signature image, invitation token or identifier was
   written to this repository or included in the release evidence
 
+## Guardian Signature Workflow Release
+
+Verified in production on 8 August 2026 without printing or exporting family answers.
+
+- production diagnosis found a primary-signed application with two required signatures,
+  one recorded signature, no additional-guardian task and no signature-invitation email
+  receipt; its stored general contact preference was the former suppression condition
+- the family portal now serves CSS `v=9` and JavaScript `v=14`; the live JavaScript hash
+  matches the immutable `2026.4` form definition
+- the family selector presents `pending_signatures` as **Awaiting Parent/Guardian
+  Signature** in both status and action columns; **Completed** is reserved for the final
+  `submitted` state
+- all additional listed guardians with valid email addresses receive the required
+  transactional signing task even when their general contact preference is No
+- thirty-eight Node tests pass, including no-contact task creation, transactional
+  missing-task recovery and frozen `2026.1` to `2026.3` definition hashes
+- the recovery command defaults to dry run and reported exactly one missing request for
+  the affected test application without changing or exposing its answers
+- the reviewed CloudFormation change set updated Lambda code in place; both DynamoDB
+  tables, KMS, backups and document storage were unchanged
+- CloudFormation reached `UPDATE_COMPLETE`, Lambda remained `Active`, `/v6/health`
+  returned both `2026.4` form versions, the outbox schedule remained enabled and the
+  Lambda error alarm remained `OK`
+- no recovery email was sent during verification; applying the recovery requires an
+  explicit operator confirmation because it creates an external message
+
 ## Staff Portal Checks
 
 - the noindex portal loaded at
