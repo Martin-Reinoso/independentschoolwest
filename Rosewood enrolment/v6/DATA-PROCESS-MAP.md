@@ -480,7 +480,7 @@ Automated malware scanning is outside the current launch scope.
 | --- | --- | --- |
 | Previous School Permission | Consent to contact prior school, school name/address and interstate status | Draft `values`; final Conditions projection |
 | School Fee Responsibility | Both guardians, one guardian, or court-ordered percentage split; nominee/percentages and date | Draft `values`; final Conditions projection |
-| Application Survey | Discovery source and up to three decision influences | Draft `values`; final Conditions projection |
+| Application Survey | Discovery source and exactly three decision influences | Draft `values`; final Conditions projection |
 
 This is not the Enrolment Agreement. Terms and Conditions of Enrolment and photography
 permissions are deliberately excluded and belong to the future post-offer workflow.
@@ -495,6 +495,14 @@ The primary guardian must:
 - provide the date
 - explain why only one guardian was entered, when applicable
 - otherwise acknowledge that an additional guardian will be contacted separately
+
+The drawing remains only in browser memory while the guardian reviews other sections;
+declarations and date remain ordinary revisioned draft answers. The sticky indicator
+uses `Signature ready`, not `Saved`, until submission. A reload or expired session
+requires a new drawing. Final submission revalidates every answer; any missing-answer
+code is translated into its family-facing field and section with a direct review action
+and inline highlight. The Conditions page independently enforces the exact-three
+decision-influences rule before navigation.
 
 ```mermaid
 sequenceDiagram

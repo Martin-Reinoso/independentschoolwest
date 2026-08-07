@@ -98,6 +98,22 @@ workflows into the current records or API.
 - Return a retry interval for throttled requests and keep the current valid code policy
   explicit in backend implementation and tests.
 
+## Submission Validation And Signature Readiness
+
+- The three application decision influences are an exact-three requirement. The
+  Conditions page must enforce it before the family reaches Signature.
+- If final server validation still finds an earlier incomplete answer, the response is
+  translated into the family-facing field label and section. The page provides a direct
+  review action and highlights the affected control in that section.
+- A signature drawing is held only in the current browser session until submission. It
+  survives navigation between form sections but is never included in draft autosaves.
+- The declarations, date and additional-guardian acknowledgement must restore with the
+  drawing after in-form navigation. A page reload or expired session requires a new
+  drawing.
+- `Signature ready` means the drawing is prepared in the browser. The legally recorded
+  signature is created only after the server validates the complete application and
+  stores the final signed revision.
+
 ## Draft Saving, Status and Session Contract
 
 - Do not expose backend deployment scope or inactive-workflow information to families.
@@ -109,7 +125,8 @@ workflows into the current records or API.
   selection screens because no child draft is open. Authentication errors use the form
   error area and must never be labelled as save failures.
 - Saved means the backend acknowledged the exact current revision. A selected but not
-  yet uploaded file and a drawn but not submitted signature must not appear saved.
+  yet uploaded file must not appear saved. A drawn but unsubmitted signature uses the
+  distinct `Signature ready` state and states that recording occurs only on submission.
 - Application answers autosave 1.2 seconds after input pauses and at least every eight
   seconds during continuous input. Identical snapshots are suppressed.
 - Navigation flushes pending changes. Every Application section provides **Save and

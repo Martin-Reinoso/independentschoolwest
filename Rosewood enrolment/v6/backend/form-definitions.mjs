@@ -9,8 +9,8 @@ import {
 } from "./schema.mjs";
 
 export const CURRENT_FORM_VERSIONS = Object.freeze({
-  eoi: "rosewood-eoi-2026.2",
-  application: "rosewood-application-2026.2"
+  eoi: "rosewood-eoi-2026.3",
+  application: "rosewood-application-2026.3"
 });
 
 function canonical(value) {
@@ -67,7 +67,7 @@ const eoi2026v1 = complete({
 
 const eoi2026v2 = complete({
   workflow: "eoi",
-  formVersion: CURRENT_FORM_VERSIONS.eoi,
+  formVersion: "rosewood-eoi-2026.2",
   schemaVersion: SCHEMA_VERSION,
   releasedAt: "2026-08-08",
   source: {
@@ -76,6 +76,29 @@ const eoi2026v2 = complete({
     frontendAssetHashes: {
       "pages/rosewood-enrolment-v6.html": "cecc8b37c3f2b2cfdedd998e7efec6ed4edbc7f9933553a6a188df9b089f36ea",
       "pages/rosewood-enrolment-v6.js": "cf8f8caa5d3695e56519f607887dc709594f37d170af22778a2f0e0fd1892557"
+    },
+    validator: "schema.mjs#validateEoi"
+  },
+  contract: {
+    fields: EOI_FIELDS,
+    requiredFields: EOI_REQUIRED,
+    conditionalRules: [
+      { when: { field: "eoi_needs", equals: "Yes" }, required: ["eoi_need_category"] }
+    ]
+  }
+});
+
+const eoi2026v3 = complete({
+  workflow: "eoi",
+  formVersion: CURRENT_FORM_VERSIONS.eoi,
+  schemaVersion: SCHEMA_VERSION,
+  releasedAt: "2026-08-08",
+  source: {
+    frontend: "pages/rosewood-enrolment-v6.html?workflow=eoi",
+    frontendRelease: "v6-js13-css8",
+    frontendAssetHashes: {
+      "pages/rosewood-enrolment-v6.html": "0a6e9e91f41e5718138dc2772aa8a025a753f1d7c919c45379a313e53384f0c1",
+      "pages/rosewood-enrolment-v6.js": "56de99e7b1ab9b58320fd29ca23df2ce1e3119e5906cbd1b4317171bc0a7c384"
     },
     validator: "schema.mjs#validateEoi"
   },
@@ -124,7 +147,7 @@ const application2026v1 = complete({
 
 const application2026v2 = complete({
   workflow: "application",
-  formVersion: CURRENT_FORM_VERSIONS.application,
+  formVersion: "rosewood-application-2026.2",
   schemaVersion: SCHEMA_VERSION,
   releasedAt: "2026-08-08",
   source: {
@@ -156,9 +179,43 @@ const application2026v2 = complete({
   }
 });
 
+const application2026v3 = complete({
+  workflow: "application",
+  formVersion: CURRENT_FORM_VERSIONS.application,
+  schemaVersion: SCHEMA_VERSION,
+  releasedAt: "2026-08-08",
+  source: {
+    frontend: "pages/rosewood-enrolment-v6.html?workflow=application",
+    frontendRelease: "v6-js13-css8",
+    frontendAssetHashes: {
+      "pages/rosewood-enrolment-v6.html": "0a6e9e91f41e5718138dc2772aa8a025a753f1d7c919c45379a313e53384f0c1",
+      "pages/rosewood-enrolment-v6.js": "56de99e7b1ab9b58320fd29ca23df2ce1e3119e5906cbd1b4317171bc0a7c384"
+    },
+    validator: "schema.mjs#validateApplicationForSubmission"
+  },
+  contract: {
+    fieldPrefixes: APPLICATION_FIELD_PREFIXES,
+    staticFields: APPLICATION_STATIC_FIELDS,
+    requiredFields: APPLICATION_REQUIRED_FIELDS,
+    repeatedGroups: {
+      guardians: { prefix: "app_guardian_{index}_", minimum: 1, maximum: 6 },
+      emergencyContacts: { prefix: "emergency_{index}_", minimum: 2, maximum: 6 }
+    },
+    conditionalRules: [
+      { when: { field: "student_religion", equals: "Other" }, required: ["student_religion_other"] },
+      { when: { field: "current_school", equals: "Other" }, required: ["current_school_other"] },
+      { when: { field: "future_siblings", equals: "Yes" }, required: ["future_sibling_count"] },
+      { when: { field: "australian_citizen", equals: "No" }, required: ["residency_evidence"] },
+      { when: { field: "additional_needs", equals: "Yes" }, required: ["need_categories"] },
+      { when: { field: "fee_option", equals: "Both Parents / Guardian" }, required: ["fee_both_nominee", "fee_both_date"] },
+      { when: { field: "fee_option", equals: "One Parent / Guardian" }, required: ["fee_one_nominee", "fee_one_date"] }
+    ]
+  }
+});
+
 export const FORM_DEFINITIONS = freeze({
-  eoi: { [eoi2026v1.formVersion]: eoi2026v1, [eoi2026v2.formVersion]: eoi2026v2 },
-  application: { [application2026v1.formVersion]: application2026v1, [application2026v2.formVersion]: application2026v2 }
+  eoi: { [eoi2026v1.formVersion]: eoi2026v1, [eoi2026v2.formVersion]: eoi2026v2, [eoi2026v3.formVersion]: eoi2026v3 },
+  application: { [application2026v1.formVersion]: application2026v1, [application2026v2.formVersion]: application2026v2, [application2026v3.formVersion]: application2026v3 }
 });
 
 export function getFormDefinition(workflow, formVersion = CURRENT_FORM_VERSIONS[workflow]) {

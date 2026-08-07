@@ -17,7 +17,7 @@ Test date: 8 August 2026
 - no inline styles are used in V6-rendered content
 - scans found no family-facing `Secure enrolment form`, backend-scope or
   `Progress saves when you continue` wording
-- the release page references V6 CSS `v=7` and JavaScript `v=12`
+- the release page references V6 CSS `v=8` and JavaScript `v=13`
 
 ## Browser Checks
 
@@ -70,6 +70,8 @@ Tested through a local HTTP server in the Codex in-app browser.
 - selecting Both Parents / Guardian displays the fee-account nominee note and offers
   Parent / Guardian A or Parent / Guardian B
 - the application survey omits Current School Family, Social Media and Tour
+- the decision-influences question requires exactly three selections on Conditions;
+  two selections produce the field-specific exact-three message before navigation
 - Application Signature has no Victorian guidance, places the shortened disclaimer in
   the signature section and has no website suffix
 - with two parent/guardian records, the second name and email populate the later-signing
@@ -86,6 +88,12 @@ Tested through a local HTTP server in the Codex in-app browser.
 - both declarations unlock the canvas but do not enable submit without a signature
 - pressing Enter on the canvas creates a keyboard review signature, sets the automatic
   date and enables submit
+- leaving Signature and returning restores both declarations, the date, the additional-
+  guardian acknowledgement and the in-browser signature drawing; Submit remains enabled
+- a prepared signature displays `Signature ready`; drawing does not create draft-save
+  revisions and is recorded in Drive only after successful final submission
+- server validation identifies each incomplete answer by family-facing label and section,
+  offers a direct review action and highlights the relevant field within that section
 - unchecking IP acknowledgement restores its exact warning, invalid declaration,
   signature and date states, and disables submit
 - Decline Student has no Commencement Term and uses the captured year/year-level labels
@@ -132,7 +140,8 @@ Mobile viewport: 390 x 844.
 
 ## Backend Checks
 
-- thirty-five Node tests pass for immutable form definitions and stable hashes, Google Drive
+- thirty-six Node tests pass for immutable form definitions and stable hashes, frontend
+  submission guidance and in-browser signature continuity, Google Drive
   upload/confirmation, legacy-safe
   document and family-invitation projection headers, direct invitation, explicit EOI
   linkage, exact invitation variants, 14-day expiry, fail-closed link errors,

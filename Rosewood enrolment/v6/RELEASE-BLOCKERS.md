@@ -32,7 +32,8 @@ real family information until the applicable blockers are closed.
 - customer-managed KMS encryption for authoritative DynamoDB records and backups
 - DynamoDB point-in-time recovery plus locked daily/monthly same-region backups
 - separate append-only audit table and role-ready staff controls
-- server-side validation and idempotency
+- server-side validation and idempotency, with family-facing field/section guidance and
+  inline highlighting for incomplete submission answers
 - separate guardian signature tasks and a calculated required-signature set
 - server timestamps, authenticated signer linkage and append-only audit events
 - confirmation messages that do not expose sensitive answers or reusable private links

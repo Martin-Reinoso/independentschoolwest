@@ -14,7 +14,7 @@
   const reviewMode = params.get("review") === "1";
   const apiBase = "https://6zyzo44sdb5zmmx53toktqrnuu0sikyd.lambda-url.ap-southeast-2.on.aws";
   const invitationToken = params.get("invite") || "";
-  const SUPPORTED_APPLICATION_FORM_VERSIONS = new Set(["rosewood-application-2026.1", "rosewood-application-2026.2"]);
+  const SUPPORTED_APPLICATION_FORM_VERSIONS = new Set(["rosewood-application-2026.1", "rosewood-application-2026.2", "rosewood-application-2026.3"]);
 
   const state = {
     workflow: params.get("workflow") || "application",
@@ -31,6 +31,7 @@
     applicationContext: null,
     eoiResult: null,
     submitResult: null,
+    serverValidation: [],
     saveStatus: "idle",
     lastSavedSnapshot: "",
     changeVersion: 0,
@@ -97,12 +98,54 @@
       showSessionExpired();
       return;
     }
-    const details = Array.isArray(error.details?.missing) && error.details.missing.length
-      ? `<li>${esc(error.details.missing.length)} required answer${error.details.missing.length === 1 ? " is" : "s are"} still incomplete.</li>`
-      : "";
-    errorSummary.querySelector("ul").innerHTML = `<li>${esc(error.message)}</li>${details}`;
+    const missing = Array.isArray(error.details?.missing) ? error.details.missing.map(missingAnswerGuidance) : [];
+    state.serverValidation = missing;
+    const details = missing.map(item => `<li><strong>${esc(item.section)}:</strong> ${esc(item.message)}</li>`).join("");
+    const first = missing[0];
+    const action = first ? `<li class="validation-summary-action"><button type="button" class="button button-secondary" data-validation-screen="${first.screen}">Review ${esc(first.section)}</button></li>` : "";
+    errorSummary.querySelector("ul").innerHTML = `<li>${esc(missing.length ? "Review the information below before submitting the application." : error.message)}</li>${details}${action}`;
     errorSummary.hidden = false;
     errorSummary.focus();
+  }
+
+  function missingAnswerGuidance(code) {
+    const [field, qualifier = ""] = String(code).split(":");
+    const exact = {
+      "application_influences:three_required": { section: "Conditions", screen: 6, message: "Select exactly three answers for \u201cPlease indicate the three most important things that influenced your decision\u201d." },
+      application_influences: { section: "Conditions", screen: 6, message: "Select exactly three answers for \u201cPlease indicate the three most important things that influenced your decision\u201d." },
+      application_additional_signature_later: { section: "Signature", screen: 7, message: "Confirm that the additional parent or guardian will be contacted separately to sign." },
+      application_one_signature_reason: { section: "Signature", screen: 7, message: "Explain why only one parent or guardian is included in this application." },
+      birth_certificate: { section: "Documents", screen: 5, message: "Upload the student's birth certificate." }
+    };
+    const exactMatch = exact[qualifier ? `${field}:${qualifier}` : field];
+    if (exactMatch) return { code: String(code), field, ...exactMatch };
+
+    let section = "Student";
+    let screen = 3;
+    let label = field.replaceAll("_", " ").replace(/\b\w/g, letter => letter.toUpperCase());
+    const guardian = field.match(/^app_guardian_(\d+)_(.+)$/);
+    const emergency = field.match(/^emergency_(\d+)_(.+)$/);
+    if (guardian) {
+      section = "Parent / Guardian";
+      screen = 4;
+      label = `Parent / Guardian ${String.fromCharCode(65 + Number(guardian[1]))}: ${guardian[2].replaceAll("_", " ")}`;
+    } else if (emergency) {
+      section = "Parent / Guardian";
+      screen = 4;
+      label = `Emergency contact ${Number(emergency[1]) + 1}: ${emergency[2].replaceAll("_", " ")}`;
+    } else if (field === "app_guardians_complete") {
+      section = "Parent / Guardian";
+      screen = 4;
+      label = "Guardian confirmation";
+    } else if (field.startsWith("previous_school_") || field.startsWith("fee_") || ["application_discovery", "application_influences"].includes(field)) {
+      section = "Conditions";
+      screen = 6;
+    } else if (field.startsWith("application_signature_") || field.startsWith("application_one_signature") || field.startsWith("application_additional_signature")) {
+      section = "Signature";
+      screen = 7;
+    }
+    const message = qualifier === "invalid" ? `Enter a valid ${label.toLowerCase()}.` : `Complete ${label.toLowerCase()}.`;
+    return { code: String(code), field, section, screen, message };
   }
 
   function clearSessionExpiryTimer() {
@@ -197,7 +240,7 @@
     const multiple = config.multiple === true;
     const stored = state.values[name] ?? config.value;
     const selected = Array.isArray(stored) ? stored : [stored];
-    return `<fieldset class="question ${config.className || ""}"${multiple && config.required ? " data-required-group" : ""}${config.max ? ` data-max="${config.max}"` : ""}><legend>${label}${config.required ? ' <span class="required" aria-hidden="true">*</span>' : ""}</legend><div class="${config.grid ? "choice-grid" : "choice-row"}">${options.map((option, index) => `<label class="choice"><input type="${multiple ? "checkbox" : "radio"}" name="${name}" value="${esc(option)}"${selected.includes(option) ? " checked" : ""}${config.required && !multiple && index === 0 ? " required" : ""}${config.disabled ? " disabled" : ""}><span>${esc(option)}</span></label>`).join("")}</div>${config.hint ? `<small class="group-note">${config.hint}</small>` : ""}</fieldset>`;
+    return `<fieldset class="question ${config.className || ""}"${multiple && config.required ? " data-required-group" : ""}${config.max ? ` data-max="${config.max}"` : ""}${config.exact ? ` data-exact="${config.exact}"` : ""}><legend>${label}${config.required ? ' <span class="required" aria-hidden="true">*</span>' : ""}</legend><div class="${config.grid ? "choice-grid" : "choice-row"}">${options.map((option, index) => `<label class="choice"><input type="${multiple ? "checkbox" : "radio"}" name="${name}" value="${esc(option)}"${selected.includes(option) ? " checked" : ""}${config.required && !multiple && index === 0 ? " required" : ""}${config.disabled ? " disabled" : ""}><span>${esc(option)}</span></label>`).join("")}</div>${config.hint ? `<small class="group-note">${config.hint}</small>` : ""}</fieldset>`;
   }
 
   function check(name, label, options = {}) {
@@ -368,11 +411,12 @@
     return intro("Conditions", "Confirm previous-school permission, school-fee responsibility and the application survey.", "Application for enrolment") +
       section("Previous School / Preschool Permission", check("previous_school_permission", "I / We give permission for the school to contact the previous school or preschool to gather relevant reports and information for educational planning.", { required: true }) + `<div class="field-grid two">${field("previous_school_name", "Name of Previous School / Preschool / Kindergarten", { required: true })}${field("previous_school_address", "Address", { required: true })}</div>${choices("previous_school_interstate", "Interstate?", ["No", "Yes", "Not Applicable"], { required: true })}`) +
       section("School Fee Responsibility", `<p class="section-question">Who will be responsible for payment of school fees?</p><p class="fee-responsibility-note"><strong>Please note, the name/s of the parent / carers signing are responsible for the payment of fees for the term of the child's enrolment at the school.</strong></p>${choices("fee_option", "Choose one fee responsibility option", ["Both Parents / Guardian", "One Parent / Guardian", "Percentage split with custodial court order"], { required: true, grid: true })}<div class="conditional-panel" data-fee="Both Parents / Guardian"><p class="conditional-note">Please nominate Parent / Guardian A or Parent / Guardian B to receive the fee account.</p><div class="field-grid two">${field("fee_both_nominee", "Fee account recipient", { type: "select", options: ["Parent / Guardian A", "Parent / Guardian B"], required: true })}${field("fee_both_date", "Date", { type: "date", required: true })}</div></div><div class="conditional-panel" data-fee="One Parent / Guardian"><div class="field-grid two">${field("fee_one_nominee", "Fee account recipient", { type: "select", options: ["Parent / Guardian A", "Parent / Guardian B"], required: true })}${field("fee_one_date", "Date", { type: "date", required: true })}</div></div><div class="conditional-panel" data-fee="Percentage split with custodial court order"><div class="field-grid">${field("fee_guardian_a", "Guardian A Name", { required: true })}${field("fee_guardian_a_percent", "Guardian A Percentage", { type: "number", min: 0, max: 100, required: true })}${field("fee_guardian_b", "Guardian B Name", { required: true })}${field("fee_guardian_b_percent", "Guardian B Percentage", { type: "number", min: 0, max: 100, required: true })}${field("fee_split_date", "Date", { type: "date", required: true })}</div></div>`) +
-      section("Survey", `<div class="field-grid">${field("application_discovery", "How did you hear about us?", { type: "select", options: applicationDiscoverySources, required: true, className: "span-two" })}</div>${choices("application_influences", "Please indicate the three most important things that influenced your decision", influenceFactors, { multiple: true, grid: true, required: true, max: 3 })}`) + actions();
+      section("Survey", `<div class="field-grid">${field("application_discovery", "How did you hear about us?", { type: "select", options: applicationDiscoverySources, required: true, className: "span-two" })}</div>${choices("application_influences", "Please indicate the three most important things that influenced your decision", influenceFactors, { multiple: true, grid: true, required: true, max: 3, exact: 3 })}`) + actions();
   }
 
   function signaturePanel(prefix, declaration, options = {}) {
-    return `<article class="signature-card"><h4>${options.title || "Parent / Guardian"}</h4><label class="declaration"><input type="checkbox" name="${prefix}_ip" required><span>I acknowledge and agree that, at the time of signing this form, my IP address will be recorded and stored by the School for administrative, security and legal compliance purposes. <span class="required">*</span></span></label><p class="validation-message" data-validation-for="${prefix}_ip" hidden>You must acknowledge the IP address recording to continue</p><label class="declaration"><input type="checkbox" name="${prefix}_terms" required><span>${declaration} <span class="required">*</span></span></label><p class="validation-message" data-validation-for="${prefix}_terms" hidden>You must agree to the terms to continue</p><div class="signature-wrap is-locked" data-signature="${prefix}" data-auto-date="${options.autoDate ? "true" : "false"}"><canvas width="960" height="190" tabindex="0" aria-label="Signature area. Use a pointer to sign or press Enter to add a review signature."></canvas><div class="signature-overlay">Please agree to the terms above to enable signing</div></div><button type="button" class="button button-secondary" data-clear-signature="${prefix}" disabled>Clear Signature</button><div class="field-grid two">${field(`${prefix}_date`, "Date", { type: "date", required: true, readonly: options.autoDate })}</div></article>`;
+    const isChecked = name => Array.isArray(state.values[name]) ? state.values[name].length > 0 : Boolean(state.values[name]);
+    return `<article class="signature-card"><h4>${options.title || "Parent / Guardian"}</h4><label class="declaration"><input type="checkbox" name="${prefix}_ip" required${isChecked(`${prefix}_ip`) ? " checked" : ""}><span>I acknowledge and agree that, at the time of signing this form, my IP address will be recorded and stored by the School for administrative, security and legal compliance purposes. <span class="required">*</span></span></label><p class="validation-message" data-validation-for="${prefix}_ip" hidden>You must acknowledge the IP address recording to continue</p><label class="declaration"><input type="checkbox" name="${prefix}_terms" required${isChecked(`${prefix}_terms`) ? " checked" : ""}><span>${declaration} <span class="required">*</span></span></label><p class="validation-message" data-validation-for="${prefix}_terms" hidden>You must agree to the terms to continue</p><div class="signature-wrap is-locked" data-signature="${prefix}" data-auto-date="${options.autoDate ? "true" : "false"}"><canvas width="960" height="190" tabindex="0" aria-label="Signature area. Use a pointer to sign or press Enter to add a review signature."></canvas><div class="signature-overlay">Please agree to the terms above to enable signing</div></div><p class="signature-recording-note">Your drawing is kept in this browser while you review the form. It is securely recorded only when you submit.</p><button type="button" class="button button-secondary" data-clear-signature="${prefix}" disabled>Clear Signature</button><div class="field-grid two">${field(`${prefix}_date`, "Date", { type: "date", required: true, readonly: options.autoDate })}</div></article>`;
   }
 
   function renderApplicationSignature() {
@@ -574,9 +618,9 @@
         return;
       }
       if (state.screen === 7 && state.signatures.application_signature && ["idle", "saved", "dirty"].includes(state.saveStatus)) {
-        save.classList.add("is-dirty");
-        save.querySelector("strong").textContent = "In progress";
-        save.querySelector("small").textContent = "Your signature is recorded when you submit";
+        save.classList.add("is-saved");
+        save.querySelector("strong").textContent = "Signature ready";
+        save.querySelector("small").textContent = "Recorded only when you submit";
         return;
       }
       const statuses = {
@@ -642,6 +686,7 @@
     updateSaveState(screen);
     updateConditionals();
     bindCanvas();
+    showInlineServerValidation();
     const resendButton = root.querySelector("[data-resend-kind]");
     if (resendButton && state.otpResends[resendButton.dataset.resendKind]) startResendCountdown(resendButton.dataset.resendKind);
     const panel = document.querySelector(".form-panel");
@@ -759,23 +804,75 @@
       context.lineWidth = 3;
       context.lineCap = "round";
       context.strokeStyle = "#15233b";
+      const prefix = container.dataset.signature;
+      const savedSignature = state.signatures[prefix];
+      if (typeof savedSignature === "string") {
+        const image = new Image();
+        image.addEventListener("load", () => context.drawImage(image, 0, 0, canvas.width, canvas.height));
+        image.src = savedSignature;
+      }
       let drawing = false;
+      let drewInk = false;
       const point = event => { const rect = canvas.getBoundingClientRect(); return { x: (event.clientX - rect.left) * canvas.width / rect.width, y: (event.clientY - rect.top) * canvas.height / rect.height }; };
-      const record = () => {
-        state.signatures[container.dataset.signature] = true;
+      const record = finished => {
+        state.signatures[prefix] = finished ? canvas.toDataURL("image/png") : state.signatures[prefix] || true;
         if (container.dataset.autoDate === "true") {
-          const date = root.querySelector(`[name="${container.dataset.signature}_date"]`);
+          const date = root.querySelector(`[name="${prefix}_date"]`);
           if (date) date.value = new Date().toISOString().slice(0, 10);
         }
-        captureValues();
-        scheduleAutosave();
         updateSignatureLocks();
+        updateSaveState(workflows[state.workflow].screens[state.screen]);
       };
-      canvas.addEventListener("pointerdown", event => { if (container.classList.contains("is-locked")) return; drawing = true; canvas.setPointerCapture(event.pointerId); const p = point(event); context.beginPath(); context.moveTo(p.x, p.y); });
-      canvas.addEventListener("pointermove", event => { if (!drawing) return; const p = point(event); context.lineTo(p.x, p.y); context.stroke(); record(); });
-      canvas.addEventListener("pointerup", () => { drawing = false; });
-      canvas.addEventListener("keydown", event => { if (event.key !== "Enter" || container.classList.contains("is-locked")) return; event.preventDefault(); context.beginPath(); context.moveTo(120, 120); context.bezierCurveTo(250, 15, 360, 170, 520, 70); context.stroke(); record(); });
+      canvas.addEventListener("pointerdown", event => { if (container.classList.contains("is-locked")) return; drawing = true; drewInk = false; canvas.setPointerCapture(event.pointerId); const p = point(event); context.beginPath(); context.moveTo(p.x, p.y); });
+      canvas.addEventListener("pointermove", event => { if (!drawing) return; const p = point(event); context.lineTo(p.x, p.y); context.stroke(); drewInk = true; record(false); });
+      canvas.addEventListener("pointerup", () => { if (drawing && drewInk) record(true); drawing = false; });
+      canvas.addEventListener("pointercancel", () => { if (drawing && drewInk) record(true); drawing = false; });
+      canvas.addEventListener("keydown", event => { if (event.key !== "Enter" || container.classList.contains("is-locked")) return; event.preventDefault(); context.beginPath(); context.moveTo(120, 120); context.bezierCurveTo(250, 15, 360, 170, 520, 70); context.stroke(); record(true); });
     });
+  }
+
+  function showInlineServerValidation({ focus = false } = {}) {
+    root.querySelectorAll("[data-server-invalid]").forEach(element => {
+      element.classList.remove("is-invalid");
+      element.removeAttribute("data-server-invalid");
+    });
+    root.querySelectorAll(".server-validation-message").forEach(element => element.remove());
+    const current = state.serverValidation.filter(item => item.screen === state.screen);
+    let firstControl;
+    current.forEach(item => {
+      const control = root.querySelector(`[name="${CSS.escape(item.field)}"]`);
+      const documentCard = item.field === "birth_certificate" ? root.querySelector('[data-document-category="birth_certificate"]') : null;
+      const wrapper = control?.closest(".field, .question, .check-line, .declaration") || documentCard;
+      if (!wrapper) return;
+      wrapper.classList.add("is-invalid");
+      wrapper.setAttribute("data-server-invalid", "");
+      const message = document.createElement("p");
+      message.className = "validation-message server-validation-message";
+      message.setAttribute("role", "alert");
+      message.textContent = item.message;
+      wrapper.append(message);
+      if (!firstControl) firstControl = control || wrapper;
+    });
+    if (focus && firstControl) {
+      firstControl.scrollIntoView({ block: "center" });
+      firstControl.focus?.({ preventScroll: true });
+    }
+  }
+
+  function clearResolvedServerValidation(field) {
+    const relevant = state.serverValidation.filter(item => item.field === field);
+    if (!relevant.length) return;
+    const resolved = item => {
+      const controls = [...root.querySelectorAll(`[name="${CSS.escape(item.field)}"]`)];
+      if (!controls.length) return false;
+      if (item.code.endsWith(":three_required")) return controls.filter(control => control.checked).length === 3;
+      if (item.code.endsWith(":invalid")) return controls[0].checkValidity();
+      if (["checkbox", "radio"].includes(controls[0].type)) return controls.some(control => control.checked);
+      return Boolean(controls[0].value.trim());
+    };
+    state.serverValidation = state.serverValidation.filter(item => item.field !== field || !resolved(item));
+    showInlineServerValidation();
+    if (!state.serverValidation.length) errorSummary.hidden = true;
   }
 
   function validate() {
@@ -797,11 +894,16 @@
     });
     root.querySelectorAll("[data-required-group]").forEach(group => {
       if (group.closest("[hidden]") || group.querySelectorAll("input:not(:disabled)").length === 0) return;
+      if (group.dataset.exact) return;
       if (!group.querySelector("input:checked")) { group.classList.add("is-invalid"); messages.push(`Select at least one option for ${group.querySelector("legend").textContent.replace("*", "").trim()}`); }
     });
     root.querySelectorAll("[data-max]").forEach(group => {
       const max = Number(group.dataset.max);
       if (group.querySelectorAll("input:checked").length > max) { group.classList.add("is-invalid"); messages.push(`Choose no more than ${max} options for ${group.querySelector("legend").textContent.replace("*", "").trim()}`); }
+    });
+    root.querySelectorAll("[data-exact]").forEach(group => {
+      const exact = Number(group.dataset.exact);
+      if (group.querySelectorAll("input:checked").length !== exact) { group.classList.add("is-invalid"); messages.push(`Choose exactly ${exact} options for ${group.querySelector("legend").textContent.replace("*", "").trim()}`); }
     });
     root.querySelectorAll("[data-signature]").forEach(container => {
       if (!state.signatures[container.dataset.signature]) { container.classList.add("is-invalid"); messages.push("Provide a signature"); }
@@ -816,7 +918,7 @@
   function markInvalid(control, messages, override) {
     const wrapper = control.closest(".field, .question, .check-line, .declaration") || control;
     wrapper.classList.add("is-invalid");
-    const label = wrapper.querySelector("legend, .field > span, strong")?.textContent.replace("*", "").trim() || control.name;
+    const label = wrapper.querySelector("legend, .field > span, strong, span")?.textContent.replace("*", "").trim() || control.name;
     messages.push(override || `Complete ${label}`);
     const inline = root.querySelector(`[data-validation-for="${CSS.escape(control.name)}"]`);
     if (inline) inline.hidden = false;
@@ -1210,6 +1312,7 @@
 
   function applyApplicationSession(result) {
     resetDocumentUploads();
+    state.serverValidation = [];
     applyFormContract(result.context);
     state.sessionToken = result.sessionToken;
     state.applicationContext = result.context;
@@ -1259,6 +1362,7 @@
     state.formDefinitionHash = "";
     state.values = {};
     state.signatures = {};
+    state.serverValidation = [];
     state.lastSavedSnapshot = "";
     state.changeVersion = 0;
     state.sessionAbsoluteExpiresAt = 0;
@@ -1362,7 +1466,8 @@
       setBusy(true, "Submitting...");
       await saveApplicationDraft("signature", { mode: "submission" });
       const canvas = root.querySelector('[data-signature="application_signature"] canvas');
-      state.submitResult = await api("/v6/application/submit", { method: "POST", body: JSON.stringify({ expectedRevision: state.revision, formVersion: state.formVersion, formDefinitionHash: state.formDefinitionHash, signatureDataUrl: canvas.toDataURL("image/png") }) });
+      const signatureDataUrl = typeof state.signatures.application_signature === "string" ? state.signatures.application_signature : canvas.toDataURL("image/png");
+      state.submitResult = await api("/v6/application/submit", { method: "POST", body: JSON.stringify({ expectedRevision: state.revision, formVersion: state.formVersion, formDefinitionHash: state.formDefinitionHash, signatureDataUrl }) });
       state.saveStatus = "saved";
       state.lastSavedLabel = "submitted";
       return next();
@@ -1397,7 +1502,16 @@
     }
     captureValues();
     updateConditionals();
+    clearResolvedServerValidation(event.target.name);
     scheduleAutosave();
+  });
+
+  errorSummary.addEventListener("click", async event => {
+    const action = event.target.closest("[data-validation-screen]");
+    if (!action) return;
+    const target = Number(action.dataset.validationScreen);
+    if (target !== state.screen) await navigateToScreen(target);
+    showInlineServerValidation({ focus: true });
   });
 
   form.addEventListener("click", async event => {
