@@ -9,7 +9,8 @@ Rosewood content, privacy, retention or legal wording for real-family use.
 
 ## Sender Contract
 
-- From: `enrolment@ffe.org.au`
+- Visible From: `Rosewood College Enrolment <enrolment@ffe.org.au>`
+- Authenticated From address: `enrolment@ffe.org.au`
 - Reply-To: `enrolment@ffe.org.au`
 - Operational mailbox: `info@ffe.org.au`
 - SES identity: `ffe.org.au`
@@ -79,6 +80,8 @@ links, family details, recipient lists, SMTP credentials or AWS identifiers in G
 
 - Send one recipient per SES request and retain the returned SES message ID against the
   outbox event so feedback can be correlated without exposing message contents.
+- Application invitation HTML uses one `BEGIN APPLICATION` link. Its plain-text MIME
+  alternative contains the private URL once for clients that do not render HTML.
 - Stop retries for permanent bounces and complaints. Account suppression is a safety
   net, not a replacement for application-level delivery state.
 - Rate-limit OTP creation independently of SES. A successful SES API response means the

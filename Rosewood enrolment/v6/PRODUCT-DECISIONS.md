@@ -36,7 +36,10 @@ Decision date: 7 August 2026
 - Invitations and resends expire 14 days after they are issued.
 - Direct and deliberately EOI-linked invitations use separate approved email variants.
   Both use the subject `Invitation to Apply for Enrolment at Rosewood College`, a
-  private button plus copy/paste URL, enrolment contact details and the exact expiry.
+  private `BEGIN APPLICATION` button, enrolment contact details and the exact expiry.
+  The HTML contains the private URL only in the button; the plain-text alternative
+  contains the URL once. The visible sender is
+  `Rosewood College Enrolment <enrolment@ffe.org.au>`.
 - The EOI-linked variant identifies the child, entry year level and year and explains
   that approved prior information may be prefilled. It names Rosewood College; the St
   Lawrence school name from the source example is not carried into Rosewood messages.

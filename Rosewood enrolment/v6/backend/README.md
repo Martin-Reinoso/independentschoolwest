@@ -73,7 +73,8 @@ only and does not create an application answer, acknowledgement or audit event.
 ## Runtime
 
 - AWS Lambda Function URL in Sydney
-- Amazon SES from `enrolment@ffe.org.au`
+- Amazon SES from `Rosewood College Enrolment <enrolment@ffe.org.au>` with replies to
+  `enrolment@ffe.org.au`
 - EventBridge outbox retry every minute
 - CloudWatch error alarm and 90-day application logs
 - SNS email alerts for Lambda errors and failed backup/restore jobs

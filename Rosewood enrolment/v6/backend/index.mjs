@@ -33,7 +33,7 @@ export async function buildService(overrides = {}) {
     ? new StagedGoogleDriveStore({ drive, bucketName: config.DOCUMENT_STAGING_BUCKET, kmsKeyId: config.RECORDS_KMS_KEY_ARN })
     : drive);
   const sheets = overrides.sheets || new GoogleSheetsStore({ auth, eoiSpreadsheetId: config.GOOGLE_EOI_SPREADSHEET_ID, applicationSpreadsheetId: config.GOOGLE_APPLICATION_SPREADSHEET_ID, operationsSpreadsheetId: config.GOOGLE_OPERATIONS_SPREADSHEET_ID });
-  const mailer = overrides.mailer || new SesMailer({ from: config.SENDER_EMAIL, replyTo: config.REPLY_TO_EMAIL, configurationSetName: config.SES_CONFIGURATION_SET });
+  const mailer = overrides.mailer || new SesMailer({ from: config.SENDER_EMAIL, fromName: config.SENDER_NAME, replyTo: config.REPLY_TO_EMAIL, configurationSetName: config.SES_CONFIGURATION_SET });
   return createService({ store, artifacts, drive, sheets, mailer, env: config });
 }
 
