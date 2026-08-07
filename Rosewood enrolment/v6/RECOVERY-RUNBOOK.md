@@ -74,6 +74,22 @@ the outbox receipt and SES feedback. `accepted_by_ses` is not proof that the rec
 mailbox accepted or displayed the message. Never expose a full historical email in an
 ordinary log or family-facing response.
 
+## Recover Or Diagnose A V6.7 Draft Upgrade
+
+Editable older drafts upgrade only when the family verifies the invitation or selects
+that child. The operation is conditional on the prior revision and form version.
+
+1. Check for `application.form_definition_upgraded` in the restricted audit record and
+   an immutable `form_definition_upgraded` application revision.
+2. Confirm the current record is `rosewood-application-2026.7` and that aggregate answer
+   key count did not decrease. Do not print family answers into logs or tickets.
+3. If the conditional update lost a race, ask the family to refresh; do not manually
+   change `formVersion`, revision or answers.
+4. Never run this process against a submitted, pending-signature, staff-review or
+   completed application. Those records must remain pinned to their submitted contract.
+5. Google Sheets may lag until the outbox runs. Repair/rebuild the projection from
+   DynamoDB rather than editing the Sheet.
+
 ## Recovery Drill
 
 Run a synthetic DynamoDB restore drill at least annually and after material storage

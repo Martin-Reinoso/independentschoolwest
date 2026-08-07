@@ -1,7 +1,7 @@
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-export const SCHEMA_VERSION = "rosewood-v6-2026-08-08-contact-permission";
+export const SCHEMA_VERSION = "rosewood-v6-2026-08-08-form-v7";
 export const CONTACT_PERMISSION_YES = "Yes, the school may contact this person";
 export const CONTACT_PERMISSION_NO = "No, do not contact this person";
 export const EOI_FIELDS = [
@@ -31,6 +31,13 @@ export const APPLICATION_STATIC_FIELDS = [
   "doctor_phone", "medicare_number", "medicare_expiry", "private_insurance", "ambulance_cover", "healthcare_card"
 ];
 
+export const APPLICATION_V7_STATIC_FIELDS = [
+  ...APPLICATION_STATIC_FIELDS,
+  "previous_school_attended", "previous_school_year_level", "interrupted_schooling", "interrupted_schooling_details",
+  "formal_assessment", "formal_assessment_details", "formal_assessment_report", "current_adjustments", "rosewood_adjustments",
+  "medicare_reference", "private_insurance_provider", "private_insurance_policy", "student_healthcare_number", "student_healthcare_expiry"
+];
+
 export const APPLICATION_REQUIRED_FIELDS = [
   "student_first", "student_last", "student_dob", "student_gender", "student_religion", "current_level", "entry_year",
   "entry_level", "current_school", "student_address_share", "care_arrangement", "student_address", "student_suburb",
@@ -40,6 +47,15 @@ export const APPLICATION_REQUIRED_FIELDS = [
   "ambulance_cover", "healthcare_card", "app_guardians_complete", "previous_school_permission", "previous_school_name",
   "previous_school_address", "previous_school_interstate", "fee_option", "application_discovery", "application_influences",
   "application_signature_ip", "application_signature_terms", "application_signature_date"
+];
+
+export const APPLICATION_V7_REQUIRED_FIELDS = [
+  ...APPLICATION_REQUIRED_FIELDS.filter(key => ![
+    "previous_school_permission", "previous_school_name", "previous_school_address", "previous_school_interstate", "fee_option",
+    "application_discovery", "application_influences"
+  ].includes(key)),
+  "previous_school_attended", "interrupted_schooling", "formal_assessment", "doctor_phone", "medicare_number", "medicare_reference",
+  "application_student_agreement", "application_parent_agreement", "application_agreement_acknowledgement"
 ];
 
 const MAX_TEXT = 5000;
@@ -80,7 +96,7 @@ export function validateEoi(input) {
 }
 
 function isApplicationField(key) {
-  return APPLICATION_FIELD_PREFIXES.some(prefix => key.startsWith(prefix)) || APPLICATION_STATIC_FIELDS.includes(key);
+  return APPLICATION_FIELD_PREFIXES.some(prefix => key.startsWith(prefix)) || APPLICATION_V7_STATIC_FIELDS.includes(key);
 }
 
 export function sanitizeApplication(input) {
@@ -91,7 +107,7 @@ export function sanitizeApplication(input) {
 }
 
 function usesExplicitContactPermission(formVersion) {
-  return String(formVersion || "").endsWith(".6");
+  return /\.(6|7)$/.test(String(formVersion || ""));
 }
 
 export function contactPermissionAllowed(value, formVersion = "rosewood-application-2026.6") {
@@ -101,10 +117,13 @@ export function contactPermissionAllowed(value, formVersion = "rosewood-applicat
 
 export function validateApplicationForSubmission(input, guardianCount = 1, emergencyCount = 2, formVersion = "rosewood-application-2026.6") {
   const values = sanitizeApplication(input);
-  const missing = APPLICATION_REQUIRED_FIELDS.filter(key => !truthy(values[key]));
+  const v7 = String(formVersion).endsWith(".7");
+  const requiredFields = v7 ? APPLICATION_V7_REQUIRED_FIELDS : APPLICATION_REQUIRED_FIELDS;
+  const missing = requiredFields.filter(key => !truthy(values[key]));
   for (let index = 0; index < Math.max(1, Math.min(MAX_GUARDIANS, Number(guardianCount))); index += 1) {
     const prefix = `app_guardian_${index}_`;
-    for (const suffix of ["first", "last", "mobile", "relationship", "contact_type", "sms", "healthcare", "address", "suburb", "state", "postcode", "country", "occupation_group", "occupation", "school_education", "further_education", "birth_country", "nationality", "ethnicity", "languages", "residency", "indigenous"]) {
+    const requiredGuardianSuffixes = ["first", "last", "mobile", "relationship", "contact_type", "sms", "healthcare", "address", "suburb", "state", "postcode", "country", "occupation_group", "occupation", "school_education", "further_education", "birth_country", "nationality", "languages", "residency", "indigenous", ...(v7 ? ["marital", "religion"] : ["ethnicity"] )];
+    for (const suffix of requiredGuardianSuffixes) {
       if (!truthy(values[`${prefix}${suffix}`])) missing.push(`${prefix}${suffix}`);
     }
     if (values[`${prefix}healthcare`] === "Yes") for (const suffix of ["healthcare_number", "healthcare_expiry"]) if (!truthy(values[`${prefix}${suffix}`])) missing.push(`${prefix}${suffix}`);
@@ -122,6 +141,8 @@ export function validateApplicationForSubmission(input, guardianCount = 1, emerg
   }
   if (values.student_religion === "Other" && !truthy(values.student_religion_other)) missing.push("student_religion_other");
   if (values.current_school === "Other" && !truthy(values.current_school_other)) missing.push("current_school_other");
+  if (v7 && values.previous_school_attended === "Yes") for (const key of ["previous_school_name", "previous_school_year_level"]) if (!truthy(values[key])) missing.push(key);
+  if (v7 && values.interrupted_schooling === "Yes" && !truthy(values.interrupted_schooling_details)) missing.push("interrupted_schooling_details");
   const arrangements = Array.isArray(values.care_arrangement) ? values.care_arrangement : [values.care_arrangement];
   if (arrangements.includes("Other") && !truthy(values.care_other)) missing.push("care_other");
   if (arrangements.includes("Shared Custody") && !truthy(values.shared_parenting)) missing.push("shared_parenting");
@@ -129,13 +150,24 @@ export function validateApplicationForSubmission(input, guardianCount = 1, emerg
   if (values.australian_citizen === "No" && !truthy(values.residency_evidence)) missing.push("residency_evidence");
   if (values.australian_citizen === "No" && values.residency_evidence && values.residency_evidence !== "Eligible for Australian Passport") for (const key of ["visa_subclass", "visa_expiry"]) if (!truthy(values[key])) missing.push(key);
   if (values.additional_needs === "Yes" && !truthy(values.need_categories)) missing.push("need_categories");
+  if (v7 && values.formal_assessment === "Yes") for (const key of ["formal_assessment_details", "formal_assessment_report"]) if (!truthy(values[key])) missing.push(key);
   if ((Array.isArray(values.need_categories) ? values.need_categories : [values.need_categories]).includes("Other") && !truthy(values.need_other)) missing.push("need_other");
   if ((Array.isArray(values.professional_categories) ? values.professional_categories : [values.professional_categories]).includes("Other") && !truthy(values.professional_other)) missing.push("professional_other");
   if ((Array.isArray(values.medical_conditions) ? values.medical_conditions : [values.medical_conditions]).includes("Other") && !truthy(values.other_medical_condition)) missing.push("other_medical_condition");
-  if (values.fee_option === "Both Parents / Guardian") for (const key of ["fee_both_nominee", "fee_both_date"]) if (!truthy(values[key])) missing.push(key);
-  if (values.fee_option === "One Parent / Guardian") for (const key of ["fee_one_nominee", "fee_one_date"]) if (!truthy(values[key])) missing.push(key);
-  if (values.fee_option === "Percentage split with custodial court order") for (const key of ["fee_guardian_a", "fee_guardian_a_percent", "fee_guardian_b", "fee_guardian_b_percent", "fee_split_date"]) if (!truthy(values[key])) missing.push(key);
-  if (Array.isArray(values.application_influences) && values.application_influences.length !== 3) missing.push("application_influences:three_required");
+  if (v7 && values.healthcare_card === "Yes") for (const key of ["student_healthcare_number", "student_healthcare_expiry"]) if (!truthy(values[key])) missing.push(key);
+  if (!v7) {
+    if (values.fee_option === "Both Parents / Guardian") for (const key of ["fee_both_nominee", "fee_both_date"]) if (!truthy(values[key])) missing.push(key);
+    if (values.fee_option === "One Parent / Guardian") for (const key of ["fee_one_nominee", "fee_one_date"]) if (!truthy(values[key])) missing.push(key);
+    if (values.fee_option === "Percentage split with custodial court order") for (const key of ["fee_guardian_a", "fee_guardian_a_percent", "fee_guardian_b", "fee_guardian_b_percent", "fee_split_date"]) if (!truthy(values[key])) missing.push(key);
+    if (Array.isArray(values.application_influences) && values.application_influences.length !== 3) missing.push("application_influences:three_required");
+  }
+  if (v7) {
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Melbourne", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    for (const sacrament of ["Baptism", "Reconciliation", "Eucharist", "Confirmation"]) {
+      const key = `sacrament_${sacrament}_date`;
+      if (truthy(values[key]) && (!DATE_PATTERN.test(values[key]) || values[key] > today)) missing.push(`${key}:invalid`);
+    }
+  }
   const additionalPermissions = Array.from({ length: Math.max(0, guardianCount - 1) }, (_, offset) => values[`app_guardian_${offset + 1}_permission`]);
   const hasSuppressedSignature = usesExplicitContactPermission(formVersion) && additionalPermissions.some(permission => permission === CONTACT_PERMISSION_NO);
   const hasElectronicSignature = guardianCount > 1 && additionalPermissions.some(permission => contactPermissionAllowed(permission, formVersion));
@@ -157,7 +189,7 @@ export function splitApplication(values, applicationId, guardianCount, emergency
     const prefix = `emergency_${index}_`;
     emergencyContacts.push(Object.fromEntries(Object.entries(values).filter(([key]) => key.startsWith(prefix)).map(([key, value]) => [key.slice(prefix.length), value])));
   }
-  const conditions = Object.fromEntries(Object.entries(values).filter(([key]) => key.startsWith("previous_school_") || key.startsWith("fee_") || ["application_discovery", "application_influences"].includes(key)));
+  const conditions = Object.fromEntries(Object.entries(values).filter(([key]) => key.startsWith("previous_school_") || key.startsWith("fee_") || ["application_discovery", "application_influences", "application_student_agreement", "application_parent_agreement", "application_agreement_acknowledgement"].includes(key)));
   return { applicationId, student, guardians, emergencyContacts, conditions };
 }
 

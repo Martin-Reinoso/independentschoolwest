@@ -2,11 +2,13 @@
   "use strict";
 
   const API_BASE = "https://6zyzo44sdb5zmmx53toktqrnuu0sikyd.lambda-url.ap-southeast-2.on.aws";
+  const REMEMBERED_SESSION_KEY = "rosewood-enrolment-staff-v6-session";
   const state = {
     email: "",
     challengeId: "",
     sessionToken: "",
     sessionExpiresAt: 0,
+    rememberMe: false,
     dashboard: null,
     currentApplicationDetail: null,
     selectedEoi: null,
@@ -54,18 +56,29 @@
     button.setAttribute("aria-busy", String(loading));
   }
 
+  function clearRememberedSession() {
+    localStorage.removeItem(REMEMBERED_SESSION_KEY);
+  }
+
+  function rememberCurrentSession() {
+    if (!state.rememberMe || !state.sessionToken) return;
+    state.sessionExpiresAt = Date.now() + 2 * 60 * 60_000;
+    localStorage.setItem(REMEMBERED_SESSION_KEY, JSON.stringify({ token: state.sessionToken, email: state.email, expiresAt: state.sessionExpiresAt }));
+  }
+
   async function api(path, { method = "GET", body, authenticated = true, headers: extraHeaders = {} } = {}) {
     const headers = { "Content-Type": "application/json", ...extraHeaders };
     if (authenticated && state.sessionToken) headers.Authorization = `Bearer ${state.sessionToken}`;
     const response = await fetch(`${API_BASE}${path}`, { method, headers, cache: "no-store", ...(body ? { body: JSON.stringify(body) } : {}) });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      if (response.status === 401 && authenticated) signOut("Your secure session has expired. Request a new access code.");
+      if (response.status === 401 && authenticated) signOut("Your secure session has expired. Request a new access code.", false);
       const error = new Error(payload.message || "The portal could not complete this request.");
       error.code = payload.error;
       error.details = payload.details;
       throw error;
     }
+    if (authenticated) rememberCurrentSession();
     return payload;
   }
 
@@ -140,9 +153,11 @@
     const button = byId("verify-code-button");
     setLoading(button, true);
     try {
-      const result = await api("/v6/staff/access/verify-code", { method: "POST", body: { email: state.email, challengeId: state.challengeId, code }, authenticated: false });
+      state.rememberMe = byId("remember-session").checked;
+      const result = await api("/v6/staff/access/verify-code", { method: "POST", body: { email: state.email, challengeId: state.challengeId, code, rememberMe: state.rememberMe }, authenticated: false });
       state.sessionToken = result.sessionToken;
       state.sessionExpiresAt = Date.now() + result.expiresInSeconds * 1000;
+      rememberCurrentSession();
       accessView.hidden = true;
       dashboardView.hidden = false;
       headerActions.hidden = false;
@@ -168,7 +183,10 @@
     byId("staff-email").focus();
   }
 
-  function signOut(message = "") {
+  function signOut(message = "", revoke = true) {
+    const token = state.sessionToken;
+    if (revoke && token) fetch(`${API_BASE}/v6/session/logout`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: "{}", cache: "no-store" }).catch(() => {});
+    clearRememberedSession();
     state.sessionToken = "";
     state.sessionExpiresAt = 0;
     state.dashboard = null;
@@ -182,6 +200,32 @@
     headerActions.hidden = true;
     accessView.hidden = false;
     resetAccessForm(message);
+  }
+
+  async function restoreRememberedSession() {
+    let stored;
+    try { stored = JSON.parse(localStorage.getItem(REMEMBERED_SESSION_KEY) || "null"); } catch { stored = null; }
+    if (!stored?.token || Number(stored.expiresAt || 0) <= Date.now()) {
+      clearRememberedSession();
+      return;
+    }
+    state.sessionToken = stored.token;
+    state.sessionExpiresAt = Number(stored.expiresAt);
+    state.email = stored.email || "";
+    state.rememberMe = true;
+    byId("staff-email").value = state.email;
+    byId("remember-session").checked = true;
+    accessView.hidden = true;
+    dashboardView.hidden = false;
+    headerActions.hidden = false;
+    try {
+      await loadDashboard();
+      if (!state.sessionToken) return;
+      clearInterval(state.refreshTimer);
+      state.refreshTimer = setInterval(() => loadDashboard({ quiet: true }), 60_000);
+    } catch {
+      signOut("Your remembered staff session has expired. Request a new access code.", false);
+    }
   }
 
   async function loadDashboard({ quiet = false } = {}) {
@@ -707,4 +751,5 @@
     const button = event.target.closest("[data-revision-key]");
     if (button) openApplicationRevision(button);
   });
+  restoreRememberedSession();
 })();

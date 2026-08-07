@@ -86,10 +86,17 @@ function studentSections(values) {
         field(values, "student_religion", "Religion"),
         field(values, "student_religion_other", "Other religion", { when: value => value.student_religion === "Other" || present(value.student_religion_other) }),
         field(values, "current_level", "Current school year"),
-        field(values, "entry_year", "Entry year"),
-        field(values, "entry_level", "Year level of entry"),
+        field(values, "entry_year", "Year the student will commence at Rosewood College"),
+        field(values, "entry_level", "Year level of entry at Rosewood College"),
         field(values, "current_school", "Current Early Learning Centre / Kindergarten / Primary School"),
         field(values, "current_school_other", "Other Early Learning Centre / Kindergarten / Primary School", { when: value => value.current_school === "Other" || present(value.current_school_other) })
+      ]),
+      group("Previous education", [
+        field(values, "previous_school_attended", "Has the student previously attended an early learning centre, kindergarten or school?"),
+        field(values, "previous_school_name", "Institution", { when: value => value.previous_school_attended === "Yes" || present(value.previous_school_name) }),
+        field(values, "previous_school_year_level", "Year level", { when: value => value.previous_school_attended === "Yes" || present(value.previous_school_year_level) }),
+        field(values, "interrupted_schooling", "Has the student experienced an extended absence or interruption to schooling?"),
+        field(values, "interrupted_schooling_details", "Approximate dates and details", { when: value => value.interrupted_schooling === "Yes" || present(value.interrupted_schooling_details) })
       ]),
       group("Student residence", [
         field(values, "student_address_share", "Share this address with other Parent/Guardian?"),
@@ -129,9 +136,14 @@ function studentSections(values) {
     ], { note: "This information was collected to meet government reporting requirements." }),
     section("additional-needs", "General / Additional Needs", [
       group("Needs and support", [
+        field(values, "formal_assessment", "Formal assessment relating to learning, development, wellbeing or giftedness"),
+        field(values, "formal_assessment_details", "Assessment details", { when: value => value.formal_assessment === "Yes" || present(value.formal_assessment_details) }),
+        field(values, "formal_assessment_report", "Assessment report available", { when: value => value.formal_assessment === "Yes" || present(value.formal_assessment_report) }),
         field(values, "additional_needs", "General / Additional Needs"),
         field(values, "need_categories", "Please specify", { when: value => value.additional_needs === "Yes" || present(value.need_categories) }),
         field(values, "need_other", "Other additional need", { when: value => includes(value, "need_categories", "Other") || present(value.need_other) }),
+        field(values, "current_adjustments", "Adjustments or support currently provided"),
+        field(values, "rosewood_adjustments", "Adjustments or support that may assist at Rosewood College"),
         field(values, "professional_categories", "Health professionals"),
         field(values, "professional_other", "Other health professional", { when: value => includes(value, "professional_categories", "Other") || present(value.professional_other) }),
         field(values, "reports_attached", "Reports attached"),
@@ -162,23 +174,28 @@ function studentSections(values) {
         field(values, "allergy_details", "Allergy details"),
         field(values, "anaphylaxis_risk", "Anaphylaxis risk"),
         field(values, "anaphylaxis_device", "EpiPen / Anapen"),
-        field(values, "immunisation", "Immunisation"),
-        field(values, "humanitarian_health", "Humanitarian health check"),
+        field(values, "immunisation", "Immunisation History Statement held and to be uploaded"),
+        field(values, "humanitarian_health", "Refugee health check for a student who entered on a humanitarian visa"),
         field(values, "doctor_name", "Doctor name"),
         field(values, "doctor_address", "Doctor's practice/Address"),
         field(values, "doctor_phone", "Doctor phone"),
-        field(values, "medicare_number", "Medicare number / reference"),
+        field(values, "medicare_number", "Medicare number"),
+        field(values, "medicare_reference", "Medicare reference number"),
         field(values, "medicare_expiry", "Medicare expiry", { format: date }),
-        field(values, "private_insurance", "Private insurance"),
+        field(values, "private_insurance", "Private insurance", { when: value => present(value.private_insurance) }),
+        field(values, "private_insurance_provider", "Private health insurance provider"),
+        field(values, "private_insurance_policy", "Private health insurance policy number"),
         field(values, "ambulance_cover", "Ambulance cover"),
-        field(values, "healthcare_card", "Health Care Card")
+        field(values, "healthcare_card", "Health Care Card"),
+        field(values, "student_healthcare_number", "Health Care Card No.", { when: value => value.healthcare_card === "Yes" || present(value.student_healthcare_number) }),
+        field(values, "student_healthcare_expiry", "Health Care Card expiry", { format: date, when: value => value.healthcare_card === "Yes" || present(value.student_healthcare_expiry) })
       ])
     ])
   ];
 }
 
 const GUARDIAN_FIELDS = [
-  ["share", "Share these details with other contacts?"],
+  ["share", "Share your contact details with other parents or guardians on this application?"],
   ["title", "Title"],
   ["first", "Given name"],
   ["last", "Surname"],
@@ -206,7 +223,7 @@ const GUARDIAN_FIELDS = [
   ["birth_country", "Country of birth"],
   ["nationality", "Nationality"],
   ["ethnicity", "Ethnicity"],
-  ["languages", "Languages"],
+  ["languages", "Record all languages spoken"],
   ["residency", "Residency status"],
   ["indigenous", "Aboriginal / Torres Strait Islander"]
 ];
@@ -295,6 +312,13 @@ function documentsSection(documents = {}) {
 }
 
 function conditionsSection(values) {
+  if (present(values.application_student_agreement) || present(values.application_parent_agreement) || present(values.application_agreement_acknowledgement)) {
+    return section("conditions", "Conditions", [
+      group("Student commitments", [field(values, "application_student_agreement", "Student commitments accepted", { format: confirmed })]),
+      group("Parent / Carer commitments", [field(values, "application_parent_agreement", "Parent / Carer commitments accepted", { format: confirmed })]),
+      group("Acknowledgement", [field(values, "application_agreement_acknowledgement", "Parent / Carer Agreement acknowledged", { format: confirmed })])
+    ]);
+  }
   const feeItems = [field(values, "fee_option", "Who will be responsible for payment of school fees?")];
   if (values.fee_option === "Both Parents / Guardian") {
     feeItems.push(field(values, "fee_both_nominee", "Fee account recipient"), field(values, "fee_both_date", "Date", { format: date }));
@@ -329,8 +353,7 @@ function signatureSection(app, values, guardianCount) {
     signature.signerName || `Parent / Guardian ${index + 1}`,
     [
       answer("Signature", "Recorded securely"),
-      answer("Signed", signature.signedAt, timestamp),
-      answer("Application revision", signature.revision ?? app.revision)
+      answer("Signed", signature.signedAt, timestamp)
     ],
     { badge: index === 0 ? "Primary signature" : "Recorded" }
   ));

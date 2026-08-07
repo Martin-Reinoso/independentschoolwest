@@ -3,17 +3,20 @@ import {
   APPLICATION_FIELD_PREFIXES,
   APPLICATION_REQUIRED_FIELDS,
   APPLICATION_STATIC_FIELDS,
+  APPLICATION_V7_REQUIRED_FIELDS,
+  APPLICATION_V7_STATIC_FIELDS,
   EOI_FIELDS,
   EOI_REQUIRED,
   SCHEMA_VERSION
 } from "./schema.mjs";
 
 export const CURRENT_FORM_VERSIONS = Object.freeze({
-  eoi: "rosewood-eoi-2026.6",
-  application: "rosewood-application-2026.6"
+  eoi: "rosewood-eoi-2026.7",
+  application: "rosewood-application-2026.7"
 });
 
 const LEGACY_SCHEMA_VERSION = "rosewood-v6-2026-08-05";
+const V6_SCHEMA_VERSION = "rosewood-v6-2026-08-08-contact-permission";
 
 function canonical(value) {
   if (Array.isArray(value)) return value.map(canonical);
@@ -334,8 +337,8 @@ const v6FrontendAssetHashes = freeze({
 
 const eoi2026v6 = complete({
   workflow: "eoi",
-  formVersion: CURRENT_FORM_VERSIONS.eoi,
-  schemaVersion: SCHEMA_VERSION,
+  formVersion: "rosewood-eoi-2026.6",
+  schemaVersion: V6_SCHEMA_VERSION,
   releasedAt: "2026-08-08",
   source: {
     frontend: "pages/rosewood-enrolment-v6.html?workflow=eoi",
@@ -348,8 +351,8 @@ const eoi2026v6 = complete({
 
 const application2026v6 = complete({
   workflow: "application",
-  formVersion: CURRENT_FORM_VERSIONS.application,
-  schemaVersion: SCHEMA_VERSION,
+  formVersion: "rosewood-application-2026.6",
+  schemaVersion: V6_SCHEMA_VERSION,
   releasedAt: "2026-08-08",
   source: {
     frontend: "pages/rosewood-enrolment-v6.html?workflow=application",
@@ -373,9 +376,76 @@ const application2026v6 = complete({
   }
 });
 
+const v7FrontendAssetHashes = freeze({
+  "pages/rosewood-enrolment-v5.css": "ca05a7270013368efe0e13bb39c8417518e13430372f926b5959fe0b6e1fe881",
+  "pages/rosewood-enrolment-v6.html": "d3e331337807ed5dacdb324819fcb95eef526ab865ebbc40c371b0128c856451",
+  "pages/rosewood-enrolment-v6.js": "e674b1e858739b6234abc3a03b271fce1884bb62cd624b41633cfb6f454adbce",
+  "pages/rosewood-enrolment-v6.css": "1dc83d8926142bed0a12e4e18ea81ab6d3c7f659c6658de2cb8fd9c1ec799be5",
+  "pages/rosewood-enrolment-languages.js": "7dccdcbdef9a218290de171bb55c19354bfdb3b6821b86cf139854ca8e68d273",
+  "pages/rosewood-enrolment-admin-v6.html": "d12ce354ede41811e001ef9476fd2af071e7be5920c6fea98d394caba33385e8",
+  "pages/rosewood-enrolment-admin-v6.js": "51978e9825e5b0e3e88b27fa6f7505f496030cbb7c4d804c027d2fefdf12bd72",
+  "pages/rosewood-enrolment-admin-v6.css": "85d0cb251ea6e467be6d068ebf7d15f18c8b3fb7f919c36a26050bfbee83f19f",
+  "pages/rosewood-application-sign-v6.html": "ac7fa672b95755b08cb177bc2187d6c9364ed437bc795b775a1a3a9f5af262cc",
+  "pages/rosewood-application-sign-v6.js": "35ac3e7e6886f4f7cb561c909b2e401e2356ef709e699b5017dc8b469855cb4a",
+  "pages/rosewood-application-sign-v6.css": "ed34d10e52ef688f3c58ab9464c66528e7095f378fd74e9f090af8e04c3e403a",
+  "pages/rosewood-enrolment-policies-v6.js": "8bf2abedcf2b9aa70e6ff55b3d837a96604dc06784d8f46b68b637056a4ce095",
+  "pages/rosewood-policies/enrolment-policy-rosewood-college.docx": "e4f59b3928a36f98dc38392ca33ddef599bdca4be7c84eefa6a23dac5d91ca2a",
+  "pages/rosewood-policies/enrolment-policy-rosewood-college.pdf": "6b2d99d805ca87c71c4a774d07320786517b023ca6a82421fe18d060a6dd2f3d",
+  "pages/rosewood-policies/enrolment-procedure-rosewood-college.docx": "042abe1f25ccd8acfc640365ca3cfc4aaa5eb6ea5b25576e5d407e0d7778066f",
+  "pages/rosewood-policies/enrolment-procedure-rosewood-college.pdf": "88d011503e2184130d1a33ee3d6a074cd5d192ccf1da3a3f0a8a4700d2ce3097",
+  "pages/rosewood-policies/privacy-policy-rosewood-college.docx": "f0cde7768b7ab470a41f95885f409797aacb9f3154cc2e58332144aaa6f26823",
+  "pages/rosewood-policies/privacy-policy-rosewood-college.pdf": "cb7fa03cd8be070c3b31a6d48e1498f18a36b73f327d6d03bda5efc1bf348b99"
+});
+
+const eoi2026v7 = complete({
+  workflow: "eoi",
+  formVersion: CURRENT_FORM_VERSIONS.eoi,
+  schemaVersion: SCHEMA_VERSION,
+  releasedAt: "2026-08-08",
+  source: {
+    frontend: "pages/rosewood-enrolment-v6.html?workflow=eoi",
+    frontendRelease: "v6-js18-css12-form-v7",
+    frontendAssetHashes: v7FrontendAssetHashes,
+    validator: "schema.mjs#validateEoi"
+  },
+  contract: eoi2026v6.contract
+});
+
+const application2026v7 = complete({
+  workflow: "application",
+  formVersion: CURRENT_FORM_VERSIONS.application,
+  schemaVersion: SCHEMA_VERSION,
+  releasedAt: "2026-08-08",
+  source: {
+    frontend: "pages/rosewood-enrolment-v6.html?workflow=application",
+    frontendRelease: "v6-js18-css12-form-v7",
+    frontendAssetHashes: v7FrontendAssetHashes,
+    validator: "schema.mjs#validateApplicationForSubmission"
+  },
+  contract: {
+    fieldPrefixes: APPLICATION_FIELD_PREFIXES,
+    staticFields: APPLICATION_V7_STATIC_FIELDS,
+    requiredFields: APPLICATION_V7_REQUIRED_FIELDS,
+    repeatedGroups: application2026v6.contract.repeatedGroups,
+    contactPermission: application2026v6.contract.contactPermission,
+    conditionalRules: [
+      { when: { field: "student_religion", equals: "Other" }, required: ["student_religion_other"] },
+      { when: { field: "current_school", equals: "Other" }, required: ["current_school_other"] },
+      { when: { field: "previous_school_attended", equals: "Yes" }, required: ["previous_school_name", "previous_school_year_level"] },
+      { when: { field: "interrupted_schooling", equals: "Yes" }, required: ["interrupted_schooling_details"] },
+      { when: { field: "future_siblings", equals: "Yes" }, required: ["future_sibling_count"] },
+      { when: { field: "australian_citizen", equals: "No" }, required: ["residency_evidence"] },
+      { when: { field: "formal_assessment", equals: "Yes" }, required: ["formal_assessment_details", "formal_assessment_report"] },
+      { when: { field: "additional_needs", equals: "Yes" }, required: ["need_categories"] },
+      { when: { field: "healthcare_card", equals: "Yes" }, required: ["student_healthcare_number", "student_healthcare_expiry"] },
+      ...application2026v6.contract.conditionalRules.slice(-2)
+    ]
+  }
+});
+
 export const FORM_DEFINITIONS = freeze({
-  eoi: { [eoi2026v1.formVersion]: eoi2026v1, [eoi2026v2.formVersion]: eoi2026v2, [eoi2026v3.formVersion]: eoi2026v3, [eoi2026v4.formVersion]: eoi2026v4, [eoi2026v5.formVersion]: eoi2026v5, [eoi2026v6.formVersion]: eoi2026v6 },
-  application: { [application2026v1.formVersion]: application2026v1, [application2026v2.formVersion]: application2026v2, [application2026v3.formVersion]: application2026v3, [application2026v4.formVersion]: application2026v4, [application2026v5.formVersion]: application2026v5, [application2026v6.formVersion]: application2026v6 }
+  eoi: { [eoi2026v1.formVersion]: eoi2026v1, [eoi2026v2.formVersion]: eoi2026v2, [eoi2026v3.formVersion]: eoi2026v3, [eoi2026v4.formVersion]: eoi2026v4, [eoi2026v5.formVersion]: eoi2026v5, [eoi2026v6.formVersion]: eoi2026v6, [eoi2026v7.formVersion]: eoi2026v7 },
+  application: { [application2026v1.formVersion]: application2026v1, [application2026v2.formVersion]: application2026v2, [application2026v3.formVersion]: application2026v3, [application2026v4.formVersion]: application2026v4, [application2026v5.formVersion]: application2026v5, [application2026v6.formVersion]: application2026v6, [application2026v7.formVersion]: application2026v7 }
 });
 
 export function getFormDefinition(workflow, formVersion = CURRENT_FORM_VERSIONS[workflow]) {

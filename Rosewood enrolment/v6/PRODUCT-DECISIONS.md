@@ -66,8 +66,10 @@ for Enrolment backend. It must:
 - exclude signature images, raw invitation links and network fingerprints from portal
   responses
 
-The first release is allowlisted to `info@ffe.org.au`, uses email OTP, records staff
-actions and keeps its two-hour session in browser memory only. The backend supports
+The first release is allowlisted to `info@ffe.org.au`, uses email OTP and records staff
+actions. Its ordinary session remains in memory; explicit **Remember me** stores only
+the opaque token/email/expiry locally and uses a backend-enforced two-hour sliding
+window. The backend supports
 admin, admissions and viewer roles so named mailboxes can be added after access owners
 and review/offboarding rules are approved. The restricted operator CLI remains an
 emergency fallback. Any future acceptance/decline interface must not merge those
@@ -161,8 +163,9 @@ workflows into the current records or API.
   automatically, Escape cannot dismiss it, and the only action clears browser-held
   session data and returns to the Application sign-in screen. The message distinguishes
   acknowledged progress from changes that may not have saved.
-- Returning families resume at the last server-acknowledged application section after
-  using their private invitation and completing OTP again.
+- Refreshing the same tab resumes through an opaque `sessionStorage` token while the
+  server session remains active. After expiry or explicit sign-out, the family uses the
+  private invitation and completes OTP again.
 
 ## Permanent Collection Decisions
 
@@ -170,8 +173,10 @@ workflows into the current records or API.
   Rosewood application.
 - Parent/guardian Past Student and Spouse fields are not collected.
 - Emergency contacts do not have a "Share these details" question.
-- Application conditions contain previous-school permission, fee responsibility and
-  the application survey only.
+- Application conditions contain the three Harkaway Hills College agreement groups,
+  with Rosewood College substituted as requested, and one required acknowledgement for
+  each group. Previous-school permission, fee responsibility and the survey are not
+  collected in V6.7.
 - Terms and Conditions of Enrolment and photography/recording permission belong to the
   post-offer Enrolment Agreement, not the application.
 - Victorian admission guidance is not displayed in the application signature step.
@@ -197,7 +202,7 @@ question asks only whether other children may attend and, when Yes, records a co
   its own row so long labels and conditional fields do not misalign adjacent controls.
 - Student Residence, Student Primary Address and Family are separate visual sections.
   Address sharing explicitly refers to other parents/guardians.
-- Home Care Arrangement is a required multi-select. Other reveals a required care
+- Home Care Arrangement is a required single-select. Other reveals a required care
   description, and Shared Custody reveals a required Shared Parenting Schedule.
 - Nationality and Citizenship is identified as a government requirement and makes clear
   that every question refers to the student. Citizenship follows residential status,
@@ -215,8 +220,7 @@ question asks only whether other children may attend and, when Yes, records a co
   not impact the offer of enrolment appear before the question.
 - Parish is labelled "Parish where student lives".
 - Medical Details displays an Other medical condition field only when Other is chosen.
-- Doctor Name and Doctor's practice/Address are mandatory. Doctor Phone remains
-  optional.
+- Doctor Name, Doctor's practice/Address and Doctor Phone are mandatory.
 - Ambulance Cover and Health Care Card are mandatory Yes/No questions.
 - Humanitarian Health Check clarifies that it asks whether the child has a humanitarian
   visa.
@@ -225,13 +229,14 @@ Source: https://www.abs.gov.au/statistics/classifications/australian-standard-cl
 
 ## Parent and Guardian Rules
 
-- Use "Share these details with other contacts?" and mandatory "SMS Messaging".
+- Use "Share your contact details with other parents or guardians on this application?"
+  with explicit share/private options and mandatory "SMS Messaging".
 - Health Care Card is mandatory Yes/No. Yes reveals mandatory card number and expiry.
 - Residential Address, Suburb, State, Postcode and Country are mandatory.
 - Occupational Group, Occupation, School Level Education and University / Further
   Education are mandatory.
-- Country of Birth, Nationality, Ethnicity, Languages, Residency Status and Aboriginal
-  / Torres Strait Islander response are mandatory. Temporary Resident reveals
+- Country of Birth, Nationality, Languages, Residency Status and Aboriginal / Torres
+  Strait Islander response are mandatory; Ethnicity is optional. Temporary Resident reveals
   mandatory Visa Subclass and Visa Expiry.
 - A second parent/guardian is the normal route and receives an independent signature
   request after the primary applicant submits only when contact permission is Yes.

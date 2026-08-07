@@ -36,7 +36,7 @@ server-acknowledged application create, start, save and submission also writes a
 append-only DynamoDB revision. Staff can inspect a selected historical revision through
 an authorised, audited endpoint. See `../SCHEMA-EVOLUTION.md` before changing fields,
 options, validation or required status.
-The current `2026.6` contracts pin the family, staff and signing HTML/JavaScript/CSS,
+The current `2026.7` contracts pin the family, staff and signing HTML/JavaScript/CSS,
 policy projection and all original Word/PDF policy assets. Policy viewing is frontend-
 only and does not create an application answer, acknowledgement or audit event.
 
@@ -82,7 +82,10 @@ Family OTP challenges expire after 10 minutes, allow five attempts and have rese
 network throttles. Family and child-application sessions use a sliding 20-minute
 inactivity timeout with an eight-hour absolute limit; staff sessions expire after two
 hours and guardian-signing sessions retain their separate 30-minute limit. Sessions stay
-in browser memory only and can be explicitly revoked. Raw IP addresses are not stored.
+are server-side and can be explicitly revoked. The family page may keep only opaque
+active-session tokens/expiry in per-tab session storage to survive a refresh; the staff
+page keeps an opaque token locally only after explicit **Remember me**. No answers or
+dashboard records are persisted in browser storage. Raw IP addresses are not stored.
 
 Application answers use revisioned autosave. The browser debounces edits, forces a save
 after eight seconds of continuous typing, suppresses unchanged drafts and identifies
@@ -105,6 +108,7 @@ POST /v6/staff/applications/contact-permission
 POST /v6/eoi
 POST /v6/application/access/request-code
 POST /v6/application/access/verify-code
+GET  /v6/application/family
 POST /v6/application/records/select
 POST /v6/application/records
 GET  /v6/application/context

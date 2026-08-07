@@ -16,9 +16,10 @@
   const invitationToken = params.get("invite") || "";
   const policyDocuments = window.rosewoodPolicyDocuments || {};
   const policyOrder = ["enrolment-policy", "enrolment-procedure", "privacy-policy"];
-  const SUPPORTED_APPLICATION_FORM_VERSIONS = new Set(["rosewood-application-2026.1", "rosewood-application-2026.2", "rosewood-application-2026.3", "rosewood-application-2026.4", "rosewood-application-2026.5", "rosewood-application-2026.6"]);
+  const SUPPORTED_APPLICATION_FORM_VERSIONS = new Set(["rosewood-application-2026.1", "rosewood-application-2026.2", "rosewood-application-2026.3", "rosewood-application-2026.4", "rosewood-application-2026.5", "rosewood-application-2026.6", "rosewood-application-2026.7"]);
   const CONTACT_PERMISSION_YES = "Yes, the school may contact this person";
   const CONTACT_PERMISSION_NO = "No, do not contact this person";
+  const APPLICATION_SESSION_STORAGE_KEY = "rosewood-enrolment-v6-active-session";
 
   const state = {
     workflow: params.get("workflow") || "application",
@@ -135,6 +136,61 @@
     errorSummary.focus();
   }
 
+  function persistBrowserSession() {
+    if (!liveWorkflow() || state.workflow !== "application" || !(state.familySessionToken || state.sessionToken || state.statusSessionToken)) return;
+    sessionStorage.setItem(APPLICATION_SESSION_STORAGE_KEY, JSON.stringify({
+      familySessionToken: state.familySessionToken,
+      sessionToken: state.sessionToken,
+      statusSessionToken: state.statusSessionToken,
+      email: state.values.application_gateway_email || state.applicationContext?.recipientEmail || "",
+      screen: state.screen,
+      absoluteExpiresAt: state.sessionAbsoluteExpiresAt
+    }));
+  }
+
+  function clearPersistedBrowserSession() {
+    sessionStorage.removeItem(APPLICATION_SESSION_STORAGE_KEY);
+  }
+
+  async function restoreBrowserSession() {
+    if (!liveWorkflow() || state.workflow !== "application") return false;
+    let stored;
+    try { stored = JSON.parse(sessionStorage.getItem(APPLICATION_SESSION_STORAGE_KEY) || "null"); } catch { stored = null; }
+    if (!stored || (!stored.familySessionToken && !stored.sessionToken && !stored.statusSessionToken)) return false;
+    if (stored.absoluteExpiresAt && stored.absoluteExpiresAt <= Date.now()) {
+      clearPersistedBrowserSession();
+      return false;
+    }
+    state.values.application_gateway_email = stored.email || "";
+    state.familySessionToken = stored.familySessionToken || "";
+    state.sessionAbsoluteExpiresAt = Number(stored.absoluteExpiresAt || 0);
+    try {
+      if (stored.statusSessionToken) {
+        state.statusSessionToken = stored.statusSessionToken;
+        state.statusContext = await api("/v6/application/status", { method: "GET", authToken: stored.statusSessionToken });
+        state.screen = 8;
+      } else if (stored.sessionToken) {
+        const context = await api("/v6/application/context", { method: "GET", authToken: stored.sessionToken });
+        applyApplicationSession({ sessionToken: stored.sessionToken, context });
+        state.familySessionToken = stored.familySessionToken || "";
+        state.screen = Math.max(3, Math.min(7, Number(context.screen || stored.screen || 3)));
+      } else {
+        const result = await api("/v6/application/family", { method: "GET", authToken: stored.familySessionToken });
+        state.familyContext = result.family;
+        state.screen = 2;
+      }
+      armSessionExpiry();
+      return true;
+    } catch (error) {
+      clearPersistedBrowserSession();
+      state.familySessionToken = "";
+      state.sessionToken = "";
+      state.statusSessionToken = "";
+      if (!["SESSION_EXPIRED", "SESSION_REQUIRED"].includes(error.code)) showServiceError(error);
+      return false;
+    }
+  }
+
   function missingAnswerGuidance(code) {
     const [field, qualifier = ""] = String(code).split(":");
     const exact = {
@@ -164,7 +220,10 @@
       section = "Parent / Guardian";
       screen = 4;
       label = "Guardian confirmation";
-    } else if (field.startsWith("previous_school_") || field.startsWith("fee_") || ["application_discovery", "application_influences"].includes(field)) {
+    } else if (["previous_school_attended", "previous_school_name", "previous_school_year_level", "interrupted_schooling", "interrupted_schooling_details", "formal_assessment", "formal_assessment_details", "formal_assessment_report"].includes(field)) {
+      section = "Student";
+      screen = 3;
+    } else if (field.startsWith("previous_school_") || field.startsWith("fee_") || ["application_discovery", "application_influences", "application_student_agreement", "application_parent_agreement", "application_agreement_acknowledgement"].includes(field)) {
       section = "Conditions";
       screen = 6;
     } else if (field.startsWith("application_signature_") || field.startsWith("application_one_signature") || field.startsWith("application_additional_signature")) {
@@ -209,7 +268,7 @@
 
   const yesNo = ["Yes", "No"];
   const languageCatalogue = window.rosewoodLanguageCatalogue || ["English"];
-  const years = Array.from({ length: 20 }, (_, index) => String(2026 + index));
+  const years = Array.from({ length: 20 }, (_, index) => String(2027 + index));
   const primaryLevels = ["Foundation", "Year 1", "Year 2", "Year 3", "Year 4", "Year 5", "Year 6"];
   const currentLevels = ["Not at School", "Early Years / Kinder", ...primaryLevels];
   const titles = ["Mr", "Mrs", "Ms", "Dr", "Miss"];
@@ -223,12 +282,33 @@
   const applicationDiscoverySources = discoverySources.filter(source => !["Current School Family", "Social Media"].includes(source));
   const influenceFactors = ["Reputation", "Environment & Atmosphere", "Mission, Values & Culture", "Faith Based", "Location", "Facilities", "Fees", "Class Sizes", "Size of school", "Pastoral Care", "Catering to Individual Needs", "Learning Support", "Quality of Teaching", "Curriculum Range & Choice", "Sports", "Arts", "Co-curriculum", "Coeducation", "Family History / Connection", "Friends Attending", "Referral from Friends / Family"];
   const agreementHeadings = ["Education services", "Enrolment", "Fees", "Enrolment under minimum school entry age", "Child safe environment", "Period of Enrolment", "Policies and procedures", "Acceptable behaviour or conduct", "Conformity with principles of the Catholic faith", "Provision of accurate information", "Children with additional needs", "Assessment and updates", "Discipline", "Termination by the school", "Appeal Process on Enrolment Decisions", "General"];
+  const occupationGroups = [
+    "Group 1: Senior management, government administration, defence and qualified professionals",
+    "Group 2: Other managers, arts/media/sportspeople and associate professionals",
+    "Group 3: Tradespeople, clerical workers and skilled office, sales and service staff",
+    "Group 4: Machine operators, hospitality workers, assistants and labourers",
+    "Not in paid work during the past 12 months",
+    "Prefer not to answer / Unknown"
+  ];
+  const occupations = "Academic;Accountant;Acting/Theatre;Advertising;Agriculture/Farming;Agronomist;Analyst;Animal Worker;Antique/Art Dealer;Architecture/Drafting;Armed Services;Artist/Painter;Author/Writer;Aviation/Pilot/Hostess;Banking;Bookmaker;Builder;Business Admin/Manager;Butcher;Caterer;Chemist / Pharmacy;Cleaner;Clerk;Communications;Composing;Computers;Construction/Building;Consultant;Consulting Services;Contractor;Cook;Counselling;Deli Owner;Dental Technician;Dentistry;Detective;Development Officer;Diplomatic Corps;Director;Doctor (Medicine);Driver;Economist;Editor;Education;Electrician;Engineering;Entertainment;Fashion;Financial Services;Fire Officer;Food/Catering;Foreman;Garden/Plants;General Administration;Geology;Germany;Government Departments;Grazier;Hair Dresser;Health Services;Home Duties;Homemaker/Houseperson;Hospitality;Hotel;Insurance;Interior Design;Interpreter;Investor;Jewellery Services;Laundry Proprietor;Lawyer;Legal Services;Library Services;Manager;Manufacturer;Manufacturing Industry;Marketing;Mechanic;Media/TV/Radio/Newspapers;Medical Records Admin;Merchant;Minister;Motel Proprietor;Nurse;Optometrist;Panel Shop Prop;Personnel;Phamacist;Photography;Physiotherapist;Plumber;Postman;Professional Polo Player;Programmer;Psychologist;Public Servant;Publishing;Radiographer;Real Estate;Recreation;Religion;Removalist;Retailer;Retired;Sales Manager;Salesman;Scientist;Secretarial/Clerical;Self Employed;Social Work;Sport/Athletics;Storeman;Student;Surveyor;Technician;Tradespeople;Transport;Transport Operator;Travel Industry;Veterinarian;Viticulture;Volunteer Worker;Welder;Winemaker".split(";");
+  const emergencyRelationships = ["Father", "Mother", "Stepfather", "Stepmother", "Guardian", "Uncle", "Aunt", "Grandparent", "Friend", "Sibling", "Unknown"];
+  const countryCodes = ["AD","AE","AF","AG","AI","AL","AM","AO","AQ","AR","AS","AT","AU","AW","AX","AZ","BA","BB","BD","BE","BF","BG","BH","BI","BJ","BL","BM","BN","BO","BQ","BR","BS","BT","BV","BW","BY","BZ","CA","CC","CD","CF","CG","CH","CI","CK","CL","CM","CN","CO","CR","CU","CV","CW","CX","CY","CZ","DE","DJ","DK","DM","DO","DZ","EC","EE","EG","EH","ER","ES","ET","FI","FJ","FK","FM","FO","FR","GA","GB","GD","GE","GF","GG","GH","GI","GL","GM","GN","GP","GQ","GR","GS","GT","GU","GW","GY","HK","HM","HN","HR","HT","HU","ID","IE","IL","IM","IN","IO","IQ","IR","IS","IT","JE","JM","JO","JP","KE","KG","KH","KI","KM","KN","KP","KR","KW","KY","KZ","LA","LB","LC","LI","LK","LR","LS","LT","LU","LV","LY","MA","MC","MD","ME","MF","MG","MH","MK","ML","MM","MN","MO","MP","MQ","MR","MS","MT","MU","MV","MW","MX","MY","MZ","NA","NC","NE","NF","NG","NI","NL","NO","NP","NR","NU","NZ","OM","PA","PE","PF","PG","PH","PK","PL","PM","PN","PR","PS","PT","PW","PY","QA","RE","RO","RS","RU","RW","SA","SB","SC","SD","SE","SG","SH","SI","SJ","SK","SL","SM","SN","SO","SR","SS","ST","SV","SX","SY","SZ","TC","TD","TF","TG","TH","TJ","TK","TL","TM","TN","TO","TR","TT","TV","TW","TZ","UA","UG","UM","US","UY","UZ","VA","VC","VE","VG","VI","VN","VU","WF","WS","YE","YT","ZA","ZM","ZW","XK"];
+  const regionNames = typeof Intl.DisplayNames === "function" ? new Intl.DisplayNames(["en-AU"], { type: "region" }) : null;
+  const countryCatalogue = [...new Set(countryCodes.map(code => regionNames?.of(code) || code))].sort((left, right) => left.localeCompare(right, "en-AU"));
+  const hhcStudentCommitments = ["Attend school regularly and punctually", "Participate in Religious Education lessons and liturgical celebrations", "Do the prescribed homework and home study each evening", "Co-operate with all staff members", "Observe the College rules as specified in the Student Planner", "Wear the uniform correctly", "Behave appropriately on public transport", "Participate in sporting activities", "Attend all compulsory College excursions, camps, retreats and reflection days"];
+  const hhcParentCommitments = ["Support the Catholic ethos and practices of the College", "Pay all fees by the due date", "Promote the College in the community", "Attend Parent/Teacher interviews", "Notify the College in writing when my/our child is unable to attend school", "Provide an environment which supports our child's learning", "Provide the correct uniform and support the College uniform rules", "Communicate with the College on matters of concern", "Notify the College if our child has any special learning needs", "Support the College by attendance at functions organised by the College and Parents and Friends Association where possible", "Obtain the permission of the Principal for prolonged absences", "Inform the College when relevant family details change", "The College taking photographs/video footage of my/our child that may appear in College publications, promotions and social media. Parents/Guardians should notify the College in writing if permission is not given", "Provide, in writing to the Principal, at least ten school weeks notice if seeking to cease the enrolment of my/our child before the completion of Grade 12"];
 
   const languageList = document.querySelector("#language-list");
   languageList.innerHTML = languageCatalogue.map(language => `<option value="${esc(language)}"></option>`).join("");
+  const countryList = document.querySelector("#country-list");
+  countryList.innerHTML = countryCatalogue.map(country => `<option value="${esc(country)}"></option>`).join("");
 
   function esc(value) {
     return String(value == null ? "" : value).replace(/[&<>'"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
+  }
+
+  function melbourneDate(value = new Date()) {
+    return new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Melbourne", year: "numeric", month: "2-digit", day: "2-digit" }).format(value);
   }
 
   function attributes(options = {}) {
@@ -267,7 +347,7 @@
     const multiple = config.multiple === true;
     const stored = state.values[name] ?? config.value;
     const selected = Array.isArray(stored) ? stored : [stored];
-    return `<fieldset class="question ${config.className || ""}"${multiple && config.required ? " data-required-group" : ""}${config.max ? ` data-max="${config.max}"` : ""}${config.exact ? ` data-exact="${config.exact}"` : ""}><legend>${label}${config.required ? ' <span class="required" aria-hidden="true">*</span>' : ""}</legend><div class="${config.grid ? "choice-grid" : "choice-row"}">${options.map((option, index) => `<label class="choice"><input type="${multiple ? "checkbox" : "radio"}" name="${name}" value="${esc(option)}"${selected.includes(option) ? " checked" : ""}${config.required && !multiple && index === 0 ? " required" : ""}${config.disabled ? " disabled" : ""}><span>${esc(option)}</span></label>`).join("")}</div>${config.hint ? `<small class="group-note">${config.hint}</small>` : ""}</fieldset>`;
+    return `<fieldset class="question ${config.className || ""}"${multiple && config.required ? " data-required-group" : ""}${config.max ? ` data-max="${config.max}"` : ""}${config.exact ? ` data-exact="${config.exact}"` : ""}><legend>${label}${config.required ? ' <span class="required" aria-hidden="true">*</span>' : ""}</legend>${config.intro ? `<small class="group-intro">${config.intro}</small>` : ""}<div class="${config.grid ? "choice-grid" : "choice-row"}">${options.map((option, index) => `<label class="choice"><input type="${multiple ? "checkbox" : "radio"}" name="${name}" value="${esc(option)}"${selected.includes(option) ? " checked" : ""}${config.required && !multiple && index === 0 ? " required" : ""}${config.disabled ? " disabled" : ""}><span>${esc(option)}</span></label>`).join("")}</div>${config.hint ? `<small class="group-note">${config.hint}</small>` : ""}</fieldset>`;
   }
 
   function check(name, label, options = {}) {
@@ -357,7 +437,7 @@
   }
 
   function communicationNotice() {
-    return `<p class="communication-notice">By providing an email address and/or mobile number, you agree to receive informational and promotional messages from Rosewood College. Promotional emails will include an unsubscribe option, and you may reply STOP to promotional SMS messages.</p>`;
+    return `<p class="communication-notice">By providing your email address and/or mobile phone number, you agree to receive messages of both a promotional and informational nature from Rosewood College. Message frequency varies. Message and data rates may apply. You can opt out of promotional communications at any time using the unsubscribe link in our emails and/or by replying STOP to our text messages.</p>`;
   }
 
   function renderGateway(kind) {
@@ -389,18 +469,28 @@
       const applications = (family.applications || []).filter(record => record.studentName);
       const linked = applications.some(record => record.sourceEoiId);
       const statusLabel = status => ({ invited: "Not Started", in_progress: "In Progress", pending_signatures: "Awaiting Parent/Guardian Signature", staff_review_required: "Staff Review Required", submitted: "Completed" })[status] || status;
-      const rows = applications.map(record => {
+      const cards = applications.map(record => {
         const statusClass = record.status === "submitted" ? " is-complete" : record.status === "pending_signatures" ? " is-pending" : "";
         const action = record.editable
           ? `<button type="button" class="button button-primary" data-select-application="${esc(record.applicationId)}">Continue</button>`
           : ["pending_signatures", "staff_review_required", "submitted"].includes(record.status) ? `<button type="button" class="button button-secondary" data-view-application-status="${esc(record.applicationId)}">View status</button>` : "Unavailable";
-        return `<tr><td>${esc(record.studentName)}</td><td>${record.sourceEoiId ? "Expression of Interest" : "Direct invitation"}</td><td><span class="status-pill${statusClass}">${esc(statusLabel(record.status))}</span></td><td>${action}</td></tr>`;
+        const initial = String(record.studentName || "S").trim().charAt(0).toUpperCase();
+        return `<article class="child-application-card"><div class="child-application-icon" aria-hidden="true">${esc(initial)}</div><div class="child-application-main"><h4>${esc(record.studentName)}</h4><dl><div><dt>Source</dt><dd>${record.sourceEoiId ? "Expression of Interest" : "Direct invitation"}</dd></div><div><dt>Status</dt><dd><span class="status-pill${statusClass}">${esc(statusLabel(record.status))}</span></dd></div></dl></div><div class="child-application-action">${action}</div></article>`;
       }).join("");
-      const records = applications.length ? section("Child applications", `<div class="record-table-wrap"><table class="record-table"><thead><tr><th>Student Name</th><th>Source</th><th>Application Status</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div>`) : "";
+      const records = applications.length ? section("Child applications", `<div class="child-application-list">${cards}</div>`) : "";
       const startCopy = applications.length ? "Add another child" : "Enter the first child";
       return intro("Choose a child application", linked ? "We found the Expression of Interest linked by Rosewood College. You can continue that child’s application or start a separate application for another child." : "This is a direct family invitation. Add each child who will apply to Rosewood College; each child has a separate application record.", workflows[kind].label) +
         section("Invited parent or guardian", `<div class="review-card"><dl>${family.parentGuardianName ? `<dt>Name</dt><dd>${esc(family.parentGuardianName)}</dd>` : ""}<dt>Email</dt><dd>${esc(family.recipientEmail || state.values.application_gateway_email)}</dd></dl></div>`) + records +
         section(startCopy, `<p>${applications.length ? "Use this only for another child. Their medical details, documents, progress and signatures will remain separate from the applications above." : "Enter the child’s name to create their Application for Enrolment."}</p><div class="field-grid two">${field("application_new_first", "Student First Name", { required: true })}${field("application_new_last", "Student Last Name", { required: true })}</div>`) + actions({ label: applications.length ? "Start another application" : "Start application", back: false, left: '<button type="button" class="button button-secondary" data-action="sign-out">Sign out</button>' });
+    }
+    if (kind === "application") {
+      const previewCards = [
+        { initial: "A", name: "Avery Example", source: "Expression of Interest", status: "In Progress", action: '<button type="button" class="button button-primary" data-action="next">Continue</button>' },
+        { initial: "J", name: "Jordan Example", source: "Direct invitation", status: "Completed", complete: true, action: '<button type="button" class="button button-secondary" data-static>View status</button>' }
+      ].map(record => `<article class="child-application-card"><div class="child-application-icon" aria-hidden="true">${record.initial}</div><div class="child-application-main"><h4>${record.name}</h4><dl><div><dt>Source</dt><dd>${record.source}</dd></div><div><dt>Status</dt><dd><span class="status-pill${record.complete ? " is-complete" : ""}">${record.status}</span></dd></div></dl></div><div class="child-application-action">${record.action}</div></article>`).join("");
+      return intro("Choose a child application", "Your information was located. Continue an existing child application or start a separate application for another child.", workflows[kind].label) +
+        section("Invited parent or guardian", '<div class="review-card"><dl><dt>Name</dt><dd>Alex Example</dd><dt>Email</dt><dd>family@example.test</dd></dl></div>') +
+        section("Child applications", `<div class="child-application-list">${previewCards}</div>`) + newRecord;
     }
     return intro(kind === "application" ? "Select or enter a student" : kind === "acceptance" ? "Accept your offer" : "Decline an offer", `Your information was located. Select a student to continue the ${noun}.`, workflows[kind].label) +
       section("Matched contact", `<div class="record-table-wrap"><table class="record-table"><thead><tr><th>Name</th><th>Last Updated</th><th>Address</th><th>Email</th><th>Mobile Phone</th></tr></thead><tbody><tr><td>Alex Example</td><td>4 August 2026</td><td>Synthetic address</td><td>family@example.test</td><td>0400 000 000</td></tr></tbody></table></div>`) +
@@ -422,47 +512,52 @@
   }
 
   function repeatBlock(kind, singular, renderer) {
-    return `<div class="repeat-list">${Array.from({ length: state.counts[kind] }, (_, index) => `<article class="repeat-card"><header><h4>${singular} ${index + 1}</h4>${index > 0 ? `<button type="button" class="button button-quiet" data-remove="${kind}">Remove</button>` : ""}</header><div class="field-grid">${renderer(index)}</div></article>`).join("")}</div><div class="repeat-controls"><button type="button" class="button button-secondary" data-add="${kind}">Add ${singular.toLowerCase()}</button></div>`;
+    const guardianNote = kind === "appGuardian" ? `<p class="repeat-guidance">Before continuing, use <strong>+ Add Contact</strong> to enter any additional legal parents or guardians.</p>` : "";
+    const buttonClass = kind === "appGuardian" ? "button button-primary add-contact-button" : "button button-secondary";
+    const buttonLabel = kind === "appGuardian" ? "+ Add Contact" : `Add ${singular.toLowerCase()}`;
+    return `<div class="repeat-list">${Array.from({ length: state.counts[kind] }, (_, index) => `<article class="repeat-card" data-repeat-kind="${kind}" data-repeat-index="${index}" tabindex="-1"><header><h4>${singular} ${index + 1}</h4>${index > 0 ? `<button type="button" class="button button-quiet" data-remove="${kind}">Remove</button>` : ""}</header><div class="field-grid">${renderer(index)}</div></article>`).join("")}</div><div class="repeat-controls">${guardianNote}<button type="button" class="${buttonClass}" data-add="${kind}">${buttonLabel}</button></div>`;
   }
 
   function renderApplicationStudent() {
     return intro("Student", "Provide the student, residence, family, background, support, sacramental and medical information requested in the application.", "Application for enrolment") +
-      section("Student Details", `<div class="field-grid">${field("student_first", "First Name", { required: true })}${field("student_middle", "Middle Name")}${field("student_last", "Last Name", { required: true })}${field("student_preferred", "Preferred Name")}${field("student_dob", "Date of Birth", { type: "date", required: true })}${field("student_gender", "Gender", { type: "select", options: ["Male", "Female"], required: true })}${field("student_religion", "Religion", { type: "select", options: religions, required: true })}</div><div class="conditional-panel" data-conditional="other-religion"><div class="field-grid">${field("student_religion_other", "Other religion", { required: true, className: "span-three" })}</div></div><div class="field-grid student-enrolment-grid">${field("current_level", "Current School Year", { type: "select", options: currentLevels, required: true })}${field("entry_year", "Entry Year", { type: "select", options: years, required: true })}${field("entry_level", "Year Level of Entry", { type: "select", options: primaryLevels, required: true })}${field("current_school", "Current Early Learning Centre / Kindergarten / Primary School", { type: "select", options: currentSchools, required: true, className: "span-three student-school-field" })}</div><div class="conditional-panel" data-conditional="other-current-school"><div class="field-grid">${field("current_school_other", "Other Early Learning Centre / Kindergarten / Primary School", { required: true, className: "span-three" })}</div></div>`) +
-      section("Student Residence", `${choices("student_address_share", "Share this address with other Parent/Guardian?", ["Yes, share", "No, keep private"], { required: true })}${choices("care_arrangement", "Home Care Arrangement", ["Both Parents", "Mother Only", "Father Only", "Shared Custody", "Carer / Guardian", "Out-of-home care", "Kinship", "Other"], { multiple: true, required: true, grid: true })}<div class="conditional-panel" data-conditional="other-care-arrangement"><div class="field-grid">${field("care_other", "Other Care Arrangement", { required: true, className: "span-three" })}</div></div><div class="conditional-panel" data-conditional="shared-parenting"><div class="field-grid">${field("shared_parenting", "Shared Parenting Schedule", { type: "textarea", required: true, className: "span-three" })}</div></div>`) +
-      section("Student Primary Address", `<div class="field-grid">${field("student_address", "Address", { required: true, className: "span-two" })}${field("student_suburb", "Suburb", { required: true })}${field("student_state", "State", { required: true })}${field("student_postcode", "Postcode", { required: true })}${field("student_country", "Country", { required: true, list: "country-list", value: "Australia" })}</div>`) +
+      section("Student Details", `<div class="field-grid">${field("student_first", "First Name", { required: true, autocomplete: "given-name" })}${field("student_middle", "Middle Name", { autocomplete: "additional-name" })}${field("student_last", "Last Name", { required: true, autocomplete: "family-name" })}${field("student_preferred", "Preferred Name")}${field("student_dob", "Date of Birth", { type: "date", required: true })}${field("student_gender", "Gender", { type: "select", options: ["Male", "Female"], required: true })}${field("student_religion", "Religion", { type: "select", options: religions, required: true })}</div><div class="conditional-panel" data-conditional="other-religion"><div class="field-grid">${field("student_religion_other", "Other religion", { required: true, className: "span-three" })}</div></div><div class="field-grid student-enrolment-grid">${field("current_level", "Current School Year", { type: "select", options: currentLevels, required: true })}${field("entry_year", "Year the student will commence at Rosewood College", { type: "select", options: years, required: true, value: "2027" })}${field("entry_level", "Year Level of Entry at Rosewood College", { type: "select", options: primaryLevels, required: true })}${field("current_school", "Current Early Learning Centre / Kindergarten / Primary School", { type: "select", options: currentSchools, required: true, className: "span-three student-school-field" })}</div><div class="conditional-panel" data-conditional="other-current-school"><div class="field-grid">${field("current_school_other", "Other Early Learning Centre / Kindergarten / Primary School", { required: true, className: "span-three" })}</div></div>`) +
+      section("Previous Education", `${choices("previous_school_attended", "Has the student previously attended an early learning centre, kindergarten or school?", yesNo, { required: true })}<div class="conditional-panel" data-conditional="previous-school-attended"><div class="field-grid two">${field("previous_school_name", "Institution", { required: true })}${field("previous_school_year_level", "Year level", { required: true })}</div></div>${choices("interrupted_schooling", "Interrupted schooling: Has the student experienced any extended absence or interruption to their schooling?", yesNo, { required: true })}<div class="conditional-panel" data-conditional="interrupted-schooling"><div class="field-grid">${field("interrupted_schooling_details", "Please provide approximate dates and brief details", { type: "textarea", required: true, className: "span-three" })}</div></div>`) +
+      section("Student Residence", `${choices("student_address_share", "Share this address with other Parent/Guardian?", ["Yes, share", "No, keep private"], { required: true })}${choices("care_arrangement", "Home Care Arrangement", ["Both Parents", "Mother Only", "Father Only", "Shared Custody", "Carer / Guardian", "Out-of-home care", "Kinship", "Other"], { required: true, grid: true })}<div class="conditional-panel" data-conditional="other-care-arrangement"><div class="field-grid">${field("care_other", "Other Care Arrangement", { required: true, className: "span-three" })}</div></div><div class="conditional-panel" data-conditional="shared-parenting"><div class="field-grid">${field("shared_parenting", "Shared Parenting Schedule", { type: "textarea", required: true, className: "span-three" })}</div></div>`) +
+      section("Student Primary Address", `<p class="address-autofill-note">Your browser may offer a saved address. Selecting it can fill the address fields without sending the address to a separate search service.</p><div class="field-grid">${field("student_address", "Address", { required: true, className: "span-two", autocomplete: "section-student address-line1" })}${field("student_suburb", "Suburb", { required: true, autocomplete: "section-student address-level2" })}${field("student_state", "State", { required: true, autocomplete: "section-student address-level1" })}${field("student_postcode", "Postcode", { required: true, autocomplete: "section-student postal-code" })}${field("student_country", "Country", { required: true, list: "country-list", value: "Australia", autocomplete: "section-student country-name", hint: "Start typing to search the full country catalogue." })}</div>`) +
       section("Family", `${choices("future_siblings", "Do you have any other children that may attend our school?", yesNo, { required: true, className: "family-question" })}<div class="conditional-panel" data-conditional="future-siblings">${choices("future_sibling_count", "How many children?", ["1", "2", "3", "4", "5", "6", "7+"], { required: true })}</div>`) +
-      section("Nationality and Citizenship", `<div class="government-context"><strong>Government Requirement</strong><p>The information in this section is about the student and is collected to meet government reporting requirements.</p></div><div class="field-grid">${field("residence_country", "Student's current country of residence", { required: true, list: "country-list" })}${field("birth_country", "Student's country of birth", { required: true, list: "country-list", hint: "In which country was the student born?" })}${field("nationality", "Student's country of nationality", { required: true, list: "country-list" })}${field("ethnicity", "Student's ethnicity")}</div><div class="field-grid citizenship-date-row">${field("arrival_date", "When did the student arrive in or return to live in Australia?", { type: "date", className: "span-three", hint: "For students born overseas, enter the date they first arrived to live in Australia. If the student previously lived in Australia and later lived overseas, enter the date they most recently returned to live in Australia." })}${field("residency_status", "What is the residential status of the student?", { type: "select", options: ["Permanent", "Temporary"], required: true, className: "span-three" })}</div>${choices("australian_citizen", "Citizenship Status", yesNo, { required: true, hint: "Is the student an Australian citizen?" })}<div class="conditional-panel" data-conditional="residency-evidence">${choices("residency_evidence", "Evidence of Australian Residency", ["Permanent Resident", "Eligible for Australian Passport", "Temporary Resident", "Other / Visitor / Overseas Student"], { required: true, grid: true })}<div class="conditional-panel visa-panel" data-conditional="visa-details"><div class="field-grid">${field("visa_subclass", "Visa subclass", { required: true })}${field("visa_expiry", "Visa expiry", { type: "date", required: true })}${field("previous_visa", "Previous visa subclass")}</div></div></div>${choices("indigenous_status", "Aboriginal / Torres Strait Islander Status", ["Aboriginal", "Torres Strait Islander", "Aboriginal and Torres Strait Islander", "Not Applicable"], { required: true })}<h5 class="content-subheading">Languages</h5><div class="field-grid two">${field("main_language", "Main Language", { type: "select", options: languageCatalogue, required: true })}${field("other_languages", "Other Languages", { list: "language-list" })}</div>`) +
-      section("General / Additional Needs", `<div class="needs-introduction"><p>To meet duty of care obligations and facilitate the smooth transition of your child into the school, please provide all required information. This will assist the school to implement appropriate adjustments and strategies to meet the particular needs of your child. If the information is not provided or is incomplete, incorrect or misleading, current or ongoing enrolment may be reviewed.</p><p class="needs-assurance"><strong>*Please Note:</strong> This information will not impact the offer of enrolment.</p></div>${choices("additional_needs", "General / Additional Needs", yesNo, { required: true })}<div data-conditional="additional-needs">${choices("need_categories", "Please Specify", needCategories, { multiple: true, grid: true, required: true })}<div data-conditional="other-need" class="field-grid">${field("need_other", "Other Additional Need", { required: true, className: "span-three" })}</div></div>${choices("professional_categories", "Health Professionals", professionalCategories, { multiple: true, grid: true })}<div data-conditional="other-professional" class="field-grid">${field("professional_other", "Other Health Professional", { required: true })}</div>${choices("reports_attached", "Reports Attached", yesNo, { required: true })}${choices("ndis_support", "NDIS Support", yesNo, { required: true })}${choices("court_orders", "Court or Parenting Orders", yesNo, { required: true })}<div class="field-grid">${field("other_relevant_information", "Other Relevant Information", { type: "textarea", className: "span-three" })}</div>`) +
-      section("Sacraments", `<div class="field-grid">${field("parish", "Parish where student lives", { className: "span-three" })}</div>${["Baptism", "Reconciliation", "Eucharist", "Confirmation"].map(item => `${check(`sacrament_${item}`, item)}<div class="conditional-panel" data-sacrament="sacrament_${item}"><div class="field-grid two">${field(`sacrament_${item}_date`, `${item} Date`, { type: "date" })}${field(`sacrament_${item}_location`, `${item} Location`)}</div></div>`).join("")}`) +
-      section("Medical Details", `${choices("medical_conditions", "Medical Conditions", medicalConditions, { multiple: true, grid: true, required: true })}<div data-conditional="other-medical" class="field-grid">${field("other_medical_condition", "Other medical condition", { required: true, className: "span-three" })}</div><div class="field-grid">${field("condition_details", "Condition Details", { type: "textarea", className: "span-two" })}${field("allergy_details", "Allergy Details", { type: "textarea" })}</div>${choices("anaphylaxis_risk", "Anaphylaxis Risk", yesNo, { required: true })}${choices("anaphylaxis_device", "EpiPen / Anapen", ["EpiPen", "Anapen"], {})}${choices("immunisation", "Immunisation", yesNo, { required: true })}${choices("humanitarian_health", "Humanitarian Health Check", yesNo, { hint: "Is the child on a humanitarian visa?" })}<div class="field-grid">${field("doctor_name", "Doctor Name", { required: true })}${field("doctor_address", "Doctor's practice/Address", { required: true, className: "span-two" })}${field("doctor_phone", "Doctor Phone", { type: "tel" })}${field("medicare_number", "Medicare Number / Reference")}${field("medicare_expiry", "Medicare Expiry", { type: "date" })}${field("private_insurance", "Private Insurance", { className: "span-two" })}</div>${choices("ambulance_cover", "Ambulance Cover", yesNo, { required: true })}${choices("healthcare_card", "Health Care Card", yesNo, { required: true })}`) + actions();
+      section("Nationality and Citizenship", `<div class="government-context"><strong>Government Requirement</strong><p>The information in this section is about the student and is collected to meet government reporting requirements.</p></div><div class="field-grid">${field("residence_country", "Student's current country of residence", { required: true, list: "country-list", hint: "Start typing to search the full country catalogue." })}${field("birth_country", "Student's country of birth", { required: true, list: "country-list", hint: "In which country was the student born? Start typing to search." })}${field("nationality", "Student's country of nationality", { required: true, list: "country-list", hint: "Start typing to search the full country catalogue." })}${field("ethnicity", "Student's ethnicity", { hint: "If not born in Australia" })}</div><div class="field-grid citizenship-date-row">${field("arrival_date", "When did the student arrive in or return to live in Australia?", { type: "date", className: "span-three mobile-safe-date", hint: "For students born overseas, enter the date they first arrived to live in Australia. If the student previously lived in Australia and later lived overseas, enter the date they most recently returned to live in Australia." })}${field("residency_status", "What is the residential status of the student?", { type: "select", options: ["Permanent", "Temporary"], required: true, className: "span-three" })}</div>${choices("australian_citizen", "Citizenship Status", yesNo, { required: true, intro: "Is the student an Australian citizen?", className: "citizenship-question" })}<div class="conditional-panel" data-conditional="residency-evidence">${choices("residency_evidence", "Evidence of Australian Residency", ["Permanent Resident", "Eligible for Australian Passport", "Temporary Resident", "Other / Visitor / Overseas Student"], { required: true, grid: true })}<div class="conditional-panel visa-panel" data-conditional="visa-details"><p class="visa-evidence-note">Please provide up to date evidence of visa status from the Department of Home Affairs, including any changes to visa or citizenship as soon as notified</p><div class="field-grid">${field("visa_subclass", "Visa subclass", { required: true })}${field("visa_expiry", "Visa expiry", { type: "date", required: true })}${field("previous_visa", "Previous visa subclass")}</div></div></div>${choices("indigenous_status", "Aboriginal / Torres Strait Islander Status", ["Aboriginal", "Torres Strait Islander", "Aboriginal and Torres Strait Islander", "Not Applicable"], { required: true })}<h5 class="content-subheading">Languages</h5><div class="field-grid two">${field("main_language", "Main Language", { list: "language-list", required: true, hint: "Start typing to search the language catalogue." })}${field("other_languages", "Other Languages", { list: "language-list", hint: "Start typing to search." })}</div>`) +
+      section("General / Additional Needs", `<div class="needs-introduction"><p>To meet duty of care obligations and facilitate the smooth transition of your child into the school, please provide all required information. This will assist the school to implement appropriate adjustments and strategies to meet the particular needs of your child. If the information is not provided or is incomplete, incorrect or misleading, current or ongoing enrolment may be reviewed.</p><p class="needs-assurance"><strong>*Please Note:</strong> This information will not impact the offer of enrolment.</p></div>${choices("formal_assessment", "Has the student completed a formal assessment relating to learning, development, wellbeing or giftedness?", yesNo, { required: true })}<div class="conditional-panel" data-conditional="formal-assessment"><div class="field-grid">${field("formal_assessment_details", "Please provide brief details of the assessment", { type: "textarea", required: true, className: "span-three" })}</div>${choices("formal_assessment_report", "Is a report available?", yesNo, { required: true })}</div>${choices("additional_needs", "General / Additional Needs", yesNo, { required: true })}<div data-conditional="additional-needs">${choices("need_categories", "Please Specify", needCategories, { multiple: true, grid: true, required: true })}<div data-conditional="other-need" class="field-grid">${field("need_other", "Other Additional Need", { required: true, className: "span-three" })}</div><div class="field-grid">${field("current_adjustments", "What adjustments or support is currently provided for the student?", { type: "textarea", className: "span-three" })}${field("rosewood_adjustments", "What adjustments or support may assist the student at Rosewood College?", { type: "textarea", className: "span-three" })}</div></div>${choices("professional_categories", "Health Professionals", professionalCategories, { multiple: true, grid: true })}<div data-conditional="other-professional" class="field-grid">${field("professional_other", "Other Health Professional", { required: true })}</div>${choices("reports_attached", "Reports Attached", yesNo, { required: true })}${choices("ndis_support", "NDIS Support", yesNo, { required: true })}${choices("court_orders", "Court or Parenting Orders", yesNo, { required: true })}<div class="field-grid">${field("other_relevant_information", "Other Relevant Information", { type: "textarea", className: "span-three" })}</div>`) +
+      section("Sacraments", `<div class="field-grid">${field("parish", "Parish where student lives", { className: "span-three" })}</div>${["Baptism", "Reconciliation", "Eucharist", "Confirmation"].map(item => `${check(`sacrament_${item}`, item)}<div class="conditional-panel" data-sacrament="sacrament_${item}"><div class="field-grid two">${field(`sacrament_${item}_date`, `${item} Date`, { type: "date", max: melbourneDate() })}${field(`sacrament_${item}_location`, `${item} Location`)}</div></div>`).join("")}`) +
+      section("Medical Details", `${choices("medical_conditions", "Medical Conditions", medicalConditions, { multiple: true, grid: true, required: true })}<div data-conditional="other-medical" class="field-grid">${field("other_medical_condition", "Other medical condition", { required: true, className: "span-three" })}</div><div class="field-grid">${field("condition_details", "Condition Details", { type: "textarea", className: "span-two" })}${field("allergy_details", "Allergy Details", { type: "textarea" })}</div>${choices("anaphylaxis_risk", "Anaphylaxis Risk", yesNo, { required: true })}${choices("anaphylaxis_device", "EpiPen / Anapen", ["EpiPen", "Anapen"], { multiple: true, max: 1, hint: "Optional. Select the active option again to clear it." })}<div class="immunisation-guidance"><p>Vaccinations are recorded on the Australian Immunisation Register (AIR). Victorian law requires an Immunisation History Statement for primary school enrolment. You can obtain it through myGov and upload it later in this application.</p></div>${choices("immunisation", "Is Immunisation History Statement held and will be uploaded with this application?", yesNo, { required: true })}${choices("humanitarian_health", "If the student entered Australia on a humanitarian visa, did they receive a refugee health check?", yesNo)}<div class="field-grid">${field("doctor_name", "Doctor Name", { required: true })}${field("doctor_address", "Doctor's practice/Address", { required: true, className: "span-two" })}${field("doctor_phone", "Doctor Phone", { type: "tel", required: true })}${field("medicare_number", "Medicare Number", { required: true })}${field("medicare_reference", "Medicare Ref Number", { required: true })}${field("medicare_expiry", "Medicare Expiry", { type: "date" })}${field("private_insurance_provider", "Private health insurance provider")}${field("private_insurance_policy", "Private health insurance policy number")}</div>${choices("ambulance_cover", "Ambulance Cover", yesNo, { required: true })}${choices("healthcare_card", "Health Care Card", yesNo, { required: true })}<div class="conditional-panel" data-student-healthcare="healthcare_card"><div class="field-grid two">${field("student_healthcare_number", "Health Care Card No.", { required: true })}${field("student_healthcare_expiry", "Health Care Card Expiry", { type: "date", required: true })}</div></div>`) + actions();
   }
 
   function applicationGuardianFields(index) {
     const prefix = `app_guardian_${index}_`;
     const permission = state.values[prefix + "permission"];
     const emailRequired = index === 0 || permission === CONTACT_PERMISSION_YES;
-    return choices(prefix + "share", "Share these details with other contacts?", ["Yes, share them", "No, keep them private"], { required: true, className: "span-three" }) +
+    return choices(prefix + "share", "Share your contact details with other parents or guardians on this application?", ["Yes, share them", "No, keep them private"], { required: true, className: "span-three" }) +
       field(prefix + "title", "Title", { type: "select", options: titles, required: true }) + field(prefix + "first", "Given Name", { required: true }) + field(prefix + "last", "Surname", { required: true }) +
       field(prefix + "email", "Email", { type: "email", required: emailRequired, hint: index > 0 && permission === CONTACT_PERMISSION_NO ? "Stored with the application if provided. Rosewood College will not use it for automated contact or signing requests." : "" }) + field(prefix + "mobile", "Mobile Phone", { type: "tel", required: true }) + field(prefix + "home", "Home Phone", { type: "tel" }) + field(prefix + "work", "Work Phone", { type: "tel" }) +
       field(prefix + "relationship", "Relationship", { type: "select", options: relationships, required: true }) + field(prefix + "contact_type", "Contact Type", { type: "select", options: ["Primary", "Secondary"], required: true }) +
-      field(prefix + "marital", "Marital Status", { type: "select", options: ["Married", "De-Facto", "Divorced", "Single", "Separated", "Widowed", "Engaged", "Other"] }) + field(prefix + "religion", "Religion", { type: "select", options: religions }) +
-      choices(prefix + "sms", "SMS Messaging", yesNo, { required: true, className: "span-three" }) + choices(prefix + "healthcare", "Health Care Card", yesNo, { required: true, className: "span-three" }) +
+      field(prefix + "marital", "Marital Status", { type: "select", options: ["Married", "De-Facto", "Divorced", "Single", "Separated", "Widowed", "Engaged", "Other"], required: true }) + field(prefix + "religion", "Religion", { type: "select", options: religions, required: true }) +
+      choices(prefix + "sms", "SMS Messaging", yesNo, { required: true, className: "span-three", hint: "Is this person to receive SMS messaging (for emergency and reminder purposes)." }) + choices(prefix + "healthcare", "Health Care Card", yesNo, { required: true, className: "span-three" }) +
       `<div class="conditional-panel span-three" data-healthcare="${prefix}healthcare"><div class="field-grid two">${field(prefix + "healthcare_number", "Health Care Card No.", { required: true })}${field(prefix + "healthcare_expiry", "Health Care Card Expiry", { type: "date", required: true })}</div></div>` +
       `<h5 class="subsection-heading span-three">Residential and postal address</h5>` +
-      field(prefix + "address", "Residential Address", { required: true, className: "span-two" }) + field(prefix + "suburb", "Suburb", { required: true }) + field(prefix + "state", "State", { required: true }) + field(prefix + "postcode", "Postcode", { required: true }) + field(prefix + "country", "Country", { required: true, list: "country-list", value: "Australia" }) + choices(prefix + "postal_same", "Postal Address Same as Residential?", yesNo, { required: true, className: "span-three" }) +
-      `<div class="conditional-panel span-three" data-postal="${prefix}postal_same"><div class="field-grid">${field(prefix + "postal_address", "Postal Address", { required: true, className: "span-two" })}${field(prefix + "postal_suburb", "Postal Suburb", { required: true })}${field(prefix + "postal_state", "Postal State", { required: true })}${field(prefix + "postal_postcode", "Postal Postcode", { required: true })}${field(prefix + "postal_country", "Postal Country", { required: true, list: "country-list" })}</div></div>` +
+      `<p class="address-autofill-note span-three">Your browser may offer a saved address. Selecting it can fill these fields without sending the address to a separate search service.</p>` +
+      field(prefix + "address", "Residential Address", { required: true, className: "span-two", autocomplete: `section-guardian-${index} address-line1` }) + field(prefix + "suburb", "Suburb", { required: true, autocomplete: `section-guardian-${index} address-level2` }) + field(prefix + "state", "State", { required: true, autocomplete: `section-guardian-${index} address-level1` }) + field(prefix + "postcode", "Postcode", { required: true, autocomplete: `section-guardian-${index} postal-code` }) + field(prefix + "country", "Country", { required: true, list: "country-list", value: "Australia", autocomplete: `section-guardian-${index} country-name`, hint: "Start typing to search." }) + choices(prefix + "postal_same", "Postal Address Same as Residential?", yesNo, { required: true, className: "span-three" }) +
+      `<div class="conditional-panel span-three" data-postal="${prefix}postal_same"><div class="field-grid">${field(prefix + "postal_address", "Postal Address", { required: true, className: "span-two", autocomplete: `section-guardian-postal-${index} address-line1` })}${field(prefix + "postal_suburb", "Postal Suburb", { required: true, autocomplete: `section-guardian-postal-${index} address-level2` })}${field(prefix + "postal_state", "Postal State", { required: true, autocomplete: `section-guardian-postal-${index} address-level1` })}${field(prefix + "postal_postcode", "Postal Postcode", { required: true, autocomplete: `section-guardian-postal-${index} postal-code` })}${field(prefix + "postal_country", "Postal Country", { required: true, list: "country-list", autocomplete: `section-guardian-postal-${index} country-name` })}</div></div>` +
       `<h5 class="subsection-heading span-three">Occupation and education</h5>` +
-      field(prefix + "occupation_group", "Occupational Group", { type: "select", options: ["A", "B", "C", "D", "N - no paid employment in the previous 12 months"], required: true }) + field(prefix + "occupation", "Occupation", { required: true }) + field(prefix + "employer", "Employer") +
+      field(prefix + "occupation_group", "Occupational Group", { type: "select", options: occupationGroups, required: true, className: "span-two", hint: "Please refer to the ACARA Parent Occupation Groups guide to help select the appropriate occupational group." }) + field(prefix + "occupation", "Occupation", { type: "select", options: occupations, required: true }) + field(prefix + "employer", "Employer") +
       field(prefix + "school_education", "School Level Education", { type: "select", options: ["Year 12", "Year 11", "Year 10", "Year 9 or below"], required: true }) + field(prefix + "further_education", "University / Further Education", { type: "select", options: ["Bachelor degree or above", "Advanced Diploma / Diploma", "Certificate I-IV", "No post-school qualification"], required: true }) +
       `<h5 class="subsection-heading span-three">Residency</h5>` +
-      field(prefix + "birth_country", "Country of Birth", { list: "country-list", required: true }) + field(prefix + "nationality", "Nationality", { list: "country-list", required: true }) + field(prefix + "ethnicity", "Ethnicity", { required: true }) + field(prefix + "languages", "Languages", { list: "language-list", required: true }) +
-      field(prefix + "residency", "Residency Status", { type: "select", options: ["Citizen", "Permanent Resident", "Temporary Resident"], required: true }) + `<div class="conditional-panel span-three" data-guardian-visa="${prefix}residency"><div class="field-grid two">${field(prefix + "visa_subclass", "Visa Subclass", { required: true })}${field(prefix + "visa_expiry", "Visa Expiry", { type: "date", required: true })}</div></div>` +
+      field(prefix + "birth_country", "Country of Birth", { list: "country-list", required: true, hint: "Start typing to search." }) + field(prefix + "nationality", "Nationality", { list: "country-list", required: true, hint: "Start typing to search." }) + field(prefix + "ethnicity", "Ethnicity") + field(prefix + "languages", "Record all languages spoken", { list: "language-list", required: true, hint: "Start typing to search; separate multiple languages with commas." }) +
+      field(prefix + "residency", "Residency Status", { type: "select", options: ["Citizen", "Permanent Resident", "Temporary Resident"], required: true }) + `<div class="conditional-panel span-three" data-guardian-visa="${prefix}residency"><p class="visa-evidence-note">Please provide up to date evidence of visa status from the Department of Home Affairs, including any changes to visa or citizenship as soon as notified</p><div class="field-grid two">${field(prefix + "visa_subclass", "Visa Subclass", { required: true })}${field(prefix + "visa_expiry", "Visa Expiry", { type: "date", required: true })}</div></div>` +
       choices(prefix + "indigenous", "Aboriginal / Torres Strait Islander", ["Aboriginal", "Torres Strait Islander", "Aboriginal and Torres Strait Islander", "Not Applicable"], { required: true, className: "span-three" }) +
       (index > 0 ? choices(prefix + "permission", "Can the school contact this person?", [CONTACT_PERMISSION_YES, CONTACT_PERMISSION_NO], { required: true, className: "span-three" }) + `<div class="contact-permission-notice span-three" data-contact-permission-notice="${prefix}permission" role="status"><strong>Do not contact</strong><p>Please note: This person will not receive messages or a separate signature request. If their signature is required, Rosewood College will contact you to discuss the next steps.</p></div>` : "");
   }
 
   function renderApplicationGuardians() {
-    const emergency = index => field(`emergency_${index}_first`, "First Name", { required: true }) + field(`emergency_${index}_last`, "Last Name", { required: true }) + field(`emergency_${index}_relationship`, "Relationship", { required: true }) + field(`emergency_${index}_mobile`, "Mobile Phone", { type: "tel", required: true }) + field(`emergency_${index}_home`, "Home Phone", { type: "tel" }) + field(`emergency_${index}_work`, "Work Phone", { type: "tel" }) + field(`emergency_${index}_email`, "Email", { type: "email" });
+    const emergency = index => field(`emergency_${index}_first`, "First Name", { required: true }) + field(`emergency_${index}_last`, "Last Name", { required: true }) + field(`emergency_${index}_relationship`, "Relationship", { type: "select", options: emergencyRelationships, required: true }) + field(`emergency_${index}_mobile`, "Mobile Phone", { type: "tel", required: true }) + field(`emergency_${index}_home`, "Home Phone", { type: "tel" }) + field(`emergency_${index}_work`, "Work Phone", { type: "tel" }) + field(`emergency_${index}_email`, "Email", { type: "email" });
     return intro("Parent / Guardian", "Confirm the prefilled primary contact, add each legal parent or guardian and provide two emergency contacts.", "Application for enrolment") +
       section("Parents and Guardians", repeatBlock("appGuardian", "Contact", applicationGuardianFields) + communicationNotice(), `${state.counts.appGuardian} contact records`) +
       section("Guardian Confirmation", check("app_guardians_complete", "I have used Add Contact to enter any additional legal parent or guardian details, or there is no additional parent or guardian to add.", { required: true })) +
@@ -490,15 +585,17 @@
   }
 
   function renderApplicationConditions() {
-    return intro("Conditions", "Confirm previous-school permission, school-fee responsibility and the application survey.", "Application for enrolment") +
-      section("Previous School / Preschool Permission", check("previous_school_permission", "I / We give permission for the school to contact the previous school or preschool to gather relevant reports and information for educational planning.", { required: true }) + `<div class="field-grid two">${field("previous_school_name", "Name of Previous School / Preschool / Kindergarten", { required: true })}${field("previous_school_address", "Address", { required: true })}</div>${choices("previous_school_interstate", "Interstate?", ["No", "Yes", "Not Applicable"], { required: true })}`) +
-      section("School Fee Responsibility", `<p class="section-question">Who will be responsible for payment of school fees?</p><p class="fee-responsibility-note"><strong>Please note, the name/s of the parent / carers signing are responsible for the payment of fees for the term of the child's enrolment at the school.</strong></p>${choices("fee_option", "Choose one fee responsibility option", ["Both Parents / Guardian", "One Parent / Guardian", "Percentage split with custodial court order"], { required: true, grid: true })}<div class="conditional-panel" data-fee="Both Parents / Guardian"><p class="conditional-note">Please nominate Parent / Guardian A or Parent / Guardian B to receive the fee account.</p><div class="field-grid two">${field("fee_both_nominee", "Fee account recipient", { type: "select", options: ["Parent / Guardian A", "Parent / Guardian B"], required: true })}${field("fee_both_date", "Date", { type: "date", required: true })}</div></div><div class="conditional-panel" data-fee="One Parent / Guardian"><div class="field-grid two">${field("fee_one_nominee", "Fee account recipient", { type: "select", options: ["Parent / Guardian A", "Parent / Guardian B"], required: true })}${field("fee_one_date", "Date", { type: "date", required: true })}</div></div><div class="conditional-panel" data-fee="Percentage split with custodial court order"><div class="field-grid">${field("fee_guardian_a", "Guardian A Name", { required: true })}${field("fee_guardian_a_percent", "Guardian A Percentage", { type: "number", min: 0, max: 100, required: true })}${field("fee_guardian_b", "Guardian B Name", { required: true })}${field("fee_guardian_b_percent", "Guardian B Percentage", { type: "number", min: 0, max: 100, required: true })}${field("fee_split_date", "Date", { type: "date", required: true })}</div></div>`) +
-      section("Survey", `<div class="field-grid">${field("application_discovery", "How did you hear about us?", { type: "select", options: applicationDiscoverySources, required: true, className: "span-two" })}</div>${choices("application_influences", "Please indicate the three most important things that influenced your decision", influenceFactors, { multiple: true, grid: true, required: true, max: 3, exact: 3 })}`) + actions();
+    const list = items => `<ul class="agreement-list">${items.map(item => `<li>${esc(item)}</li>`).join("")}</ul>`;
+    return intro("Conditions", "Review the three Parent / Carer Agreement sections and confirm each one before continuing.", "Application for enrolment") +
+      section("Student commitments", `<p class="agreement-lead">I/We agree that if my/our child is enrolled at Rosewood College he/she should:</p>${list(hhcStudentCommitments)}${check("application_student_agreement", "I / We agree to the student commitments above.", { required: true })}`) +
+      section("Parent / Carer commitments", `<p class="agreement-lead">If my/our child is enrolled at Rosewood College, I/we agree to:</p>${list(hhcParentCommitments)}${check("application_parent_agreement", "I / We agree to the parent / carer commitments above.", { required: true })}`) +
+      section("Acknowledgement", `${check("application_agreement_acknowledgement", "I/We acknowledge having read the particulars contained in this enrolment form and understand my/our obligations to support Rosewood College in all areas of my/our child's education.", { required: true })}`) + actions();
   }
 
   function signaturePanel(prefix, declaration, options = {}) {
     const isChecked = name => Array.isArray(state.values[name]) ? state.values[name].length > 0 : Boolean(state.values[name]);
-    return `<article class="signature-card"><h4>${options.title || "Parent / Guardian"}</h4><label class="declaration"><input type="checkbox" name="${prefix}_ip" required${isChecked(`${prefix}_ip`) ? " checked" : ""}><span>I acknowledge and agree that, at the time of signing this form, my IP address will be recorded and stored by the School for administrative, security and legal compliance purposes. <span class="required">*</span></span></label><p class="validation-message" data-validation-for="${prefix}_ip" hidden>You must acknowledge the IP address recording to continue</p><label class="declaration"><input type="checkbox" name="${prefix}_terms" required${isChecked(`${prefix}_terms`) ? " checked" : ""}><span>${declaration} <span class="required">*</span></span></label><p class="validation-message" data-validation-for="${prefix}_terms" hidden>You must agree to the terms to continue</p><div class="signature-wrap is-locked" data-signature="${prefix}" data-auto-date="${options.autoDate ? "true" : "false"}"><canvas width="960" height="190" tabindex="0" aria-label="Signature area. Use a pointer to sign or press Enter to add a review signature."></canvas><div class="signature-overlay">Please agree to the terms above to enable signing</div></div><p class="signature-recording-note">Your drawing is kept in this browser while you review the form. It is securely recorded only when you submit.</p><button type="button" class="button button-secondary" data-clear-signature="${prefix}" disabled>Clear Signature</button><div class="field-grid two">${field(`${prefix}_date`, "Date", { type: "date", required: true, readonly: options.autoDate })}</div></article>`;
+    const fixedDate = options.fixedDate ? melbourneDate() : "";
+    return `<article class="signature-card"><h4>${options.title || "Parent / Guardian"}</h4><label class="declaration"><input type="checkbox" name="${prefix}_ip" required${isChecked(`${prefix}_ip`) ? " checked" : ""}><span>I acknowledge and agree that, at the time of signing this form, my IP address will be recorded and stored by the School for administrative, security and legal compliance purposes. <span class="required">*</span></span></label><p class="validation-message" data-validation-for="${prefix}_ip" hidden>You must acknowledge the IP address recording to continue</p><label class="declaration"><input type="checkbox" name="${prefix}_terms" required${isChecked(`${prefix}_terms`) ? " checked" : ""}><span>${declaration} <span class="required">*</span></span></label><p class="validation-message" data-validation-for="${prefix}_terms" hidden>You must agree to the terms to continue</p><div class="signature-wrap is-locked" data-signature="${prefix}" data-auto-date="${options.autoDate ? "true" : "false"}"><canvas width="960" height="190" tabindex="0" aria-label="Signature area. Use a pointer to sign or press Enter to add a review signature."></canvas><div class="signature-overlay">Please agree to the terms above to enable signing</div></div><p class="signature-recording-note">Your drawing is kept in this browser while you review the form. It is securely recorded only when you submit.</p><button type="button" class="button button-secondary" data-clear-signature="${prefix}" disabled>Clear Signature</button><div class="field-grid two signature-date-grid">${field(`${prefix}_date`, "Date", { type: "date", required: true, readonly: options.autoDate || options.fixedDate, value: fixedDate, hint: options.fixedDate ? "Set securely to the date this application is submitted." : "" })}</div></article>`;
   }
 
   function renderApplicationSignature() {
@@ -514,7 +611,7 @@
     const reasonHint = state.counts.appGuardian === 1 ? "Only one parent/guardian has been included in this application. Enter the reason above or call the College to discuss." : "Only one signature is being provided for the parent or guardian marked Do not contact. Enter the reason above or call the College to discuss.";
     const explanation = `<div class="guardian-signature-followup">${cards}${permitted.length ? check("application_additional_signature_later", "I understand that each parent or guardian marked Contact permitted will receive a separate signature request after I submit this application.", { required: true }) : ""}${needsExplanation ? `<div class="field-grid">${field("application_one_signature_reason", "Explanation for only one signature", { type: "textarea", required: true, className: "span-three", hint: reasonHint })}</div>` : ""}</div>`;
     return intro("Signature", "Completing, signing and lodging this application is required for consideration but does not guarantee enrolment. Enrolment is formalised only after an offer and Enrolment Agreement.", "Application for enrolment") +
-      section("Signature of Parents / Guardians", `<p class="signature-disclaimer"><strong>Disclaimer:</strong> Personal information will be held, used and disclosed in accordance with the College Privacy Collection Notice and Privacy Policy.</p>${signaturePanel("application_signature", "I declare that I have read, understood and given consent to all matters contained in this application.", { title: "Parent / Guardian: Primary Contact" })}${explanation}<div class="field-grid">${field("application_additional_information", "Additional Information", { type: "textarea", className: "span-three" })}</div>`) + actions({ label: liveWorkflow() ? "Submit application" : "Submit application preview" });
+      section("Signature of Parents / Guardians", `<p class="signature-disclaimer"><strong>Disclaimer:</strong> Personal information will be held, used and disclosed in accordance with the College Privacy Collection Notice and Privacy Policy.</p>${signaturePanel("application_signature", "I declare that I have read, understood and given consent to all matters contained in this application.", { title: "Parent / Guardian: Primary Contact", fixedDate: true })}${explanation}<div class="field-grid">${field("application_additional_information", "Additional Information", { type: "textarea", className: "span-three" })}</div>`) + actions({ label: liveWorkflow() ? "Submit application" : "Submit application preview" });
   }
 
   function acceptanceContactFields(index, prefixBase = "acceptance") {
@@ -867,6 +964,7 @@
     if (resendButton && state.otpResends[resendButton.dataset.resendKind]) startResendCountdown(resendButton.dataset.resendKind);
     const panel = document.querySelector(".form-panel");
     if (panel && state.screen > 0) panel.scrollIntoView({ block: "start" });
+    persistBrowserSession();
   }
 
   function setConditional(selector, visible) {
@@ -890,18 +988,22 @@
     setConditional('[data-conditional="other-current-school"]', root.querySelector('[name="current_school"]')?.value === "Other");
     setConditional('[data-conditional="other-care-arrangement"]', selectedMany("care_arrangement").includes("Other"));
     setConditional('[data-conditional="shared-parenting"]', selectedMany("care_arrangement").includes("Shared Custody"));
+    setConditional('[data-conditional="previous-school-attended"]', selected("previous_school_attended") === "Yes");
+    setConditional('[data-conditional="interrupted-schooling"]', selected("interrupted_schooling") === "Yes");
     setConditional('[data-conditional="future-siblings"]', selected("future_siblings") === "Yes");
     const citizenshipRequiresEvidence = selected("australian_citizen") === "No";
     const residencyEvidence = selected("residency_evidence");
     setConditional('[data-conditional="residency-evidence"]', citizenshipRequiresEvidence);
     setConditional('[data-conditional="visa-details"]', citizenshipRequiresEvidence && Boolean(residencyEvidence) && residencyEvidence !== "Eligible for Australian Passport");
     setConditional('[data-conditional="additional-needs"]', selected("additional_needs") === "Yes");
+    setConditional('[data-conditional="formal-assessment"]', selected("formal_assessment") === "Yes");
     setConditional('[data-conditional="other-need"]', selectedMany("need_categories").includes("Other"));
     setConditional('[data-conditional="other-professional"]', selectedMany("professional_categories").includes("Other"));
     setConditional('[data-conditional="other-medical"]', selectedMany("medical_conditions").includes("Other"));
     root.querySelectorAll("[data-sacrament]").forEach(container => setConditional(`[data-sacrament="${container.dataset.sacrament}"]`, root.querySelector(`[name="${CSS.escape(container.dataset.sacrament)}"]`)?.checked));
     root.querySelectorAll("[data-postal]").forEach(container => setConditional(`[data-postal="${container.dataset.postal}"]`, selected(container.dataset.postal) === "No"));
     root.querySelectorAll("[data-healthcare]").forEach(container => setConditional(`[data-healthcare="${container.dataset.healthcare}"]`, selected(container.dataset.healthcare) === "Yes"));
+    root.querySelectorAll("[data-student-healthcare]").forEach(container => setConditional(`[data-student-healthcare="${container.dataset.studentHealthcare}"]`, selected(container.dataset.studentHealthcare) === "Yes"));
     root.querySelectorAll("[data-contact-permission-notice]").forEach(container => {
       const permissionField = container.dataset.contactPermissionNotice;
       const prohibited = selected(permissionField) === CONTACT_PERMISSION_NO;
@@ -913,11 +1015,6 @@
     root.querySelectorAll("[data-guardian-visa]").forEach(container => {
       const fieldName = container.dataset.guardianVisa;
       setConditional(`[data-guardian-visa="${fieldName}"]`, root.querySelector(`[name="${CSS.escape(fieldName)}"]`)?.value === "Temporary Resident");
-    });
-    root.querySelectorAll("[data-fee]").forEach(container => {
-      const visible = selected("fee_option") === container.dataset.fee;
-      container.hidden = !visible;
-      container.querySelectorAll("input, select, textarea").forEach(control => { control.disabled = !visible; });
     });
     updateActionReadiness();
     updateSignatureLocks();
@@ -1075,6 +1172,10 @@
         if (!control.checked) markInvalid(control, messages);
       } else if (!control.value.trim()) markInvalid(control, messages);
       else if (control.type === "email" && !control.checkValidity()) markInvalid(control, messages, "Enter a valid email address");
+    });
+    root.querySelectorAll('input[type="date"]').forEach(control => {
+      if (control.disabled || control.closest("[hidden]") || !control.value || control.checkValidity()) return;
+      markInvalid(control, messages, "Enter a valid date that is not in the future");
     });
     root.querySelectorAll("[data-required-group]").forEach(group => {
       if (group.closest("[hidden]") || group.querySelectorAll("input:not(:disabled)").length === 0) return;
@@ -1633,6 +1734,7 @@
     state.lastSavedSnapshot = "";
     state.changeVersion = 0;
     state.sessionAbsoluteExpiresAt = 0;
+    clearPersistedBrowserSession();
   }
 
   function returnToSignIn() {
@@ -1842,10 +1944,16 @@
     if (action?.dataset.action === "resend-code") return resendCode(action.dataset.resendKind);
     if (add) {
       captureValues();
-      state.counts[add.dataset.add] += 1;
+      const kind = add.dataset.add;
+      state.counts[kind] += 1;
       const confirmations = { appGuardian: "app_guardians_complete", acceptanceGuardian: "acceptance_guardians_complete", declineGuardian: "decline_guardians_complete" };
-      if (confirmations[add.dataset.add]) state.values[confirmations[add.dataset.add]] = [];
+      if (confirmations[kind]) state.values[confirmations[kind]] = [];
       render();
+      const addedCard = root.querySelector(`[data-repeat-kind="${CSS.escape(kind)}"][data-repeat-index="${state.counts[kind] - 1}"]`);
+      if (addedCard) {
+        addedCard.scrollIntoView({ block: "start", behavior: "smooth" });
+        window.setTimeout(() => addedCard.focus({ preventScroll: true }), 350);
+      }
       scheduleAutosave();
       return;
     }
@@ -1921,5 +2029,5 @@
     event.preventDefault();
     event.returnValue = "";
   });
-  render();
+  restoreBrowserSession().finally(render);
 })();

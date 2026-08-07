@@ -50,7 +50,7 @@ allowlisted email OTP and currently covers EOI and Application for Enrolment onl
 - responsive desktop and mobile presentation
 - an internal responsive reader for the approved Enrolment Policy, Enrolment Procedure
   and Privacy Policy, with direct routes and original Word/PDF fallbacks
-- required-field, repeatable-record, conditional, fee and signature interactions
+- required-field, repeatable-record, conditional, application-agreement and signature interactions
 - the complete 444-entry ABS ASCL 2025 Main Language catalogue
 
 ## Backend Boundary
@@ -66,8 +66,11 @@ file into Drive. The staging object is deleted after a successful move and aband
 objects expire after one day; S3 is not an authoritative or staff-facing file store.
 GuardDuty and long-term S3 document storage are outside the launch scope.
 
-The browser still does not use cookies, local storage, session storage or IndexedDB.
-Family and child-application sessions remain in memory and expire after 20 minutes of
+The family page does not store application answers in cookies, local storage, session
+storage or IndexedDB. It stores only opaque family/application/status session tokens,
+the verified email, current screen and absolute expiry in per-tab `sessionStorage` so a
+refresh can resume without another OTP while the server session is valid. Family and
+child-application sessions expire after 20 minutes of
 inactivity, with an eight-hour absolute limit. A family invitation and email OTP reveal
 only the child records attached to that invitation; selecting or creating a child
 produces a separate application-scoped session. Application answers autosave after a
@@ -120,7 +123,10 @@ header shows the current workflow/section and truthful save or connectivity stat
 desktop and mobile. The non-writing internal review URL retains an explicit review
 warning.
 
-The staff portal also keeps its two-hour session in memory only. It displays operational
+The staff portal keeps its ordinary two-hour session in memory. When staff explicitly
+select **Remember me on this device**, the opaque staff token is retained in local
+browser storage and its server expiry slides to two hours after each authorised
+activity; sign-out or expiry removes it. No staff dashboard data is persisted there. It displays operational
 summaries, creates direct or EOI-linked invitations, rotates tokens when resending and
 provides audited application review. It lists document metadata but does not create
 document-sharing links; authorised staff access documents through the restricted
@@ -150,3 +156,6 @@ stakeholder-facing general workflow, section-level data flows, access matrix and
 live/preview boundaries. See these records together with
 `SOURCE-COMPLIANCE.md`, `TESTING.md`, `STAFF-PORTAL-RUNBOOK.md` and
 `RELEASE-BLOCKERS.md` before inviting real families.
+
+`V6.7-CHANGE-MAP.md` records the exact August 2026 question, interaction, migration and
+compatibility release implemented for active invitations.

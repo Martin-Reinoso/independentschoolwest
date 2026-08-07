@@ -21,8 +21,11 @@ preview-only workflows. Do not record or manage them through this portal.
   invite and resend; viewers cannot.
 - Codes expire after 10 minutes, allow five attempts and have server-side email/network
   throttling plus a 30-second resend cooldown.
-- Staff sessions expire after two hours and are held in browser memory only. Closing or
-  refreshing the page requires a new code.
+- Staff sessions expire after two hours. Without **Remember me**, the token remains in
+  browser memory and a refresh requires a new code. With explicit **Remember me**, only
+  the opaque token, staff email and expiry are kept in local browser storage; each
+  authorised activity slides the server expiry to two hours. Sign-out and expiry clear
+  the remembered token. Do not enable it on a shared or unmanaged device.
 - Do not forward staff codes or leave a signed-in portal unattended.
 
 ## Direct Invitation
