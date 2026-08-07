@@ -7,6 +7,9 @@ Parameters:
   SenderEmail:
     Type: String
     Default: enrolment@ffe.org.au
+  SenderName:
+    Type: String
+    Default: Rosewood College Enrolment
   ReplyToEmail:
     Type: String
     Default: enrolment@ffe.org.au
@@ -411,6 +414,7 @@ Resources:
           ALLOW_UNSCANNED_GOOGLE_DOCUMENTS: "true"
           ROSEWOOD_CONFIG_SECRET_ARN: !Ref ConfigSecretArn
           SENDER_EMAIL: !Ref SenderEmail
+          SENDER_NAME: !Ref SenderName
           REPLY_TO_EMAIL: !Ref ReplyToEmail
           GOOGLE_EOI_FOLDER_ID: !Ref GoogleEoiFolderId
           GOOGLE_APPLICATION_FOLDER_ID: !Ref GoogleApplicationFolderId

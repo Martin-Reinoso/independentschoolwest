@@ -61,8 +61,9 @@ test("invitation emails use the approved direct and EOI-linked variants", () => 
   assert.match(application.text, /expires on 4 September 2026/);
   assert.match(linked.text, /expressed interest in Foundation, 2027 at Rosewood College for your child Avery Example/);
   assert.match(linked.text, /prefill parts of the application/);
-  assert.match(application.html, /copy and paste this private link into your browser/i);
-  assert.equal(application.html.split(applicationUrl).length - 1, 3);
+  assert.doesNotMatch(application.html, /copy and paste this private link into your browser/i);
+  assert.equal(application.html.split(applicationUrl).length - 1, 1);
+  assert.equal(application.text.split(applicationUrl).length - 1, 1);
   assert.match(signature.html, /copy and paste this private link into your browser/i);
   assert.equal(signature.html.split(signingUrl).length - 1, 3);
   assert.equal(signature.subject, "Signature requested for a Rosewood College Application for Enrolment");

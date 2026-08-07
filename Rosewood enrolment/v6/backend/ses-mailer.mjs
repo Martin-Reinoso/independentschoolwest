@@ -1,8 +1,14 @@
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 
+function formattedMailbox(displayName, address) {
+  const safeName = String(displayName || "").replace(/[\r\n<>]/g, " ").replace(/\s+/g, " ").trim();
+  return safeName ? `${safeName} <${address}>` : address;
+}
+
 export class SesMailer {
-  constructor({ from, replyTo, configurationSetName, client = new SESv2Client({}) }) {
+  constructor({ from, fromName, replyTo, configurationSetName, client = new SESv2Client({}) }) {
     this.from = from;
+    this.fromName = fromName;
     this.replyTo = replyTo;
     this.configurationSetName = configurationSetName;
     this.client = client;
@@ -10,7 +16,7 @@ export class SesMailer {
 
   async send({ to, subject, text, html, tags = {} }) {
     const result = await this.client.send(new SendEmailCommand({
-      FromEmailAddress: this.from,
+      FromEmailAddress: formattedMailbox(this.fromName, this.from),
       ReplyToAddresses: this.replyTo ? [this.replyTo] : undefined,
       Destination: { ToAddresses: [to] },
       ConfigurationSetName: this.configurationSetName || undefined,

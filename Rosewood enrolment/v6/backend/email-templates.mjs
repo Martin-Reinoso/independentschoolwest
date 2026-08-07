@@ -35,7 +35,7 @@ export function applicationInvitation({ firstName, studentName, entryLevel, entr
   const introduction = linked ? linkedIntro : directIntro;
   const invitation = linked ? linkedInvite : directInvite;
   const text = `Dear ${greeting},\n\n${introduction}\n\n${invitation}\n\nBEGIN APPLICATION\n${invitationUrl}\n\n${assistance}\n\n${signoff}\n\n${expiry}`;
-  const html = frame(`<h1 style="font:700 28px Georgia,serif">Application for Enrolment</h1><p>Dear ${htmlEscape(greeting)},</p><p>${htmlEscape(introduction)}</p><p>${htmlEscape(invitation)}</p>${button("BEGIN APPLICATION", invitationUrl)}${fallbackLink(invitationUrl)}<p>${htmlEscape(assistance)}</p><p>Kind regards,</p><p>Rosewood College Enrolment Team</p><p style="font-size:14px;color:#566070">${htmlEscape(expiry)}</p>`);
+  const html = frame(`<h1 style="font:700 28px Georgia,serif">Application for Enrolment</h1><p>Dear ${htmlEscape(greeting)},</p><p>${htmlEscape(introduction)}</p><p>${htmlEscape(invitation)}</p>${button("BEGIN APPLICATION", invitationUrl)}<p>${htmlEscape(assistance)}</p><p>Kind regards,</p><p>Rosewood College Enrolment Team</p><p style="font-size:14px;color:#566070">${htmlEscape(expiry)}</p>`);
   return { subject, text, html };
 }
 
