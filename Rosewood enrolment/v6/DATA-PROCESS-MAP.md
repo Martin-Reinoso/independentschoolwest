@@ -378,6 +378,13 @@ child selector has Sign out rather than Back, so it cannot return to an already-
 OTP screen. If the page is refreshed or closed without using the control, the memory-only
 session is lost but the last acknowledged server draft remains.
 
+The browser mirrors the server's sliding 20-minute inactivity period. A successful
+authenticated request resets the browser timer. If the timer elapses, or the API reports
+an expired/required session, a blocking dialog explains that the last acknowledged
+progress remains safe and whether newer changes may need to be re-entered. It cannot be
+dismissed with Escape or a close control. **Return to sign in** clears session-bound data
+from browser memory and returns to the private Application gateway for a new OTP.
+
 ### Section 1: Student
 
 | Subsection | Data categories | Important conditions | Destination |

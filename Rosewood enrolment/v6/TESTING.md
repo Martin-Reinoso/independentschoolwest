@@ -17,7 +17,7 @@ Test date: 7 August 2026
 - no inline styles are used in V6-rendered content
 - scans found no family-facing `Secure enrolment form`, backend-scope or
   `Progress saves when you continue` wording
-- the live page references V6 CSS `v=5` and JavaScript `v=9`
+- the live page references V6 CSS `v=6` and JavaScript `v=10`
 
 ## Browser Checks
 
@@ -105,6 +105,10 @@ Tested through a local HTTP server in the Codex in-app browser.
   serialization and unchanged-snapshot suppression
 - offline, online, failed-save and expired-session paths update the sticky status; an
   unsaved close attempt invokes the browser's standard leave warning
+- session expiry opens a blocking dialog automatically after the mirrored 20-minute
+  inactivity window or immediately after a server expiry response; Escape is prevented,
+  saved versus potentially unsaved wording is selected from current state, and Return to
+  sign in clears browser session data and restores the Application gateway
 
 ## Responsive Checks
 

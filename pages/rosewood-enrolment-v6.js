@@ -8,6 +8,8 @@
   const progress = document.querySelector("#progress");
   const reviewTools = document.querySelector("#review-tools");
   const frameSelect = document.querySelector("#frame-select");
+  const sessionExpiredDialog = document.querySelector("#session-expired-dialog");
+  const sessionExpiredCopy = document.querySelector("#session-expired-copy");
   const params = new URLSearchParams(location.search);
   const reviewMode = params.get("review") === "1";
   const apiBase = "https://6zyzo44sdb5zmmx53toktqrnuu0sikyd.lambda-url.ap-southeast-2.on.aws";
@@ -29,6 +31,7 @@
     saveStatus: "idle",
     lastSavedSnapshot: "",
     changeVersion: 0,
+    sessionAbsoluteExpiresAt: 0,
     paused: false,
     otpResends: {},
     counts: { appGuardian: 2, sibling: 1, futureSibling: 1, relative: 1, emergency: 2, acceptanceGuardian: 2, declineGuardian: 1 }
@@ -36,9 +39,11 @@
   let resendTimer;
   let autosaveTimer;
   let autosaveMaxTimer;
+  let sessionExpiryTimer;
   let saveQueue = Promise.resolve();
   const AUTOSAVE_DEBOUNCE_MS = 1200;
   const AUTOSAVE_MAX_WAIT_MS = 8000;
+  const APPLICATION_IDLE_SECONDS = 20 * 60;
 
   function liveWorkflow() {
     return !reviewMode && ["eoi", "application"].includes(state.workflow);
@@ -46,13 +51,14 @@
 
   async function api(path, options = {}) {
     const { authToken, ...requestOptions } = options;
+    const requestAuthToken = authToken || state.sessionToken;
     let response;
     try {
       response = await fetch(`${apiBase}${path}`, {
         ...requestOptions,
         headers: {
           "Content-Type": "application/json",
-          ...(authToken || state.sessionToken ? { Authorization: `Bearer ${authToken || state.sessionToken}` } : {}),
+          ...(requestAuthToken ? { Authorization: `Bearer ${requestAuthToken}` } : {}),
           ...(options.headers || {})
         }
       });
@@ -67,16 +73,53 @@
       error.details = payload.details;
       throw error;
     }
+    if (requestAuthToken && path !== "/v6/session/logout") armSessionExpiry(payload.idleTimeoutSeconds);
     return payload;
   }
 
   function showServiceError(error) {
+    if (["SESSION_EXPIRED", "SESSION_REQUIRED"].includes(error.code)) {
+      showSessionExpired();
+      return;
+    }
     const details = Array.isArray(error.details?.missing) && error.details.missing.length
       ? `<li>${esc(error.details.missing.length)} required answer${error.details.missing.length === 1 ? " is" : "s are"} still incomplete.</li>`
       : "";
     errorSummary.querySelector("ul").innerHTML = `<li>${esc(error.message)}</li>${details}`;
     errorSummary.hidden = false;
     errorSummary.focus();
+  }
+
+  function clearSessionExpiryTimer() {
+    clearTimeout(sessionExpiryTimer);
+    sessionExpiryTimer = undefined;
+  }
+
+  function armSessionExpiry(seconds = APPLICATION_IDLE_SECONDS) {
+    clearSessionExpiryTimer();
+    if (!liveWorkflow() || state.workflow !== "application" || !(state.sessionToken || state.familySessionToken)) return;
+    const idleDelay = Math.max(1, Number(seconds) || APPLICATION_IDLE_SECONDS) * 1000;
+    const absoluteDelay = state.sessionAbsoluteExpiresAt ? Math.max(0, state.sessionAbsoluteExpiresAt - Date.now()) : idleDelay;
+    sessionExpiryTimer = window.setTimeout(showSessionExpired, Math.min(idleDelay, absoluteDelay));
+  }
+
+  function beginSessionExpiry(result) {
+    if (Number(result.absoluteTimeoutSeconds) > 0) state.sessionAbsoluteExpiresAt = Date.now() + Number(result.absoluteTimeoutSeconds) * 1000;
+    armSessionExpiry(result.idleTimeoutSeconds || result.expiresInSeconds);
+  }
+
+  function showSessionExpired(forceUnsaved = false) {
+    if (!liveWorkflow() || state.workflow !== "application" || sessionExpiredDialog.open) return;
+    const unsaved = forceUnsaved || ["dirty", "saving", "offline", "error"].includes(state.saveStatus) || pendingDocumentFiles() || Boolean(state.signatures.application_signature);
+    clearAutosaveTimers();
+    clearSessionExpiryTimer();
+    state.saveStatus = "expired";
+    sessionExpiredCopy.textContent = unsaved
+      ? "For your security, this session ended after 20 minutes without activity. Your last successfully saved progress is safe, but changes made after the last save may need to be entered again."
+      : "For your security, this session ended after 20 minutes without activity. Your previously saved progress is safe.";
+    errorSummary.hidden = true;
+    updateSaveState(workflows.application.screens[state.screen]);
+    sessionExpiredDialog.showModal();
   }
 
   const yesNo = ["Yes", "No"];
@@ -940,8 +983,12 @@
         updateSaveState(workflows.application.screens[state.screen]);
         return result;
       } catch (error) {
-        state.saveStatus = ["SESSION_EXPIRED", "SESSION_REQUIRED"].includes(error.code) ? "expired" : (!navigator.onLine || ["NETWORK_ERROR", "NETWORK_OFFLINE"].includes(error.code)) ? "offline" : "error";
-        updateSaveState(workflows.application.screens[state.screen]);
+        const expired = ["SESSION_EXPIRED", "SESSION_REQUIRED"].includes(error.code);
+        if (expired) showSessionExpired(true);
+        else {
+          state.saveStatus = !navigator.onLine || ["NETWORK_ERROR", "NETWORK_OFFLINE"].includes(error.code) ? "offline" : "error";
+          updateSaveState(workflows.application.screens[state.screen]);
+        }
         throw error;
       }
     });
@@ -1001,6 +1048,7 @@
     state.lastSavedSnapshot = draftSnapshot({ values: state.values, screen: Number(result.context.screen || 2), guardianCount: state.counts.appGuardian, emergencyCount: state.counts.emergency });
     state.saveStatus = "saved";
     state.lastSavedLabel = result.context.updatedAt ? new Date(result.context.updatedAt).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" }) : "just now";
+    beginSessionExpiry(result);
   }
 
   async function selectFamilyApplication(applicationId, button) {
@@ -1026,6 +1074,7 @@
 
   function clearApplicationSession() {
     clearAutosaveTimers();
+    clearSessionExpiryTimer();
     state.sessionToken = "";
     state.familySessionToken = "";
     state.familyContext = null;
@@ -1036,6 +1085,18 @@
     state.signatures = {};
     state.lastSavedSnapshot = "";
     state.changeVersion = 0;
+    state.sessionAbsoluteExpiresAt = 0;
+  }
+
+  function returnToSignIn() {
+    clearApplicationSession();
+    state.saveStatus = "idle";
+    state.lastSavedLabel = "";
+    state.paused = false;
+    state.screen = 0;
+    state.otpResends.application = undefined;
+    sessionExpiredDialog.close();
+    render();
   }
 
   async function signOut() {
@@ -1100,6 +1161,7 @@
         state.lastSavedSnapshot = draftSnapshot({ values: state.values, screen: Number(result.context.screen || 2), guardianCount: state.counts.appGuardian, emergencyCount: state.counts.emergency });
         state.saveStatus = "saved";
       }
+      beginSessionExpiry(result);
       return next();
     }
     if (state.screen === 2) {
@@ -1142,7 +1204,7 @@
     try {
       await handleLiveSubmit();
     } catch (error) {
-      state.saveStatus = "error";
+      state.saveStatus = ["SESSION_EXPIRED", "SESSION_REQUIRED"].includes(error.code) ? "expired" : "error";
       setBusy(false);
       updateSaveState(workflows[state.workflow].screens[state.screen]);
       showServiceError(error);
@@ -1219,6 +1281,8 @@
   });
 
   frameSelect.addEventListener("change", () => { captureValues(); state.screen = Number(frameSelect.value); render(); });
+  sessionExpiredDialog.addEventListener("cancel", event => event.preventDefault());
+  document.querySelector("#return-to-sign-in").addEventListener("click", returnToSignIn);
   window.addEventListener("offline", () => {
     if (!applicationDraftActive()) return;
     clearAutosaveTimers();

@@ -79,6 +79,12 @@ body:not(.no-environment-ribbon) .form-header { top: 42px; }
 .step-actions .left { display: flex; flex-wrap: wrap; gap: .65rem; }
 .save-later-button { color: var(--navy); }
 .uploaded-document { margin-top: .45rem; color: var(--success); font-weight: 700; }
+.session-expired-dialog { width: min(520px, calc(100% - 2rem)); margin: auto; padding: 0; border: 0; border-radius: 18px; color: var(--ink); background: var(--paper); box-shadow: 0 30px 90px rgba(21,35,59,.3); }
+.session-expired-dialog::backdrop { background: rgba(15,27,47,.68); backdrop-filter: blur(5px); }
+.session-expired-card { padding: clamp(1.5rem, 5vw, 2.5rem); }
+.session-expired-card h2 { margin: 0 0 1rem; color: var(--navy); font: 600 clamp(1.8rem, 6vw, 2.45rem) Baskerville, serif; line-height: 1.05; }
+.session-expired-card > p:not(.eyebrow) { margin: 0 0 1rem; color: var(--ink); line-height: 1.65; }
+.session-expired-card .button { width: 100%; margin-top: .5rem; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes status-pulse { 50% { opacity: .42; transform: scale(.82); } }
 @media (max-width: 760px) {
