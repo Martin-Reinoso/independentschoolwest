@@ -47,3 +47,14 @@ test("legacy records resolve to the current workflow contract without changing a
   assert.equal(reference.formDefinitionHash, currentFormDefinition("application").definitionHash);
   assert.equal(reference.schemaVersion, "legacy-schema");
 });
+
+test("V8 keeps V7 addressable while retiring only the previous-education interface", () => {
+  const previous = getFormDefinition("application", "rosewood-application-2026.7");
+  const current = currentFormDefinition("application");
+  assert.equal(previous.formVersion, "rosewood-application-2026.7");
+  assert.equal(current.formVersion, "rosewood-application-2026.8");
+  assert.ok(previous.contract.requiredFields.includes("previous_school_attended"));
+  assert.ok(!current.contract.requiredFields.includes("previous_school_attended"));
+  assert.deepEqual(current.contract.retiredInterfaceFields, ["previous_school_attended", "previous_school_name", "previous_school_year_level"]);
+  assert.equal(current.contract.optionalSurveyFields.length, 11);
+});

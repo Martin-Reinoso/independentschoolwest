@@ -77,7 +77,10 @@ produces a separate application-scoped session. Application answers autosave aft
 short pause and during continuous typing. Selecting a document starts its upload
 immediately and displays per-file progress and inline retryable errors. Next and **Save
 and continue later** wait for any active transfer, flush the draft and, for save-later,
-revoke the browser sessions. Returning after OTP resumes the last acknowledged section.
+close the selected child's editing session while preserving the verified family session.
+The confirmation provides **Return to child applications**; the family can choose another
+child without returning to the consumed OTP screen. Returning after a later sign-in
+resumes the last acknowledged section.
 An unsigned drawing is kept only in the current browser session, survives navigation
 between application sections and is labelled `Signature ready`; it is recorded only
 after successful final validation and submission. Missing final answers are identified
@@ -157,5 +160,6 @@ live/preview boundaries. See these records together with
 `SOURCE-COMPLIANCE.md`, `TESTING.md`, `STAFF-PORTAL-RUNBOOK.md` and
 `RELEASE-BLOCKERS.md` before inviting real families.
 
-`V6.7-CHANGE-MAP.md` records the exact August 2026 question, interaction, migration and
-compatibility release implemented for active invitations.
+`V6.7-CHANGE-MAP.md` records the preceding contract release. `V6.8-CHANGE-MAP.md`
+records the current selector, student/address, survey, migration and compatibility
+release implemented for active invitations.

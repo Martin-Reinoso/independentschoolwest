@@ -20,6 +20,7 @@
 .child-application-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 1rem; align-items: center; padding: 1rem; border: 1px solid var(--line); border-radius: 14px; background: white; box-shadow: 0 8px 22px rgba(21,35,59,.04); }
 .child-application-icon { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; color: var(--navy); background: var(--sky-pale); font-weight: 900; }
 .child-application-main h4 { margin: 0 0 .6rem; color: var(--navy); font: 600 1.3rem Baskerville, serif; }
+.child-application-eoi-note { max-width: 620px; margin: -.15rem 0 .7rem; color: var(--muted); font-size: .78rem; line-height: 1.5; }
 .child-application-main dl { display: flex; flex-wrap: wrap; gap: .75rem 1.5rem; margin: 0; }
 .child-application-main dl > div { min-width: 150px; }
 .child-application-main dt { color: var(--muted); font-size: .66rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
@@ -39,10 +40,12 @@
 .family-question { margin-top: .25rem; }
 .group-intro { display: block; margin: 0 0 .75rem; color: var(--muted); font-size: .8rem; line-height: 1.5; }
 .citizenship-question { margin-top: 1.35rem; }
-.address-autofill-note, .visa-evidence-note, .immunisation-guidance { margin: 0 0 1rem; color: var(--muted); font-size: .8rem; line-height: 1.55; }
+.visa-evidence-note, .immunisation-guidance { margin: 0 0 1rem; color: var(--muted); font-size: .8rem; line-height: 1.55; }
 .visa-evidence-note { padding: .7rem .8rem; border-left: 3px solid var(--terracotta); background: #fff9f3; }
 .immunisation-guidance { padding: .85rem 1rem; border-left: 3px solid var(--sky); border-radius: 0 10px 10px 0; background: var(--sky-pale); }
 .immunisation-guidance p { margin: 0; }
+.immunisation-guidance a { color: var(--navy); font-weight: 800; text-underline-offset: 2px; }
+.immunisation-guidance a:focus-visible { outline: 3px solid var(--sky); outline-offset: 3px; }
 .government-context { margin: 0 0 1.25rem; padding: .9rem 1rem; border-left: 3px solid var(--sky); border-radius: 0 10px 10px 0; color: var(--muted); background: var(--sky-pale); }
 .government-context strong { display: block; margin-bottom: .25rem; color: var(--navy); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; }
 .government-context p { margin: 0; line-height: 1.55; }
@@ -150,6 +153,11 @@ body:not(.no-environment-ribbon) .form-header { top: 42px; }
 .signature-date-grid { max-width: 360px; }
 .signature-date-grid input { width: 100%; max-width: 100%; min-width: 0; }
 .field-grid > *, .field, .question { min-width: 0; }
+.country-catalogue-grid > .field:nth-child(-n+3) > span:first-child { min-height: 3rem; display: flex; align-items: flex-end; }
+.survey-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.survey-grid > .question { grid-column: 1 / -1; }
+.survey-grid textarea { min-height: 118px; }
+.visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
 input[type="date"] { width: 100%; max-width: 100%; min-width: 0; }
 .session-expired-dialog { width: min(520px, calc(100% - 2rem)); margin: auto; padding: 0; border: 0; border-radius: 18px; color: var(--ink); background: var(--paper); box-shadow: 0 30px 90px rgba(21,35,59,.3); }
 .session-expired-dialog::backdrop { background: rgba(15,27,47,.68); backdrop-filter: blur(5px); }
@@ -239,6 +247,7 @@ body:not(.no-environment-ribbon).policy-reader-open .policy-reader-toolbar { top
   .policy-reader-utilities { flex-direction: column; }
   .policy-contents, .policy-original-actions { flex: none; max-width: none; width: 100%; }
   .policy-contents ol { grid-template-columns: 1fr; }
+  .survey-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
   .no-environment-ribbon .page-shell { padding-top: 0; }
@@ -252,6 +261,7 @@ body:not(.no-environment-ribbon).policy-reader-open .policy-reader-toolbar { top
   .child-application-icon { width: 40px; height: 40px; }
   .child-application-main dl { display: grid; gap: .65rem; }
   .child-application-main dl > div { min-width: 0; }
+  .child-application-eoi-note { margin-top: -.25rem; }
   .child-application-action { grid-column: 1 / -1; }
   .child-application-action .button { width: 100%; }
   .repeat-controls { align-items: stretch; }
@@ -287,5 +297,6 @@ body:not(.no-environment-ribbon).policy-reader-open .policy-reader-toolbar { top
   .policy-register th { padding-bottom: .2rem; border-top: 1px solid var(--line); }
   .policy-register td { padding-top: .2rem; border-top: 0; }
   .policy-reader-footer .button { width: 100%; min-width: 0; }
+  .country-catalogue-grid > .field:nth-child(-n+3) > span:first-child { min-height: 0; display: block; }
 }
 @media (prefers-reduced-motion: reduce) { .busy-spinner, .button-spinner, .save-state.is-saving > span { animation: none; } }

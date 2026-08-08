@@ -112,6 +112,44 @@ their original immutable definition.
   upgrade revision and audit event, and does not submit or duplicate the record.
 - Submitted applications, submitted snapshots and signature evidence never upgrade.
 
+# V6.8 Application Question Matrix
+
+`rosewood-application-2026.8` is the current contract for new and editable Application
+records. V6.7 remains immutable for submitted records.
+
+| Area | V6.8 question or rule | Required/condition | Storage and downstream rule |
+| --- | --- | --- | --- |
+| Child selector | Direct invitation source | Not displayed to families | Operational source remains on invitation/application records and in staff portal |
+| Child selector | Information from your Expression of Interest has been included. | Displayed only when `sourceEoiId` is present | Informational only; no new answer |
+| Student details | Interrupted schooling | Required; Yes requires approximate dates/details | Existing `interrupted_schooling` keys; Student projection |
+| Retired previous education | Previous attendance, institution and year level | Not rendered or required | Historical values remain in earlier revisions/answer maps; omitted from V6.8 guardian review |
+| Student primary address | Share this address with other Parent/Guardian? | Required | Existing `student_address_share`; Student projection |
+| Student primary address | Home Care Arrangement | Required compact single-select; Other and Shared Custody require details | Existing care keys; Student projection |
+| Address completion | Browser address autocomplete | Disabled for student and guardian address fields | No answer-key change; no external lookup service |
+| Immunisation guidance | Victorian law | Official Health Victoria link; not an acknowledgement | No stored answer; existing immunisation response remains required |
+| Survey | Special aptitude subjects | Optional | `application_special_aptitudes`; Conditions projection |
+| Survey | Preferred school subjects | Optional | `application_preferred_subjects`; Conditions projection |
+| Survey | Subjects where special help may be needed | Optional | `application_subjects_needing_help`; Conditions projection |
+| Survey | Hobbies or cultural pursuits | Optional | `application_hobbies_cultural_pursuits`; Conditions projection |
+| Survey | Sport participation | Optional Yes/No | `application_sport_participation`; Conditions projection |
+| Survey | Extra-curricular activities | Optional Yes/No | `application_extracurricular_activities`; Conditions projection |
+| Survey | Local-library membership | Optional Yes/No | `application_local_library`; Conditions projection |
+| Survey | What attracts the family to the school | Optional | `application_school_attractions`; Conditions projection |
+| Survey | Desired personal qualities | Optional | `application_desired_personal_qualities`; Conditions projection |
+| Survey | Value of mentoring to parents | Optional | `application_mentoring_value`; Conditions projection |
+| Survey | Intended years at Rosewood | Optional integer from 1 to 13 | `application_intended_years`; Conditions projection |
+
+## V6.8 Session And Migration Rules
+
+- Save and continue later closes only the selected child's editing/status sessions,
+  clears child answers from page memory and retains the family session.
+- Return to child applications opens the selector without another OTP while that family
+  session remains valid.
+- Opening an editable older application upgrades it to V6.8 in one conditional
+  transaction while preserving all existing answer keys and revision history.
+- Submitted applications and signature evidence remain pinned to their submitted form
+  definition and never upgrade.
+
 ## Deferred Post-Offer Permission
 
 Permission to contact a previous school/preschool is not part of Application V6.7. If

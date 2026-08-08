@@ -75,3 +75,24 @@ test("V7 student projection appends new education and medical fields without shi
   assert.equal(appendWrite.body.values[0][0], "app-1");
   assert.equal(appendWrite.body.values[0][2], "Synthetic");
 });
+
+test("V8 conditions projection appends survey answers without shifting legacy columns", async () => {
+  const writes = [];
+  const legacyHeaders = ["application_id", "previous_school_permission", "previous_school_name", "previous_school_address", "previous_school_interstate", "fee_option", "fee_account_recipient", "guardian_a_name", "guardian_a_percentage", "guardian_b_name", "guardian_b_percentage", "fee_responsibility_date", "discovery_source", "influence_factors", "schema_version", "form_version", "form_definition_hash", "previous_school_attended", "previous_school_year_level", "student_commitments_accepted", "parent_carer_commitments_accepted", "parent_carer_agreement_acknowledged"];
+  const fetchImpl = async (url, options = {}) => {
+    const value = String(url);
+    if (value.includes("oauth2.googleapis.com")) return new Response(JSON.stringify({ access_token: "token", expires_in: 3600 }), { status: 200, headers: { "Content-Type": "application/json" } });
+    if ((options.method || "GET") === "GET") return new Response(JSON.stringify({ values: [legacyHeaders] }), { status: 200, headers: { "Content-Type": "application/json" } });
+    writes.push({ method: options.method, body: JSON.parse(options.body) });
+    return new Response("{}", { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+  const store = new GoogleSheetsStore({ auth, eoiSpreadsheetId: "eoi", applicationSpreadsheetId: "application", operationsSpreadsheetId: "operations", fetchImpl });
+  await store.append("application", "Conditions", { application_id: "app-1", form_version: "rosewood-application-2026.8", special_aptitudes: "Mathematics", mentoring_value: "A trusted adult relationship", intended_years: "6" });
+  const headerWrite = writes.find(write => write.method === "PUT");
+  const appendWrite = writes.find(write => write.method === "POST");
+  assert.deepEqual(headerWrite.body.values[0].slice(0, legacyHeaders.length), legacyHeaders);
+  assert.deepEqual(headerWrite.body.values[0].slice(legacyHeaders.length), ["special_aptitudes", "preferred_subjects", "subjects_needing_help", "hobbies_cultural_pursuits", "sport_participation", "extracurricular_activities", "local_library", "school_attractions", "desired_personal_qualities", "mentoring_value", "intended_years"]);
+  assert.equal(appendWrite.body.values[0][22], "Mathematics");
+  assert.equal(appendWrite.body.values[0][31], "A trusted adult relationship");
+  assert.equal(appendWrite.body.values[0][32], "6");
+});

@@ -28,7 +28,7 @@ test("submission validation identifies the section and preserves an in-browser s
   assert.doesNotMatch(canvasBinding, /scheduleAutosave/);
 });
 
-test("V6.7 exposes the revised responsive application experience without retired conditions", async () => {
+test("V6.8 exposes the revised responsive application experience without retired conditions", async () => {
   const [source, html, css, adminSource, adminHtml] = await Promise.all([
     readFile(new URL("../../../../pages/rosewood-enrolment-v6.js", import.meta.url), "utf8"),
     readFile(new URL("../../../../pages/rosewood-enrolment-v6.html", import.meta.url), "utf8"),
@@ -48,6 +48,24 @@ test("V6.7 exposes the revised responsive application experience without retired
   assert.match(html, /datalist id="language-list"/);
   assert.match(source, /Home Care Arrangement/);
   assert.doesNotMatch(source, /choices\("care_arrangement"[^\n]+multiple: true/);
+  const selectorSource = source.slice(source.indexOf("function renderSelector"), source.indexOf("function renderEoi"));
+  const studentSource = source.slice(source.indexOf("function renderApplicationStudent"), source.indexOf("function applicationGuardianFields"));
+  assert.doesNotMatch(selectorSource, /<dt>Source<\/dt>|This is a direct family invitation/);
+  assert.match(selectorSource, /Information from your Expression of Interest has been included/);
+  assert.doesNotMatch(studentSource, /Has the student previously attended an early learning centre|section\("Previous Education"|section\("Student Residence"/);
+  assert.ok(studentSource.indexOf("Interrupted schooling") > studentSource.indexOf("Current Early Learning Centre / Kindergarten / Primary School"));
+  assert.match(studentSource, /section\("Student Primary Address"[^\n]+Share this address with other Parent\/Guardian\?/);
+  assert.match(studentSource, /care_arrangement[^\n]+type: "select"/);
+  assert.doesNotMatch(source, /Your browser may offer a saved address/);
+  assert.match(studentSource, /student_address[^\n]+autocomplete: "off"/);
+  assert.match(studentSource, /https:\/\/www\.health\.vic\.gov\.au\/immunisation\/primary-school-immunisation-requirements/);
+  assert.match(source, /application_special_aptitudes/);
+  assert.match(source, /application_mentoring_value/);
+  assert.match(source, /application_intended_years/);
+  assert.match(source, /return-to-family-selector/);
+  assert.match(source, /const applicationTokens = \[\.\.\.new Set\(\[state\.sessionToken, state\.statusSessionToken/);
+  assert.match(css, /\.country-catalogue-grid/);
+  assert.match(css, /\.survey-grid/);
   assert.match(source, /max: melbourneDate\(\)/);
   assert.match(source, /timeZone: "Australia\/Melbourne"/);
   assert.match(source, /Optional\. Select the active option again to clear it/);
