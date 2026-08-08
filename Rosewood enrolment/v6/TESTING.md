@@ -584,3 +584,18 @@ family record, OTP, upload, email, submission or signature was created or change
   assistive technology is told that it opens a new tab
 - all eleven survey answer keys render, are optional, have programmatic labels and fit
   a single 321px mobile column; no duplicate IDs or browser console warnings were found
+- the reviewed CloudFormation change set modified Lambda code in place and recalculated
+  only the existing outbox rule/permission; it did not replace or modify DynamoDB, KMS,
+  backup, staging, Drive/Sheets configuration or alarm resources
+- CloudFormation reached `UPDATE_COMPLETE`; Lambda is `Active` with a successful update,
+  `/v6/health` reports schema `rosewood-v6-2026-08-08-form-v8`, EOI
+  `rosewood-eoi-2026.8` and Application `rosewood-application-2026.8`
+- the Lambda error alarm is `OK`, the outbox rule remains enabled at one minute and the
+  same-region daily/monthly backup plan remains present
+- release commit `1450c49` was published to `main`; GitHub Pages run `31241031240`
+  completed successfully
+- the public family HTML, JavaScript and CSS hashes match the tested release files;
+  the live 390 x 844 review repeats the selector, Student and survey results above with
+  no horizontal overflow or console warnings
+- the public desktop package is byte-identical to the locally verified 1280 x 720
+  package, including the exact country-input alignment and responsive survey CSS
