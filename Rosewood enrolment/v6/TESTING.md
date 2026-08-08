@@ -638,3 +638,40 @@ Local and production verification completed on 8 August 2026 using synthetic dat
 - release commit `ab22d93` was published to `main`; GitHub Pages run `31254556878`
   completed successfully and the public family HTML, JavaScript and CSS hashes match
   the tested release files byte for byte
+
+## V6.10 EOI Address Assistance Release
+
+Local and production verification completed on 9 August 2026 without submitting or
+changing an Expression of Interest or family application.
+
+- all 70 Node tests pass, including the public EOI configuration route, manual fallback,
+  existing-field mapping, `VIC` to `Victoria` conversion, V6.9 compatibility and the
+  absence of coordinates, Place IDs, geolocation or address-search history from the
+  EOI data contract
+- JavaScript/module syntax, `git diff --check`, the frozen lockfile build and deployment
+  asset-hash gates pass
+- the EOI renders an optional, accessible `Find the primary contact address` helper
+  above the existing required address, suburb, state, postcode and country fields;
+  those structured fields remain the submitted source of truth
+- the EOI loads the browser-restricted Google key at runtime from `GET /v6/eoi/config`;
+  the response is limited to an allowed Rosewood origin and carries `no-store` cache
+  controls, while the static HTML and JavaScript contain no API key
+- Google address assistance remains optional: if configuration or Google is unavailable,
+  the existing manual EOI fields continue to work and submission remains available
+- the production EOI page loaded one Google Places component at desktop widths of 1280
+  and 1512 pixels with no horizontal overflow; its accessible label and live status
+  were present and the browser console contained no warnings or errors
+- automated browser control could not select a live suggestion through Google's closed
+  shadow input; field mapping and state conversion were therefore verified through the
+  automated contract tests, and no synthetic or real EOI was submitted during the live
+  check
+- the reviewed CloudFormation change set modified Lambda code in place and recalculated
+  only the existing outbox rule and permission; it did not modify or replace DynamoDB,
+  audit, KMS, backups, staging, Drive/Sheets configuration, alarms or secrets
+- CloudFormation reached `UPDATE_COMPLETE`; Lambda is `Active` with a successful update,
+  and `/v6/health` reports schema `rosewood-v6-2026-08-08-form-v8`, EOI
+  `rosewood-eoi-2026.10` and Application `rosewood-application-2026.10`
+- the Lambda error alarm is `OK` and the one-minute outbox rule remains enabled
+- release commit `469a7ff` was published to `main`; GitHub Pages run `31280847317`
+  completed successfully and the public family HTML, JavaScript and CSS hashes match
+  the tested release files byte for byte
