@@ -100,7 +100,8 @@ Address suggestions are optional and must fail open to manual entry.
 1. Confirm the family still sees the structured manual address fields. If not, treat it
    as a frontend release incident rather than a Google incident.
 2. Check Maps JavaScript API and Places API (New) status/quota in project
-   `rosewood-enrolment-prod` without copying family searches into tickets or logs.
+   `notional-weft-504315-q9` (`Rosewood Enrolment Production`) without copying family
+   searches into tickets or logs.
 3. Confirm the browser key restrictions still allow only `https://ffe.org.au/*` and
    `https://www.ffe.org.au/*` and only the two approved APIs.
 4. Confirm `GOOGLE_MAPS_BROWSER_API_KEY` exists in the existing AWS configuration secret
