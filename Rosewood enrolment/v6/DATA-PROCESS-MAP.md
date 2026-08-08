@@ -299,8 +299,9 @@ flowchart TD
 
 ### Welcome And Policy Review
 
-Before entering an email, the family can open the approved Enrolment Policy, Enrolment
-Procedure or Privacy Policy inside the Application page. The selected policy is encoded
+The welcome presents the approved Enrolment Policy, Enrolment Procedure and Privacy
+Policy as quiet optional-reference links rather than a prerequisite to beginning. A
+family can open any policy inside the Application page. The selected policy is encoded
 in the URL so direct links and browser Back work. Switching and returning preserve
 welcome values in page memory. No policy-view event is sent to Lambda, DynamoDB, Google
 Sheets, Google Drive, SES or analytics; reviewing a policy does not record acceptance.

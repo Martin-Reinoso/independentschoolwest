@@ -386,11 +386,11 @@
   }
 
   function welcomePolicyLinks() {
-    return `<nav class="welcome-policy-links" aria-label="Rosewood College enrolment policies">${policyOrder.map((slug, index) => {
+    return `<nav class="welcome-policy-links" aria-label="Optional Rosewood College policy information"><ul>${policyOrder.map(slug => {
       const policy = policyDocuments[slug];
       if (!policy) return "";
-      return `<a class="welcome-policy-link" href="${esc(policyHref(slug))}" data-policy-link="${esc(slug)}"><span class="welcome-policy-number" aria-hidden="true">0${index + 1}</span><span><strong>${esc(policy.title)}</strong><small>Read within the application</small></span><span class="welcome-policy-arrow" aria-hidden="true">&#8594;</span></a>`;
-    }).join("")}</nav>`;
+      return `<li><a class="welcome-policy-link" href="${esc(policyHref(slug))}" data-policy-link="${esc(slug)}">${esc(policy.title)}</a></li>`;
+    }).join("")}</ul></nav>`;
   }
 
   function policyTabs(activeSlug) {
@@ -445,7 +445,7 @@
     if (kind === "application") {
       const invitationNotice = liveWorkflow() && !invitationToken ? notice("Private invitation required", "Open the unique Application for Enrolment link sent by Rosewood College. A general link cannot start an application.", "legal-note") : "";
       return intro("Welcome to your enrolment application", "Dear Parent/Guardian,", workflows[kind].label) +
-        invitationNotice + `<div class="gateway-welcome-copy"><p>Please enter the email address that received your invitation to begin applying for your child's admission to Rosewood College.</p><p>If you have previously submitted an Expression of Interest or provided information to Rosewood College, please use the same email address. We may use the information already provided to prepopulate parts of your application.</p><p>If this is your first contact with Rosewood College, entering the email address that received the invitation will create a new application for you.</p><p>Before beginning, please familiarise yourself with the following Rosewood College policies.</p>${welcomePolicyLinks()}<p>Supporting documents will be requested later in the application. You can save your progress and return if you need time to obtain them.</p><p>Information provided through this application will be managed in accordance with the Privacy Policy.</p></div>` +
+        invitationNotice + `<div class="gateway-welcome-copy"><p>Please enter the email address that received your invitation to begin applying for your child's admission to Rosewood College.</p><p>If you have previously submitted an Expression of Interest or provided information to Rosewood College, please use the same email address. We may use the information already provided to prepopulate parts of your application.</p><p>If this is your first contact with Rosewood College, entering the email address that received the invitation will create a new application for you.</p><p class="gateway-policy-note">If you would like more information, Rosewood College's enrolment and privacy policies are available here:</p>${welcomePolicyLinks()}<p>Supporting documents will be requested later in the application. You can save your progress and return if you need time to obtain them.</p><p>Information provided through this application will be managed in accordance with the Privacy Policy.</p></div>` +
         section("Enter your email", `<div class="field-grid two">${field(`${kind}_gateway_email`, "Email", { type: "email", required: true, autocomplete: "email", disabled: liveWorkflow() && !invitationToken })}</div>`) + actions({ label: "Next", back: false, disabled: liveWorkflow() && !invitationToken });
     }
     return intro(kind === "acceptance" ? "Accept an enrolment offer" : "Decline an enrolment offer", `Parent / Guardian, enter the email address used for your Rosewood College invitation to ${labels[kind]}.`, workflows[kind].label) +
