@@ -62,6 +62,7 @@ flowchart LR
     SES["Amazon SES email"]
     Sheets["Private Google Sheets projections"]
     Backup["PITR and locked Sydney backups"]
+    Canary["Read-only scheduled production canary"]
     Alerts["CloudWatch and SNS alerts"]
 
     Family --> Pages
@@ -79,6 +80,9 @@ flowchart LR
     Outbox -->|"Replaceable reporting rows"| Sheets
     MainDB --> Backup
     AuditDB --> Backup
+    Canary -->|"Public GET checks every 30 minutes"| Pages
+    Canary -->|"Health and EOI configuration GET checks"| Lambda
+    Canary -->|"Three aggregate availability metrics"| Alerts
     Lambda --> Alerts
     Backup --> Alerts
 ```
@@ -89,6 +93,11 @@ AWS is authoritative for operational records. Google Sheets are reporting
 projections, not the application database. Editing or deleting a Sheet row does not
 change the application held in DynamoDB. Google Drive is the approved launch file
 store for documents, JSON snapshots and signature images.
+
+The production canary is operational monitoring only. It does not create or read a
+family record and stores no applicant answers, invitation links, OTPs, address searches
+or Google key. CloudWatch receives one binary availability value for each of the public
+asset, backend-health and EOI-address checks.
 
 ## Systems of Record
 

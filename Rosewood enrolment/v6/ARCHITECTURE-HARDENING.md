@@ -70,7 +70,10 @@ the authoritative file store requires a separate design, migration and approval.
 
 At approximately 30 applications per year, Lambda, DynamoDB, SES and backup usage
 should remain small. The main predictable AWS charge is the customer-managed KMS key,
-plus stored backups and normal request traffic. Costs must still be monitored in AWS.
+plus stored backups and normal request traffic. The 30-minute read-only production
+canary adds 48 short Lambda invocations per day, three custom availability metrics and
+three alarms; this remains deliberately smaller than a browser-synthetics or
+cross-region monitoring design. Costs must still be monitored in AWS.
 
 ## Deferred
 

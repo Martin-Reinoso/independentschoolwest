@@ -10,10 +10,40 @@
 
 ## Daily Checks
 
-1. Confirm the Lambda error alarm is `OK`.
+1. Confirm the Lambda error alarm and all three production-canary alarms are `OK`.
 2. Confirm the latest scheduled backup jobs for both DynamoDB tables completed.
 3. Investigate any backup or application-error notification before normal processing.
 4. Confirm the restricted enrolment Drive has no public or link-wide sharing.
+
+## Automated Production Canary
+
+EventBridge invokes the existing V6 Lambda every 30 minutes with a dedicated canary
+event. The invocation performs public, read-only checks and publishes these CloudWatch
+metrics in `Rosewood/Enrolment`:
+
+- `PublicFormAvailability`: family/EOI, guardian-signing and staff HTML/JavaScript/CSS
+  assets are reachable and contain their expected release markers
+- `BackendHealthAvailability`: `/v6/health` is reachable, reports `ok` and matches the
+  immutable EOI and Application versions bundled with the Lambda
+- `EoiAddressAvailability`: `/v6/eoi/config` accepts only the production origin, retains
+  `no-store` and returns an enabled Australian Google Places browser configuration
+
+Each alarm requires two consecutive failed or missing 30-minute observations before
+alerting the encrypted SNS topic. It sends a second state-change notification after
+recovery. The topic emails `info@ffe.org.au` and `frjativa@gmail.com`; each new email
+subscription must be confirmed once from its AWS confirmation message.
+
+When an alarm arrives:
+
+1. Identify the named alarm; do not request or create a family record for diagnosis.
+2. Review the latest `production_canary` CloudWatch log entry. It contains only check
+   names, duration, availability and a bounded safe failure reason.
+3. For a public-form alarm, confirm GitHub Pages deployment and asset availability.
+4. For backend health, check Lambda status, the normal error alarm and `/v6/health`.
+5. For EOI address configuration, follow **Recover Google Address Suggestions** below;
+   manual address entry should remain available while Google is unavailable.
+6. Confirm a later successful scheduled observation returns the alarm to `OK`. Do not
+   force an alarm state to hide an unresolved production issue.
 
 ## Restore Authoritative Records
 
