@@ -160,6 +160,7 @@ live/preview boundaries. See these records together with
 `SOURCE-COMPLIANCE.md`, `TESTING.md`, `STAFF-PORTAL-RUNBOOK.md` and
 `RELEASE-BLOCKERS.md` before inviting real families.
 
-`V6.7-CHANGE-MAP.md` and `V6.8-CHANGE-MAP.md` record the preceding contract releases.
-`V6.9-CHANGE-MAP.md` records the current optional Google address-assistance boundary,
-key controls, privacy limits, fallback, migration and release gate.
+`V6.7-CHANGE-MAP.md`, `V6.8-CHANGE-MAP.md` and `V6.9-CHANGE-MAP.md` record the preceding
+contract releases. `V6.10-CHANGE-MAP.md` records the current extension of optional
+Google address assistance to EOI, including key controls, privacy limits, fallback,
+compatibility and release gates.

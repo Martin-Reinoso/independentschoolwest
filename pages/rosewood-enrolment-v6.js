@@ -16,7 +16,7 @@
   const invitationToken = params.get("invite") || "";
   const policyDocuments = window.rosewoodPolicyDocuments || {};
   const policyOrder = ["enrolment-policy", "enrolment-procedure", "privacy-policy"];
-  const SUPPORTED_APPLICATION_FORM_VERSIONS = new Set(["rosewood-application-2026.1", "rosewood-application-2026.2", "rosewood-application-2026.3", "rosewood-application-2026.4", "rosewood-application-2026.5", "rosewood-application-2026.6", "rosewood-application-2026.7", "rosewood-application-2026.8", "rosewood-application-2026.9"]);
+  const SUPPORTED_APPLICATION_FORM_VERSIONS = new Set(["rosewood-application-2026.1", "rosewood-application-2026.2", "rosewood-application-2026.3", "rosewood-application-2026.4", "rosewood-application-2026.5", "rosewood-application-2026.6", "rosewood-application-2026.7", "rosewood-application-2026.8", "rosewood-application-2026.9", "rosewood-application-2026.10"]);
   const CONTACT_PERMISSION_YES = "Yes, the school may contact this person";
   const CONTACT_PERMISSION_NO = "No, do not contact this person";
   const APPLICATION_SESSION_STORAGE_KEY = "rosewood-enrolment-v6-active-session";
@@ -36,6 +36,8 @@
     formVersion: "",
     formDefinitionHash: "",
     applicationContext: null,
+    eoiAddressAutocomplete: null,
+    eoiAddressConfigLoaded: false,
     eoiResult: null,
     submitResult: null,
     statusContext: null,
@@ -354,7 +356,7 @@
   }
 
   function addressAutocompleteConfig() {
-    const config = state.applicationContext?.addressAutocomplete;
+    const config = state.workflow === "eoi" ? state.eoiAddressAutocomplete : state.applicationContext?.addressAutocomplete;
     return config?.enabled === true && config.provider === "google_places" && config.apiKey ? config : null;
   }
 
@@ -407,16 +409,20 @@
     const street = [streetNumber, route].filter(Boolean).join(" ") || premise;
     const line = `${unit ? `Unit ${unit}, ` : ""}${street}`.trim();
     const suburb = componentValue(components, "locality") || componentValue(components, "postal_town") || componentValue(components, "sublocality_level_1") || componentValue(components, "administrative_area_level_2");
+    const stateShort = componentValue(components, "administrative_area_level_1", true);
+    const stateLong = componentValue(components, "administrative_area_level_1");
     const updates = {
       [wrapper.dataset.addressLine]: line,
       [wrapper.dataset.addressSuburb]: suburb,
-      [wrapper.dataset.addressState]: componentValue(components, "administrative_area_level_1", true),
+      [wrapper.dataset.addressState]: stateShort,
       [wrapper.dataset.addressPostcode]: componentValue(components, "postal_code"),
       [wrapper.dataset.addressCountry]: componentValue(components, "country")
     };
     let updated = false;
-    Object.entries(updates).forEach(([name, value]) => {
+    Object.entries(updates).forEach(([name, originalValue]) => {
       const control = root.querySelector(`[name="${CSS.escape(name)}"]`);
+      let value = originalValue;
+      if (name === wrapper.dataset.addressState && control?.tagName === "SELECT" && value && ![...control.options].some(option => option.value === value)) value = stateLong;
       if (!control || !value) return;
       control.value = value;
       state.values[name] = value;
@@ -447,10 +453,14 @@
   async function bindAddressAutocomplete() {
     const wrappers = [...root.querySelectorAll("[data-address-lookup]")].filter(wrapper => !boundAddressLookups.has(wrapper));
     if (!wrappers.length) return;
-    wrappers.forEach(wrapper => boundAddressLookups.add(wrapper));
     const config = addressAutocompleteConfig();
+    if (!config && liveWorkflow() && state.workflow === "eoi" && !state.eoiAddressConfigLoaded) return;
+    wrappers.forEach(wrapper => boundAddressLookups.add(wrapper));
     if (!config) {
-      wrappers.forEach(wrapper => setAddressLookupFallback(wrapper, reviewMode ? "Address suggestions become available after a family verifies its invitation. Enter the address manually for this review." : undefined));
+      const reviewMessage = state.workflow === "eoi"
+        ? "Address suggestions are available in the live Expression of Interest. Enter the address manually for this review."
+        : "Address suggestions become available after a family verifies its invitation. Enter the address manually for this review.";
+      wrappers.forEach(wrapper => setAddressLookupFallback(wrapper, reviewMode ? reviewMessage : undefined));
       return;
     }
     try {
@@ -643,7 +653,7 @@
   function renderEoi() {
     return intro("Expression of Interest Form", "Complete the contact, address and student details below.", "Expression of interest") +
       section("Primary Contact Details", `<div class="field-grid">${field("eoi_language", "Language", { type: "select", options: ["English"] })}${field("eoi_title", "Salutation", { type: "select", options: titles })}${field("eoi_first", "Primary Contact First Name", { required: true })}${field("eoi_last", "Primary Contact Last Name", { required: true })}${field("eoi_relationship", "Relationship", { type: "select", options: relationships.concat("Other"), required: true })}${field("eoi_email", "Email", { type: "email", required: true })}${field("eoi_mobile", "Mobile Phone Number", { type: "tel", required: true, hint: "Australia +61" })}</div><div class="inline-actions"><button type="button" class="button button-quiet" data-static>Refresh language</button></div>${communicationNotice()}`) +
-      section("Primary Contact Address", `<div class="field-grid">${field("eoi_address", "Contact Address", { required: true, className: "span-two", hint: "Enter a location" })}${field("eoi_suburb", "Suburb", { required: true })}${field("eoi_state", "State", { type: "select", options: ["Victoria", "New South Wales", "Australian Capital Territory", "Queensland", "South Australia", "Western Australia", "Tasmania", "Northern Territory"] })}${field("eoi_postcode", "Postcode", { required: true })}${field("eoi_country", "Contact Country", { required: true, list: "country-list", value: "Australia" })}</div>`) +
+      section("Primary Contact Address", `${addressLookup("eoi-address-search", { line: "eoi_address", suburb: "eoi_suburb", state: "eoi_state", postcode: "eoi_postcode", country: "eoi_country" }, "Find the primary contact address")}<div class="field-grid">${field("eoi_address", "Contact Address", { required: true, className: "span-two", autocomplete: "off" })}${field("eoi_suburb", "Suburb", { required: true, autocomplete: "off" })}${field("eoi_state", "State", { type: "select", options: ["Victoria", "New South Wales", "Australian Capital Territory", "Queensland", "South Australia", "Western Australia", "Tasmania", "Northern Territory"], autocomplete: "off" })}${field("eoi_postcode", "Postcode", { required: true, autocomplete: "off" })}${field("eoi_country", "Contact Country", { required: true, list: "country-list", value: "Australia", autocomplete: "off" })}</div>`) +
       section("Student Details", `<div class="field-grid">${field("eoi_student_first", "Student First Name", { required: true })}${field("eoi_student_last", "Student Last Name", { required: true })}${field("eoi_dob", "Date of Birth", { type: "date", required: true })}</div>${choices("eoi_gender", "Gender", ["Male", "Female"], { required: true })}<div class="field-grid">${field("eoi_religion", "Religion", { type: "select", options: religions, required: true })}${field("eoi_year", "Year of Enrolment", { type: "select", options: Array.from({ length: 21 }, (_, i) => String(2026 + i)), required: true })}${field("eoi_level", "Year Level of Entry", { type: "select", options: primaryLevels, required: true })}${field("eoi_current_school", "Current School", { type: "select", options: currentSchools })}${field("eoi_current_year", "Current School Year", { type: "select", options: currentLevels })}</div>${choices("eoi_needs", "Additional Needs", yesNo, { required: true })}<div data-conditional="eoi-needs">${field("eoi_need_category", "Please Specify", { type: "select", options: needCategories, required: true })}</div>${choices("eoi_family_connection", "Family Connection", ["Current Family", "Previous Family", "New Family"], { required: true })}${choices("eoi_other_children", "Other children who may attend", yesNo, { required: true })}<div class="field-grid">${field("eoi_discovery", "How did you first hear about the school?", { type: "select", options: discoverySources.concat("Other"), required: true, className: "span-two" })}${field("eoi_information", "Additional Information or Questions", { type: "textarea", className: "span-three" })}</div>`) +
       actions({ label: liveWorkflow() ? "Submit expression of interest" : "Submit expression of interest preview", back: false });
   }
@@ -2201,5 +2211,16 @@
     event.preventDefault();
     event.returnValue = "";
   });
-  restoreBrowserSession().finally(render);
+  if (liveWorkflow() && state.workflow === "eoi") {
+    render();
+    api("/v6/eoi/config", { method: "GET" })
+      .then(result => { state.eoiAddressAutocomplete = result.addressAutocomplete || null; })
+      .catch(() => { state.eoiAddressAutocomplete = null; })
+      .finally(() => {
+        state.eoiAddressConfigLoaded = true;
+        bindAddressAutocomplete();
+      });
+  } else {
+    restoreBrowserSession().finally(render);
+  }
 })();

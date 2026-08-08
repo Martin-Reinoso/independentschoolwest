@@ -73,8 +73,13 @@ function includes(values, key, expected) {
   return (Array.isArray(value) ? value : [value]).includes(expected);
 }
 
+function formReleaseAtLeast(formVersion, minimum) {
+  const match = String(formVersion || "").match(/\.(\d+)$/);
+  return Boolean(match) && Number(match[1]) >= minimum;
+}
+
 function studentSections(values, options = {}) {
-  const v8 = /\.(8|9)$/.test(String(options.formVersion || ""));
+  const v8 = formReleaseAtLeast(options.formVersion, 8);
   return [
     section("student", "Student", [
       group("Student details", [
@@ -412,7 +417,7 @@ export function buildApplicationReview(app, signerGuardianIndex = 0) {
       guardianSection(app || {}, values, guardianCount, signerGuardianIndex),
       emergencySection(values, emergencyCount),
       documentsSection(app?.documents),
-      conditionsSection(values, { includeSurvey: /\.(8|9)$/.test(String(app?.formVersion || "")) }),
+      conditionsSection(values, { includeSurvey: formReleaseAtLeast(app?.formVersion, 8) }),
       signatureSection(app || {}, values, guardianCount)
     ]
   };
