@@ -415,6 +415,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
   const networkSecret = env.NETWORK_HMAC_SECRET;
   const signingPageUrl = env.APPLICATION_SIGNING_PAGE_URL;
   const applicationPageUrl = env.APPLICATION_PAGE_URL;
+  const googleMapsBrowserApiKey = safeText(env.GOOGLE_MAPS_BROWSER_API_KEY, 500);
   if (!otpSecret || !networkSecret) throw new Error("OTP_HMAC_SECRET and NETWORK_HMAC_SECRET are required.");
 
   function response(statusCode, payload, origin) {
@@ -767,7 +768,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
   }
 
   function applicationContext(app) {
-    return { applicationId: app.id, invitationId: app.invitationId, sourceEoiId: app.sourceEoiId || null, recipientEmail: app.recipientEmail, status: app.status, revision: app.revision, screen: Number(app.screen || 0), currentStage: app.currentStage || "gateway", percentComplete: Number(app.percentComplete || 0), values: app.values || {}, guardianCount: app.guardianCount || 1, emergencyCount: app.emergencyCount || 2, documents: Object.values(app.documents || {}).flat().map(document => ({ category: document.category, documentId: document.documentId, fileName: document.fileName, size: document.size })), studentName: [app.values.student_first, app.values.student_last].filter(Boolean).join(" "), updatedAt: app.updatedAt, ...recordFormReference(app, "application") };
+    return { applicationId: app.id, invitationId: app.invitationId, sourceEoiId: app.sourceEoiId || null, recipientEmail: app.recipientEmail, status: app.status, revision: app.revision, screen: Number(app.screen || 0), currentStage: app.currentStage || "gateway", percentComplete: Number(app.percentComplete || 0), values: app.values || {}, guardianCount: app.guardianCount || 1, emergencyCount: app.emergencyCount || 2, documents: Object.values(app.documents || {}).flat().map(document => ({ category: document.category, documentId: document.documentId, fileName: document.fileName, size: document.size })), studentName: [app.values.student_first, app.values.student_last].filter(Boolean).join(" "), updatedAt: app.updatedAt, addressAutocomplete: googleMapsBrowserApiKey ? { enabled: true, provider: "google_places", apiKey: googleMapsBrowserApiKey, region: "AU" } : { enabled: false, provider: "manual" }, ...recordFormReference(app, "application") };
   }
 
   async function upgradeEditableApplication(app) {
@@ -1096,7 +1097,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     const guardianCount = Math.max(1, Math.min(6, Number(app.guardianCount || 1)));
     const signedAt = nowIso();
     const serverSigningDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Melbourne", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(signedAt));
-    const submissionValues = /\.(7|8)$/.test(definition.formVersion) ? { ...app.values, application_signature_date: serverSigningDate } : app.values;
+    const submissionValues = /\.(7|8|9)$/.test(definition.formVersion) ? { ...app.values, application_signature_date: serverSigningDate } : app.values;
     const values = applicationValidator(definition).validate(submissionValues, guardianCount, app.emergencyCount || 2, definition.formVersion);
     const additionalSignatureRecipients = additionalGuardianSignatureRecipients(values, guardianCount, definition.formVersion);
     if (!(app.documents?.birth_certificate || []).length) throw appError(422, "DOCUMENT_REQUIRED", "Upload the student's birth certificate before submitting.", { missing: ["birth_certificate"] });

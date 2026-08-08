@@ -411,7 +411,7 @@ from browser memory and returns to the private Application gateway for a new OTP
 | Subsection | Data categories | Important conditions | Destination |
 | --- | --- | --- | --- |
 | Student Details | Names, preferred name, DOB, gender, religion, current school/year, intended entry and interrupted schooling | Religion Other and Current School Other reveal required text fields. Interruption details appear after Yes. The separate previous-attendance question is retired in V6.8. | Draft `values`; final Student projection |
-| Student Primary Address | Address sharing, address, suburb, state, postcode, country and compact Home Care Arrangement | Core answers are required. Other care requires details; Shared Custody requires a parenting schedule. Browser address autocomplete is disabled and no external address service is used. | Draft `values`; final Student projection |
+| Student Primary Address | Address sharing, address, suburb, state, postcode, country and compact Home Care Arrangement | Optional Google search fills the existing structured controls; the family reviews/edits them and manual entry remains available. Other care requires details; Shared Custody requires a parenting schedule. | Draft `values`; final Student projection |
 | Family | Whether other children may attend and how many | Count appears only after Yes. | Draft `values`; final Student projection |
 | Nationality and Citizenship | Residence, birth, nationality, ethnicity, arrival/return date, residency, citizenship, evidence, visas, Indigenous status and languages | Non-citizen paths reveal residency evidence; most evidence choices require visa subclass/expiry. | Draft `values`; final Student projection |
 | General / Additional Needs | Formal assessment/report availability, need categories, current and possible Rosewood adjustments, professionals, reports, NDIS, court/parenting orders and other information | Assessment details appear after Yes. Need category and adjustment questions appear after additional-needs Yes; several support fields remain visible regardless. | Draft `values`; final Student projection |
@@ -434,7 +434,7 @@ authoritative application revision and append to the Conditions reporting projec
 | --- | --- | --- | --- |
 | Contact and sharing | Sharing choice, name, email, phones, relationship, contact type, marital status and religion | Each added guardian becomes a repeat record. | Draft `values`; final Guardians projection |
 | Messaging and Health Care Card | SMS choice and Health Care Card status | Card number/expiry appear after Yes. | Draft `values`; final Guardians projection |
-| Residential and postal address | Residential address and whether postal is the same | Separate postal fields appear after No. | Draft `values`; final Guardians projection |
+| Residential and postal address | Residential address and whether postal is the same | Optional Google search fills existing structured controls; separate postal fields and search appear after No; manual entry always remains available. | Draft `values`; final Guardians projection |
 | Occupation and education | Occupational group, occupation, employer, school and further education | Core government-reporting fields are required. | Draft `values`; final Guardians projection |
 | Residency | Birth country, nationality, optional ethnicity, languages, status, visa and Indigenous response | Temporary Resident reveals visa subclass and expiry. Country inputs use the shared searchable 249+ catalogue. | Draft `values`; final Guardians projection |
 | Contact permission | Explicit Yes/No authority for Rosewood to contact an additional guardian | Yes requires an email for a separate request. No suppresses email, SMS, OTP, recovery and signing-request actions, requires an explanation and flags staff review. It is never inferred from entered contact details. | Draft `values`; final signer control and Guardians projection |
@@ -830,6 +830,10 @@ signature revision hashes also retain the form version and definition hash. See
 - DynamoDB is authoritative; Sheets are replaceable projections.
 - Restricted Google Drive is the launch file store.
 - Proof of address is not collected.
+- Google Places is an optional browser-side address-suggestion processor. It receives
+  only search text entered into that control and returns address components. Rosewood
+  does not request/store Place IDs, coordinates, search history or device location;
+  only the existing structured address answers enter DynamoDB and Sheets projections.
 - Application terms and photography permission are deferred to the Enrolment Agreement.
 - Contact permission is explicit and suppresses all automated contact and signing
   activity when No. Such records retain the one-signature explanation and require staff

@@ -29,8 +29,8 @@ deliberately creating a new version.
 Current launch contracts:
 
 ```text
-EOI:         rosewood-eoi-2026.8
-Application: rosewood-application-2026.8
+EOI:         rosewood-eoi-2026.9
+Application: rosewood-application-2026.9
 ```
 
 The original `2026.1`, `2026.2`, `2026.3` and `2026.4` contracts and validators remain
@@ -77,6 +77,12 @@ Save and continue later, and adds eleven optional survey fields. Retired answers
 in existing revisions and answer maps; V6.8 guardian review omits them. Survey answers
 append to the Conditions projection. The EOI question contract is unchanged, but its
 form version advances to `2026.8` because it shares the newly pinned frontend assets.
+The `2026.9` release preserves the exact V6.8 Application data contract and adds
+optional Google Places suggestions above the existing student and guardian address
+fields. A selected result writes only to the existing address, suburb, state, postcode
+and country keys. No Google-specific identifier, coordinate, search term or additional
+storage column is introduced. Manual entry remains the fallback. The EOI questions are
+unchanged and advance to `2026.9` only because the family frontend assets are repinned.
 
 Acceptance, Decline and the Enrolment Agreement must receive their own independent
 version series when their backends are built. They must not reuse the Application

@@ -125,7 +125,7 @@ export function sanitizeApplication(input) {
 }
 
 function usesExplicitContactPermission(formVersion) {
-  return /\.(6|7|8)$/.test(String(formVersion || ""));
+  return /\.(6|7|8|9)$/.test(String(formVersion || ""));
 }
 
 export function contactPermissionAllowed(value, formVersion = "rosewood-application-2026.6") {
@@ -135,8 +135,8 @@ export function contactPermissionAllowed(value, formVersion = "rosewood-applicat
 
 export function validateApplicationForSubmission(input, guardianCount = 1, emergencyCount = 2, formVersion = "rosewood-application-2026.6") {
   const values = sanitizeApplication(input);
-  const v8 = String(formVersion).endsWith(".8");
-  const v7OrLater = /\.(7|8)$/.test(String(formVersion));
+  const v8 = /\.(8|9)$/.test(String(formVersion));
+  const v7OrLater = /\.(7|8|9)$/.test(String(formVersion));
   const requiredFields = v8 ? APPLICATION_V8_REQUIRED_FIELDS : v7OrLater ? APPLICATION_V7_REQUIRED_FIELDS : APPLICATION_REQUIRED_FIELDS;
   const missing = requiredFields.filter(key => !truthy(values[key]));
   for (let index = 0; index < Math.max(1, Math.min(MAX_GUARDIANS, Number(guardianCount))); index += 1) {
