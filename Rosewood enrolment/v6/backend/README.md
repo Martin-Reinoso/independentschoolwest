@@ -36,12 +36,18 @@ server-acknowledged application create, start, save and submission also writes a
 append-only DynamoDB revision. Staff can inspect a selected historical revision through
 an authorised, audited endpoint. See `../SCHEMA-EVOLUTION.md` before changing fields,
 options, validation or required status.
-The current `2026.8` contracts pin the family, staff and signing HTML/JavaScript/CSS,
+The current `2026.9` contracts pin the family, staff and signing HTML/JavaScript/CSS,
 policy projection and all original Word/PDF policy assets. Policy viewing is frontend-
 only and does not create an application answer, acknowledgement or audit event.
-The EOI questions are unchanged in `2026.8`; its version advances because it shares the
-repinned family assets. Application `2026.8` retires the previous-attendance interface,
-adds the optional eleven-answer survey contract and preserves older values/revisions.
+The EOI questions are unchanged in `2026.9`; its version advances because it shares the
+repinned family assets. Application `2026.9` preserves the V6.8 data contract and adds
+optional Google address assistance for student and guardian residential/postal fields.
+Manual entry remains available and no Place ID, coordinates or search history is stored.
+
+`GOOGLE_MAPS_BROWSER_API_KEY` is read from the existing Secrets Manager configuration.
+It is returned only in an OTP-verified application context and must be restricted in
+Google Cloud to `ffe.org.au`/`www.ffe.org.au` plus Maps JavaScript API and Places API
+(New). Never commit the key or print it in logs.
 
 ## Invitations And Staff Access
 

@@ -74,7 +74,7 @@ function includes(values, key, expected) {
 }
 
 function studentSections(values, options = {}) {
-  const v8 = options.formVersion === "rosewood-application-2026.8";
+  const v8 = /\.(8|9)$/.test(String(options.formVersion || ""));
   return [
     section("student", "Student", [
       group("Student details", [
@@ -412,7 +412,7 @@ export function buildApplicationReview(app, signerGuardianIndex = 0) {
       guardianSection(app || {}, values, guardianCount, signerGuardianIndex),
       emergencySection(values, emergencyCount),
       documentsSection(app?.documents),
-      conditionsSection(values, { includeSurvey: app?.formVersion === "rosewood-application-2026.8" }),
+      conditionsSection(values, { includeSurvey: /\.(8|9)$/.test(String(app?.formVersion || "")) }),
       signatureSection(app || {}, values, guardianCount)
     ]
   };

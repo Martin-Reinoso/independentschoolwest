@@ -100,7 +100,7 @@ class StaffStore {
   }
 }
 
-function staffService({ store = new StaffStore(), staffRoles = "info@ffe.org.au=admin", clockFn = clock } = {}) {
+function staffService({ store = new StaffStore(), staffRoles = "info@ffe.org.au=admin", clockFn = clock, config = {} } = {}) {
   const sent = [];
   const service = createService({
     store,
@@ -117,7 +117,8 @@ function staffService({ store = new StaffStore(), staffRoles = "info@ffe.org.au=
       APPLICATION_SIGNING_PAGE_URL: "https://ffe.org.au/pages/rosewood-application-sign-v6.html",
       GOOGLE_EOI_SPREADSHEET_ID: "eoi-sheet",
       GOOGLE_APPLICATION_SPREADSHEET_ID: "application-sheet",
-      GOOGLE_OPERATIONS_SPREADSHEET_ID: "operations-sheet"
+      GOOGLE_OPERATIONS_SPREADSHEET_ID: "operations-sheet",
+      ...config
     },
     clock: clockFn
   });
@@ -190,6 +191,23 @@ test("staff portal creates a parent-only direct invitation without returning its
   assert.equal(store.created.application.formVersion, definition.formVersion);
   assert.equal(store.created.application.formDefinitionHash, definition.definitionHash);
   assert.equal((await store.listApplicationRevisions(store.created.application.id))[0].kind, "created");
+});
+
+test("a restricted Google Places browser key is disclosed only in an OTP-verified application context", async () => {
+  const browserKey = "synthetic-restricted-google-browser-key";
+  const { service, store } = staffService({ config: { GOOGLE_MAPS_BROWSER_API_KEY: browserKey } });
+  const created = await createApplicationInvitation({ store, recipientEmail: "family@example.com", firstName: "Alex", applicationUrl: "https://ffe.org.au/form", clock });
+  const invitationToken = new URL(created.invitationUrl).searchParams.get("invite");
+  const requestedResponse = await service(event("/v6/application/access/request-code", "POST", { invitationToken, email: "family@example.com" }));
+  assert.equal(requestedResponse.statusCode, 200);
+  assert.doesNotMatch(requestedResponse.body, new RegExp(browserKey));
+
+  const requested = JSON.parse(requestedResponse.body);
+  const verifiedResponse = await service(event("/v6/application/access/verify-code", "POST", { invitationToken, challengeId: requested.challengeId, code: "123456" }));
+  assert.equal(verifiedResponse.statusCode, 200);
+  const verified = JSON.parse(verifiedResponse.body);
+  assert.deepEqual(verified.context.addressAutocomplete, { enabled: true, provider: "google_places", apiKey: browserKey, region: "AU" });
+  assert.doesNotMatch(JSON.stringify(verified.family), new RegExp(browserKey));
 });
 
 test("draft saves preserve fields omitted by a newer client and create immutable history", async () => {

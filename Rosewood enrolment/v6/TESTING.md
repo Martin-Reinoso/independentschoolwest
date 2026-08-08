@@ -599,3 +599,23 @@ family record, OTP, upload, email, submission or signature was created or change
   no horizontal overflow or console warnings
 - the public desktop package is byte-identical to the locally verified 1280 x 720
   package, including the exact country-input alignment and responsive survey CSS
+
+## V6.9 Address Assistance Release
+
+Local verification completed on 8 August 2026 using synthetic review frames only.
+
+- 70 Node tests pass, including restricted-key disclosure only after family OTP,
+  manual fallback, existing-field mapping, autosave, V6.8 contract compatibility and
+  the absence of geolocation/coordinates/Place-ID collection
+- JavaScript/module syntax and `git diff --check` pass
+- desktop review at 1440 x 1000 confirms the optional address helper sits above the
+  existing structured student fields without misalignment
+- mobile review at 390 x 844 confirms student and guardian address helpers, labels,
+  fallback status and manual fields fit one column without horizontal scrolling
+- browser accessibility snapshot exposes the helper label and live status; manual
+  fields retain their required labels
+- no browser console warnings or errors were found with Google intentionally
+  unavailable in review mode
+- live Google suggestions, CSP traffic and provider response mapping remain a release
+  gate until Google billing verification, API enablement and restricted-key creation
+  are complete

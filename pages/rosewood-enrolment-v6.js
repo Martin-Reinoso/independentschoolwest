@@ -16,7 +16,7 @@
   const invitationToken = params.get("invite") || "";
   const policyDocuments = window.rosewoodPolicyDocuments || {};
   const policyOrder = ["enrolment-policy", "enrolment-procedure", "privacy-policy"];
-  const SUPPORTED_APPLICATION_FORM_VERSIONS = new Set(["rosewood-application-2026.1", "rosewood-application-2026.2", "rosewood-application-2026.3", "rosewood-application-2026.4", "rosewood-application-2026.5", "rosewood-application-2026.6", "rosewood-application-2026.7", "rosewood-application-2026.8"]);
+  const SUPPORTED_APPLICATION_FORM_VERSIONS = new Set(["rosewood-application-2026.1", "rosewood-application-2026.2", "rosewood-application-2026.3", "rosewood-application-2026.4", "rosewood-application-2026.5", "rosewood-application-2026.6", "rosewood-application-2026.7", "rosewood-application-2026.8", "rosewood-application-2026.9"]);
   const CONTACT_PERMISSION_YES = "Yes, the school may contact this person";
   const CONTACT_PERMISSION_NO = "No, do not contact this person";
   const APPLICATION_SESSION_STORAGE_KEY = "rosewood-enrolment-v6-active-session";
@@ -54,7 +54,9 @@
   let autosaveMaxTimer;
   let sessionExpiryTimer;
   let saveQueue = Promise.resolve();
+  let googlePlacesPromise;
   const documentUploads = new Map();
+  const boundAddressLookups = new WeakSet();
   const AUTOSAVE_DEBOUNCE_MS = 1200;
   const AUTOSAVE_MAX_WAIT_MS = 8000;
   const APPLICATION_IDLE_SECONDS = 20 * 60;
@@ -343,6 +345,145 @@
     return `<label class="${classes}" for="${name}"><span>${label}${required}</span>${control}${options.hint ? `<small>${options.hint}</small>` : ""}</label>`;
   }
 
+  function addressLookup(id, fields, label = "Find address") {
+    return `<div class="address-lookup span-three" data-address-lookup data-address-line="${esc(fields.line)}" data-address-suburb="${esc(fields.suburb)}" data-address-state="${esc(fields.state)}" data-address-postcode="${esc(fields.postcode)}" data-address-country="${esc(fields.country)}">
+      <div class="address-lookup-heading"><span id="${esc(id)}-label">${esc(label)}</span><small>Optional</small></div>
+      <div class="address-lookup-widget" data-address-widget aria-labelledby="${esc(id)}-label" aria-busy="true"><span>Loading address suggestions...</span></div>
+      <p class="address-lookup-status" id="${esc(id)}-status" data-address-status role="status">Suggestions are provided by Google. You can also enter the address manually below.</p>
+    </div>`;
+  }
+
+  function addressAutocompleteConfig() {
+    const config = state.applicationContext?.addressAutocomplete;
+    return config?.enabled === true && config.provider === "google_places" && config.apiKey ? config : null;
+  }
+
+  function loadGooglePlaces(config) {
+    if (window.google?.maps?.places?.PlaceAutocompleteElement) return Promise.resolve(window.google.maps.places);
+    if (googlePlacesPromise) return googlePlacesPromise;
+    googlePlacesPromise = new Promise((resolve, reject) => {
+      const callback = `rosewoodGooglePlacesReady${Date.now()}`;
+      const script = document.createElement("script");
+      const timeout = window.setTimeout(() => reject(new Error("Address suggestions took too long to load.")), 15000);
+      const finish = result => {
+        window.clearTimeout(timeout);
+        delete window[callback];
+        resolve(result);
+      };
+      window[callback] = async () => {
+        try {
+          const places = await window.google.maps.importLibrary("places");
+          finish(places);
+        } catch (error) {
+          window.clearTimeout(timeout);
+          delete window[callback];
+          reject(error);
+        }
+      };
+      script.async = true;
+      script.referrerPolicy = "strict-origin-when-cross-origin";
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(config.apiKey)}&libraries=places&v=weekly&loading=async&callback=${callback}&language=en&region=${encodeURIComponent(config.region || "AU")}&auth_referrer_policy=origin`;
+      script.addEventListener("error", () => {
+        window.clearTimeout(timeout);
+        delete window[callback];
+        reject(new Error("Address suggestions could not be loaded."));
+      }, { once: true });
+      document.head.append(script);
+    });
+    return googlePlacesPromise;
+  }
+
+  function componentValue(components, type, short = false) {
+    const component = components.find(item => Array.isArray(item.types) && item.types.includes(type));
+    return component ? String(short ? component.shortText : component.longText || "").trim() : "";
+  }
+
+  function applySelectedAddress(wrapper, place) {
+    const components = Array.isArray(place.addressComponents) ? place.addressComponents : [];
+    const unit = componentValue(components, "subpremise");
+    const streetNumber = componentValue(components, "street_number");
+    const route = componentValue(components, "route");
+    const premise = componentValue(components, "premise");
+    const street = [streetNumber, route].filter(Boolean).join(" ") || premise;
+    const line = `${unit ? `Unit ${unit}, ` : ""}${street}`.trim();
+    const suburb = componentValue(components, "locality") || componentValue(components, "postal_town") || componentValue(components, "sublocality_level_1") || componentValue(components, "administrative_area_level_2");
+    const updates = {
+      [wrapper.dataset.addressLine]: line,
+      [wrapper.dataset.addressSuburb]: suburb,
+      [wrapper.dataset.addressState]: componentValue(components, "administrative_area_level_1", true),
+      [wrapper.dataset.addressPostcode]: componentValue(components, "postal_code"),
+      [wrapper.dataset.addressCountry]: componentValue(components, "country")
+    };
+    let updated = false;
+    Object.entries(updates).forEach(([name, value]) => {
+      const control = root.querySelector(`[name="${CSS.escape(name)}"]`);
+      if (!control || !value) return;
+      control.value = value;
+      state.values[name] = value;
+      clearResolvedServerValidation(name);
+      updated = true;
+    });
+    const status = wrapper.querySelector("[data-address-status]");
+    if (!updated) {
+      status.textContent = "We could not separate that result into the address fields. Please enter the address manually below.";
+      return;
+    }
+    captureValues();
+    scheduleAutosave();
+    status.textContent = "Address selected. Please review the address fields below before continuing.";
+    root.querySelector(`[name="${CSS.escape(wrapper.dataset.addressLine)}"]`)?.focus({ preventScroll: true });
+  }
+
+  function setAddressLookupFallback(wrapper, message = "Address suggestions are unavailable right now. Please enter the address manually below.") {
+    const widget = wrapper.querySelector("[data-address-widget]");
+    const status = wrapper.querySelector("[data-address-status]");
+    if (widget) {
+      widget.removeAttribute("aria-busy");
+      widget.innerHTML = '<span class="address-lookup-unavailable">Address search unavailable</span>';
+    }
+    if (status) status.textContent = message;
+  }
+
+  async function bindAddressAutocomplete() {
+    const wrappers = [...root.querySelectorAll("[data-address-lookup]")].filter(wrapper => !boundAddressLookups.has(wrapper));
+    if (!wrappers.length) return;
+    wrappers.forEach(wrapper => boundAddressLookups.add(wrapper));
+    const config = addressAutocompleteConfig();
+    if (!config) {
+      wrappers.forEach(wrapper => setAddressLookupFallback(wrapper, reviewMode ? "Address suggestions become available after a family verifies its invitation. Enter the address manually for this review." : undefined));
+      return;
+    }
+    try {
+      const { PlaceAutocompleteElement } = await loadGooglePlaces(config);
+      wrappers.forEach(wrapper => {
+        if (!wrapper.isConnected) return;
+        const widget = wrapper.querySelector("[data-address-widget]");
+        const labelId = wrapper.querySelector(".address-lookup-heading span")?.id;
+        const autocomplete = new PlaceAutocompleteElement();
+        autocomplete.placeholder = "Start typing an address";
+        autocomplete.setAttribute("aria-label", "Search for an address");
+        if (labelId) autocomplete.setAttribute("aria-labelledby", labelId);
+        try { autocomplete.locationBias = { south: -44, west: 112, north: -10, east: 154 }; } catch {}
+        autocomplete.addEventListener("gmp-select", async event => {
+          const status = wrapper.querySelector("[data-address-status]");
+          status.textContent = "Adding the selected address...";
+          try {
+            const place = event.placePrediction.toPlace();
+            await place.fetchFields({ fields: ["addressComponents"] });
+            applySelectedAddress(wrapper, place);
+          } catch {
+            status.textContent = "That address could not be added automatically. Please enter it manually below.";
+          }
+        });
+        autocomplete.addEventListener("gmp-error", () => setAddressLookupFallback(wrapper));
+        widget.replaceChildren(autocomplete);
+        widget.removeAttribute("aria-busy");
+      });
+    } catch {
+      wrappers.forEach(wrapper => setAddressLookupFallback(wrapper));
+    }
+  }
+
   function choices(name, label, options, config = {}) {
     const multiple = config.multiple === true;
     const stored = state.values[name] ?? config.value;
@@ -522,7 +663,7 @@
   function renderApplicationStudent() {
     return intro("Student", "Provide the student, residence, family, background, support, sacramental and medical information requested in the application.", "Application for enrolment") +
       section("Student Details", `<div class="field-grid">${field("student_first", "First Name", { required: true, autocomplete: "given-name" })}${field("student_middle", "Middle Name", { autocomplete: "additional-name" })}${field("student_last", "Last Name", { required: true, autocomplete: "family-name" })}${field("student_preferred", "Preferred Name")}${field("student_dob", "Date of Birth", { type: "date", required: true })}${field("student_gender", "Gender", { type: "select", options: ["Male", "Female"], required: true })}${field("student_religion", "Religion", { type: "select", options: religions, required: true })}</div><div class="conditional-panel" data-conditional="other-religion"><div class="field-grid">${field("student_religion_other", "Other religion", { required: true, className: "span-three" })}</div></div><div class="field-grid student-enrolment-grid">${field("current_level", "Current School Year", { type: "select", options: currentLevels, required: true })}${field("entry_year", "Year the student will commence at Rosewood College", { type: "select", options: years, required: true, value: "2027" })}${field("entry_level", "Year Level of Entry at Rosewood College", { type: "select", options: primaryLevels, required: true })}${field("current_school", "Current Early Learning Centre / Kindergarten / Primary School", { type: "select", options: currentSchools, required: true, className: "span-three student-school-field" })}</div><div class="conditional-panel" data-conditional="other-current-school"><div class="field-grid">${field("current_school_other", "Other Early Learning Centre / Kindergarten / Primary School", { required: true, className: "span-three" })}</div></div>${choices("interrupted_schooling", "Interrupted schooling: Has the student experienced any extended absence or interruption to their schooling?", yesNo, { required: true })}<div class="conditional-panel" data-conditional="interrupted-schooling"><div class="field-grid">${field("interrupted_schooling_details", "Please provide approximate dates and brief details", { type: "textarea", required: true, className: "span-three" })}</div></div>`) +
-      section("Student Primary Address", `${choices("student_address_share", "Share this address with other Parent/Guardian?", ["Yes, share", "No, keep private"], { required: true })}<div class="field-grid">${field("student_address", "Address", { required: true, className: "span-two", autocomplete: "off" })}${field("student_suburb", "Suburb", { required: true, autocomplete: "off" })}${field("student_state", "State", { required: true, autocomplete: "off" })}${field("student_postcode", "Postcode", { required: true, autocomplete: "off" })}${field("student_country", "Country", { required: true, list: "country-list", value: "Australia", autocomplete: "off", hint: "Start typing to search the full country catalogue." })}${field("care_arrangement", "Home Care Arrangement", { type: "select", options: ["Both Parents", "Mother Only", "Father Only", "Shared Custody", "Carer / Guardian", "Out-of-home care", "Kinship", "Other"], required: true, className: "span-two" })}</div><div class="conditional-panel" data-conditional="other-care-arrangement"><div class="field-grid">${field("care_other", "Other Care Arrangement", { required: true, className: "span-three" })}</div></div><div class="conditional-panel" data-conditional="shared-parenting"><div class="field-grid">${field("shared_parenting", "Shared Parenting Schedule", { type: "textarea", required: true, className: "span-three" })}</div></div>`) +
+      section("Student Primary Address", `${choices("student_address_share", "Share this address with other Parent/Guardian?", ["Yes, share", "No, keep private"], { required: true })}${addressLookup("student-address-search", { line: "student_address", suburb: "student_suburb", state: "student_state", postcode: "student_postcode", country: "student_country" }, "Find the student's address")}<div class="field-grid">${field("student_address", "Address", { required: true, className: "span-two", autocomplete: "off" })}${field("student_suburb", "Suburb", { required: true, autocomplete: "off" })}${field("student_state", "State", { required: true, autocomplete: "off" })}${field("student_postcode", "Postcode", { required: true, autocomplete: "off" })}${field("student_country", "Country", { required: true, list: "country-list", value: "Australia", autocomplete: "off", hint: "Start typing to search the full country catalogue." })}${field("care_arrangement", "Home Care Arrangement", { type: "select", options: ["Both Parents", "Mother Only", "Father Only", "Shared Custody", "Carer / Guardian", "Out-of-home care", "Kinship", "Other"], required: true, className: "span-two" })}</div><div class="conditional-panel" data-conditional="other-care-arrangement"><div class="field-grid">${field("care_other", "Other Care Arrangement", { required: true, className: "span-three" })}</div></div><div class="conditional-panel" data-conditional="shared-parenting"><div class="field-grid">${field("shared_parenting", "Shared Parenting Schedule", { type: "textarea", required: true, className: "span-three" })}</div></div>`) +
       section("Family", `${choices("future_siblings", "Do you have any other children that may attend our school?", yesNo, { required: true, className: "family-question" })}<div class="conditional-panel" data-conditional="future-siblings">${choices("future_sibling_count", "How many children?", ["1", "2", "3", "4", "5", "6", "7+"], { required: true })}</div>`) +
       section("Nationality and Citizenship", `<div class="government-context"><strong>Government Requirement</strong><p>The information in this section is about the student and is collected to meet government reporting requirements.</p></div><div class="field-grid country-catalogue-grid">${field("residence_country", "Student's current country of residence", { required: true, list: "country-list", hint: "Start typing to search the full country catalogue." })}${field("birth_country", "Student's country of birth", { required: true, list: "country-list", hint: "In which country was the student born? Start typing to search." })}${field("nationality", "Student's country of nationality", { required: true, list: "country-list", hint: "Start typing to search the full country catalogue." })}${field("ethnicity", "Student's ethnicity", { hint: "If not born in Australia" })}</div><div class="field-grid citizenship-date-row">${field("arrival_date", "When did the student arrive in or return to live in Australia?", { type: "date", className: "span-three mobile-safe-date", hint: "For students born overseas, enter the date they first arrived to live in Australia. If the student previously lived in Australia and later lived overseas, enter the date they most recently returned to live in Australia." })}${field("residency_status", "What is the residential status of the student?", { type: "select", options: ["Permanent", "Temporary"], required: true, className: "span-three" })}</div>${choices("australian_citizen", "Citizenship Status", yesNo, { required: true, intro: "Is the student an Australian citizen?", className: "citizenship-question" })}<div class="conditional-panel" data-conditional="residency-evidence">${choices("residency_evidence", "Evidence of Australian Residency", ["Permanent Resident", "Eligible for Australian Passport", "Temporary Resident", "Other / Visitor / Overseas Student"], { required: true, grid: true })}<div class="conditional-panel visa-panel" data-conditional="visa-details"><p class="visa-evidence-note">Please provide up to date evidence of visa status from the Department of Home Affairs, including any changes to visa or citizenship as soon as notified</p><div class="field-grid">${field("visa_subclass", "Visa subclass", { required: true })}${field("visa_expiry", "Visa expiry", { type: "date", required: true })}${field("previous_visa", "Previous visa subclass")}</div></div></div>${choices("indigenous_status", "Aboriginal / Torres Strait Islander Status", ["Aboriginal", "Torres Strait Islander", "Aboriginal and Torres Strait Islander", "Not Applicable"], { required: true })}<h5 class="content-subheading">Languages</h5><div class="field-grid two">${field("main_language", "Main Language", { list: "language-list", required: true, hint: "Start typing to search the language catalogue." })}${field("other_languages", "Other Languages", { list: "language-list", hint: "Start typing to search." })}</div>`) +
       section("General / Additional Needs", `<div class="needs-introduction"><p>To meet duty of care obligations and facilitate the smooth transition of your child into the school, please provide all required information. This will assist the school to implement appropriate adjustments and strategies to meet the particular needs of your child. If the information is not provided or is incomplete, incorrect or misleading, current or ongoing enrolment may be reviewed.</p><p class="needs-assurance"><strong>*Please Note:</strong> This information will not impact the offer of enrolment.</p></div>${choices("formal_assessment", "Has the student completed a formal assessment relating to learning, development, wellbeing or giftedness?", yesNo, { required: true })}<div class="conditional-panel" data-conditional="formal-assessment"><div class="field-grid">${field("formal_assessment_details", "Please provide brief details of the assessment", { type: "textarea", required: true, className: "span-three" })}</div>${choices("formal_assessment_report", "Is a report available?", yesNo, { required: true })}</div>${choices("additional_needs", "General / Additional Needs", yesNo, { required: true })}<div data-conditional="additional-needs">${choices("need_categories", "Please Specify", needCategories, { multiple: true, grid: true, required: true })}<div data-conditional="other-need" class="field-grid">${field("need_other", "Other Additional Need", { required: true, className: "span-three" })}</div><div class="field-grid">${field("current_adjustments", "What adjustments or support is currently provided for the student?", { type: "textarea", className: "span-three" })}${field("rosewood_adjustments", "What adjustments or support may assist the student at Rosewood College?", { type: "textarea", className: "span-three" })}</div></div>${choices("professional_categories", "Health Professionals", professionalCategories, { multiple: true, grid: true })}<div data-conditional="other-professional" class="field-grid">${field("professional_other", "Other Health Professional", { required: true })}</div>${choices("reports_attached", "Reports Attached", yesNo, { required: true })}${choices("ndis_support", "NDIS Support", yesNo, { required: true })}${choices("court_orders", "Court or Parenting Orders", yesNo, { required: true })}<div class="field-grid">${field("other_relevant_information", "Other Relevant Information", { type: "textarea", className: "span-three" })}</div>`) +
@@ -542,8 +683,9 @@
       choices(prefix + "sms", "SMS Messaging", yesNo, { required: true, className: "span-three", hint: "Is this person to receive SMS messaging (for emergency and reminder purposes)." }) + choices(prefix + "healthcare", "Health Care Card", yesNo, { required: true, className: "span-three" }) +
       `<div class="conditional-panel span-three" data-healthcare="${prefix}healthcare"><div class="field-grid two">${field(prefix + "healthcare_number", "Health Care Card No.", { required: true })}${field(prefix + "healthcare_expiry", "Health Care Card Expiry", { type: "date", required: true })}</div></div>` +
       `<h5 class="subsection-heading span-three">Residential and postal address</h5>` +
+      addressLookup(`${prefix}residential-search`, { line: prefix + "address", suburb: prefix + "suburb", state: prefix + "state", postcode: prefix + "postcode", country: prefix + "country" }, `Find Contact ${index + 1}'s residential address`) +
       field(prefix + "address", "Residential Address", { required: true, className: "span-two", autocomplete: "off" }) + field(prefix + "suburb", "Suburb", { required: true, autocomplete: "off" }) + field(prefix + "state", "State", { required: true, autocomplete: "off" }) + field(prefix + "postcode", "Postcode", { required: true, autocomplete: "off" }) + field(prefix + "country", "Country", { required: true, list: "country-list", value: "Australia", autocomplete: "off", hint: "Start typing to search." }) + choices(prefix + "postal_same", "Postal Address Same as Residential?", yesNo, { required: true, className: "span-three" }) +
-      `<div class="conditional-panel span-three" data-postal="${prefix}postal_same"><div class="field-grid">${field(prefix + "postal_address", "Postal Address", { required: true, className: "span-two", autocomplete: "off" })}${field(prefix + "postal_suburb", "Postal Suburb", { required: true, autocomplete: "off" })}${field(prefix + "postal_state", "Postal State", { required: true, autocomplete: "off" })}${field(prefix + "postal_postcode", "Postal Postcode", { required: true, autocomplete: "off" })}${field(prefix + "postal_country", "Postal Country", { required: true, list: "country-list", autocomplete: "off" })}</div></div>` +
+      `<div class="conditional-panel span-three" data-postal="${prefix}postal_same"><div class="field-grid">${addressLookup(`${prefix}postal-search`, { line: prefix + "postal_address", suburb: prefix + "postal_suburb", state: prefix + "postal_state", postcode: prefix + "postal_postcode", country: prefix + "postal_country" }, `Find Contact ${index + 1}'s postal address`)}${field(prefix + "postal_address", "Postal Address", { required: true, className: "span-two", autocomplete: "off" })}${field(prefix + "postal_suburb", "Postal Suburb", { required: true, autocomplete: "off" })}${field(prefix + "postal_state", "Postal State", { required: true, autocomplete: "off" })}${field(prefix + "postal_postcode", "Postal Postcode", { required: true, autocomplete: "off" })}${field(prefix + "postal_country", "Postal Country", { required: true, list: "country-list", autocomplete: "off" })}</div></div>` +
       `<h5 class="subsection-heading span-three">Occupation and education</h5>` +
       field(prefix + "occupation_group", "Occupational Group", { type: "select", options: occupationGroups, required: true, className: "span-two", hint: "Please refer to the ACARA Parent Occupation Groups guide to help select the appropriate occupational group." }) + field(prefix + "occupation", "Occupation", { type: "select", options: occupations, required: true }) + field(prefix + "employer", "Employer") +
       field(prefix + "school_education", "School Level Education", { type: "select", options: ["Year 12", "Year 11", "Year 10", "Year 9 or below"], required: true }) + field(prefix + "further_education", "University / Further Education", { type: "select", options: ["Bachelor degree or above", "Advanced Diploma / Diploma", "Certificate I-IV", "No post-school qualification"], required: true }) +
@@ -959,6 +1101,7 @@
     renderFrameSelector();
     updateSaveState(screen);
     updateConditionals();
+    bindAddressAutocomplete();
     bindCanvas();
     showInlineServerValidation();
     const resendButton = root.querySelector("[data-resend-kind]");

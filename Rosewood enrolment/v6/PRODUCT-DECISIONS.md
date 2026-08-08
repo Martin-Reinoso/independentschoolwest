@@ -211,8 +211,12 @@ question asks only whether other children may attend and, when Yes, records a co
   schooling follows Current Early Learning Centre / Kindergarten / Primary School.
   Address sharing and compact Home Care Arrangement controls sit inside Student Primary
   Address and explicitly refer to other parents/guardians.
-- Student and guardian address controls disable browser address autocomplete and do not
-  call an external address-search service.
+- V6.9 provides optional Google Places suggestions for the student primary address and
+  guardian residential/postal addresses. The existing structured fields remain
+  editable and authoritative, and an unavailable provider never blocks manual entry.
+  Google receives only search text typed into its separate control; Rosewood requests
+  only address components and does not request/store Place IDs, coordinates, search
+  history or device location. Doctor/practice and EOI addresses remain manual.
 - Home Care Arrangement is a required single-select. Other reveals a required care
   description, and Shared Custody reveals a required Shared Parenting Schedule.
 - Nationality and Citizenship is identified as a government requirement and makes clear

@@ -160,6 +160,6 @@ live/preview boundaries. See these records together with
 `SOURCE-COMPLIANCE.md`, `TESTING.md`, `STAFF-PORTAL-RUNBOOK.md` and
 `RELEASE-BLOCKERS.md` before inviting real families.
 
-`V6.7-CHANGE-MAP.md` records the preceding contract release. `V6.8-CHANGE-MAP.md`
-records the current selector, student/address, survey, migration and compatibility
-release implemented for active invitations.
+`V6.7-CHANGE-MAP.md` and `V6.8-CHANGE-MAP.md` record the preceding contract releases.
+`V6.9-CHANGE-MAP.md` records the current optional Google address-assistance boundary,
+key controls, privacy limits, fallback, migration and release gate.
