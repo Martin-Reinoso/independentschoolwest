@@ -602,7 +602,7 @@ family record, OTP, upload, email, submission or signature was created or change
 
 ## V6.9 Address Assistance Release
 
-Local verification completed on 8 August 2026 using synthetic review frames only.
+Local and production verification completed on 8 August 2026 using synthetic data.
 
 - 70 Node tests pass, including restricted-key disclosure only after family OTP,
   manual fallback, existing-field mapping, autosave, V6.8 contract compatibility and
@@ -616,6 +616,25 @@ Local verification completed on 8 August 2026 using synthetic review frames only
   fields retain their required labels
 - no browser console warnings or errors were found with Google intentionally
   unavailable in review mode
-- live Google suggestions, CSP traffic and provider response mapping remain a release
-  gate until Google billing verification, API enablement and restricted-key creation
-  are complete
+- the organisational Google Cloud project `notional-weft-504315-q9` has billing
+  attached, Maps JavaScript API and Places API (New) enabled, an A$10 monthly budget
+  alert, and a browser key restricted to those two APIs plus `ffe.org.au` and
+  `www.ffe.org.au`
+- the key is held in the existing AWS configuration secret and is returned only after
+  invitation and email-OTP verification; the public gateway does not receive it
+- a synthetic direct invitation and OTP reached `info@ffe.org.au`; the verified Student
+  frame displayed the live Google helper, returned Australian suggestions and mapped
+  `1 Collins St, Melbourne` to `1 Collins Street`, `Melbourne`, `VIC`, `3000`
+- selecting the suggestion triggered the existing draft autosave and returned the
+  family status indicator to `Saved`; no application was submitted
+- the reviewed CloudFormation change set modified Lambda code in place and recalculated
+  only the existing outbox rule/permission; it did not modify or replace DynamoDB,
+  audit, KMS, backups, staging, Drive/Sheets configuration, alarms or secrets
+- CloudFormation reached `UPDATE_COMPLETE`; Lambda is `Active` with a successful update
+  and `/v6/health` reports schema `rosewood-v6-2026-08-08-form-v8`, EOI
+  `rosewood-eoi-2026.9` and Application `rosewood-application-2026.9`
+- the Lambda error alarm is `OK`, the one-minute outbox rule is enabled, DynamoDB PITR
+  is enabled and the locked daily/monthly vault contains completed recovery points
+- release commit `ab22d93` was published to `main`; GitHub Pages run `31254556878`
+  completed successfully and the public family HTML, JavaScript and CSS hashes match
+  the tested release files byte for byte
