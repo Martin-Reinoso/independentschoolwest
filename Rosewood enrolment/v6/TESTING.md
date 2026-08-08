@@ -675,3 +675,37 @@ changing an Expression of Interest or family application.
 - release commit `469a7ff` was published to `main`; GitHub Pages run `31280847317`
   completed successfully and the public family HTML, JavaScript and CSS hashes match
   the tested release files byte for byte
+
+## Automated Production Canary
+
+Implemented and deployed in Sydney on 9 August 2026 without creating or changing an
+EOI, invitation, OTP, family session, application, upload, signature or workflow email.
+
+- all 74 Node tests pass, including healthy and failed public-asset checks, backend
+  version validation, EOI address-configuration failure, independent zero/one metric
+  publication, HTTPS-only targets, schedule/IAM restrictions and alarm configuration
+- JavaScript syntax, `git diff --check`, CloudFormation validation and the reproducible
+  frozen-lockfile deployment build pass
+- EventBridge schedule
+  `rosewood-enrolment-v6-produc-RosewoodCanarySchedule-KIpARd5xewjV` is enabled at
+  `rate(30 minutes)` with the dedicated non-writing canary event and Lambda target
+- the reviewed CloudFormation change set added only the schedule, invocation permission,
+  three alarms and secondary SNS subscription; it updated Lambda code/environment and
+  its metric-publication IAM statement in place and did not modify or replace DynamoDB,
+  audit, KMS, S3 staging, backups, Google configuration or Secrets Manager resources
+- manual post-deployment invocation returned HTTP 200 with no function error; public
+  assets, backend health/form versions and EOI address configuration all returned
+  availability `1` and produced a safe aggregate `production_canary` log entry
+- the public-assets check covers the family/EOI, guardian-signing and staff HTML and
+  JavaScript release markers; the backend check requires `ok` and the bundled immutable
+  V6.10 contracts; the address check requires production CORS, `no-store`, Australian
+  Google Places configuration and a present browser key without logging its value
+- all three canary alarms and the existing Lambda error alarm are `OK`; canary alarms
+  require two consecutive failed or missing 30-minute observations and notify again on
+  recovery, avoiding an email on every continuing failed run
+- the newly created alarms initially evaluated empty pre-deployment periods as missing;
+  the verified healthy canary datapoint was used to initialise them to `OK`, which may
+  have produced one setup alarm and one recovery notification
+- both `info@ffe.org.au` and `frjativa@gmail.com` are confirmed subscriptions on the
+  existing encrypted Rosewood security and backup SNS topic
+- production Lambda deployment commit `b6aa4c5` is the tested monitoring release
