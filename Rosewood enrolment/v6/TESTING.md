@@ -51,9 +51,11 @@ Tested through a local HTTP server in the Codex in-app browser.
 - Religion Other and current-school Other reveal independent required full-width fields
 - Current Early Learning Centre / Kindergarten / Primary School occupies its own row on
   desktop and mobile without displacing adjacent controls
-- Student Residence, Student Primary Address and Family render as separate sections
-- Home Care Arrangement uses checkboxes; Other and Shared Custody independently reveal
-  their required detail fields
+- V6.8 has no separate Student Residence or Previous Education section; interrupted
+  schooling follows the current-school control, while address sharing and Home Care
+  Arrangement render inside Student Primary Address
+- Home Care Arrangement uses a compact single-select; Other and Shared Custody
+  independently reveal their required detail fields
 - Nationality and Citizenship includes its government-purpose explanation, clarified
   student labels, expanded arrival/return guidance and languages at the end
 - Citizenship Status No reveals required residency evidence; Eligible for Australian
@@ -63,9 +65,9 @@ Tested through a local HTTP server in the Codex in-app browser.
 - General / Additional Needs hides only Please Specify until Yes is selected; Health
   Professionals, Reports Attached, NDIS Support and Court or Parenting Orders remain
   visible; the source duty-of-care and no-impact-on-offer text is present
-- Other medical condition appears only when Other is chosen; Doctor Name and Doctor's
-  practice/Address are mandatory while Doctor Phone remains optional; Ambulance Cover
-  and Health Care Card are mandatory Yes/No
+- Other medical condition appears only when Other is chosen; Doctor Name, Doctor's
+  practice/Address and Doctor Phone are mandatory; Ambulance Cover and Health Care Card
+  are mandatory Yes/No
 - Humanitarian Health Check explains that it refers to a humanitarian visa
 - Application Parent / Guardian has the revised sharing/SMS labels, mandatory Health
   Care Card branch, complete mandatory residential address, required occupation,
@@ -78,8 +80,9 @@ Tested through a local HTTP server in the Codex in-app browser.
 - each document control explains that upload starts immediately; live uploads render a
   per-file progress bar, preparation/securing/uploaded state and an inline retryable
   error within the relevant document card
-- Application Conditions contains only previous-school permission, fee responsibility
-  and survey; it has no Enrolment Agreement terms or photography permissions
+- Application Conditions contains the three required agreement groups and the optional
+  eleven-question Student and family survey; it has no Enrolment Agreement terms,
+  fee-responsibility control, previous-school permission or photography permissions
 - selecting One Parent / Guardian reveals only its nominee/date branch and disables the
   other two branches
 - selecting Both Parents / Guardian displays the fee-account nominee note and offers
@@ -131,8 +134,9 @@ Tested through a local HTTP server in the Codex in-app browser.
   mode retains its non-writing warning
 - the compact workflow/section header is sticky at the top of the family page and uses
   short family-facing save/connectivity states
-- every live Application section renders Save and continue later; the child selector
-  renders Sign out and no Back control
+- every live Application section renders Save and continue later; its confirmation can
+  return to the child selector without another OTP, and the selector renders Sign out
+  with no Back control
 - the save indicator is absent from the gateway, OTP and child-selection screens, so an
   authentication failure cannot be presented as a draft-save failure
 - debounced autosave uses a 1.2-second pause, an eight-second maximum wait, revision
@@ -557,3 +561,26 @@ application.
   Rosewood DKIM and DMARC and retained the aligned `bounce.ffe.org.au` return path
 - the Lambda error alarm is `OK`, the one-minute outbox schedule remains enabled and
   the existing daily/monthly backup plan remains present
+
+## V6.8 Application Contract Release
+
+Local verification completed on 8 August 2026 using synthetic review frames only. No
+family record, OTP, upload, email, submission or signature was created or changed.
+
+- 66 Node tests pass, including V6.8 validation, optional survey persistence, immutable
+  V6.7 compatibility, frozen guardian review and append-only Conditions headers
+- JavaScript/module syntax, `git diff --check`, frozen lockfile policy and deployment
+  bundle asset gates pass
+- desktop review at 1280 x 720 has no horizontal overflow; all three country inputs
+  share the exact same top coordinate after the fixed label row is applied
+- mobile review at 390 x 844 has a 390px document width with no horizontal overflow;
+  child cards are approximately 321px and their action buttons approximately 290px
+- direct child cards have no Source row or direct-invitation wording; only the EOI-linked
+  card displays the Expression of Interest inclusion note
+- Student has no previous-attendance question, Previous Education section or Student
+  Residence section; interrupted schooling follows current school, while address
+  sharing and the compact Home Care Arrangement select are in Student Primary Address
+- address autocomplete is off; the official Health Victoria link is present and
+  assistive technology is told that it opens a new tab
+- all eleven survey answer keys render, are optional, have programmatic labels and fit
+  a single 321px mobile column; no duplicate IDs or browser console warnings were found

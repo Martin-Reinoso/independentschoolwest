@@ -14,7 +14,7 @@ real family information until the applicable blockers are closed.
 - approve application and signature declarations, photography/recording permissions,
   communication consent and IP-address wording
 - confirm the future post-offer fee-account and previous-school-contact permission
-  workflows; neither is collected in Application V6.7
+  workflows; neither is collected in Application V6.8
 - confirm required documents, formats, limits, retention and deletion; proof of
   address is explicitly excluded from the application
 - confirm year, school, country, language, religion, occupation and relationship catalogues

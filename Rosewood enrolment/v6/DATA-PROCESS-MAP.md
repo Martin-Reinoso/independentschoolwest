@@ -391,13 +391,13 @@ The green Saved state means the server acknowledged the exact displayed revision
 selecting a file immediately starts a separately authorised upload.
 
 Every application section includes **Save and continue later**. It flushes the current
-answers, waits for any active Documents-page transfer, revokes the browser-held family
-and application sessions and displays a close-safe confirmation. Next can be selected
-while a file is uploading and waits for that transfer before navigation. Reopening the
-private invitation and completing OTP returns the family to the last acknowledged
-section. The child selector has Sign out rather than Back, so it cannot return to an
-already-consumed OTP screen. If the page is refreshed or closed without using the
-control, the memory-only session is lost but the last acknowledged server draft remains.
+answers, waits for any active Documents-page transfer, closes the selected child's
+editing session and displays a close-safe confirmation. The verified family session
+remains active, and **Return to child applications** returns directly to the selector.
+Next can be selected while a file is uploading and waits for that transfer before
+navigation. If the family later reopens the private invitation after expiry, completing
+OTP returns them to the last acknowledged section. The child selector has Sign out
+rather than Back, so it cannot return to an already-consumed OTP screen.
 
 The browser mirrors the server's sliding 20-minute inactivity period. A successful
 authenticated request resets the browser timer. If the timer elapses, or the API reports
@@ -410,10 +410,8 @@ from browser memory and returns to the private Application gateway for a new OTP
 
 | Subsection | Data categories | Important conditions | Destination |
 | --- | --- | --- | --- |
-| Student Details | Names, preferred name, DOB, gender, religion, current school/year and intended entry | Religion Other and Current School Other reveal required text fields. | Draft `values`; final Student projection |
-| Previous Education | Whether the student attended an early learning centre, kindergarten or school; institution/year level when Yes; interrupted schooling and details | Institution/year level are hidden after No. Interruption details appear after Yes. No permission to contact the previous institution is collected here. | Draft `values`; final Student projection |
-| Student Residence | Address-sharing choice and home-care arrangements | Other care requires details; Shared Custody requires a parenting schedule. | Draft `values`; final Student projection |
-| Student Primary Address | Address, suburb, state, postcode and country | Required | Draft `values`; final Student projection |
+| Student Details | Names, preferred name, DOB, gender, religion, current school/year, intended entry and interrupted schooling | Religion Other and Current School Other reveal required text fields. Interruption details appear after Yes. The separate previous-attendance question is retired in V6.8. | Draft `values`; final Student projection |
+| Student Primary Address | Address sharing, address, suburb, state, postcode, country and compact Home Care Arrangement | Core answers are required. Other care requires details; Shared Custody requires a parenting schedule. Browser address autocomplete is disabled and no external address service is used. | Draft `values`; final Student projection |
 | Family | Whether other children may attend and how many | Count appears only after Yes. | Draft `values`; final Student projection |
 | Nationality and Citizenship | Residence, birth, nationality, ethnicity, arrival/return date, residency, citizenship, evidence, visas, Indigenous status and languages | Non-citizen paths reveal residency evidence; most evidence choices require visa subclass/expiry. | Draft `values`; final Student projection |
 | General / Additional Needs | Formal assessment/report availability, need categories, current and possible Rosewood adjustments, professionals, reports, NDIS, court/parenting orders and other information | Assessment details appear after Yes. Need category and adjustment questions appear after additional-needs Yes; several support fields remain visible regardless. | Draft `values`; final Student projection |
@@ -423,6 +421,12 @@ from browser memory and returns to the private Application gateway for a new OTP
 This section contains identity, health, disability/support, religious, Indigenous,
 residency and court/parenting information and therefore has the highest privacy
 sensitivity in the application.
+
+The final Conditions page also contains an optional eleven-question Student and family
+survey covering aptitude, preferred subjects, support subjects, hobbies/cultural
+pursuits, sport, extra-curricular activity, library membership, school attractions,
+desired qualities, mentoring value and intended years. Answers remain in the
+authoritative application revision and append to the Conditions reporting projection.
 
 ### Section 2: Parent / Guardian
 

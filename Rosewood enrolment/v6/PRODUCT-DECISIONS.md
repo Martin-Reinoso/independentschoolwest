@@ -158,8 +158,10 @@ workflows into the current records or API.
   seconds during continuous input. Identical snapshots are suppressed.
 - Navigation flushes pending changes. Every Application section provides **Save and
   continue later**; on Documents it also uploads selected files before confirming save.
-- Save and continue later and Sign out revoke browser-held sessions and clear sensitive
-  values from page memory. The child selector uses Sign out rather than Back.
+- Save and continue later revokes the selected child's application/status sessions and
+  clears its answers from page memory, but preserves the verified family session and
+  offers **Return to child applications**. Sign out revokes the family session. The
+  child selector uses Sign out rather than Back.
 - Family and child-application sessions expire after 20 minutes of inactivity and have
   an eight-hour absolute lifetime after OTP. Activity refreshes the idle window only
   when needed. Staff and guardian-signing sessions keep their separate policies.
@@ -179,8 +181,9 @@ workflows into the current records or API.
 - Emergency contacts do not have a "Share these details" question.
 - Application conditions contain the three Harkaway Hills College agreement groups,
   with Rosewood College substituted as requested, and one required acknowledgement for
-  each group. Previous-school permission, fee responsibility and the survey are not
-  collected in V6.7.
+  each group. Previous-school permission and fee responsibility are not collected.
+  V6.8 adds an optional eleven-question Student and family survey after the required
+  acknowledgements.
 - Terms and Conditions of Enrolment and photography/recording permission belong to the
   post-offer Enrolment Agreement, not the application.
 - Victorian admission guidance is not displayed in the application signature step.
@@ -204,8 +207,12 @@ question asks only whether other children may attend and, when Yes, records a co
 - Religion and Current Early Learning Centre / Kindergarten / Primary School reveal a
   mandatory free-text field when Other is selected. The current-school control occupies
   its own row so long labels and conditional fields do not misalign adjacent controls.
-- Student Residence, Student Primary Address and Family are separate visual sections.
-  Address sharing explicitly refers to other parents/guardians.
+- V6.8 has no separate Student Residence or Previous Education section. Interrupted
+  schooling follows Current Early Learning Centre / Kindergarten / Primary School.
+  Address sharing and compact Home Care Arrangement controls sit inside Student Primary
+  Address and explicitly refer to other parents/guardians.
+- Student and guardian address controls disable browser address autocomplete and do not
+  call an external address-search service.
 - Home Care Arrangement is a required single-select. Other reveals a required care
   description, and Shared Custody reveals a required Shared Parenting Schedule.
 - Nationality and Citizenship is identified as a government requirement and makes clear

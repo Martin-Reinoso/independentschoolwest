@@ -388,3 +388,38 @@ test("verified signing context returns the complete review and no application id
   assert.equal("applicationId" in payload.context, false);
   assert.doesNotMatch(serialized, /internal-application-id|frozen-revision-hash/);
 });
+
+test("V8 guardian review omits retired previous education and includes the optional survey", () => {
+  const review = buildApplicationReview({
+    formVersion: "rosewood-application-2026.8",
+    reference: "APP-V8-SYNTHETIC",
+    guardianCount: 1,
+    emergencyCount: 2,
+    values: {
+      student_first: "Synthetic",
+      current_school: "Synthetic School",
+      interrupted_schooling: "No",
+      previous_school_attended: "Yes",
+      previous_school_name: "Retired historical answer",
+      student_address_share: "Yes, share",
+      care_arrangement: "Both Parents",
+      student_address: "1 Synthetic Street",
+      application_student_agreement: ["Confirmed"],
+      application_parent_agreement: ["Confirmed"],
+      application_agreement_acknowledgement: ["Confirmed"],
+      application_special_aptitudes: "Mathematics",
+      application_mentoring_value: "A trusted adult relationship"
+    },
+    documents: {},
+    signatures: []
+  });
+  const student = review.sections.find(section => section.id === "student");
+  const conditions = review.sections.find(section => section.id === "conditions");
+  const serialized = JSON.stringify(review);
+  assert.deepEqual(student.groups.map(group => group.title), ["Student details", "Student primary address", "Family"]);
+  assert.match(JSON.stringify(student.groups[0]), /extended absence or interruption/);
+  assert.match(JSON.stringify(student.groups[1]), /Share this address|Home care arrangement/);
+  assert.doesNotMatch(serialized, /Retired historical answer|Has the student previously attended/);
+  assert.equal(conditions.groups.at(-1).title, "Student and family survey");
+  assert.match(JSON.stringify(conditions.groups.at(-1)), /Mathematics|trusted adult relationship/);
+});

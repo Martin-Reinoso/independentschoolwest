@@ -73,7 +73,8 @@ function includes(values, key, expected) {
   return (Array.isArray(value) ? value : [value]).includes(expected);
 }
 
-function studentSections(values) {
+function studentSections(values, options = {}) {
+  const v8 = options.formVersion === "rosewood-application-2026.8";
   return [
     section("student", "Student", [
       group("Student details", [
@@ -89,22 +90,32 @@ function studentSections(values) {
         field(values, "entry_year", "Year the student will commence at Rosewood College"),
         field(values, "entry_level", "Year level of entry at Rosewood College"),
         field(values, "current_school", "Current Early Learning Centre / Kindergarten / Primary School"),
-        field(values, "current_school_other", "Other Early Learning Centre / Kindergarten / Primary School", { when: value => value.current_school === "Other" || present(value.current_school_other) })
+        field(values, "current_school_other", "Other Early Learning Centre / Kindergarten / Primary School", { when: value => value.current_school === "Other" || present(value.current_school_other) }),
+        ...(v8 ? [
+          field(values, "interrupted_schooling", "Has the student experienced an extended absence or interruption to schooling?"),
+          field(values, "interrupted_schooling_details", "Approximate dates and details", { when: value => value.interrupted_schooling === "Yes" || present(value.interrupted_schooling_details) })
+        ] : [])
       ]),
-      group("Previous education", [
+      ...(!v8 ? [group("Previous education", [
         field(values, "previous_school_attended", "Has the student previously attended an early learning centre, kindergarten or school?"),
         field(values, "previous_school_name", "Institution", { when: value => value.previous_school_attended === "Yes" || present(value.previous_school_name) }),
         field(values, "previous_school_year_level", "Year level", { when: value => value.previous_school_attended === "Yes" || present(value.previous_school_year_level) }),
         field(values, "interrupted_schooling", "Has the student experienced an extended absence or interruption to schooling?"),
         field(values, "interrupted_schooling_details", "Approximate dates and details", { when: value => value.interrupted_schooling === "Yes" || present(value.interrupted_schooling_details) })
-      ]),
-      group("Student residence", [
+      ])] : []),
+      ...(!v8 ? [group("Student residence", [
         field(values, "student_address_share", "Share this address with other Parent/Guardian?"),
         field(values, "care_arrangement", "Home care arrangement"),
         field(values, "care_other", "Other care arrangement", { when: value => includes(value, "care_arrangement", "Other") || present(value.care_other) }),
         field(values, "shared_parenting", "Shared parenting schedule", { when: value => includes(value, "care_arrangement", "Shared Custody") || present(value.shared_parenting) })
-      ]),
+      ])] : []),
       group("Student primary address", [
+        ...(v8 ? [
+          field(values, "student_address_share", "Share this address with other Parent/Guardian?"),
+          field(values, "care_arrangement", "Home care arrangement"),
+          field(values, "care_other", "Other care arrangement", { when: value => includes(value, "care_arrangement", "Other") || present(value.care_other) }),
+          field(values, "shared_parenting", "Shared parenting schedule", { when: value => includes(value, "care_arrangement", "Shared Custody") || present(value.shared_parenting) })
+        ] : []),
         field(values, "student_address", "Address"),
         field(values, "student_suburb", "Suburb"),
         field(values, "student_state", "State"),
@@ -311,12 +322,29 @@ function documentsSection(documents = {}) {
   ], { note: "Uploaded documents are listed by their original file names. The files remain private." });
 }
 
-function conditionsSection(values) {
+function surveyGroup(values) {
+  return group("Student and family survey", [
+    field(values, "application_special_aptitudes", "In which subjects does your child have special aptitude?"),
+    field(values, "application_preferred_subjects", "What are your child's preferred school subjects?"),
+    field(values, "application_subjects_needing_help", "In which subjects may your child be in need of special help?"),
+    field(values, "application_hobbies_cultural_pursuits", "What are your child's main hobbies or cultural pursuits (apart from sporting interests)?"),
+    field(values, "application_sport_participation", "Does your child participate in any sports organised through the school or independent of the school?"),
+    field(values, "application_extracurricular_activities", "Does your child attend any extra-curricular school activity?"),
+    field(values, "application_local_library", "Does your child belong to a local library?"),
+    field(values, "application_school_attractions", "What attracts you most to the school?"),
+    field(values, "application_desired_personal_qualities", "What personal qualities would you most like to see developed in your child at the school?"),
+    field(values, "application_mentoring_value", "What value do you think the mentoring system would have for you as parents?"),
+    field(values, "application_intended_years", "How many years do you intend your child to study at our school?")
+  ]);
+}
+
+function conditionsSection(values, options = {}) {
   if (present(values.application_student_agreement) || present(values.application_parent_agreement) || present(values.application_agreement_acknowledgement)) {
     return section("conditions", "Conditions", [
       group("Student commitments", [field(values, "application_student_agreement", "Student commitments accepted", { format: confirmed })]),
       group("Parent / Carer commitments", [field(values, "application_parent_agreement", "Parent / Carer commitments accepted", { format: confirmed })]),
-      group("Acknowledgement", [field(values, "application_agreement_acknowledgement", "Parent / Carer Agreement acknowledged", { format: confirmed })])
+      group("Acknowledgement", [field(values, "application_agreement_acknowledgement", "Parent / Carer Agreement acknowledged", { format: confirmed })]),
+      ...(options.includeSurvey ? [surveyGroup(values)] : [])
     ]);
   }
   const feeItems = [field(values, "fee_option", "Who will be responsible for payment of school fees?")];
@@ -380,11 +408,11 @@ export function buildApplicationReview(app, signerGuardianIndex = 0) {
     revision: Number(app?.revision || 0),
     submittedAt: timestamp(app?.submittedAt),
     sections: [
-      ...studentSections(values),
+      ...studentSections(values, { formVersion: app?.formVersion }),
       guardianSection(app || {}, values, guardianCount, signerGuardianIndex),
       emergencySection(values, emergencyCount),
       documentsSection(app?.documents),
-      conditionsSection(values),
+      conditionsSection(values, { includeSurvey: app?.formVersion === "rosewood-application-2026.8" }),
       signatureSection(app || {}, values, guardianCount)
     ]
   };

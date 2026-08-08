@@ -29,8 +29,8 @@ deliberately creating a new version.
 Current launch contracts:
 
 ```text
-EOI:         rosewood-eoi-2026.7
-Application: rosewood-application-2026.7
+EOI:         rosewood-eoi-2026.8
+Application: rosewood-application-2026.8
 ```
 
 The original `2026.1`, `2026.2`, `2026.3` and `2026.4` contracts and validators remain
@@ -68,6 +68,15 @@ required; and makes guardian ethnicity optional. The server sets the signing dat
 Editable `2026.1`-`2026.6` applications are upgraded transactionally on their next
 verified open, preserving every existing answer and adding an immutable upgrade
 revision/audit event. Submitted applications and their definitions never upgrade.
+The `2026.8` release changes the shared family interface package and the Application
+contract. It removes the previous-attendance/institution/year-level questions from the
+active interface and required list, moves interrupted schooling into Student Details,
+combines address-sharing and Home Care Arrangement with Student Primary Address, hides
+direct-invitation source metadata from families, preserves the family selector after
+Save and continue later, and adds eleven optional survey fields. Retired answers remain
+in existing revisions and answer maps; V6.8 guardian review omits them. Survey answers
+append to the Conditions projection. The EOI question contract is unchanged, but its
+form version advances to `2026.8` because it shares the newly pinned frontend assets.
 
 Acceptance, Decline and the Enrolment Agreement must receive their own independent
 version series when their backends are built. They must not reuse the Application

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { APPLICATION_REQUIRED_FIELDS, APPLICATION_V7_REQUIRED_FIELDS, CONTACT_PERMISSION_NO, CONTACT_PERMISSION_YES, sanitizeApplication, validateApplicationForSubmission, validateEoi } from "../schema.mjs";
+import { APPLICATION_REQUIRED_FIELDS, APPLICATION_SURVEY_FIELDS, APPLICATION_V7_REQUIRED_FIELDS, APPLICATION_V8_REQUIRED_FIELDS, CONTACT_PERMISSION_NO, CONTACT_PERMISSION_YES, sanitizeApplication, splitApplication, validateApplicationForSubmission, validateEoi } from "../schema.mjs";
 
 function validEoi() {
   return {
@@ -120,4 +120,23 @@ test("V7 rejects future sacrament dates while keeping them optional", () => {
   assert.throws(() => validateApplicationForSubmission(values, 1, 2, "rosewood-application-2026.7"), error => error.details.missing.includes("sacrament_Baptism_date:invalid"));
   delete values.sacrament_Baptism_date;
   assert.equal(validateApplicationForSubmission(values, 1, 2, "rosewood-application-2026.7").sacrament_Baptism_date, undefined);
+});
+
+test("V8 retires previous education from the active contract and preserves the optional survey", () => {
+  const values = validV7Application();
+  delete values.previous_school_attended;
+  Object.assign(values, Object.fromEntries(APPLICATION_SURVEY_FIELDS.map((field, index) => [field, index < 3 ? `Synthetic answer ${index + 1}` : "No"])));
+  const validated = validateApplicationForSubmission(values, 1, 2, "rosewood-application-2026.8");
+  assert.ok(!APPLICATION_V8_REQUIRED_FIELDS.includes("previous_school_attended"));
+  assert.equal(validated.application_special_aptitudes, "Synthetic answer 1");
+  const split = splitApplication(validated, "app-synthetic", 1, 2);
+  assert.equal(split.conditions.application_mentoring_value, "No");
+  assert.equal(split.student.previous_school_attended, undefined);
+});
+
+test("V8 survey answers remain optional", () => {
+  const values = validV7Application();
+  delete values.previous_school_attended;
+  for (const field of APPLICATION_SURVEY_FIELDS) delete values[field];
+  assert.equal(validateApplicationForSubmission(values, 1, 2, "rosewood-application-2026.8").student_first, "Synthetic");
 });

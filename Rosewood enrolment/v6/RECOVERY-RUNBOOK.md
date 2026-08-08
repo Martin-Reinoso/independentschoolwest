@@ -74,15 +74,18 @@ the outbox receipt and SES feedback. `accepted_by_ses` is not proof that the rec
 mailbox accepted or displayed the message. Never expose a full historical email in an
 ordinary log or family-facing response.
 
-## Recover Or Diagnose A V6.7 Draft Upgrade
+## Recover Or Diagnose A V6.8 Draft Upgrade
 
 Editable older drafts upgrade only when the family verifies the invitation or selects
 that child. The operation is conditional on the prior revision and form version.
 
 1. Check for `application.form_definition_upgraded` in the restricted audit record and
    an immutable `form_definition_upgraded` application revision.
-2. Confirm the current record is `rosewood-application-2026.7` and that aggregate answer
+2. Confirm the current record is `rosewood-application-2026.8` and that aggregate answer
    key count did not decrease. Do not print family answers into logs or tickets.
+   A retained `previous_school_attended`, `previous_school_name` or
+   `previous_school_year_level` value is expected historical data and must not be
+   deleted merely because V6.8 no longer renders it.
 3. If the conditional update lost a race, ask the family to refresh; do not manually
    change `formVersion`, revision or answers.
 4. Never run this process against a submitted, pending-signature, staff-review or
