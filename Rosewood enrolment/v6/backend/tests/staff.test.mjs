@@ -193,9 +193,13 @@ test("staff portal creates a parent-only direct invitation without returning its
   assert.equal((await store.listApplicationRevisions(store.created.application.id))[0].kind, "created");
 });
 
-test("a restricted Google Places browser key is disclosed only in an OTP-verified application context", async () => {
+test("a restricted Google Places browser key is available to the public EOI and verified Application only", async () => {
   const browserKey = "synthetic-restricted-google-browser-key";
   const { service, store } = staffService({ config: { GOOGLE_MAPS_BROWSER_API_KEY: browserKey } });
+  const eoiConfigResponse = await service(event("/v6/eoi/config"));
+  assert.equal(eoiConfigResponse.statusCode, 200);
+  assert.deepEqual(JSON.parse(eoiConfigResponse.body).addressAutocomplete, { enabled: true, provider: "google_places", apiKey: browserKey, region: "AU" });
+  assert.match(eoiConfigResponse.headers["Cache-Control"], /no-store/);
   const created = await createApplicationInvitation({ store, recipientEmail: "family@example.com", firstName: "Alex", applicationUrl: "https://ffe.org.au/form", clock });
   const invitationToken = new URL(created.invitationUrl).searchParams.get("invite");
   const requestedResponse = await service(event("/v6/application/access/request-code", "POST", { invitationToken, email: "family@example.com" }));

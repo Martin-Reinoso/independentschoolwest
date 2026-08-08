@@ -29,8 +29,8 @@ deliberately creating a new version.
 Current launch contracts:
 
 ```text
-EOI:         rosewood-eoi-2026.9
-Application: rosewood-application-2026.9
+EOI:         rosewood-eoi-2026.10
+Application: rosewood-application-2026.10
 ```
 
 The original `2026.1`, `2026.2`, `2026.3` and `2026.4` contracts and validators remain
@@ -83,6 +83,12 @@ fields. A selected result writes only to the existing address, suburb, state, po
 and country keys. No Google-specific identifier, coordinate, search term or additional
 storage column is introduced. Manual entry remains the fallback. The EOI questions are
 unchanged and advance to `2026.9` only because the family frontend assets are repinned.
+The `2026.10` release preserves both V6.9 data contracts. It extends the same optional
+Google Places helper to the EOI primary-contact address, populating only the existing
+address, suburb, state, postcode and country keys. The EOI state selector converts a
+Google short state code such as `VIC` to its existing long option such as `Victoria`.
+Application advances to `2026.10` only because it shares the repinned family assets.
+No schema, validation, projection column or stored Google identifier is introduced.
 
 Acceptance, Decline and the Enrolment Agreement must receive their own independent
 version series when their backends are built. They must not reuse the Application

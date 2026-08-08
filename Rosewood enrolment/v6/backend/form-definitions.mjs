@@ -14,8 +14,8 @@ import {
 } from "./schema.mjs";
 
 export const CURRENT_FORM_VERSIONS = Object.freeze({
-  eoi: "rosewood-eoi-2026.9",
-  application: "rosewood-application-2026.9"
+  eoi: "rosewood-eoi-2026.10",
+  application: "rosewood-application-2026.10"
 });
 
 const LEGACY_SCHEMA_VERSION = "rosewood-v6-2026-08-05";
@@ -500,7 +500,7 @@ const v9FrontendAssetHashes = freeze({
 
 const eoi2026v9 = complete({
   workflow: "eoi",
-  formVersion: CURRENT_FORM_VERSIONS.eoi,
+  formVersion: "rosewood-eoi-2026.9",
   schemaVersion: SCHEMA_VERSION,
   releasedAt: "2026-08-08",
   source: {
@@ -514,7 +514,7 @@ const eoi2026v9 = complete({
 
 const application2026v9 = complete({
   workflow: "application",
-  formVersion: CURRENT_FORM_VERSIONS.application,
+  formVersion: "rosewood-application-2026.9",
   schemaVersion: SCHEMA_VERSION,
   releasedAt: "2026-08-08",
   source: {
@@ -526,9 +526,42 @@ const application2026v9 = complete({
   contract: application2026v8.contract
 });
 
+const v10FrontendAssetHashes = freeze({
+  ...v9FrontendAssetHashes,
+  "pages/rosewood-enrolment-v6.js": "b06e9625b0ef26560243fdc72efa27414bc2314d555b2dd1210e292fd6bdfdb4"
+});
+
+const eoi2026v10 = complete({
+  workflow: "eoi",
+  formVersion: CURRENT_FORM_VERSIONS.eoi,
+  schemaVersion: SCHEMA_VERSION,
+  releasedAt: "2026-08-09",
+  source: {
+    frontend: "pages/rosewood-enrolment-v6.html?workflow=eoi",
+    frontendRelease: "v6-js21-css14-form-v10",
+    frontendAssetHashes: v10FrontendAssetHashes,
+    validator: "schema.mjs#validateEoi"
+  },
+  contract: eoi2026v9.contract
+});
+
+const application2026v10 = complete({
+  workflow: "application",
+  formVersion: CURRENT_FORM_VERSIONS.application,
+  schemaVersion: SCHEMA_VERSION,
+  releasedAt: "2026-08-09",
+  source: {
+    frontend: "pages/rosewood-enrolment-v6.html?workflow=application",
+    frontendRelease: "v6-js21-css14-form-v10",
+    frontendAssetHashes: v10FrontendAssetHashes,
+    validator: "schema.mjs#validateApplicationForSubmission"
+  },
+  contract: application2026v9.contract
+});
+
 export const FORM_DEFINITIONS = freeze({
-  eoi: { [eoi2026v1.formVersion]: eoi2026v1, [eoi2026v2.formVersion]: eoi2026v2, [eoi2026v3.formVersion]: eoi2026v3, [eoi2026v4.formVersion]: eoi2026v4, [eoi2026v5.formVersion]: eoi2026v5, [eoi2026v6.formVersion]: eoi2026v6, [eoi2026v7.formVersion]: eoi2026v7, [eoi2026v8.formVersion]: eoi2026v8, [eoi2026v9.formVersion]: eoi2026v9 },
-  application: { [application2026v1.formVersion]: application2026v1, [application2026v2.formVersion]: application2026v2, [application2026v3.formVersion]: application2026v3, [application2026v4.formVersion]: application2026v4, [application2026v5.formVersion]: application2026v5, [application2026v6.formVersion]: application2026v6, [application2026v7.formVersion]: application2026v7, [application2026v8.formVersion]: application2026v8, [application2026v9.formVersion]: application2026v9 }
+  eoi: { [eoi2026v1.formVersion]: eoi2026v1, [eoi2026v2.formVersion]: eoi2026v2, [eoi2026v3.formVersion]: eoi2026v3, [eoi2026v4.formVersion]: eoi2026v4, [eoi2026v5.formVersion]: eoi2026v5, [eoi2026v6.formVersion]: eoi2026v6, [eoi2026v7.formVersion]: eoi2026v7, [eoi2026v8.formVersion]: eoi2026v8, [eoi2026v9.formVersion]: eoi2026v9, [eoi2026v10.formVersion]: eoi2026v10 },
+  application: { [application2026v1.formVersion]: application2026v1, [application2026v2.formVersion]: application2026v2, [application2026v3.formVersion]: application2026v3, [application2026v4.formVersion]: application2026v4, [application2026v5.formVersion]: application2026v5, [application2026v6.formVersion]: application2026v6, [application2026v7.formVersion]: application2026v7, [application2026v8.formVersion]: application2026v8, [application2026v9.formVersion]: application2026v9, [application2026v10.formVersion]: application2026v10 }
 });
 
 export function getFormDefinition(workflow, formVersion = CURRENT_FORM_VERSIONS[workflow]) {

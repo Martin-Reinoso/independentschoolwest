@@ -187,7 +187,7 @@ sequenceDiagram
 | Section | Information collected | Processing and destination |
 | --- | --- | --- |
 | Primary Contact Details | Language, salutation, name, relationship, email and mobile | Validated into the EOI record; contact summary projected to Operations. |
-| Primary Contact Address | Address, suburb, state, postcode and country | Stored in the EOI record and EOI projection. |
+| Primary Contact Address | Address, suburb, state, postcode and country | Optional Google search fills the existing controls; the family reviews/edits them. Only the final structured values are stored in the EOI record and EOI projection. |
 | Student Details | Student name, DOB, gender, religion, intended year/year level, current school/year | Stored in the EOI record; student summary projected to Operations. |
 | Additional Needs | Yes/No and category when Yes | Stored in the EOI record; treated as sensitive support information. |
 | Family and Engagement | Family connection, other children, discovery source, questions | Stored in the EOI record and EOI projection. |
@@ -830,7 +830,8 @@ signature revision hashes also retain the form version and definition hash. See
 - DynamoDB is authoritative; Sheets are replaceable projections.
 - Restricted Google Drive is the launch file store.
 - Proof of address is not collected.
-- Google Places is an optional browser-side address-suggestion processor. It receives
+- Google Places is an optional browser-side address-suggestion processor for the EOI
+  primary-contact address and selected Application addresses. It receives
   only search text entered into that control and returns address components. Rosewood
   does not request/store Place IDs, coordinates, search history or device location;
   only the existing structured address answers enter DynamoDB and Sheets projections.

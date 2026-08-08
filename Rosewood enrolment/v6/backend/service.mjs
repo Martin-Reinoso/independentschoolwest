@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { buildApplicationReview } from "./application-review.mjs";
 import { applicationComplete, applicationInvitation, applicationOtp, applicationSubmitted, eoiAcknowledgement, signatureInvitation, signatureOtp, staffOtp } from "./email-templates.mjs";
 import { currentFormDefinition, FORM_DEFINITIONS, getFormDefinition, recordFormReference } from "./form-definitions.mjs";
-import { CONTACT_PERMISSION_NO, CONTACT_PERMISSION_YES, SCHEMA_VERSION, contactPermissionAllowed, normalizeEmail, safeText, sanitizeApplication, splitApplication, truthy, validateApplicationForSubmission, validateEoi } from "./schema.mjs";
+import { CONTACT_PERMISSION_NO, CONTACT_PERMISSION_YES, SCHEMA_VERSION, contactPermissionAllowed, formReleaseAtLeast, normalizeEmail, safeText, sanitizeApplication, splitApplication, truthy, validateApplicationForSubmission, validateEoi } from "./schema.mjs";
 import { sheetOperation } from "./google-sheets.mjs";
 
 const DOCUMENT_CATEGORIES = ["birth_certificate", "health_and_immunisation", "school_report", "sacramental", "residency"];
@@ -420,6 +420,14 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
 
   function response(statusCode, payload, origin) {
     return { statusCode, headers: { "Access-Control-Allow-Origin": allowedOrigins.includes(origin) ? origin : allowedOrigins[0], "Access-Control-Allow-Headers": "authorization,content-type,idempotency-key", "Access-Control-Allow-Methods": "GET,POST,PUT,OPTIONS", "Cache-Control": "no-store, max-age=0", "Content-Type": "application/json; charset=utf-8", "Pragma": "no-cache", "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff" }, body: JSON.stringify(payload) };
+  }
+
+  async function getEoiConfig() {
+    return {
+      addressAutocomplete: googleMapsBrowserApiKey
+        ? { enabled: true, provider: "google_places", apiKey: googleMapsBrowserApiKey, region: "AU" }
+        : { enabled: false, provider: "manual" }
+    };
   }
 
   function networkFingerprint(event) { return hmac(networkSecret, sourceAddress(event)); }
@@ -1097,7 +1105,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     const guardianCount = Math.max(1, Math.min(6, Number(app.guardianCount || 1)));
     const signedAt = nowIso();
     const serverSigningDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Melbourne", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(signedAt));
-    const submissionValues = /\.(7|8|9)$/.test(definition.formVersion) ? { ...app.values, application_signature_date: serverSigningDate } : app.values;
+    const submissionValues = formReleaseAtLeast(definition.formVersion, 7) ? { ...app.values, application_signature_date: serverSigningDate } : app.values;
     const values = applicationValidator(definition).validate(submissionValues, guardianCount, app.emergencyCount || 2, definition.formVersion);
     const additionalSignatureRecipients = additionalGuardianSignatureRecipients(values, guardianCount, definition.formVersion);
     if (!(app.documents?.birth_certificate || []).length) throw appError(422, "DOCUMENT_REQUIRED", "Upload the student's birth certificate before submitting.", { missing: ["birth_certificate"] });
@@ -1300,6 +1308,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     ["POST /v6/staff/invitations", createStaffInvitation],
     ["POST /v6/staff/invitations/resend", resendStaffInvitation],
     ["POST /v6/staff/applications/contact-permission", changeStaffContactPermission],
+    ["GET /v6/eoi/config", getEoiConfig],
     ["POST /v6/eoi", submitEoi],
     ["POST /v6/application/access/request-code", requestApplicationCode],
     ["POST /v6/application/access/verify-code", verifyApplicationCode],

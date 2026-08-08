@@ -48,12 +48,16 @@ test("legacy records resolve to the current workflow contract without changing a
   assert.equal(reference.schemaVersion, "legacy-schema");
 });
 
-test("V9 keeps V8 addressable and preserves its data contract while adding address assistance", () => {
-  const previous = getFormDefinition("application", "rosewood-application-2026.8");
+test("V10 keeps V9 addressable and preserves both data contracts while extending EOI address assistance", () => {
+  const previous = getFormDefinition("application", "rosewood-application-2026.9");
   const current = currentFormDefinition("application");
-  assert.equal(previous.formVersion, "rosewood-application-2026.8");
-  assert.equal(current.formVersion, "rosewood-application-2026.9");
+  const previousEoi = getFormDefinition("eoi", "rosewood-eoi-2026.9");
+  const currentEoi = currentFormDefinition("eoi");
+  assert.equal(previous.formVersion, "rosewood-application-2026.9");
+  assert.equal(current.formVersion, "rosewood-application-2026.10");
   assert.deepEqual(current.contract, previous.contract);
+  assert.equal(currentEoi.formVersion, "rosewood-eoi-2026.10");
+  assert.deepEqual(currentEoi.contract, previousEoi.contract);
   assert.ok(!current.contract.requiredFields.includes("previous_school_attended"));
   assert.deepEqual(current.contract.retiredInterfaceFields, ["previous_school_attended", "previous_school_name", "previous_school_year_level"]);
   assert.equal(current.contract.optionalSurveyFields.length, 11);

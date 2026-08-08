@@ -112,12 +112,12 @@ their original immutable definition.
   upgrade revision and audit event, and does not submit or duplicate the record.
 - Submitted applications, submitted snapshots and signature evidence never upgrade.
 
-# V6.9 Application Question Matrix
+# V6.10 EOI And Application Question Matrix
 
-`rosewood-application-2026.9` is the current contract for new and editable Application
-records. V6.8 and earlier remain immutable for submitted records.
+`rosewood-eoi-2026.10` and `rosewood-application-2026.10` are the current contracts.
+V6.9 and earlier remain immutable for submitted records.
 
-| Area | V6.9 question or rule | Required/condition | Storage and downstream rule |
+| Area | V6.10 question or rule | Required/condition | Storage and downstream rule |
 | --- | --- | --- | --- |
 | Child selector | Direct invitation source | Not displayed to families | Operational source remains on invitation/application records and in staff portal |
 | Child selector | Information from your Expression of Interest has been included. | Displayed only when `sourceEoiId` is present | Informational only; no new answer |
@@ -125,7 +125,8 @@ records. V6.8 and earlier remain immutable for submitted records.
 | Retired previous education | Previous attendance, institution and year level | Not rendered or required | Historical values remain in earlier revisions/answer maps; omitted from V6.8 guardian review |
 | Student primary address | Share this address with other Parent/Guardian? | Required | Existing `student_address_share`; Student projection |
 | Student primary address | Home Care Arrangement | Required compact single-select; Other and Shared Custody require details | Existing care keys; Student projection |
-| Address completion | Optional Google Places suggestions | Student primary and guardian residential/postal only; manual entry always available | Populates existing answer keys and autosaves them; no Place ID, coordinates, search history or geolocation stored |
+| EOI address completion | Optional Google Places suggestions | Primary-contact address; manual entry always available | Populates existing EOI address keys; no autosave or Google-specific storage; submitted only with the EOI |
+| Application address completion | Optional Google Places suggestions | Student primary and guardian residential/postal only; manual entry always available | Populates existing answer keys and autosaves them; no Place ID, coordinates, search history or geolocation stored |
 | Immunisation guidance | Victorian law | Official Health Victoria link; not an acknowledgement | No stored answer; existing immunisation response remains required |
 | Survey | Special aptitude subjects | Optional | `application_special_aptitudes`; Conditions projection |
 | Survey | Preferred school subjects | Optional | `application_preferred_subjects`; Conditions projection |
@@ -139,13 +140,13 @@ records. V6.8 and earlier remain immutable for submitted records.
 | Survey | Value of mentoring to parents | Optional | `application_mentoring_value`; Conditions projection |
 | Survey | Intended years at Rosewood | Optional integer from 1 to 13 | `application_intended_years`; Conditions projection |
 
-## V6.9 Session And Migration Rules
+## V6.10 Session And Migration Rules
 
 - Save and continue later closes only the selected child's editing/status sessions,
   clears child answers from page memory and retains the family session.
 - Return to child applications opens the selector without another OTP while that family
   session remains valid.
-- Opening an editable older application upgrades it to V6.9 in one conditional
+- Opening an editable older application upgrades it to V6.10 in one conditional
   transaction while preserving all existing answer keys and revision history.
 - Submitted applications and signature evidence remain pinned to their submitted form
   definition and never upgrade.

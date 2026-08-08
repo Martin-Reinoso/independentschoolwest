@@ -74,18 +74,18 @@ the outbox receipt and SES feedback. `accepted_by_ses` is not proof that the rec
 mailbox accepted or displayed the message. Never expose a full historical email in an
 ordinary log or family-facing response.
 
-## Recover Or Diagnose A V6.9 Draft Upgrade
+## Recover Or Diagnose A V6.10 Draft Upgrade
 
 Editable older drafts upgrade only when the family verifies the invitation or selects
 that child. The operation is conditional on the prior revision and form version.
 
 1. Check for `application.form_definition_upgraded` in the restricted audit record and
    an immutable `form_definition_upgraded` application revision.
-2. Confirm the current record is `rosewood-application-2026.9` and that aggregate answer
+2. Confirm the current record is `rosewood-application-2026.10` and that aggregate answer
    key count did not decrease. Do not print family answers into logs or tickets.
    A retained `previous_school_attended`, `previous_school_name` or
    `previous_school_year_level` value is expected historical data and must not be
-   deleted merely because V6.8 and V6.9 no longer render it.
+   deleted merely because V6.8 through V6.10 no longer render it.
 3. If the conditional update lost a race, ask the family to refresh; do not manually
    change `formVersion`, revision or answers.
 4. Never run this process against a submitted, pending-signature, staff-review or
@@ -107,7 +107,9 @@ Address suggestions are optional and must fail open to manual entry.
 4. Confirm `GOOGLE_MAPS_BROWSER_API_KEY` exists in the existing AWS configuration secret
    without printing its value. Rotate it if exposure is suspected, update the secret,
    recycle Lambda and revoke the old key.
-5. Review CSP/referrer console errors using a synthetic invitation only. The page must
+5. For EOI, confirm `GET /v6/eoi/config` returns an enabled Google Places configuration
+   from an allowed production origin without copying or logging the key. For Application,
+   use a synthetic invitation and OTP. The page must
    send origin-only referrer data and must never expose the private invitation URL.
 6. Do not delay applications while Google is unavailable. Families can complete the
    same authoritative fields manually.
