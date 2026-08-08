@@ -49,3 +49,31 @@ test("temporary document staging is private, encrypted and short lived", async (
   assert.match(runtimeRole, /s3:PutObject/);
   assert.match(runtimeRole, /s3:DeleteObject/);
 });
+
+test("production canary is scheduled, publishes restricted metrics and alarms through the security topic", async () => {
+  const template = await readFile(new URL("../template.yaml", import.meta.url), "utf8");
+  const runtimeRole = template.slice(
+    template.indexOf("  RosewoodRole:"),
+    template.indexOf("  RosewoodFunction:")
+  );
+
+  assert.match(template, /RosewoodSecondarySecuritySubscription:/);
+  assert.match(template, /Default: frjativa@gmail\.com/);
+  assert.match(template, /RosewoodCanarySchedule:/);
+  assert.match(template, /ScheduleExpression: rate\(30 minutes\)/);
+  assert.match(template, /"source":"rosewood\.enrolment\.canary"/);
+  assert.match(runtimeRole, /Sid: PublishCanaryMetrics/);
+  assert.match(runtimeRole, /cloudwatch:PutMetricData/);
+  assert.match(runtimeRole, /cloudwatch:namespace: Rosewood\/Enrolment/);
+
+  for (const metric of [
+    "PublicFormAvailability",
+    "BackendHealthAvailability",
+    "EoiAddressAvailability"
+  ]) {
+    assert.match(template, new RegExp(`MetricName: ${metric}`));
+  }
+  assert.equal((template.match(/TreatMissingData: breaching/g) || []).length, 3);
+  assert.equal((template.match(/DatapointsToAlarm: 2/g) || []).length, 3);
+  assert.equal((template.match(/OKActions:/g) || []).length, 3);
+});

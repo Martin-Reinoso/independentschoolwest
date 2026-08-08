@@ -15,6 +15,7 @@
     "rebuild-projections": "node scripts/rebuild-google-projections.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-cloudwatch": "^3.1106.0",
     "@aws-sdk/client-dynamodb": "^3.883.0",
     "@aws-sdk/client-s3": "^3.1104.0",
     "@aws-sdk/client-secrets-manager": "^3.883.0",

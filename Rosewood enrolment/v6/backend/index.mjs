@@ -5,6 +5,7 @@ import { StagedGoogleDriveStore } from "./staged-google-drive.mjs";
 import { GoogleSheetsStore } from "./google-sheets.mjs";
 import { SesMailer } from "./ses-mailer.mjs";
 import { createService } from "./service.mjs";
+import { runProductionCanary } from "./production-canary.mjs";
 
 let servicePromise;
 
@@ -39,6 +40,7 @@ export async function buildService(overrides = {}) {
 
 export async function handler(event, context) {
   context.callbackWaitsForEmptyEventLoop = false;
+  if (event?.source === "rosewood.enrolment.canary") return runProductionCanary();
   servicePromise ||= buildService();
   return (await servicePromise)(event);
 }

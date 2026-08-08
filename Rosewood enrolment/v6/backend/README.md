@@ -88,6 +88,19 @@ API and Places API (New). Never commit the key or print it in logs.
 - EventBridge outbox retry every minute
 - CloudWatch error alarm and 90-day application logs
 - SNS email alerts for Lambda errors and failed backup/restore jobs
+- a read-only EventBridge production canary every 30 minutes
+- independent CloudWatch alarms for public form assets, backend health/form versions and
+  EOI Google-address configuration
+- alarm and recovery email notifications through the existing encrypted SNS topic to
+  `info@ffe.org.au` and `frjativa@gmail.com`
+
+The production canary performs only public `GET` requests. It does not create an EOI,
+invitation, OTP, session, application, upload, signature or email. Every run publishes
+three aggregate availability values in the `Rosewood/Enrolment` namespace. An alarm
+changes to `ALARM` after two consecutive failed or missing 30-minute observations and
+returns to `OK` after recovery. Persistent failures therefore do not generate an email
+on every run. New SNS email subscriptions require the recipient to confirm the AWS
+subscription once before alerts can be delivered.
 
 Family OTP challenges expire after 10 minutes, allow five attempts and have resend and
 network throttles. Family and child-application sessions use a sliding 20-minute

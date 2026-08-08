@@ -35,6 +35,15 @@ Parameters:
   SecurityNotificationEmail:
     Type: String
     Default: info@ffe.org.au
+  SecondarySecurityNotificationEmail:
+    Type: String
+    Default: frjativa@gmail.com
+  PublicSiteBaseUrl:
+    Type: String
+    Default: https://ffe.org.au
+  PublicApiBaseUrl:
+    Type: String
+    Description: Public Rosewood V6 Lambda Function URL without a trailing slash
   RecordsKmsKeyArn:
     Type: String
     Default: ""
@@ -232,6 +241,13 @@ Resources:
       Endpoint: !Ref SecurityNotificationEmail
       TopicArn: !Ref RosewoodSecurityTopic
 
+  RosewoodSecondarySecuritySubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      Endpoint: !Ref SecondarySecurityNotificationEmail
+      TopicArn: !Ref RosewoodSecurityTopic
+
   RosewoodBackupRole:
     Type: AWS::IAM::Role
     Properties:
@@ -388,6 +404,13 @@ Resources:
                 Condition:
                   StringEquals:
                     ses:FromAddress: !Ref SenderEmail
+              - Sid: PublishCanaryMetrics
+                Effect: Allow
+                Action: cloudwatch:PutMetricData
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    cloudwatch:namespace: Rosewood/Enrolment
               - Effect: Allow
                 Action:
                   - logs:CreateLogStream
@@ -428,6 +451,8 @@ Resources:
           STAFF_ROLES: !Ref StaffRoles
           APPLICATION_PAGE_URL: https://ffe.org.au/pages/rosewood-enrolment-v6.html
           APPLICATION_SIGNING_PAGE_URL: https://ffe.org.au/pages/rosewood-application-sign-v6.html
+          PUBLIC_SITE_BASE_URL: !Ref PublicSiteBaseUrl
+          PUBLIC_API_BASE_URL: !Ref PublicApiBaseUrl
 
   RosewoodFunctionUrl:
     Type: AWS::Lambda::Url
@@ -469,6 +494,25 @@ Resources:
       Principal: events.amazonaws.com
       SourceArn: !GetAtt RosewoodOutboxSchedule.Arn
 
+  RosewoodCanarySchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Check the public Rosewood enrolment forms, backend and EOI address configuration
+      ScheduleExpression: rate(30 minutes)
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt RosewoodFunction.Arn
+          Id: RosewoodV6ProductionCanary
+          Input: '{"source":"rosewood.enrolment.canary","detail-type":"Scheduled Production Canary"}'
+
+  RosewoodCanaryPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref RosewoodFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt RosewoodCanarySchedule.Arn
+
   RosewoodErrorsAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
@@ -485,6 +529,69 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
       AlarmActions:
+        - !Ref RosewoodSecurityTopic
+
+  RosewoodPublicFormCanaryAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Rosewood public enrolment or signing assets failed two consecutive production checks
+      Namespace: Rosewood/Enrolment
+      MetricName: PublicFormAvailability
+      Dimensions:
+        - Name: Environment
+          Value: production
+      Statistic: Minimum
+      Period: 1800
+      EvaluationPeriods: 2
+      DatapointsToAlarm: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+      AlarmActions:
+        - !Ref RosewoodSecurityTopic
+      OKActions:
+        - !Ref RosewoodSecurityTopic
+
+  RosewoodBackendHealthCanaryAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Rosewood backend health or deployed form versions failed two consecutive production checks
+      Namespace: Rosewood/Enrolment
+      MetricName: BackendHealthAvailability
+      Dimensions:
+        - Name: Environment
+          Value: production
+      Statistic: Minimum
+      Period: 1800
+      EvaluationPeriods: 2
+      DatapointsToAlarm: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+      AlarmActions:
+        - !Ref RosewoodSecurityTopic
+      OKActions:
+        - !Ref RosewoodSecurityTopic
+
+  RosewoodEoiAddressCanaryAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Rosewood EOI Google address configuration failed two consecutive production checks
+      Namespace: Rosewood/Enrolment
+      MetricName: EoiAddressAvailability
+      Dimensions:
+        - Name: Environment
+          Value: production
+      Statistic: Minimum
+      Period: 1800
+      EvaluationPeriods: 2
+      DatapointsToAlarm: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+      AlarmActions:
+        - !Ref RosewoodSecurityTopic
+      OKActions:
         - !Ref RosewoodSecurityTopic
 
 Outputs:
@@ -506,3 +613,5 @@ Outputs:
     Value: !If [CreateRecordsKey, !GetAtt RosewoodKey.Arn, !Ref RecordsKmsKeyArn]
   SecurityTopicArn:
     Value: !Ref RosewoodSecurityTopic
+  CanaryScheduleName:
+    Value: !Ref RosewoodCanarySchedule
