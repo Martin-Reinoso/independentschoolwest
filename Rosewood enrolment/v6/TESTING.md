@@ -28,9 +28,10 @@ Test date: 8 August 2026
 Tested through a local HTTP server in the Codex in-app browser.
 
 - all five workflow gateways and internal review-frame lists load
-- Application gateway contains a short welcome, internal links for the Enrolment Policy,
-  Enrolment Procedure and Privacy Policy, and one invitation-email field; it has no
-  Privacy Collection Notice reference, language prompt or preparation checklist
+- Application gateway contains a short welcome, quiet optional-reference links for the
+  Enrolment Policy, Enrolment Procedure and Privacy Policy, and one invitation-email
+  field; policy review is not presented as a prerequisite and the gateway has no Privacy
+  Collection Notice reference, language prompt or preparation checklist
 - each direct policy URL loads the requested approved title; desktop policy tabs and the
   mobile selector switch all three documents and expose the active selection with
   `aria-current` or the selected option

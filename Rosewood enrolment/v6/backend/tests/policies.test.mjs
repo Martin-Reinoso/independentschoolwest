@@ -61,7 +61,7 @@ test("the policy reader uses the three byte-identical approved Word documents", 
   assert.match(documents["privacy-policy"].html, /Appendix B: Shortform Privacy Collection Statement/);
 });
 
-test("the application welcome links to the internal policy reader without a collection-notice reference", async () => {
+test("the application welcome presents optional internal policy links without a collection-notice reference", async () => {
   const [html, source, css] = await Promise.all([
     readFile(new URL("pages/rosewood-enrolment-v6.html", root), "utf8"),
     readFile(new URL("pages/rosewood-enrolment-v6.js", root), "utf8"),
@@ -72,9 +72,13 @@ test("the application welcome links to the internal policy reader without a coll
   const viewer = source.slice(source.indexOf("  function welcomePolicyLinks"), source.indexOf("  function communicationNotice"));
 
   assert.match(html, /rosewood-enrolment-policies-v6\.js\?v=1/);
-  assert.match(gateway, /following Rosewood College policies/);
+  assert.match(gateway, /If you would like more information/);
+  assert.match(gateway, /gateway-policy-note/);
+  assert.doesNotMatch(gateway, /please familiarise yourself|important documents/i);
   assert.match(gateway, /Information provided through this application will be managed in accordance with the Privacy Policy\./);
   assert.doesNotMatch(gateway, /Privacy Collection Notice/);
+  assert.match(viewer, /<nav class="welcome-policy-links"[^>]*><ul>/);
+  assert.doesNotMatch(viewer, /welcome-policy-number|welcome-policy-arrow/);
   assert.match(viewer, /data-policy-link/);
   assert.match(viewer, /data-policy-return/);
   assert.match(viewer, /download/);

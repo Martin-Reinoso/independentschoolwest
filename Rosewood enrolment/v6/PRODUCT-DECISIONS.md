@@ -80,8 +80,9 @@ workflows into the current records or API.
 
 ## Application Gateway
 
-- Use a short welcome, internal links to the approved Enrolment Policy, Enrolment
-  Procedure and Privacy Policy, and one email field.
+- Use a short welcome, one email field and quiet optional-reference links to the approved
+  Enrolment Policy, Enrolment Procedure and Privacy Policy. Do not present policy review
+  as a prerequisite to beginning the application.
 - Do not present a prominent "Important documents" section.
 - Do not show a document preparation checklist at the gateway. Families may complete
   the form until Documents and save their progress if they need to obtain a file.
