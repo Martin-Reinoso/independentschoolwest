@@ -86,8 +86,8 @@ API and Places API (New). Never commit the key or print it in logs.
 - Amazon SES from `Rosewood College Enrolment <enrolment@ffe.org.au>` with replies to
   `enrolment@ffe.org.au`
 - EventBridge outbox retry every minute
-- a private Slack incoming webhook for final Application completion notifications to
-  `#enrolments-committee`
+- separate Slack incoming webhooks for pending-signature notifications to private
+  `#enrolments-committee` and completed Applications to board-access-only `#enrolments`
 - CloudWatch error alarm and 90-day application logs
 - SNS email alerts for Lambda errors and failed backup/restore jobs
 - a read-only EventBridge production canary every 30 minutes
@@ -104,15 +104,17 @@ returns to `OK` after recovery. Persistent failures therefore do not generate an
 on every run. New SNS email subscriptions require the recipient to confirm the AWS
 subscription once before alerts can be delivered.
 
-Slack is a notification surface only. `SLACK_WEBHOOK_URL` is held in the existing AWS
-configuration secret and must never be printed, committed or returned through an API.
-The application transaction queues a Slack outbox item only when the authoritative
-status becomes `submitted`: immediately for a one-guardian application, or after the
-last required electronic guardian signature. Pending-signature and staff-review states
-do not notify. The message contains only the application reference, completion time and
-generic staff-portal link; it contains no names, contact details, answers, documents or
-medical information. Failed delivery releases the outbox lease for the normal
-one-minute retry, while DynamoDB remains the source of truth.
+Slack is a notification surface only. `SLACK_PENDING_WEBHOOK_URL` and
+`SLACK_COMPLETION_WEBHOOK_URL` are held in the existing AWS configuration secret and
+must never be printed, committed or returned through an API. The transaction queues a
+pending outbox item after primary submission and after an intermediate guardian signs
+while another required electronic signer remains. It queues a completion item when the
+authoritative status becomes `submitted`: immediately for a one-guardian application,
+or after the last required signature. `staff_review_required` does not notify. Messages
+contain only student and signer names, the Application reference, relevant Melbourne
+time and generic staff-portal link; they contain no email, answers, documents, medical
+information or internal identifiers. Failed delivery releases the outbox lease for the
+normal one-minute retry, while DynamoDB remains the source of truth.
 
 Family OTP challenges expire after 10 minutes, allow five attempts and have resend and
 network throttles. Family and child-application sessions use a sliding 20-minute

@@ -78,7 +78,7 @@ test("production canary is scheduled, publishes restricted metrics and alarms th
   assert.equal((template.match(/OKActions:/g) || []).length, 3);
 });
 
-test("Slack completion delivery is secret-backed, minimal and part of the durable outbox", async () => {
+test("Slack status delivery is secret-backed, routed and part of the durable outbox", async () => {
   const [template, index, service, build] = await Promise.all([
     readFile(new URL("../template.yaml", import.meta.url), "utf8"),
     readFile(new URL("../index.mjs", import.meta.url), "utf8"),
@@ -86,12 +86,17 @@ test("Slack completion delivery is secret-backed, minimal and part of the durabl
     readFile(new URL("../scripts/build-deployment.mjs", import.meta.url), "utf8")
   ]);
 
-  assert.match(index, /config\.SLACK_WEBHOOK_URL/);
+  assert.match(index, /config\.SLACK_PENDING_WEBHOOK_URL \|\| config\.SLACK_WEBHOOK_URL/);
+  assert.match(index, /config\.SLACK_COMPLETION_WEBHOOK_URL/);
   assert.match(index, /new SlackNotifier/);
   assert.match(template, /STAFF_PORTAL_URL: https:\/\/ffe\.org\.au\/pages\/rosewood-enrolment-admin-v6\.html/);
   assert.doesNotMatch(template, /hooks\.slack\.com/);
-  assert.match(service, /slackOutbox\(\{ reference, completedAt: signedAt \}/);
-  assert.match(service, /status === "submitted" && slack\.enabled/);
+  assert.match(service, /type === "signature_pending"/);
+  assert.match(service, /app\.status === "pending_signatures" && slack\.pendingEnabled/);
+  assert.match(service, /app\.status === "submitted" && slack\.completionEnabled/);
+  assert.match(service, /studentName:/);
+  assert.match(service, /signedBy:/);
+  assert.match(service, /awaitingSignatures:/);
   assert.match(service, /item\.data\.kind === "slack"/);
   assert.match(build, /"slack-notifier\.mjs"/);
 });

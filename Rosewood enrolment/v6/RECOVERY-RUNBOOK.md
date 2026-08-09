@@ -144,7 +144,7 @@ Address suggestions are optional and must fail open to manual entry.
 6. Do not delay applications while Google is unavailable. Families can complete the
    same authoritative fields manually.
 
-## Recover Slack Completion Notifications
+## Recover Slack Application Notifications
 
 Slack is an operational prompt, not evidence that an application is complete. Confirm
 completion in DynamoDB or the authorised staff portal before taking action.
@@ -155,18 +155,18 @@ completion in DynamoDB or the authorised staff portal before taking action.
    one-minute EventBridge retry and review the Lambda error log for a bounded delivery
    status. Do not manually post family details to compensate.
 3. Confirm the internal app **Rosewood Enrolment Notifications** is installed in the
-   FamiliesForEducation workspace and the webhook remains assigned to the private
-   `#enrolments-committee` channel.
-4. Confirm `SLACK_WEBHOOK_URL` exists in the existing AWS configuration secret without
-   printing its value. Recycle the Lambda after a secret-only update because the
-   service configuration is cached for a warm execution environment.
-5. If the webhook is exposed or revoked, create a replacement for the same private
-   channel, update the secret, recycle the Lambda, then revoke the former webhook. Do
-   not store the replacement in Git, a ticket, Slack or Google Sheets.
+   FamiliesForEducation workspace, with the pending webhook assigned to private
+   `#enrolments-committee` and the completion webhook assigned to `#enrolments`.
+4. Confirm `SLACK_PENDING_WEBHOOK_URL` and `SLACK_COMPLETION_WEBHOOK_URL` exist in the
+   existing AWS configuration secret without printing their values. Recycle the Lambda
+   after a secret-only update because configuration is cached by warm environments.
+5. If either webhook is exposed or revoked, create a replacement for the same channel,
+   update only the corresponding secret key, recycle the Lambda, then revoke the former
+   webhook. Do not store a replacement in Git, a ticket, Slack or Google Sheets.
 6. Do not replay an event when a successful outbox receipt already exists. If manual
-   recovery is authorised for a genuinely undelivered completed application, preserve
-   the same idempotency boundary and disclose only reference, completion time and the
-   generic staff-portal link.
+   recovery is authorised for a genuinely undelivered event, preserve the same
+   idempotency boundary and disclose only the names, reference, relevant time and the
+   generic staff-portal link allowed for that event type.
 
 ## Recovery Drill
 

@@ -36,7 +36,11 @@ export async function buildService(overrides = {}) {
     : drive);
   const sheets = overrides.sheets || new GoogleSheetsStore({ auth, eoiSpreadsheetId: config.GOOGLE_EOI_SPREADSHEET_ID, applicationSpreadsheetId: config.GOOGLE_APPLICATION_SPREADSHEET_ID, operationsSpreadsheetId: config.GOOGLE_OPERATIONS_SPREADSHEET_ID });
   const mailer = overrides.mailer || new SesMailer({ from: config.SENDER_EMAIL, fromName: config.SENDER_NAME, replyTo: config.REPLY_TO_EMAIL, configurationSetName: config.SES_CONFIGURATION_SET });
-  const slack = overrides.slack || new SlackNotifier({ webhookUrl: config.SLACK_WEBHOOK_URL, staffPortalUrl: config.STAFF_PORTAL_URL });
+  const slack = overrides.slack || new SlackNotifier({
+    pendingWebhookUrl: config.SLACK_PENDING_WEBHOOK_URL || config.SLACK_WEBHOOK_URL,
+    completionWebhookUrl: config.SLACK_COMPLETION_WEBHOOK_URL,
+    staffPortalUrl: config.STAFF_PORTAL_URL
+  });
   return createService({ store, artifacts, drive, sheets, mailer, slack, env: config });
 }
 

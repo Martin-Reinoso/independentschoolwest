@@ -749,3 +749,25 @@ submitting a production application.
   system event. No completion-style or synthetic notification was posted, so the first
   enrolment notification remains reserved for a genuine completed Application
 - deployment source commit `633d36a` is the tested Slack completion release
+
+## Routed Slack Signature Status Notifications
+
+Implementation verification completed on 9 August 2026 without sending a Slack test
+message or submitting, reopening or changing a production family Application.
+
+- the existing internal Slack app has a second incoming webhook assigned to
+  `#enrolments`; the original private `#enrolments-committee` route remains separate
+- the restricted Sydney configuration secret holds `SLACK_PENDING_WEBHOOK_URL` for
+  `#enrolments-committee` and `SLACK_COMPLETION_WEBHOOK_URL` for `#enrolments`; both
+  values remain absent from Git, CloudFormation, ordinary logs and API responses
+- all 83 Node tests pass, including initial pending status, an intermediate signer with
+  another signer outstanding, one-guardian completion, multi-guardian completion after
+  email correction, staff-review suppression and independent webhook routing
+- synthetic message tests require student and parent/guardian signer names while
+  rejecting email addresses, medical fields, answer keys and internal identifiers
+- pending status is queued transactionally when permitted signatures remain; completion
+  is queued transactionally only at authoritative `submitted`; `staff_review_required`
+  remains silent
+- no synthetic webhook request was made, preserving each channel's first enrolment
+  notification for a genuine Application event; Slack may show its standard integration
+  installation system event independently

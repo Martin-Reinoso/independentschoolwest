@@ -70,6 +70,34 @@ function pendingElectronicControl(control) {
   return Boolean(control?.contactPermission && control?.signatureRequired && control?.signatureStatus !== "complete");
 }
 
+function slackApplicationPayload(app, type, at) {
+  const controls = (app.signerControls || []).filter(control => control.signatureRequired);
+  const common = {
+    type,
+    reference: app.reference,
+    studentName: [app.values?.student_first, app.values?.student_last].filter(Boolean).join(" "),
+    signedBy: controls.filter(control => control.signatureStatus === "complete").map(control => control.name)
+  };
+  if (type === "signature_pending") {
+    return {
+      ...common,
+      submittedAt: app.submittedAt || at,
+      awaitingSignatures: controls.filter(pendingElectronicControl).map(control => control.name)
+    };
+  }
+  return { ...common, completedAt: app.completedAt || at };
+}
+
+function slackStatusNotifications(slack, app, at) {
+  if (app.status === "pending_signatures" && slack.pendingEnabled) {
+    return [slackOutbox(slackApplicationPayload(app, "signature_pending", at), at)];
+  }
+  if (app.status === "submitted" && slack.completionEnabled) {
+    return [slackOutbox(slackApplicationPayload(app, "application_complete", at), at)];
+  }
+  return [];
+}
+
 function statusContext(app) {
   return {
     applicationId: app.id,
@@ -1160,10 +1188,8 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     ];
     const confirmation = applicationSubmitted({ firstName: values.app_guardian_0_first, studentName: `${values.student_first} ${values.student_last}`, reference, pendingSignatures: status !== "submitted" });
     const emailEvents = [emailOutbox({ to: app.recipientEmail, ...confirmation, tags: { workflow: "application", message_type: "submitted" } }, clock()), ...taskEmails.map(mail => emailOutbox(mail, clock()))];
-    const completionNotifications = status === "submitted" && slack.enabled
-      ? [slackOutbox({ reference, completedAt: signedAt }, clock())]
-      : [];
-    await store.submitApplication({ applicationId: app.id, expectedRevision: app.revision, application: next, revisionRecord: applicationRevision(next, { kind: "submitted", values, savedAt: signedAt, saveMode: "submission" }), signatureTasks, outboxEvents: [...emailEvents, ...completionNotifications, ...operations.map(operation => sheetOutbox(operation, clock()))], auditEvents: [audit] });
+    const slackNotifications = slackStatusNotifications(slack, next, clock());
+    await store.submitApplication({ applicationId: app.id, expectedRevision: app.revision, application: next, revisionRecord: applicationRevision(next, { kind: "submitted", values, savedAt: signedAt, saveMode: "submission" }), signatureTasks, outboxEvents: [...emailEvents, ...slackNotifications, ...operations.map(operation => sheetOutbox(operation, clock()))], auditEvents: [audit] });
     await dispatchOutbox(50);
     const statusSessionToken = await issueStatusSession(invitation || { id: app.invitationId }, next, session.email);
     return { applicationId: app.id, reference, status, requiresStaffReview, statusSessionToken, expiresInSeconds: APPLICATION_SESSION_IDLE_MS / 1000, idleTimeoutSeconds: APPLICATION_SESSION_IDLE_MS / 1000, absoluteTimeoutSeconds: APPLICATION_SESSION_ABSOLUTE_MS / 1000, statusContext: statusContext(next) };
@@ -1264,10 +1290,8 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
         if (recipient.currentEmail) emails.push(emailOutbox({ to: recipient.currentEmail, ...applicationComplete({ firstName: app.values[`app_guardian_${recipient.guardianIndex}_first`], studentName: `${app.values.student_first} ${app.values.student_last}`, reference: app.reference }), tags: { workflow: "application", message_type: "complete" } }, clock()));
       }
     }
-    const completionNotifications = status === "submitted" && slack.enabled
-      ? [slackOutbox({ reference: app.reference, completedAt: signedAt }, clock())]
-      : [];
-    await store.completeSignature({ applicationId: app.id, taskTokenHash: session.taskTokenHash, guardianIndex: session.guardianIndex, application: next, outboxEvents: [...emails, ...completionNotifications, ...operations.map(operation => sheetOutbox(operation, clock()))], auditEvents: [audit] });
+    const slackNotifications = slackStatusNotifications(slack, next, clock());
+    await store.completeSignature({ applicationId: app.id, taskTokenHash: session.taskTokenHash, guardianIndex: session.guardianIndex, application: next, outboxEvents: [...emails, ...slackNotifications, ...operations.map(operation => sheetOutbox(operation, clock()))], auditEvents: [audit] });
     await dispatchOutbox(50);
     return { applicationId: app.id, reference: app.reference, status };
   }
