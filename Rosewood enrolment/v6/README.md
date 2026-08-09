@@ -71,8 +71,8 @@ The scheduled AWS canary verifies the public family, signing and staff assets, b
 health and immutable form versions, and the EOI Google-address runtime configuration.
 Three CloudWatch alarms notify `info@ffe.org.au` and `frjativa@gmail.com` after two
 consecutive failed or missing checks and send a recovery notification when service
-returns to normal. The Gmail SNS subscription must be confirmed once from the AWS
-confirmation message.
+returns to normal. Both SNS subscriptions were confirmed and delivery-tested on
+9 August 2026; any future new recipient must confirm the AWS subscription once.
 
 The family page does not store application answers in cookies, local storage, session
 storage or IndexedDB. It stores only opaque family/application/status session tokens,

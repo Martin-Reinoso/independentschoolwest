@@ -88,6 +88,24 @@ authoritative application answers. Each detailed view creates an audit event.
 Google Sheets are replaceable reporting projections. Do not use a Sheet edit to correct
 an application or change Sheet sharing from `info@ffe.org.au` without approval.
 
+## Production Monitoring
+
+AWS checks the public family/EOI, guardian-signing and staff assets, backend health and
+V6 form versions, and EOI Google-address configuration every 30 minutes. Healthy checks
+do not send email. Two consecutive failed or missing observations change the relevant
+CloudWatch alarm to `ALARM`; recovery produces a second state-change notification.
+
+- Notifications go to the confirmed `info@ffe.org.au` and `frjativa@gmail.com` SNS
+  subscriptions.
+- An alarm email is an operational alert, not evidence that applicant data was lost.
+- Do not create an EOI, application or OTP to test availability. Use the read-only
+  canary and follow `RECOVERY-RUNBOOK.md`.
+- Identify whether the named alarm is public assets, backend health/form versions or
+  EOI address assistance before changing anything.
+- Google address assistance is optional. Families must retain manual address entry
+  while that provider is unavailable.
+- Never force an alarm to `OK` to hide an unresolved failure.
+
 ## Pending Guardian Signatures
 
 The application detail shows each required signer separately, including contact
