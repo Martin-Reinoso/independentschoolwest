@@ -288,23 +288,27 @@ Source: https://www.abs.gov.au/statistics/classifications/australian-standard-cl
 - The link remains a high-entropy, expiring signing-task link. Opening it does not expose
   the application; the invited email and OTP are still required before review.
 
-## Staff Completion Notifications
+## Staff Application Notifications
 
-- The private Slack `#enrolments-committee` channel receives one notification only
-  when an Application reaches the authoritative `submitted` state.
-- For a one-guardian application, this occurs after successful primary submission. For
-  a multi-guardian application, it occurs only after the final required guardian signs.
-- `pending_signatures` and `staff_review_required` are not completed states and do not
-  trigger the notification.
-- Slack receives only the application reference, Melbourne completion time and a link
-  to the authenticated staff portal. Names, email addresses, answers, documents,
-  medical details and internal application identifiers are excluded.
+- The private Slack `#enrolments-committee` channel receives a status notification when
+  an Application reaches `pending_signatures`, and another update when an intermediate
+  guardian signs but at least one required electronic signature remains outstanding.
+- The board-access-only workspace channel `#enrolments` receives the completion
+  notification only when the Application reaches the authoritative `submitted` state.
+  A one-guardian application reaches this state at primary submission; a multi-guardian
+  application reaches it only after the final required guardian signs.
+- `staff_review_required` does not trigger a Slack notification.
+- Slack receives the student's name, completed parent/guardian signer names, outstanding
+  signer names for a pending event, Application reference, Melbourne status time and a
+  link to the authenticated staff portal. Email addresses, answers, documents, medical
+  details and internal application identifiers are excluded.
 - The notification is a durable, retryable DynamoDB outbox operation. Slack is not a
   system of record, audit history or staff authorisation boundary.
-- The incoming-webhook URL is restricted configuration in AWS Secrets Manager. It must
-  not appear in Git, CloudFormation parameters, logs, Sheet projections or staff APIs.
-- No setup/test message is sent. The first channel message is reserved for a genuine
-  completed application.
+- Both incoming-webhook URLs are restricted configuration in AWS Secrets Manager. They
+  must not appear in Git, CloudFormation parameters, logs, Sheet projections or staff
+  APIs.
+- No setup/test enrolment message is sent. The first enrolment notification in each
+  channel is reserved for a genuine Application event.
 
 ## Frontend and Backend Boundary
 

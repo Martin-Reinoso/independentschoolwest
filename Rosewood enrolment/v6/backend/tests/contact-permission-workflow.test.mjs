@@ -191,7 +191,7 @@ function fixture(options) {
     },
     sheets: { async apply(operation) { sheets.push(structuredClone(operation)); return { applied: true }; } },
     mailer: { async send(message) { sent.push(structuredClone(message)); return { messageId: `ses-${sent.length}` }; } },
-    slack: { enabled: true, async send(message) { slackMessages.push(structuredClone(message)); return { delivered: true }; } },
+    slack: { enabled: true, pendingEnabled: true, completionEnabled: true, async send(message) { slackMessages.push(structuredClone(message)); return { delivered: true }; } },
     env: {
       ALLOWED_ORIGINS: "https://ffe.org.au",
       STAFF_EMAILS: "info@ffe.org.au",
@@ -277,15 +277,24 @@ test("signature delivery is created only by submission and is suppressed for do-
       assert.equal(submitted.status, "pending_signatures");
       assert.equal(guardianMessages.length, 1);
       assert.equal(submitted.signerControls[1].signatureStatus, "pending");
+      assert.equal(slackMessages.length, 1);
+      assert.deepEqual(slackMessages[0], {
+        type: "signature_pending",
+        reference: submitted.reference,
+        studentName: "Synthetic Synthetic",
+        signedBy: ["Alex Applicant"],
+        submittedAt: submitted.submittedAt,
+        awaitingSignatures: ["Taylor Guardian"]
+      });
     } else {
       assert.equal(submitted.status, "staff_review_required");
       assert.equal(submitted.requiresStaffReview, true);
       assert.equal(guardianMessages.length, 0);
       assert.equal(submitted.signerControls[1].signatureStatus, "suppressed");
       assert.equal(submitted.oneSignatureExplanation, "The applicant asked Rosewood College to review consent arrangements.");
+      assert.equal(slackMessages.length, 0, "staff review does not notify Slack");
     }
     assert.equal(store.applications.size, 1);
-    assert.equal(slackMessages.length, 0, "pending signatures and staff review are not completed applications");
   }
 });
 
@@ -320,7 +329,56 @@ test("a one-guardian application queues one completion notification", async () =
   assert.equal(slackMessages.length, 1);
   assert.equal(slackMessages[0].reference, store.applications.get(app.id).reference);
   assert.equal(slackMessages[0].completedAt, store.applications.get(app.id).completedAt);
-  assert.deepEqual(Object.keys(slackMessages[0]).sort(), ["completedAt", "reference"]);
+  assert.equal(slackMessages[0].type, "application_complete");
+  assert.equal(slackMessages[0].studentName, "Synthetic Synthetic");
+  assert.deepEqual(slackMessages[0].signedBy, ["Alex Applicant"]);
+  assert.deepEqual(Object.keys(slackMessages[0]).sort(), ["completedAt", "reference", "signedBy", "studentName", "type"]);
+});
+
+test("an intermediate guardian signature reports who signed and who remains", async () => {
+  const { app, store, slackMessages, service } = fixture({ contactPermission: true });
+  const thirdTaskToken = "synthetic-third-signing-token-with-adequate-entropy";
+  const thirdTaskHash = hash(thirdTaskToken);
+  const expanded = structuredClone(app);
+  expanded.guardianCount = 3;
+  expanded.guardianIds.push("guardian-third");
+  Object.assign(expanded.values, {
+    app_guardian_2_first: "Morgan",
+    app_guardian_2_last: "Guardian",
+    app_guardian_2_email: "third-guardian@example.test",
+    app_guardian_2_permission: "Yes, the school may contact this person"
+  });
+  expanded.signerControls.push({
+    guardianId: "guardian-third",
+    guardianIndex: 2,
+    name: "Morgan Guardian",
+    currentEmail: "third-guardian@example.test",
+    previousEmails: [],
+    contactPermission: true,
+    contactPermissionValue: "Yes, the school may contact this person",
+    signatureRequired: true,
+    signatureStatus: "pending",
+    requestGenerated: true,
+    requestSent: true,
+    requestStatus: "sent",
+    requestGeneration: 1,
+    taskTokenHash: thirdTaskHash
+  });
+  expanded.requiredSignatureCount = 3;
+  store.applications.set(app.id, expanded);
+  store.tasks.set(thirdTaskHash, { tokenHash: thirdTaskHash, applicationId: app.id, guardianId: "guardian-third", guardianIndex: 2, email: "third-guardian@example.test", status: "invited", requestStatus: "sent", generation: 1, revision: app.revision, revisionHash: app.revisionHash, createdAt: NOW - 60_000, expiresAt: NOW + 86400_000, ttl: Math.floor((NOW + 86400_000) / 1000) });
+  const signingSession = "intermediate-signature-session";
+  seedSession(store, signingSession, { scope: "application_signature", applicationId: app.id, taskTokenHash: hash("synthetic-original-signing-token-with-adequate-entropy"), taskGeneration: 1, guardianId: "guardian-additional", guardianIndex: 1, email: "old-guardian@example.test" });
+  const signatureBytes = Buffer.alloc(120);
+  Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(signatureBytes);
+  const response = await service(request("/v6/application/signatures/submit", "POST", { reviewAcknowledged: true, ipAcknowledged: true, termsAcknowledged: true, signatureDataUrl: `data:image/png;base64,${signatureBytes.toString("base64")}` }, signingSession));
+  assert.equal(response.statusCode, 200);
+  assert.equal(JSON.parse(response.body).status, "pending_signatures");
+  assert.equal(store.applications.get(app.id).status, "pending_signatures");
+  assert.equal(slackMessages.length, 1);
+  assert.equal(slackMessages[0].type, "signature_pending");
+  assert.deepEqual(slackMessages[0].signedBy, ["Alex Applicant", "Taylor Guardian"]);
+  assert.deepEqual(slackMessages[0].awaitingSignatures, ["Morgan Guardian"]);
 });
 
 test("do-not-contact is enforced in family actions and an audited staff change is reversible", async () => {
@@ -435,7 +493,10 @@ test("a verified applicant can correct a pending signer email without reopening 
   assert.equal(store.applications.get(app.id).signatures[0].id, "signature-primary");
   assert.equal(store.applications.get(app.id).signatures[1].signerEmail, "corrected-guardian@example.test");
   assert.equal(slackMessages.length, 1);
-  assert.deepEqual(Object.keys(slackMessages[0]).sort(), ["completedAt", "reference"]);
+  assert.equal(slackMessages[0].type, "application_complete");
+  assert.equal(slackMessages[0].studentName, "Avery Example");
+  assert.deepEqual(slackMessages[0].signedBy, ["Alex Applicant", "Taylor Guardian"]);
+  assert.deepEqual(Object.keys(slackMessages[0]).sort(), ["completedAt", "reference", "signedBy", "studentName", "type"]);
 
   const finalStatus = JSON.parse((await service(request("/v6/application/status", "GET", null, statusToken))).body);
   assert.equal(finalStatus.signers[1].signatureStatus, "Complete");

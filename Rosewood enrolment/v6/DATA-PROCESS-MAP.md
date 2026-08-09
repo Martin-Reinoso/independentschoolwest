@@ -724,19 +724,20 @@ SES sends as `enrolment@ffe.org.au`. SPF, DKIM and DMARC have been verified. Bou
 complaint notifications reach the operations mailbox, but automatic correlation back
 into individual Operations records remains a future improvement.
 
-### Staff Slack Notification
+### Staff Slack Notifications
 
 | Trigger | Destination | Information disclosed |
 | --- | --- | --- |
-| Application reaches authoritative `submitted` status | Private `#enrolments-committee` | Application reference, Melbourne completion time and authenticated staff-portal link only |
+| Application reaches `pending_signatures`, including after an intermediate signer completes while another remains | Private `#enrolments-committee` | Student name, completed signer names, outstanding signer names, Application reference, Melbourne submission time and authenticated staff-portal link |
+| Application reaches authoritative `submitted` status | Board-access-only workspace channel `#enrolments` | Student name, all completed signer names, Application reference, Melbourne completion time and authenticated staff-portal link |
 
-The same transaction that changes the Application to `submitted` queues the Slack
-outbox event. For a one-guardian application this occurs at primary submission; where
-another electronic signature is required, it occurs only when the last required signer
-completes. `pending_signatures` and `staff_review_required` do not notify. Delivery is
-retried by the existing one-minute outbox worker, and a receipt prevents duplicate
-delivery after success. Slack stores no application answers and cannot change workflow
-state.
+The same transaction that changes the Application state queues the corresponding Slack
+outbox event. A pending event is queued after the primary signature and after each
+intermediate required signature while another permitted electronic signer remains. A
+completion event is queued immediately for a one-guardian application or when the last
+required signer completes. `staff_review_required` does not notify. Delivery is retried
+by the existing one-minute outbox worker, and a receipt prevents duplicate delivery
+after success. Slack stores no application answers and cannot change workflow state.
 
 ## Google Sheets Projection Map
 
