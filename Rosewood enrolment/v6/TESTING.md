@@ -708,4 +708,6 @@ EOI, invitation, OTP, family session, application, upload, signature or workflow
   have produced one setup alarm and one recovery notification
 - both `info@ffe.org.au` and `frjativa@gmail.com` are confirmed subscriptions on the
   existing encrypted Rosewood security and backup SNS topic
+- one clearly labelled setup-test publication produced two successful SNS deliveries,
+  matching the two confirmed recipients; routine successful canary runs remain silent
 - production Lambda deployment commit `b6aa4c5` is the tested monitoring release
