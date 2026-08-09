@@ -733,3 +733,19 @@ submitting a production application.
   guardian data and internal application IDs are excluded
 - no setup/test message was posted, preserving the first channel notification for a
   genuine completed Application
+- reviewed change set `rosewood-slack-completion-20260809-633d36a` modified Lambda
+  code/environment and recalculated only the existing outbox/canary targets and
+  invocation permissions; it did not replace or modify DynamoDB, audit, KMS, backups,
+  document staging, Google storage, Secrets Manager resources or alarms
+- CloudFormation reached `UPDATE_COMPLETE`; Lambda is `Active` with a successful
+  update and the one-minute outbox rule remains enabled with its expanded email, Slack
+  and Sheet retry description
+- `/v6/health` retained schema `rosewood-v6-2026-08-08-form-v8`, EOI
+  `rosewood-eoi-2026.10` and Application `rosewood-application-2026.10`
+- a manual non-writing production-canary invocation returned HTTP 200 with no function
+  error and all three availability checks passed; the Lambda error and all three canary
+  alarms remain `OK`
+- Slack automatically recorded its standard **added an integration to this channel**
+  system event. No completion-style or synthetic notification was posted, so the first
+  enrolment notification remains reserved for a genuine completed Application
+- deployment source commit `633d36a` is the tested Slack completion release
