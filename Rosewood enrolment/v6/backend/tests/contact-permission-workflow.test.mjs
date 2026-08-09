@@ -182,6 +182,7 @@ function fixture(options) {
   const store = new WorkflowStore(record.app, record.task);
   const sent = [];
   const sheets = [];
+  const slackMessages = [];
   const service = createService({
     store,
     artifacts: {
@@ -190,6 +191,7 @@ function fixture(options) {
     },
     sheets: { async apply(operation) { sheets.push(structuredClone(operation)); return { applied: true }; } },
     mailer: { async send(message) { sent.push(structuredClone(message)); return { messageId: `ses-${sent.length}` }; } },
+    slack: { enabled: true, async send(message) { slackMessages.push(structuredClone(message)); return { delivered: true }; } },
     env: {
       ALLOWED_ORIGINS: "https://ffe.org.au",
       STAFF_EMAILS: "info@ffe.org.au",
@@ -202,7 +204,7 @@ function fixture(options) {
     },
     clock: () => NOW
   });
-  return { ...record, store, sent, sheets, service };
+  return { ...record, store, sent, sheets, slackMessages, service };
 }
 
 function seedSession(store, rawToken, session) {
@@ -245,7 +247,7 @@ function validSubmissionValues(permission) {
 test("signature delivery is created only by submission and is suppressed for do-not-contact", async () => {
   for (const permission of ["Yes, the school may contact this person", "No, do not contact this person"]) {
     const setup = fixture({ contactPermission: true });
-    const { app, store, sent, service } = setup;
+    const { app, store, sent, slackMessages, service } = setup;
     const draft = {
       ...app,
       status: "in_progress",
@@ -283,7 +285,42 @@ test("signature delivery is created only by submission and is suppressed for do-
       assert.equal(submitted.oneSignatureExplanation, "The applicant asked Rosewood College to review consent arrangements.");
     }
     assert.equal(store.applications.size, 1);
+    assert.equal(slackMessages.length, 0, "pending signatures and staff review are not completed applications");
   }
+});
+
+test("a one-guardian application queues one completion notification", async () => {
+  const { app, store, slackMessages, service } = fixture({ contactPermission: true });
+  const values = validSubmissionValues("Yes, the school may contact this person");
+  values.application_one_signature_reason = "Only one parent or guardian is included in this synthetic application.";
+  const draft = {
+    ...app,
+    status: "in_progress",
+    reference: "",
+    guardianCount: 1,
+    guardianIds: [app.guardianIds[0]],
+    values,
+    documents: { birth_certificate: [{ id: "birth-synthetic", documentId: "birth-synthetic", category: "birth_certificate", fileName: "synthetic-birth.pdf", mimeType: "application/pdf", size: 1024, checksum: "synthetic", malwareScanStatus: "no_threats_found", storageProvider: "google_drive", uploadedAt: "2026-08-08T04:30:00.000Z" }] },
+    signatures: [],
+    signerControls: undefined,
+    signatureControlRevision: undefined,
+    requiredSignatureCount: 0,
+    requiresStaffReview: false,
+    revisionHash: ""
+  };
+  store.applications.set(app.id, draft);
+  store.tasks.clear();
+  const applicationSession = "single-guardian-submission-session";
+  seedSession(store, applicationSession, { scope: "application", applicationId: app.id, invitationId: app.invitationId, contactId: app.contactId, email: app.recipientEmail });
+  const signatureBytes = Buffer.alloc(120);
+  Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(signatureBytes);
+  const response = await service(request("/v6/application/submit", "POST", { expectedRevision: draft.revision, formVersion: draft.formVersion, formDefinitionHash: draft.formDefinitionHash, signatureDataUrl: `data:image/png;base64,${signatureBytes.toString("base64")}` }, applicationSession));
+  assert.equal(response.statusCode, 200);
+  assert.equal(store.applications.get(app.id).status, "submitted");
+  assert.equal(slackMessages.length, 1);
+  assert.equal(slackMessages[0].reference, store.applications.get(app.id).reference);
+  assert.equal(slackMessages[0].completedAt, store.applications.get(app.id).completedAt);
+  assert.deepEqual(Object.keys(slackMessages[0]).sort(), ["completedAt", "reference"]);
 });
 
 test("do-not-contact is enforced in family actions and an audited staff change is reversible", async () => {
@@ -327,7 +364,7 @@ test("do-not-contact is enforced in family actions and an audited staff change i
 });
 
 test("a verified applicant can correct a pending signer email without reopening or duplicating the application", async () => {
-  const { app, store, sent, service, taskToken } = fixture({ contactPermission: true });
+  const { app, store, sent, slackMessages, service, taskToken } = fixture({ contactPermission: true });
   const statusToken = "synthetic-family-status-token";
   seedSession(store, statusToken, { scope: "application_status", applicationId: app.id, invitationId: app.invitationId, applicantContactId: app.contactId, email: app.recipientEmail });
 
@@ -397,6 +434,8 @@ test("a verified applicant can correct a pending signer email without reopening 
   assert.equal(store.applications.get(app.id).signerControls[1].signatureStatus, "complete");
   assert.equal(store.applications.get(app.id).signatures[0].id, "signature-primary");
   assert.equal(store.applications.get(app.id).signatures[1].signerEmail, "corrected-guardian@example.test");
+  assert.equal(slackMessages.length, 1);
+  assert.deepEqual(Object.keys(slackMessages[0]).sort(), ["completedAt", "reference"]);
 
   const finalStatus = JSON.parse((await service(request("/v6/application/status", "GET", null, statusToken))).body);
   assert.equal(finalStatus.signers[1].signatureStatus, "Complete");

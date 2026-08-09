@@ -4,6 +4,7 @@ import { GoogleDriveStore } from "./google-drive.mjs";
 import { StagedGoogleDriveStore } from "./staged-google-drive.mjs";
 import { GoogleSheetsStore } from "./google-sheets.mjs";
 import { SesMailer } from "./ses-mailer.mjs";
+import { SlackNotifier } from "./slack-notifier.mjs";
 import { createService } from "./service.mjs";
 import { runProductionCanary } from "./production-canary.mjs";
 
@@ -35,7 +36,8 @@ export async function buildService(overrides = {}) {
     : drive);
   const sheets = overrides.sheets || new GoogleSheetsStore({ auth, eoiSpreadsheetId: config.GOOGLE_EOI_SPREADSHEET_ID, applicationSpreadsheetId: config.GOOGLE_APPLICATION_SPREADSHEET_ID, operationsSpreadsheetId: config.GOOGLE_OPERATIONS_SPREADSHEET_ID });
   const mailer = overrides.mailer || new SesMailer({ from: config.SENDER_EMAIL, fromName: config.SENDER_NAME, replyTo: config.REPLY_TO_EMAIL, configurationSetName: config.SES_CONFIGURATION_SET });
-  return createService({ store, artifacts, drive, sheets, mailer, env: config });
+  const slack = overrides.slack || new SlackNotifier({ webhookUrl: config.SLACK_WEBHOOK_URL, staffPortalUrl: config.STAFF_PORTAL_URL });
+  return createService({ store, artifacts, drive, sheets, mailer, slack, env: config });
 }
 
 export async function handler(event, context) {

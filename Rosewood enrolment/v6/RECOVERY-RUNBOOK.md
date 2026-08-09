@@ -144,6 +144,30 @@ Address suggestions are optional and must fail open to manual entry.
 6. Do not delay applications while Google is unavailable. Families can complete the
    same authoritative fields manually.
 
+## Recover Slack Completion Notifications
+
+Slack is an operational prompt, not evidence that an application is complete. Confirm
+completion in DynamoDB or the authorised staff portal before taking action.
+
+1. Check the outbox receipt for the Slack event using the application reference only;
+   do not copy application answers into logs or incident notes.
+2. If no receipt exists, confirm the pending outbox item remains available for the
+   one-minute EventBridge retry and review the Lambda error log for a bounded delivery
+   status. Do not manually post family details to compensate.
+3. Confirm the internal app **Rosewood Enrolment Notifications** is installed in the
+   FamiliesForEducation workspace and the webhook remains assigned to the private
+   `#enrolments-committee` channel.
+4. Confirm `SLACK_WEBHOOK_URL` exists in the existing AWS configuration secret without
+   printing its value. Recycle the Lambda after a secret-only update because the
+   service configuration is cached for a warm execution environment.
+5. If the webhook is exposed or revoked, create a replacement for the same private
+   channel, update the secret, recycle the Lambda, then revoke the former webhook. Do
+   not store the replacement in Git, a ticket, Slack or Google Sheets.
+6. Do not replay an event when a successful outbox receipt already exists. If manual
+   recovery is authorised for a genuinely undelivered completed application, preserve
+   the same idempotency boundary and disclose only reference, completion time and the
+   generic staff-portal link.
+
 ## Recovery Drill
 
 Run a synthetic DynamoDB restore drill at least annually and after material storage

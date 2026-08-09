@@ -711,3 +711,25 @@ EOI, invitation, OTP, family session, application, upload, signature or workflow
 - one clearly labelled setup-test publication produced two successful SNS deliveries,
   matching the two confirmed recipients; routine successful canary runs remain silent
 - production Lambda deployment commit `b6aa4c5` is the tested monitoring release
+
+## Private Slack Completion Notifications
+
+Local verification completed on 9 August 2026 without sending a Slack test message or
+submitting a production application.
+
+- the internal Slack app **Rosewood Enrolment Notifications** is installed in the
+  FamiliesForEducation workspace and its incoming webhook is assigned to the private
+  `#enrolments-committee` channel
+- the generated webhook is stored as `SLACK_WEBHOOK_URL` in the existing Sydney AWS
+  configuration secret; its value is absent from Git, CloudFormation and ordinary logs
+- all 79 Node tests pass, including one-guardian completion, completion after a corrected
+  additional-guardian signing request, suppression while signatures are pending or
+  staff review is required, minimal message content, disabled configuration, delivery
+  failure and durable-outbox infrastructure checks
+- JavaScript syntax, `git diff --check`, the frozen-lockfile build and immutable frontend
+  asset gates pass
+- Slack receives only the Application reference, Melbourne completion time and generic
+  staff-portal link; the synthetic tests verify that names, email, medical information,
+  guardian data and internal application IDs are excluded
+- no setup/test message was posted, preserving the first channel notification for a
+  genuine completed Application
