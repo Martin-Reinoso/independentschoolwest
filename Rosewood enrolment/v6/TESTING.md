@@ -771,3 +771,17 @@ message or submitting, reopening or changing a production family Application.
 - no synthetic webhook request was made, preserving each channel's first enrolment
   notification for a genuine Application event; Slack may show its standard integration
   installation system event independently
+- reviewed change set `rosewood-slack-routing-20260809-f8a1916` updated Lambda code in
+  place and recalculated only the existing outbox/canary targets and invocation
+  permissions; it did not modify or replace DynamoDB, audit, KMS, backups, document
+  staging, Google configuration, Secrets Manager resources or alarms
+- CloudFormation reached `UPDATE_COMPLETE`; Lambda is `Active` with a successful update,
+  `/v6/health` retains schema `rosewood-v6-2026-08-08-form-v8`, EOI
+  `rosewood-eoi-2026.10` and Application `rosewood-application-2026.10`, and DynamoDB
+  point-in-time recovery remains enabled
+- the one-minute outbox and 30-minute canary rules are enabled; the Lambda error alarm
+  and all three canary alarms are `OK`
+- a manual non-writing canary invocation returned HTTP 200 with no function error and
+  all three availability checks passed; the production outbox had no pending Slack event
+  before or after the release
+- deployment source commit `f8a1916` is the tested split-routing release
