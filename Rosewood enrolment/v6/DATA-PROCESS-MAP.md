@@ -60,6 +60,7 @@ flowchart LR
     Drive["Restricted Google Drive files"]
     Outbox["Durable DynamoDB outbox"]
     SES["Amazon SES email"]
+    Slack["Private Slack enrolments committee"]
     Sheets["Private Google Sheets projections"]
     Backup["PITR and locked Sydney backups"]
     Canary["Read-only scheduled production canary"]
@@ -77,6 +78,7 @@ flowchart LR
     Lambda -->|"Delete successful staging object"| Staging
     MainDB --> Outbox
     Outbox -->|"Retry every minute"| SES
+    Outbox -->|"Minimal final-completion notice"| Slack
     Outbox -->|"Replaceable reporting rows"| Sheets
     MainDB --> Backup
     AuditDB --> Backup
@@ -113,6 +115,7 @@ asset, backend-health and EOI-address checks.
 | Signature image | Restricted Google Drive | DynamoDB and Sheet metadata | Staff API does not return the image. |
 | Audit events | Separate append-only DynamoDB table | EOI, Application and Operations audit tabs | Detailed application views and state changes create events. |
 | Email work and receipts | DynamoDB outbox/receipts plus SES | Operations Email Events | Outbox is retried every minute. |
+| Slack completion work and receipts | DynamoDB outbox/receipts | Private `#enrolments-committee` message | Contains reference, completion time and staff-portal link only. Slack is not authoritative. |
 | Backups | DynamoDB PITR and locked AWS Backup vault | None | Drive recovery is governed separately by Google account controls. |
 
 ## End-to-End State Model
@@ -685,7 +688,7 @@ flowchart LR
     Answers --> Drive["Authorised staff separately use restricted Drive"]
 ```
 
-## Asynchronous Email and Sheet Processing
+## Asynchronous Email, Slack and Sheet Processing
 
 Business-state changes, audit events and their outbox work are written together where
 the workflow requires atomicity. Delivery is then attempted immediately for major
@@ -695,7 +698,7 @@ operations and retried by EventBridge every minute.
 stateDiagram-v2
     [*] --> Pending: Outbox item created
     Pending --> Leased: Worker claims 60-second lease
-    Leased --> SentReceipt: SES or Sheet operation succeeds
+    Leased --> SentReceipt: SES, Slack or Sheet operation succeeds
     Leased --> Pending: Delivery fails and lease is released
     SentReceipt --> [*]: Pending item removed; receipt retained temporarily
 ```
@@ -720,6 +723,20 @@ stateDiagram-v2
 SES sends as `enrolment@ffe.org.au`. SPF, DKIM and DMARC have been verified. Bounce and
 complaint notifications reach the operations mailbox, but automatic correlation back
 into individual Operations records remains a future improvement.
+
+### Staff Slack Notification
+
+| Trigger | Destination | Information disclosed |
+| --- | --- | --- |
+| Application reaches authoritative `submitted` status | Private `#enrolments-committee` | Application reference, Melbourne completion time and authenticated staff-portal link only |
+
+The same transaction that changes the Application to `submitted` queues the Slack
+outbox event. For a one-guardian application this occurs at primary submission; where
+another electronic signature is required, it occurs only when the last required signer
+completes. `pending_signatures` and `staff_review_required` do not notify. Delivery is
+retried by the existing one-minute outbox worker, and a receipt prevents duplicate
+delivery after success. Slack stores no application answers and cannot change workflow
+state.
 
 ## Google Sheets Projection Map
 

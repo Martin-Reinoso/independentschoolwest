@@ -218,6 +218,7 @@ export function auditSheetOperation(event) {
 function outbox(kind, payload, now) { return { id: id("out"), kind, payload, createdAt: iso(now) }; }
 function emailOutbox(payload, now) { return outbox("email", payload, now); }
 function sheetOutbox(operation, now) { return outbox("sheet", operation, now); }
+function slackOutbox(payload, now) { return outbox("slack", payload, now); }
 
 function emailEvent({ messageType, workflow, recordId, recipientEmail, at }) {
   return sheetOperation("operations", "Email Events", { email_event_id: id("mail"), occurred_at: at, message_type: messageType, workflow, record_id: recordId, recipient_email: recipientEmail, delivery_status: "queued", schema_version: SCHEMA_VERSION }, ["email_event_id"]);
@@ -399,7 +400,7 @@ export async function queueMissingGuardianSignatureInvitations({ store, applicat
   return { applicationId: app.id, status: app.status, queuedSignatureRequests: signatureTasks.length };
 }
 
-export function createService({ store, artifacts, drive, sheets, mailer, env, clock = () => Date.now() }) {
+export function createService({ store, artifacts, drive, sheets, mailer, slack = { enabled: false }, env, clock = () => Date.now() }) {
   artifacts ||= drive;
   const allowUnscannedGoogleDocuments = String(env.ALLOW_UNSCANNED_GOOGLE_DOCUMENTS || "false") === "true";
   const allowedOrigins = String(env.ALLOWED_ORIGINS || "https://ffe.org.au").split(",").map(value => value.trim()).filter(Boolean);
@@ -1159,7 +1160,10 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
     ];
     const confirmation = applicationSubmitted({ firstName: values.app_guardian_0_first, studentName: `${values.student_first} ${values.student_last}`, reference, pendingSignatures: status !== "submitted" });
     const emailEvents = [emailOutbox({ to: app.recipientEmail, ...confirmation, tags: { workflow: "application", message_type: "submitted" } }, clock()), ...taskEmails.map(mail => emailOutbox(mail, clock()))];
-    await store.submitApplication({ applicationId: app.id, expectedRevision: app.revision, application: next, revisionRecord: applicationRevision(next, { kind: "submitted", values, savedAt: signedAt, saveMode: "submission" }), signatureTasks, outboxEvents: [...emailEvents, ...operations.map(operation => sheetOutbox(operation, clock()))], auditEvents: [audit] });
+    const completionNotifications = status === "submitted" && slack.enabled
+      ? [slackOutbox({ reference, completedAt: signedAt }, clock())]
+      : [];
+    await store.submitApplication({ applicationId: app.id, expectedRevision: app.revision, application: next, revisionRecord: applicationRevision(next, { kind: "submitted", values, savedAt: signedAt, saveMode: "submission" }), signatureTasks, outboxEvents: [...emailEvents, ...completionNotifications, ...operations.map(operation => sheetOutbox(operation, clock()))], auditEvents: [audit] });
     await dispatchOutbox(50);
     const statusSessionToken = await issueStatusSession(invitation || { id: app.invitationId }, next, session.email);
     return { applicationId: app.id, reference, status, requiresStaffReview, statusSessionToken, expiresInSeconds: APPLICATION_SESSION_IDLE_MS / 1000, idleTimeoutSeconds: APPLICATION_SESSION_IDLE_MS / 1000, absoluteTimeoutSeconds: APPLICATION_SESSION_ABSOLUTE_MS / 1000, statusContext: statusContext(next) };
@@ -1260,7 +1264,10 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
         if (recipient.currentEmail) emails.push(emailOutbox({ to: recipient.currentEmail, ...applicationComplete({ firstName: app.values[`app_guardian_${recipient.guardianIndex}_first`], studentName: `${app.values.student_first} ${app.values.student_last}`, reference: app.reference }), tags: { workflow: "application", message_type: "complete" } }, clock()));
       }
     }
-    await store.completeSignature({ applicationId: app.id, taskTokenHash: session.taskTokenHash, guardianIndex: session.guardianIndex, application: next, outboxEvents: [...emails, ...operations.map(operation => sheetOutbox(operation, clock()))], auditEvents: [audit] });
+    const completionNotifications = status === "submitted" && slack.enabled
+      ? [slackOutbox({ reference: app.reference, completedAt: signedAt }, clock())]
+      : [];
+    await store.completeSignature({ applicationId: app.id, taskTokenHash: session.taskTokenHash, guardianIndex: session.guardianIndex, application: next, outboxEvents: [...emails, ...completionNotifications, ...operations.map(operation => sheetOutbox(operation, clock()))], auditEvents: [audit] });
     await dispatchOutbox(50);
     return { applicationId: app.id, reference: app.reference, status };
   }
@@ -1283,7 +1290,11 @@ export function createService({ store, artifacts, drive, sheets, mailer, env, cl
             continue;
           }
         }
-        const result = item.data.kind === "email" ? await mailer.send(item.data.payload) : await sheets.apply(item.data.payload);
+        let result;
+        if (item.data.kind === "email") result = await mailer.send(item.data.payload);
+        else if (item.data.kind === "sheet") result = await sheets.apply(item.data.payload);
+        else if (item.data.kind === "slack") result = await slack.send(item.data.payload);
+        else throw new Error(`Unsupported outbox event kind: ${item.data.kind}`);
         if (tracking?.kind === "signature_request") {
           await store.recordSignatureProgress?.({ applicationId: tracking.applicationId, guardianIndex: tracking.guardianIndex, taskTokenHash: tracking.taskTokenHash, requestStatus: "sent", at: nowIso(), messageId: result?.messageId || "" });
         }

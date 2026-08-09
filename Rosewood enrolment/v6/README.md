@@ -155,6 +155,15 @@ private action button and contain no student, family, medical or application det
 The private link still requires the invited email and OTP before the frozen application
 review is returned.
 
+When the authoritative Application status becomes `submitted`, the durable outbox
+queues one minimal completion notification to the private Slack
+`#enrolments-committee` channel. A one-guardian application reaches this boundary at
+primary submission; a multi-guardian application reaches it only after the final
+required guardian signature. Pending-signature and staff-review states do not notify.
+Slack receives only the application reference, completion time and generic staff-portal
+link and is never an application database or audit record. The webhook is stored only
+in the existing AWS configuration secret.
+
 V6 is hidden from site navigation and the sitemap and has `noindex`. Its URL is still
 public and is not an access-control boundary.
 

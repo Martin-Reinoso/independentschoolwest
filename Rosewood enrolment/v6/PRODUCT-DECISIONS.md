@@ -288,6 +288,24 @@ Source: https://www.abs.gov.au/statistics/classifications/australian-standard-cl
 - The link remains a high-entropy, expiring signing-task link. Opening it does not expose
   the application; the invited email and OTP are still required before review.
 
+## Staff Completion Notifications
+
+- The private Slack `#enrolments-committee` channel receives one notification only
+  when an Application reaches the authoritative `submitted` state.
+- For a one-guardian application, this occurs after successful primary submission. For
+  a multi-guardian application, it occurs only after the final required guardian signs.
+- `pending_signatures` and `staff_review_required` are not completed states and do not
+  trigger the notification.
+- Slack receives only the application reference, Melbourne completion time and a link
+  to the authenticated staff portal. Names, email addresses, answers, documents,
+  medical details and internal application identifiers are excluded.
+- The notification is a durable, retryable DynamoDB outbox operation. Slack is not a
+  system of record, audit history or staff authorisation boundary.
+- The incoming-webhook URL is restricted configuration in AWS Secrets Manager. It must
+  not appear in Git, CloudFormation parameters, logs, Sheet projections or staff APIs.
+- No setup/test message is sent. The first channel message is reserved for a genuine
+  completed application.
+
 ## Frontend and Backend Boundary
 
 EOI and Application for Enrolment are live backend workflows. The server independently

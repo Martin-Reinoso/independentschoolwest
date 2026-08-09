@@ -451,6 +451,7 @@ Resources:
           STAFF_ROLES: !Ref StaffRoles
           APPLICATION_PAGE_URL: https://ffe.org.au/pages/rosewood-enrolment-v6.html
           APPLICATION_SIGNING_PAGE_URL: https://ffe.org.au/pages/rosewood-application-sign-v6.html
+          STAFF_PORTAL_URL: https://ffe.org.au/pages/rosewood-enrolment-admin-v6.html
           PUBLIC_SITE_BASE_URL: !Ref PublicSiteBaseUrl
           PUBLIC_API_BASE_URL: !Ref PublicApiBaseUrl
 
@@ -479,7 +480,7 @@ Resources:
   RosewoodOutboxSchedule:
     Type: AWS::Events::Rule
     Properties:
-      Description: Retry Rosewood V6 email and Google Sheets projection operations
+      Description: Retry Rosewood V6 email, Slack notification and Google Sheets projection operations
       ScheduleExpression: rate(1 minute)
       State: ENABLED
       Targets:
