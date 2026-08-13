@@ -959,6 +959,9 @@ notification.
 - a manual non-writing production canary returned HTTP 200 with no function error; all
   five checks reported `available=true`, including the protected workflow and projected
   delivery-pipeline checks
+- the first automatic 10-minute EventBridge run published fresh healthy datapoints for
+  all five metrics at 00:32 Melbourne time; all nine alarms remained `OK` and Lambda
+  reported zero errors throughout the deployment verification window
 - `/v6/health` returned HTTP 200 with EOI `rosewood-eoi-2026.11` and Application
   `rosewood-application-2026.11`; all nine production alarms are `OK`
 - both encrypted security-topic subscriptions remain confirmed for `info@ffe.org.au`
