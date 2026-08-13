@@ -1,0 +1,21 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Families for Education//Rosewood College Events//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+UID:20260826T203000-family-information-evening@ffe.org.au
+DTSTAMP:20260813T132000Z
+DTSTART:20260826T103000Z
+DTEND:20260826T113000Z
+SUMMARY:Family Information Evening - Rosewood College
+DESCRIPTION:Join Families for Education for a milestone evening as Rosewood
+ College takes its next major step. Applications for Enrolment will be
+ announced on the night. Join via Google Meet: https://meet.google.com/pjn-t
+ meq-unk
+LOCATION:https://meet.google.com/pjn-tmeq-unk
+URL:https://meet.google.com/pjn-tmeq-unk
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+END:VEVENT
+END:VCALENDAR
