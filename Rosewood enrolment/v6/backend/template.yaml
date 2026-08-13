@@ -428,6 +428,17 @@ Resources:
           MetricValue: "1"
           DefaultValue: 0
 
+  RosewoodEmailDeliveryFailureMetric:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref RosewoodLogGroup
+      FilterPattern: '"Rosewood transactional email delivery failed"'
+      MetricTransformations:
+        - MetricNamespace: Rosewood/Enrolment
+          MetricName: TransactionalEmailDeliveryFailures
+          MetricValue: "1"
+          DefaultValue: 0
+
   RosewoodRole:
     Type: AWS::IAM::Role
     Properties:
@@ -605,8 +616,8 @@ Resources:
   RosewoodCanarySchedule:
     Type: AWS::Events::Rule
     Properties:
-      Description: Check the public Rosewood enrolment forms, backend and EOI address configuration
-      ScheduleExpression: rate(30 minutes)
+      Description: Check Rosewood enrolment forms, protected workflows, backend configuration and delivery pipeline
+      ScheduleExpression: rate(10 minutes)
       State: ENABLED
       Targets:
         - Arn: !GetAtt RosewoodFunction.Arn
@@ -630,6 +641,39 @@ Resources:
       Dimensions:
         - Name: FunctionName
           Value: !Ref RosewoodFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref RosewoodSecurityTopic
+
+  RosewoodThrottlesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Rosewood V6 Lambda was throttled and may not have completed a family or staff request
+      Namespace: AWS/Lambda
+      MetricName: Throttles
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref RosewoodFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref RosewoodSecurityTopic
+
+  RosewoodEmailDeliveryFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Amazon SES reported a bounce, complaint, rejection or rendering failure for a Rosewood transactional email
+      Namespace: Rosewood/Enrolment
+      MetricName: TransactionalEmailDeliveryFailures
       Statistic: Sum
       Period: 300
       EvaluationPeriods: 1
@@ -664,7 +708,7 @@ Resources:
         - Name: Environment
           Value: production
       Statistic: Minimum
-      Period: 1800
+      Period: 600
       EvaluationPeriods: 2
       DatapointsToAlarm: 2
       Threshold: 1
@@ -685,7 +729,7 @@ Resources:
         - Name: Environment
           Value: production
       Statistic: Minimum
-      Period: 1800
+      Period: 600
       EvaluationPeriods: 2
       DatapointsToAlarm: 2
       Threshold: 1
@@ -706,7 +750,49 @@ Resources:
         - Name: Environment
           Value: production
       Statistic: Minimum
-      Period: 1800
+      Period: 600
+      EvaluationPeriods: 2
+      DatapointsToAlarm: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+      AlarmActions:
+        - !Ref RosewoodSecurityTopic
+      OKActions:
+        - !Ref RosewoodSecurityTopic
+
+  RosewoodApplicationWorkflowCanaryAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Rosewood protected Application, status or staff routes failed two consecutive production checks
+      Namespace: Rosewood/Enrolment
+      MetricName: ApplicationWorkflowAvailability
+      Dimensions:
+        - Name: Environment
+          Value: production
+      Statistic: Minimum
+      Period: 600
+      EvaluationPeriods: 2
+      DatapointsToAlarm: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+      AlarmActions:
+        - !Ref RosewoodSecurityTopic
+      OKActions:
+        - !Ref RosewoodSecurityTopic
+
+  RosewoodOperationalPipelineCanaryAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Rosewood email, Sheets or Slack delivery work remained pending for more than 15 minutes
+      Namespace: Rosewood/Enrolment
+      MetricName: OperationalPipelineAvailability
+      Dimensions:
+        - Name: Environment
+          Value: production
+      Statistic: Minimum
+      Period: 600
       EvaluationPeriods: 2
       DatapointsToAlarm: 2
       Threshold: 1

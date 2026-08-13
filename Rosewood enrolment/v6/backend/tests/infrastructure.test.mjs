@@ -51,7 +51,11 @@ test("temporary document staging is private, encrypted and short lived", async (
 });
 
 test("production canary is scheduled, publishes restricted metrics and alarms through the security topic", async () => {
-  const template = await readFile(new URL("../template.yaml", import.meta.url), "utf8");
+  const [template, canary, store] = await Promise.all([
+    readFile(new URL("../template.yaml", import.meta.url), "utf8"),
+    readFile(new URL("../production-canary.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../dynamo-store.mjs", import.meta.url), "utf8")
+  ]);
   const runtimeRole = template.slice(
     template.indexOf("  RosewoodRole:"),
     template.indexOf("  RosewoodFunction:")
@@ -60,7 +64,7 @@ test("production canary is scheduled, publishes restricted metrics and alarms th
   assert.match(template, /RosewoodSecondarySecuritySubscription:/);
   assert.match(template, /Default: frjativa@gmail\.com/);
   assert.match(template, /RosewoodCanarySchedule:/);
-  assert.match(template, /ScheduleExpression: rate\(30 minutes\)/);
+  assert.match(template, /ScheduleExpression: rate\(10 minutes\)/);
   assert.match(template, /"source":"rosewood\.enrolment\.canary"/);
   assert.match(runtimeRole, /Sid: PublishCanaryMetrics/);
   assert.match(runtimeRole, /cloudwatch:PutMetricData/);
@@ -69,13 +73,20 @@ test("production canary is scheduled, publishes restricted metrics and alarms th
   for (const metric of [
     "PublicFormAvailability",
     "BackendHealthAvailability",
-    "EoiAddressAvailability"
+    "EoiAddressAvailability",
+    "ApplicationWorkflowAvailability",
+    "OperationalPipelineAvailability"
   ]) {
     assert.match(template, new RegExp(`MetricName: ${metric}`));
   }
-  assert.equal((template.match(/TreatMissingData: breaching/g) || []).length, 3);
-  assert.equal((template.match(/DatapointsToAlarm: 2/g) || []).length, 3);
-  assert.equal((template.match(/OKActions:/g) || []).length, 3);
+  assert.equal((template.match(/TreatMissingData: breaching/g) || []).length, 5);
+  assert.equal((template.match(/DatapointsToAlarm: 2/g) || []).length, 5);
+  assert.equal((template.match(/OKActions:/g) || []).length, 5);
+  assert.match(template, /MetricName: Throttles/);
+  assert.match(template, /MetricName: TransactionalEmailDeliveryFailures/);
+  assert.match(template, /Rosewood transactional email delivery failed/);
+  assert.match(canary, /operationalStore\.inspectOutbox\(25\)/);
+  assert.match(store, /ProjectionExpression: "#data\.#createdAt, #attempts"/);
 });
 
 test("Slack status delivery is secret-backed, routed and part of the durable outbox", async () => {

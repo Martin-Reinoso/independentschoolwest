@@ -565,7 +565,16 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
         auditEvent: audit,
         outboxEvents: [sheetOutbox(operation, clock())]
       });
-      if (inserted) recorded += 1;
+      if (inserted) {
+        recorded += 1;
+        if (["bounced", "complained", "rejected", "rendering_failed"].includes(feedback.deliveryStatus)) {
+          console.error("Rosewood transactional email delivery failed", {
+            deliveryStatus: feedback.deliveryStatus,
+            messageType: feedback.messageType,
+            workflow: feedback.workflow
+          });
+        }
+      }
     }
     if (recorded) await dispatchOutbox(50);
     return { received, recorded, signatureUpdates };

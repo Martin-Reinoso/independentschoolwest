@@ -40,6 +40,10 @@ function healthyFetch({ breakPublicAsset = false, omitAddressKey = false } = {})
         }
       });
     }
+    if (url.origin === API && ["/v6/application/context", "/v6/application/status", "/v6/staff/dashboard"].includes(url.pathname)) {
+      assert.equal(options.headers.origin, SITE);
+      return response({ error: "SESSION_REQUIRED", message: "Verify your email address to continue." }, { status: 401 });
+    }
     if (url.origin === API && url.pathname === "/v6/eoi/config") {
       assert.equal(options.headers.origin, SITE);
       return response({
@@ -71,16 +75,21 @@ function capturingMetricsClient() {
   };
 }
 
+function operationalStore(items = []) {
+  return { async inspectOutbox() { return items; } };
+}
+
 test("production canary checks public assets, backend versions and EOI address configuration without writes", async () => {
   const metricsClient = capturingMetricsClient();
   const result = await runProductionCanary({
     env: { PUBLIC_SITE_BASE_URL: SITE, PUBLIC_API_BASE_URL: API },
     fetchImpl: healthyFetch(),
     metricsClient,
+    operationalStore: operationalStore(),
     now: new Date("2026-08-09T00:00:00.000Z")
   });
 
-  assert.equal(result.checks.length, 3);
+  assert.equal(result.checks.length, 5);
   assert.ok(result.checks.every(check => check.available));
   assert.equal(metricsClient.commands.length, 1);
   assert.deepEqual(
@@ -88,7 +97,9 @@ test("production canary checks public assets, backend versions and EOI address c
     [
       ["PublicFormAvailability", 1],
       ["BackendHealthAvailability", 1],
-      ["EoiAddressAvailability", 1]
+      ["EoiAddressAvailability", 1],
+      ["ApplicationWorkflowAvailability", 1],
+      ["OperationalPipelineAvailability", 1]
     ]
   );
 });
@@ -98,7 +109,8 @@ test("production canary publishes independent zero metrics when public or addres
   const result = await runProductionCanary({
     env: { PUBLIC_SITE_BASE_URL: SITE, PUBLIC_API_BASE_URL: API },
     fetchImpl: healthyFetch({ breakPublicAsset: true, omitAddressKey: true }),
-    metricsClient
+    metricsClient,
+    operationalStore: operationalStore()
   });
 
   assert.deepEqual(
@@ -106,10 +118,12 @@ test("production canary publishes independent zero metrics when public or addres
     [
       ["PublicFormAvailability", false],
       ["BackendHealthAvailability", true],
-      ["EoiAddressAvailability", false]
+      ["EoiAddressAvailability", false],
+      ["ApplicationWorkflowAvailability", true],
+      ["OperationalPipelineAvailability", true]
     ]
   );
-  assert.deepEqual(metricsClient.commands[0].MetricData.map(metric => metric.Value), [0, 1, 0]);
+  assert.deepEqual(metricsClient.commands[0].MetricData.map(metric => metric.Value), [0, 1, 0, 1, 1]);
   assert.ok(result.checks.filter(check => !check.available).every(check => check.reason && !check.reason.includes("synthetic-browser-key")));
 });
 
@@ -118,8 +132,49 @@ test("production canary requires HTTPS monitoring targets", async () => {
     runProductionCanary({
       env: { PUBLIC_SITE_BASE_URL: "http://ffe.org.au", PUBLIC_API_BASE_URL: API },
       fetchImpl: healthyFetch(),
-      metricsClient: capturingMetricsClient()
+      metricsClient: capturingMetricsClient(),
+      operationalStore: operationalStore()
     }),
     /must use HTTPS/
   );
+});
+
+test("production canary detects a stale delivery queue without logging queued payloads", async () => {
+  const metricsClient = capturingMetricsClient();
+  const result = await runProductionCanary({
+    env: { PUBLIC_SITE_BASE_URL: SITE, PUBLIC_API_BASE_URL: API },
+    fetchImpl: healthyFetch(),
+    metricsClient,
+    operationalStore: operationalStore([{
+      data: {
+        createdAt: "2026-08-08T23:30:00.000Z",
+        payload: { to: "private@example.test", medical: "must never be logged" }
+      }
+    }]),
+    now: new Date("2026-08-09T00:00:00.000Z")
+  });
+
+  const pipeline = result.checks.find(check => check.name === "OperationalPipelineAvailability");
+  assert.equal(pipeline.available, false);
+  assert.match(pipeline.reason, /more than 15 minutes/);
+  assert.doesNotMatch(JSON.stringify(result), /private@example\.test|medical/);
+  assert.equal(metricsClient.commands[0].MetricData.find(metric => metric.MetricName === "OperationalPipelineAvailability").Value, 0);
+});
+
+test("production canary detects a protected workflow route that does not fail closed", async () => {
+  const metricsClient = capturingMetricsClient();
+  const healthy = healthyFetch();
+  const fetchImpl = async (input, options) => {
+    const url = new URL(input);
+    if (url.pathname === "/v6/application/status") return response({ status: "unexpectedly_public" });
+    return healthy(input, options);
+  };
+  const result = await runProductionCanary({
+    env: { PUBLIC_SITE_BASE_URL: SITE, PUBLIC_API_BASE_URL: API },
+    fetchImpl,
+    metricsClient,
+    operationalStore: operationalStore()
+  });
+
+  assert.equal(result.checks.find(check => check.name === "ApplicationWorkflowAvailability").available, false);
 });

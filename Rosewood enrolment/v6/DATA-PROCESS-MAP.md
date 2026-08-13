@@ -82,9 +82,10 @@ flowchart LR
     Outbox -->|"Replaceable reporting rows"| Sheets
     MainDB --> Backup
     AuditDB --> Backup
-    Canary -->|"Public GET checks every 30 minutes"| Pages
-    Canary -->|"Health and EOI configuration GET checks"| Lambda
-    Canary -->|"Three aggregate availability metrics"| Alerts
+    Canary -->|"Public GET checks every 10 minutes"| Pages
+    Canary -->|"Health, protected-route and EOI configuration GET checks"| Lambda
+    Canary -->|"Projected pending timestamps and attempt counts"| MainDB
+    Canary -->|"Five aggregate availability metrics"| Alerts
     Lambda --> Alerts
     Backup --> Alerts
 ```
@@ -98,8 +99,10 @@ store for documents, JSON snapshots and signature images.
 
 The production canary is operational monitoring only. It does not create or read a
 family record and stores no applicant answers, invitation links, OTPs, address searches
-or Google key. CloudWatch receives one binary availability value for each of the public
-asset, backend-health and EOI-address checks.
+or Google key. Its DynamoDB query projects only pending outbox timestamps and attempt
+counters, not payloads. CloudWatch receives one binary availability value for each of
+the public-asset, backend-health, EOI-address, protected-workflow and operational-pipeline
+checks.
 
 ## Systems of Record
 

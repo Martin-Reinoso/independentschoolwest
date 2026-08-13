@@ -921,3 +921,29 @@ returned the generic service error.
 - a post-hotfix read-only production canary returned HTTP 200 with no function error;
   public forms, backend V6.11 health and EOI address configuration all remained
   available, and all five production alarms remained `OK`
+
+## Ten-Minute Production Monitoring Hardening
+
+Implemented and verified locally on 13 August 2026 without creating an EOI,
+invitation, OTP, session, application, upload, signature, workflow email or Slack
+notification.
+
+- the non-writing canary cadence advances from 30 minutes to 10 minutes; availability
+  alarms still require two consecutive failures or missing observations before paging
+  and send a recovery notification after service returns
+- `ApplicationWorkflowAvailability` verifies that Application context/status and staff
+  dashboard routes remain reachable while rejecting unauthenticated access with
+  `SESSION_REQUIRED`
+- `OperationalPipelineAvailability` detects email, Sheets or Slack work pending for
+  more than 15 minutes through a projection-limited DynamoDB query that reads only
+  creation timestamps and attempt counters, never queued payloads
+- separate alarms detect Lambda throttling and idempotently recorded SES bounce,
+  complaint, rejection or rendering failure; the existing Lambda error and permanent
+  outbox-failure alarms remain unchanged
+- all alarm actions use the existing encrypted security topic with confirmed
+  `info@ffe.org.au` and `frjativa@gmail.com` subscriptions; healthy checks remain silent
+- all 96 backend tests pass, including healthy/failing protected-route checks, stale
+  pipeline detection, metric independence and payload non-disclosure
+- 73 tracked HTML/CSS files pass the static-reference gate, 364 tracked files pass the
+  private-data/secret gate, JavaScript syntax and `git diff --check` pass, the locked
+  production deployment build succeeds and CloudFormation validates

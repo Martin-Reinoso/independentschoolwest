@@ -12,17 +12,17 @@
 
 ## Daily Checks
 
-1. Confirm the Lambda error alarm, outbox permanent-failure alarm and all three
-   production-canary alarms are `OK`.
+1. Confirm the Lambda error/throttle alarms, email-delivery and outbox permanent-failure
+   alarms, and all five production-canary alarms are `OK`.
 2. Confirm the latest scheduled backup jobs for both DynamoDB tables completed.
 3. Investigate any backup or application-error notification before normal processing.
 4. Confirm the restricted enrolment Drive has no public or link-wide sharing.
 
 ## Automated Production Canary
 
-EventBridge invokes the existing V6 Lambda every 30 minutes with a dedicated canary
-event. The invocation performs public, read-only checks and publishes these CloudWatch
-metrics in `Rosewood/Enrolment`:
+EventBridge invokes the existing V6 Lambda every 10 minutes with a dedicated canary
+event. The invocation performs non-writing checks and publishes these CloudWatch metrics
+in `Rosewood/Enrolment`:
 
 - `PublicFormAvailability`: family/EOI, guardian-signing and staff HTML/JavaScript/CSS
   assets are reachable and contain their expected release markers
@@ -30,8 +30,14 @@ metrics in `Rosewood/Enrolment`:
   immutable EOI and Application versions bundled with the Lambda
 - `EoiAddressAvailability`: `/v6/eoi/config` accepts only the production origin, retains
   `no-store` and returns an enabled Australian Google Places browser configuration
+- `ApplicationWorkflowAvailability`: Application context/status and staff dashboard
+  routes are reachable and still reject an unauthenticated request with
+  `SESSION_REQUIRED`
+- `OperationalPipelineAvailability`: a projection-limited DynamoDB query confirms that
+  email, Sheets or Slack work has not remained pending for more than 15 minutes; the
+  query does not load queued payloads
 
-Each alarm requires two consecutive failed or missing 30-minute observations before
+Each availability alarm requires two consecutive failed or missing 10-minute observations before
 alerting the encrypted SNS topic. It sends a second state-change notification after
 recovery. The topic emails `info@ffe.org.au` and `frjativa@gmail.com`; each new email
 subscription must be confirmed once from its AWS confirmation message.
@@ -45,7 +51,14 @@ When an alarm arrives:
 4. For backend health, check Lambda status, the normal error alarm and `/v6/health`.
 5. For EOI address configuration, follow **Recover Google Address Suggestions** below;
    manual address entry should remain available while Google is unavailable.
-6. Confirm a later successful scheduled observation returns the alarm to `OK`. Do not
+6. For protected-workflow failure, confirm the route still returns `401` and
+   `SESSION_REQUIRED` without using a real invitation or session.
+7. For a stale-pipeline alarm, inspect only pending age, event type and attempt count;
+   then follow the provider-specific SES, Sheets or Slack recovery section.
+8. For throttling, review concurrency and request volume before changing limits. For an
+   email-delivery alarm, inspect the restricted SES event and application status rather
+   than searching ordinary logs by recipient address.
+9. Confirm a later successful scheduled observation returns the alarm to `OK`. Do not
    force an alarm state to hide an unresolved production issue.
 
 ## Restore Authoritative Records
