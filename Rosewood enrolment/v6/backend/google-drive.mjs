@@ -34,6 +34,13 @@ export class GoogleDriveStore {
     return response.json();
   }
 
+  async deleteArtifact(artifact) {
+    const fileId = typeof artifact === "string" ? artifact : artifact?.id || artifact?.documentId || artifact?.storageKey;
+    if (!fileId) return { deleted: false };
+    await this.request(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`, { method: "DELETE" });
+    return { deleted: true };
+  }
+
   storeEoiSnapshot({ eoiId, snapshot }) {
     return this.createFile({ folderId: this.eoiFolderId, name: `${eoiId}.json`, mimeType: "application/json", data: JSON.stringify(snapshot, null, 2), properties: { rosewoodWorkflow: "eoi", rosewoodEoiId: eoiId } });
   }

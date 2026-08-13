@@ -40,6 +40,7 @@ export class DynamoStore {
   getSession(tokenHash) { return this.get(`SESSION#${tokenHash}`); }
   getSignatureTask(tokenHash) { return this.get(`SIGN_TASK#${tokenHash}`); }
   getIdempotency(keyHash) { return this.get(`IDEMPOTENCY#${keyHash}`); }
+  getEmailMessage(messageId) { return this.get(`EMAIL_MESSAGE#${messageId}`); }
   getUpload(id) { return this.get(`UPLOAD#${id}`); }
 
   auditActions(events = []) {
@@ -117,9 +118,19 @@ export class DynamoStore {
     }
   }
 
-  async createEoi(eoi, outboxEvents, auditEvents = []) {
-    await this.client.send(new TransactWriteCommand({ TransactItems: [{ Put: { TableName: this.tableName, Item: { ...this.key(`EOI#${eoi.id}`), entity: "eoi", data: eoi }, ConditionExpression: "attribute_not_exists(PK)" } }, ...this.outboxActions(outboxEvents), ...this.auditActions(auditEvents)] }));
-    return eoi;
+  async createEoi(eoi, outboxEvents, auditEvents = [], idempotency = null) {
+    const actions = [{ Put: { TableName: this.tableName, Item: { ...this.key(`EOI#${eoi.id}`), entity: "eoi", data: eoi }, ConditionExpression: "attribute_not_exists(PK)" } }];
+    if (idempotency) actions.push({ Put: { TableName: this.tableName, Item: { ...this.key(`IDEMPOTENCY#${idempotency.keyHash}`), entity: "idempotency", ttl: idempotency.ttl, data: idempotency }, ConditionExpression: "attribute_not_exists(PK)" } });
+    actions.push(...this.outboxActions(outboxEvents), ...this.auditActions(auditEvents));
+    try {
+      await this.client.send(new TransactWriteCommand({ TransactItems: actions }));
+      return { eoi, result: idempotency?.result, deduplicated: false };
+    } catch (error) {
+      if (!conditional(error) || !idempotency) throw error;
+      const existing = await this.getIdempotency(idempotency.keyHash);
+      if (existing?.result) return { eoi: null, result: existing.result, deduplicated: true };
+      throw conflict("This Expression of Interest changed before it could be recorded. Please try again.");
+    }
   }
 
   async createInvitation({ invitation, tokenHash, application, revisionRecord, outboxEvents, auditEvents = [] }) {
@@ -322,6 +333,35 @@ export class DynamoStore {
     } catch (error) { if (conditional(error)) return false; throw error; }
   }
 
+  async recordSignatureDelivery({ applicationId, guardianIndex, taskTokenHash, deliveryStatus, deliveryRank, eventType, at }) {
+    const index = Number(guardianIndex);
+    const appNames = { "#data": "data", "#signerControls": "signerControls", "#taskTokenHash": "taskTokenHash", "#deliveryStatus": "deliveryStatus", "#deliveryRank": "deliveryRank", "#deliveryAt": "deliveryAt", "#deliveryEventType": "deliveryEventType", "#updatedAt": "updatedAt" };
+    const appValues = { ":taskTokenHash": taskTokenHash, ":deliveryStatus": deliveryStatus, ":deliveryRank": Number(deliveryRank || 0), ":eventType": eventType, ":at": at };
+    const taskNames = { "#data": "data", "#deliveryStatus": "deliveryStatus", "#deliveryRank": "deliveryRank", "#deliveryAt": "deliveryAt", "#deliveryEventType": "deliveryEventType" };
+    const taskValues = { ":deliveryStatus": deliveryStatus, ":deliveryRank": Number(deliveryRank || 0), ":eventType": eventType, ":at": at };
+    try {
+      await this.client.send(new TransactWriteCommand({ TransactItems: [
+        { Update: {
+          TableName: this.tableName,
+          Key: this.key(`APP#${applicationId}`, "CURRENT"),
+          UpdateExpression: `SET #data.#signerControls[${index}].#deliveryStatus = :deliveryStatus, #data.#signerControls[${index}].#deliveryRank = :deliveryRank, #data.#signerControls[${index}].#deliveryAt = :at, #data.#signerControls[${index}].#deliveryEventType = :eventType, #data.#updatedAt = :at`,
+          ConditionExpression: `#data.#signerControls[${index}].#taskTokenHash = :taskTokenHash AND (attribute_not_exists(#data.#signerControls[${index}].#deliveryRank) OR #data.#signerControls[${index}].#deliveryRank <= :deliveryRank) AND (attribute_not_exists(#data.#signerControls[${index}].#deliveryEventType) OR #data.#signerControls[${index}].#deliveryEventType <> :eventType OR #data.#signerControls[${index}].#deliveryAt <> :at)`,
+          ExpressionAttributeNames: appNames,
+          ExpressionAttributeValues: appValues
+        } },
+        { Update: {
+          TableName: this.tableName,
+          Key: this.key(`SIGN_TASK#${taskTokenHash}`),
+          UpdateExpression: "SET #data.#deliveryStatus = :deliveryStatus, #data.#deliveryRank = :deliveryRank, #data.#deliveryAt = :at, #data.#deliveryEventType = :eventType",
+          ConditionExpression: "attribute_exists(PK) AND (attribute_not_exists(#data.#deliveryRank) OR #data.#deliveryRank <= :deliveryRank) AND (attribute_not_exists(#data.#deliveryEventType) OR #data.#deliveryEventType <> :eventType OR #data.#deliveryAt <> :at)",
+          ExpressionAttributeNames: taskNames,
+          ExpressionAttributeValues: taskValues
+        } }
+      ] }));
+      return true;
+    } catch (error) { if (conditional(error)) return false; throw error; }
+  }
+
   async replaceSignatureRequest({ applicationId, expectedControlRevision, previousTaskTokenHash, application, nextTask, idempotency, outboxEvents = [], auditEvents = [] }) {
     const actions = [
       { Put: { TableName: this.tableName, Item: { ...this.key(`APP#${applicationId}`, "CURRENT"), entity: "application", data: application }, ConditionExpression: "#data.#signatureControlRevision = :expected AND (#data.#status = :pending OR #data.#status = :staffReview)", ExpressionAttributeNames: { "#data": "data", "#signatureControlRevision": "signatureControlRevision", "#status": "status" }, ExpressionAttributeValues: { ":expected": Number(expectedControlRevision), ":pending": "pending_signatures", ":staffReview": "staff_review_required" } } }
@@ -413,14 +453,37 @@ export class DynamoStore {
   }
 
   async completeOutbox(item, result) {
-    await this.client.send(new TransactWriteCommand({ TransactItems: [
+    const completedAt = new Date(this.now()).toISOString();
+    const actions = [
       { Delete: { TableName: this.tableName, Key: this.key(item.PK, item.SK), ConditionExpression: "attribute_exists(PK)" } },
-      { Put: { TableName: this.tableName, Item: { ...this.key("OUTBOX_SENT", `SENT#${new Date(this.now()).toISOString()}#${item.data.id}`), entity: "outbox_receipt", ttl: Math.floor((this.now() + 30 * 86400_000) / 1000), data: { ...item.data, result, completedAt: new Date(this.now()).toISOString() } } } }
-    ] }));
+      { Put: { TableName: this.tableName, Item: { ...this.key("OUTBOX_SENT", `SENT#${completedAt}#${item.data.id}`), entity: "outbox_receipt", ttl: Math.floor((this.now() + 30 * 86400_000) / 1000), data: { ...item.data, result, completedAt } } } }
+    ];
+    if (item.data.kind === "email" && result?.messageId) {
+      actions.push({ Put: { TableName: this.tableName, Item: { ...this.key(`EMAIL_MESSAGE#${result.messageId}`), entity: "email_message_index", ttl: Math.floor((this.now() + 90 * 86400_000) / 1000), data: { messageId: result.messageId, outboxId: item.data.id, tags: item.data.payload?.tags || {}, tracking: item.data.payload?._tracking || null, completedAt } }, ConditionExpression: "attribute_not_exists(PK)" } });
+    }
+    await this.client.send(new TransactWriteCommand({ TransactItems: actions }));
   }
 
   async releaseOutbox(item) {
     await this.client.send(new UpdateCommand({ TableName: this.tableName, Key: this.key(item.PK, item.SK), UpdateExpression: "REMOVE #leaseUntil", ExpressionAttributeNames: { "#leaseUntil": "leaseUntil" } }));
+  }
+
+  async failOutbox(item, failure) {
+    await this.client.send(new TransactWriteCommand({ TransactItems: [
+      { Delete: { TableName: this.tableName, Key: this.key(item.PK, item.SK), ConditionExpression: "attribute_exists(PK)" } },
+      { Put: { TableName: this.tableName, Item: { ...this.key("OUTBOX_FAILED", `FAILED#${failure.failedAt}#${item.data.id}`), entity: "outbox_failure", ttl: Math.floor((this.now() + 90 * 86400_000) / 1000), data: { ...item.data, failure } }, ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)" } }
+    ] }));
+  }
+
+  async recordSesEvent({ eventId, feedback, auditEvent, outboxEvents = [] }) {
+    try {
+      await this.client.send(new TransactWriteCommand({ TransactItems: [
+        { Put: { TableName: this.tableName, Item: { ...this.key(`SES_EVENT#${eventId}`), entity: "ses_event", ttl: Math.floor((this.now() + 90 * 86400_000) / 1000), data: feedback }, ConditionExpression: "attribute_not_exists(PK)" } },
+        ...this.outboxActions(outboxEvents),
+        ...this.auditActions([auditEvent])
+      ] }));
+      return true;
+    } catch (error) { if (conditional(error)) return false; throw error; }
   }
 
   async scanEntities(entities) {

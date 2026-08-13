@@ -12,6 +12,7 @@ const INVITATION_LIFETIME_MS = 14 * 86400_000;
 const MAX_FAMILY_APPLICATIONS = 8;
 const APPLICATION_SESSION_IDLE_MS = 20 * 60_000;
 const APPLICATION_SESSION_ABSOLUTE_MS = 8 * 60 * 60_000;
+const MAX_OUTBOX_ATTEMPTS = 8;
 const APPLICATION_VALIDATORS = new Map(Object.keys(FORM_DEFINITIONS.application).map(formVersion => [formVersion, { sanitize: sanitizeApplication, validate: validateApplicationForSubmission }]));
 const EOI_VALIDATORS = new Map(Object.keys(FORM_DEFINITIONS.eoi).map(formVersion => [formVersion, validateEoi]));
 
@@ -33,10 +34,46 @@ function maskEmail(value) {
   return `${local.slice(0, 1)}${"*".repeat(Math.max(3, Math.min(8, local.length - 1)))}@${domain}`;
 }
 
+const SES_FEEDBACK_STATUS = Object.freeze({
+  Send: "accepted_by_ses",
+  Delivery: "delivered",
+  DeliveryDelay: "delayed",
+  Bounce: "bounced",
+  Complaint: "complained",
+  Reject: "rejected",
+  RenderingFailure: "rendering_failed",
+  "Rendering Failure": "rendering_failed"
+});
+const SES_FEEDBACK_RANK = Object.freeze({ accepted_by_ses: 10, delayed: 20, delivered: 30, bounced: 40, complained: 40, rejected: 40, rendering_failed: 40 });
+const SIGNATURE_EMAIL_TYPES = new Set(["signature_invitation", "signature_invitation_resent", "signature_email_corrected"]);
+
+function sesTag(tags, name) {
+  const value = tags?.[name];
+  return safeText(Array.isArray(value) ? value[0] : value, 256);
+}
+
+export function normalizeSesFeedback(message) {
+  const eventType = safeText(message?.eventType || message?.notificationType, 80);
+  const deliveryStatus = SES_FEEDBACK_STATUS[eventType];
+  const messageId = safeText(message?.mail?.messageId, 200);
+  if (!deliveryStatus || !messageId) return null;
+  const detailKey = ({ Delivery: "delivery", DeliveryDelay: "deliveryDelay", Bounce: "bounce", Complaint: "complaint", Reject: "reject", RenderingFailure: "failure", "Rendering Failure": "failure" })[eventType];
+  const occurredAt = safeText(message?.[detailKey]?.timestamp || message?.mail?.timestamp, 80) || new Date(0).toISOString();
+  const tags = message?.mail?.tags || {};
+  const workflow = sesTag(tags, "workflow") || "transactional_email";
+  const messageType = sesTag(tags, "message_type") || "transactional_email";
+  const recordId = sesTag(tags, "record_id");
+  const eventId = sha256(`${messageId}\n${eventType}\n${occurredAt}`);
+  return { eventId, eventType, deliveryStatus, deliveryRank: SES_FEEDBACK_RANK[deliveryStatus], messageId, occurredAt, workflow, messageType, recordId };
+}
+
 function contactPermissionLabel(allowed) { return allowed ? "Contact permitted" : "Do not contact"; }
 function signatureRequestLabel(control) {
   if (control.signatureStatus === "complete") return "Complete";
   if (!control.contactPermission) return "Signature request suppressed";
+  if (["bounced", "complained", "rejected", "rendering_failed"].includes(control.deliveryStatus)) return "Delivery failed";
+  if (control.deliveryStatus === "delayed") return "Delivery delayed";
+  if (control.deliveryStatus === "delivered") return "Delivered";
   return ({ pending: "Signature request pending", sent: "Sent", opened: "Opened", verified: "Verified" })[control.requestStatus] || "Signature request pending";
 }
 
@@ -348,7 +385,7 @@ export async function createApplicationInvitation({ store, recipientEmail, first
   ];
   if (studentName) operations.splice(1, 0, sheetOperation("operations", "Students", { student_id: studentId, first_name: studentFirst, last_name: studentLast, date_of_birth: eoi?.values.eoi_dob || "", source: "eoi", created_at: eoi?.submittedAt || createdAt, updated_at: createdAt, schema_version: SCHEMA_VERSION }, ["student_id"]));
   if (eoi) operations.push(sheetOperation("operations", "Workflow Links", { link_id: id("link"), source_workflow: "eoi", source_record_id: sourceEoiId, target_workflow: "application", target_record_id: applicationId, linked_by: createdBy, linked_at: createdAt, prefill_fields_json: Object.keys(values), ...projectionVersion(application, "application") }, ["link_id"]));
-  await store.createInvitation({ invitation, tokenHash, application, revisionRecord: applicationRevision(application, { kind: "created", values, savedAt: createdAt }), outboxEvents: [emailOutbox({ to: email, ...message, tags: { workflow: "application", message_type: "invitation" } }, now), ...operations.map(operation => sheetOutbox(operation, now))], auditEvents: [audit] });
+  await store.createInvitation({ invitation, tokenHash, application, revisionRecord: applicationRevision(application, { kind: "created", values, savedAt: createdAt }), outboxEvents: [emailOutbox({ to: email, ...message, tags: { workflow: "application", message_type: "invitation", record_id: applicationId } }, now), ...operations.map(operation => sheetOutbox(operation, now))], auditEvents: [audit] });
   return { applicationId, invitationId, invitationUrl, sourceEoiId: sourceEoiId || null, recipientEmail: email };
 }
 
@@ -376,7 +413,7 @@ export async function resendApplicationInvitation({ store, invitationId, created
     auditSheetOperation(audit),
     emailEvent({ messageType: "application_invitation_resent", workflow: "application", recordId: current.applicationId, recipientEmail: current.recipientEmail, at: sentAt })
   ];
-  await store.rotateInvitation({ invitation, previousTokenHash: current.tokenHash, tokenHash, outboxEvents: [emailOutbox({ to: current.recipientEmail, ...message, tags: { workflow: "application", message_type: "invitation_resend" } }, now), ...operations.map(operation => sheetOutbox(operation, now))], auditEvents: [audit] });
+  await store.rotateInvitation({ invitation, previousTokenHash: current.tokenHash, tokenHash, outboxEvents: [emailOutbox({ to: current.recipientEmail, ...message, tags: { workflow: "application", message_type: "invitation_resend", record_id: current.applicationId } }, now), ...operations.map(operation => sheetOutbox(operation, now))], auditEvents: [audit] });
   return { applicationId: current.applicationId, invitationId: current.id, recipientEmail: current.recipientEmail, sendCount: invitation.sendCount, expiresAt: iso(expiresAt) };
 }
 
@@ -413,7 +450,7 @@ export async function queueMissingGuardianSignatureInvitations({ store, applicat
     signatureTasks.push({ tokenHash: taskHash, applicationId: app.id, guardianId, guardianIndex: recipient.index, email: recipient.email, status: "invited", requestStatus: "pending", requestGenerated: true, requestSent: false, generation, revision: app.revision, revisionHash: app.revisionHash, createdAt: now, expiresAt: now + 14 * 86400_000, ttl: Math.floor((now + 30 * 86400_000) / 1000) });
     signerControls[recipient.index] = { ...signerControls[recipient.index], guardianId, guardianIndex: recipient.index, currentEmail: recipient.email, contactPermission: true, contactPermissionValue: CONTACT_PERMISSION_YES, signatureRequired: true, signatureStatus: "pending", taskTokenHash: taskHash, requestGenerated: true, requestSent: false, requestStatus: "pending", requestGeneration: generation, requestCreatedAt: createdAt };
     const signingUrl = `${signingPageUrl}?task=${encodeURIComponent(rawTask)}`;
-    emailEvents.push(emailOutbox({ to: recipient.email, ...signatureInvitation({ firstName: recipient.firstName, studentName: `${app.values.student_first} ${app.values.student_last}`, signingUrl }), tags: { workflow: "application", message_type: "signature_invitation" }, _tracking: { kind: "signature_request", applicationId: app.id, guardianId, guardianIndex: recipient.index, taskTokenHash: taskHash } }, now));
+    emailEvents.push(emailOutbox({ to: recipient.email, ...signatureInvitation({ firstName: recipient.firstName, studentName: `${app.values.student_first} ${app.values.student_last}`, signingUrl }), tags: { workflow: "application", message_type: "signature_invitation", record_id: app.id }, _tracking: { kind: "signature_request", applicationId: app.id, guardianId, guardianIndex: recipient.index, taskTokenHash: taskHash } }, now));
   }
   const next = { ...app, signerControls, signatureControlRevision: Number(app.signatureControlRevision || 0) + 1, requiredSignatureCount: Math.max(Number(app.requiredSignatureCount || 0), signerControls.filter(control => control.signatureRequired).length), updatedAt: createdAt };
   const audit = createAuditEvent({ workflow: "application", recordId: app.id, invitationId: app.invitationId, type: "application.signature_invitations_recovered", at: createdAt, actorType: "staff", actorId, stage: "guardian_signatures", details: { queuedSignatureRequests: signatureTasks.length, revision: app.revision } });
@@ -464,6 +501,83 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
 
   async function enqueueSheet(operation) { await store.enqueue(sheetOutbox(operation, clock())); }
   async function enqueueEmail(payload) { await store.enqueue(emailOutbox(payload, clock())); }
+
+  async function processSesFeedback(event) {
+    let received = 0;
+    let recorded = 0;
+    let signatureUpdates = 0;
+    for (const record of event?.Records || []) {
+      if (record?.EventSource !== "aws:sns" && record?.eventSource !== "aws:sns") continue;
+      received += 1;
+      let message;
+      try { message = JSON.parse(record?.Sns?.Message || "{}"); }
+      catch { continue; }
+      const feedback = normalizeSesFeedback(message);
+      if (!feedback) continue;
+      const index = await store.getEmailMessage?.(feedback.messageId);
+      const tracking = index?.tracking;
+      if (SIGNATURE_EMAIL_TYPES.has(feedback.messageType) && tracking?.kind !== "signature_request") {
+        throw new Error("Signature email delivery correlation is not available yet.");
+      }
+      if (tracking?.kind === "signature_request") {
+        const updated = await store.recordSignatureDelivery?.({
+          applicationId: tracking.applicationId,
+          guardianIndex: tracking.guardianIndex,
+          taskTokenHash: tracking.taskTokenHash,
+          deliveryStatus: feedback.deliveryStatus,
+          deliveryRank: feedback.deliveryRank,
+          eventType: feedback.eventType,
+          at: feedback.occurredAt
+        });
+        if (updated) signatureUpdates += 1;
+      }
+      const audit = {
+        eventId: `ses-${feedback.eventId}`,
+        occurredAt: feedback.occurredAt,
+        workflow: feedback.workflow,
+        recordId: feedback.recordId,
+        type: `email.${feedback.deliveryStatus}`,
+        actorType: "service",
+        actorId: "amazon-ses",
+        details: {
+          messageType: feedback.messageType,
+          providerEventType: feedback.eventType,
+          sesMessageId: feedback.messageId
+        },
+        stage: "email_delivery",
+        invitationId: "",
+        schemaVersion: SCHEMA_VERSION
+      };
+      const operation = sheetOperation("operations", "Email Events", {
+        email_event_id: `ses-${feedback.eventId}`,
+        occurred_at: feedback.occurredAt,
+        message_type: feedback.messageType,
+        workflow: feedback.workflow,
+        record_id: feedback.recordId,
+        ses_message_id: feedback.messageId,
+        delivery_status: feedback.deliveryStatus,
+        provider_event_type: feedback.eventType,
+        schema_version: SCHEMA_VERSION
+      }, ["email_event_id"]);
+      const inserted = await store.recordSesEvent?.({
+        eventId: feedback.eventId,
+        feedback,
+        auditEvent: audit,
+        outboxEvents: [sheetOutbox(operation, clock())]
+      });
+      if (inserted) recorded += 1;
+    }
+    if (recorded) await dispatchOutbox(50);
+    return { received, recorded, signatureUpdates };
+  }
+  async function removeArtifact(artifact, reason) {
+    if (!artifact || !artifacts.deleteArtifact) return;
+    try {
+      await artifacts.deleteArtifact(artifact);
+    } catch (error) {
+      console.error("Rosewood artifact cleanup failed", { reason, code: error.code || error.name || "ERROR" });
+    }
+  }
   async function recordAudit(event) {
     await store.recordAudit(event);
     await enqueueSheet(auditSheetOperation(event));
@@ -514,7 +628,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     if (staffEmails.has(email)) {
       const verificationCode = code();
       await store.putChallenge({ id: challengeId, purpose: "staff_access", subjectHash: sha256(email), email, codeHmac: hmac(otpSecret, `${challengeId}:${verificationCode}`), attempts: 0, maxAttempts: 5, createdAt: clock(), expiresAt: clock() + 600_000, ttl: Math.floor((clock() + 86400_000) / 1000) });
-      const sent = await mailer.send({ to: email, ...staffOtp({ code: verificationCode }), tags: { workflow: "staff", message_type: "staff_otp" } });
+      const sent = await mailer.send({ to: email, ...staffOtp({ code: verificationCode }), tags: { workflow: "staff", message_type: "staff_otp", record_id: "staff_access" } });
       await enqueueSheet(sheetOperation("operations", "Email Events", { email_event_id: id("mail"), occurred_at: nowIso(), message_type: "staff_otp", workflow: "staff", record_id: "staff-access", recipient_email: email, ses_message_id: sent.messageId, delivery_status: "sent_to_ses", schema_version: SCHEMA_VERSION }, ["email_event_id"]));
     }
     return { challengeId, expiresInSeconds: 600, resendAfterSeconds: 30, message: "If this email is authorised, a staff access code has been sent." };
@@ -732,12 +846,29 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     const definition = await ensureDefinition(store, "eoi", currentFormDefinition("eoi").formVersion);
     const values = EOI_VALIDATORS.get(definition.formVersion)(parseBody(event).values);
     const now = clock();
+    const requestKey = safeText(headers(event)["idempotency-key"], 200);
+    if (requestKey && !/^[A-Za-z0-9._:-]{16,200}$/.test(requestKey)) throw appError(422, "INVALID_IDEMPOTENCY_KEY", "Refresh the page and submit the expression of interest again.");
+    const stableValues = JSON.stringify(Object.fromEntries(Object.entries(values).sort(([left], [right]) => left.localeCompare(right))));
+    const fingerprint = networkFingerprint(event);
+    const deduplicationValue = requestKey || `${Math.floor(now / 86400_000)}:${fingerprint}:${sha256(stableValues)}`;
+    const idempotency = { keyHash: sha256(`eoi_submission:${deduplicationValue}`), operation: "eoi_submission", createdAt: iso(now), ttl: Math.floor((now + 30 * 86400_000) / 1000) };
+    const previous = await store.getIdempotency?.(idempotency.keyHash);
+    if (previous?.result) return previous.result;
+    const emailHash = sha256(values.eoi_email);
+    for (const [key, limit, seconds] of [
+      [`eoi-network-hour:${fingerprint}`, 10, 3600],
+      [`eoi-network-day:${fingerprint}`, 30, 86400],
+      [`eoi-email-hour:${emailHash}`, 5, 3600],
+      [`eoi-email-day:${emailHash}`, 10, 86400]
+    ]) {
+      if (!await store.checkRateLimit(key, limit, seconds)) throw appError(429, "EOI_RATE_LIMIT", "Too many Expression of Interest submissions were received. Please wait before trying again or contact enrolment@ffe.org.au.");
+    }
     const submittedAt = iso(now);
     const eoiId = id("eoi");
     const contactId = id("contact");
     const studentId = id("student");
     const reference = `EOI-${new Date(now).getFullYear()}-${token(5).toUpperCase()}`;
-    const record = { id: eoiId, reference, status: "submitted", contactId, studentId, values, submittedAt, networkFingerprint: networkFingerprint(event), formVersion: definition.formVersion, formDefinitionHash: definition.definitionHash, schemaVersion: definition.schemaVersion };
+    const record = { id: eoiId, reference, status: "submitted", contactId, studentId, values, submittedAt, networkFingerprint: fingerprint, formVersion: definition.formVersion, formDefinitionHash: definition.definitionHash, schemaVersion: definition.schemaVersion };
     const snapshot = await artifacts.storeEoiSnapshot({ eoiId, snapshot: record });
     record.snapshotFileId = snapshot.id;
     record.snapshotStorageProvider = snapshot.storageProvider || "legacy";
@@ -753,9 +884,20 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
       auditSheetOperation(contactAudit),
       emailEvent({ messageType: "eoi_acknowledgement", workflow: "eoi", recordId: eoiId, recipientEmail: values.eoi_email, at: submittedAt })
     ];
-    await store.createEoi(record, [emailOutbox({ to: values.eoi_email, ...message, tags: { workflow: "eoi", message_type: "acknowledgement" } }, now), ...operations.map(operation => sheetOutbox(operation, now))], [submittedAudit, contactAudit]);
+    const result = { eoiId, reference, status: "submitted" };
+    idempotency.result = result;
+    try {
+      const persisted = await store.createEoi(record, [emailOutbox({ to: values.eoi_email, ...message, tags: { workflow: "eoi", message_type: "acknowledgement", record_id: eoiId } }, now), ...operations.map(operation => sheetOutbox(operation, now))], [submittedAudit, contactAudit], idempotency);
+      if (persisted?.deduplicated) {
+        await removeArtifact(snapshot, "eoi_duplicate");
+        return persisted.result;
+      }
+    } catch (error) {
+      await removeArtifact(snapshot, "eoi_transaction_failed");
+      throw error;
+    }
     await dispatchOutbox(20);
-    return { eoiId, reference, status: "submitted" };
+    return result;
   }
 
   async function requestApplicationCode(event) {
@@ -774,7 +916,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
       const verificationCode = code();
       const challenge = { id: challengeId, purpose: "application_access", subjectHash: inviteHash, email, applicationId: invitation.applicationId, invitationId: invitation.id, codeHmac: hmac(otpSecret, `${challengeId}:${verificationCode}`), attempts: 0, maxAttempts: 5, createdAt: clock(), expiresAt: clock() + 600_000, ttl: Math.floor((clock() + 86400_000) / 1000) };
       await store.putChallenge(challenge);
-      const sent = await mailer.send({ to: email, ...applicationOtp({ code: verificationCode }), tags: { workflow: "application", message_type: "otp" } });
+      const sent = await mailer.send({ to: email, ...applicationOtp({ code: verificationCode }), tags: { workflow: "application", message_type: "otp", record_id: invitation.applicationId } });
       await enqueueSheet(sheetOperation("operations", "Email Events", { email_event_id: id("mail"), occurred_at: nowIso(), message_type: "application_otp", workflow: "application", record_id: invitation.applicationId, recipient_email: email, ses_message_id: sent.messageId, delivery_status: "sent_to_ses", schema_version: SCHEMA_VERSION }, ["email_event_id"]));
     }
     return { challengeId, expiresInSeconds: 600, resendAfterSeconds: 30, message: "If the invitation and email address match, a verification code has been sent." };
@@ -925,7 +1067,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     const next = { ...app, signerControls, signatureControlRevision: Number(app.signatureControlRevision || 0) + 1, status: "pending_signatures", updatedAt: changedAt };
     const task = { tokenHash: taskHash, applicationId: app.id, guardianId: control.guardianId, guardianIndex: control.guardianIndex, email, status: "invited", requestStatus: "pending", requestGenerated: true, requestSent: false, generation: nextGeneration, revision: app.revision, revisionHash: app.revisionHash, createdAt: now, expiresAt: now + 14 * 86400_000, ttl: Math.floor((now + 30 * 86400_000) / 1000) };
     const signingUrl = `${signingPageUrl}?task=${encodeURIComponent(rawTask)}`;
-    const message = { to: email, ...signatureInvitation({ firstName: app.values[`app_guardian_${control.guardianIndex}_first`], signingUrl }), tags: { workflow: "application", message_type: operation === "signature_email_corrected" ? "signature_email_corrected" : "signature_invitation_resent" }, _tracking: { kind: "signature_request", applicationId: app.id, guardianId: control.guardianId, guardianIndex: control.guardianIndex, taskTokenHash: taskHash } };
+    const message = { to: email, ...signatureInvitation({ firstName: app.values[`app_guardian_${control.guardianIndex}_first`], signingUrl }), tags: { workflow: "application", message_type: operation === "signature_email_corrected" ? "signature_email_corrected" : "signature_invitation_resent", record_id: app.id }, _tracking: { kind: "signature_request", applicationId: app.id, guardianId: control.guardianId, guardianIndex: control.guardianIndex, taskTokenHash: taskHash } };
     const result = { applicationId: app.id, guardianId: control.guardianId, status: statusContext(next), message: correctedEmail ? "The previous signing link was cancelled and a new request was sent to the corrected email address." : "A new signing link was sent. The previous link no longer works." };
     idempotency.result = result;
     const audit = createAuditEvent({ workflow: "application", recordId: app.id, invitationId: app.invitationId, type: `application.${operation}`, at: changedAt, actorType, actorId, stage: "guardian_signatures", details: { guardianId: control.guardianId, previousEmail: maskEmail(control.currentEmail), currentEmail: maskEmail(email), previousTaskRevoked: true, requestGeneration: nextGeneration } });
@@ -971,7 +1113,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     const challengeId = id("challenge");
     const verificationCode = code();
     await store.putChallenge({ id: challengeId, purpose: "signature_email_correction", subjectHash: sha256(`${app.id}:${control.guardianId}:${session.email}`), email: session.email, applicationId: app.id, guardianId: control.guardianId, requestGeneration: control.requestGeneration, codeHmac: hmac(otpSecret, `${challengeId}:${verificationCode}`), attempts: 0, maxAttempts: 5, createdAt: clock(), expiresAt: clock() + 600_000, ttl: Math.floor((clock() + 86400_000) / 1000) });
-    await mailer.send({ to: session.email, ...applicationOtp({ code: verificationCode }), tags: { workflow: "application", message_type: "signature_email_correction_otp" } });
+    await mailer.send({ to: session.email, ...applicationOtp({ code: verificationCode }), tags: { workflow: "application", message_type: "signature_email_correction_otp", record_id: app.id } });
     return { challengeId, expiresInSeconds: 600, resendAfterSeconds: 30, message: "A verification code has been sent to your verified application email address." };
   }
 
@@ -1119,7 +1261,12 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
       : await artifacts.confirmUpload(upload);
     document.id = document.documentId;
     const audit = createAuditEvent({ workflow: "application", recordId: session.applicationId, invitationId: session.invitationId, type: "application.document_uploaded", at: nowIso(), actorId: session.email, stage: "documents", details: { category, documentId: document.documentId, malwareScanStatus: document.malwareScanStatus } });
-    await store.attachDocument({ applicationId: session.applicationId, document, uploadId: documentId, outboxEvents: [sheetOutbox(auditSheetOperation(audit), clock())], auditEvents: [audit] });
+    try {
+      await store.attachDocument({ applicationId: session.applicationId, document, uploadId: documentId, outboxEvents: [sheetOutbox(auditSheetOperation(audit), clock())], auditEvents: [audit] });
+    } catch (error) {
+      await removeArtifact(document, "document_attachment_failed");
+      throw error;
+    }
     return { document };
   }
 
@@ -1145,7 +1292,14 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     const primarySignatureId = id("sig");
     const revisionHash = sha256(json({ values, documents: app.documents, revision: app.revision, formVersion: definition.formVersion, formDefinitionHash: definition.definitionHash }));
     const snapshotPayload = { applicationId: app.id, invitationId: app.invitationId, sourceEoiId: app.sourceEoiId || null, revision: app.revision, revisionHash, values, documents: app.documents, submittedAt: signedAt, formVersion: definition.formVersion, formDefinitionHash: definition.definitionHash, schemaVersion: definition.schemaVersion };
-    const [snapshot, signatureFile] = await Promise.all([artifacts.storeApplicationSnapshot({ applicationId: app.id, revision: app.revision, snapshot: snapshotPayload }), artifacts.storeSignature({ applicationId: app.id, guardianId: primaryGuardianId, signatureId: primarySignatureId, data: bytes })]);
+    const storedArtifacts = await Promise.allSettled([artifacts.storeApplicationSnapshot({ applicationId: app.id, revision: app.revision, snapshot: snapshotPayload }), artifacts.storeSignature({ applicationId: app.id, guardianId: primaryGuardianId, signatureId: primarySignatureId, data: bytes })]);
+    const [snapshotResult, signatureResult] = storedArtifacts;
+    if (storedArtifacts.some(result => result.status === "rejected")) {
+      await Promise.all(storedArtifacts.filter(result => result.status === "fulfilled").map(result => removeArtifact(result.value, "application_artifact_pair_failed")));
+      throw storedArtifacts.find(result => result.status === "rejected").reason;
+    }
+    const snapshot = snapshotResult.value;
+    const signatureFile = signatureResult.value;
     const primarySignature = { id: primarySignatureId, guardianId: primaryGuardianId, signerName: `${values.app_guardian_0_first} ${values.app_guardian_0_last}`.trim(), signerEmail: normalizeEmail(values.app_guardian_0_email), signedAt, revision: app.revision, revisionHash, fileId: signatureFile.id, storageProvider: signatureFile.storageProvider, storageVersionId: signatureFile.storageVersionId, networkFingerprint: networkFingerprint(event), ipAcknowledged: values.application_signature_ip, termsAcknowledged: values.application_signature_terms };
     const signerControls = guardianSignaturePlan(values, guardianCount, app.guardianIds, definition.formVersion);
     Object.assign(signerControls[0], { completedAt: signedAt, signedDocumentRevision: revisionHash });
@@ -1162,7 +1316,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
       signatureTasks.push(task);
       Object.assign(signerControls[index], { taskTokenHash: taskHash, requestGenerated: true, requestStatus: "pending", requestGeneration: 1, requestCreatedAt: signedAt });
       const signingUrl = `${signingPageUrl}?task=${encodeURIComponent(rawTask)}`;
-      taskEmails.push({ to: email, ...signatureInvitation({ firstName: recipient.firstName, studentName: `${values.student_first} ${values.student_last}`, signingUrl }), tags: { workflow: "application", message_type: "signature_invitation" }, _tracking: { kind: "signature_request", applicationId: app.id, guardianId, guardianIndex: index, taskTokenHash: taskHash } });
+      taskEmails.push({ to: email, ...signatureInvitation({ firstName: recipient.firstName, studentName: `${values.student_first} ${values.student_last}`, signingUrl }), tags: { workflow: "application", message_type: "signature_invitation", record_id: app.id }, _tracking: { kind: "signature_request", applicationId: app.id, guardianId, guardianIndex: index, taskTokenHash: taskHash } });
     }
     const requiredSignatureCount = signerControls.filter(control => control.signatureRequired).length;
     const requiresStaffReview = signerControls.some(control => control.signatureStatus === "suppressed");
@@ -1187,9 +1341,14 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
       ...taskEmails.map(mail => emailEvent({ messageType: "signature_invitation", workflow: "application", recordId: app.id, recipientEmail: mail.to, at: signedAt }))
     ];
     const confirmation = applicationSubmitted({ firstName: values.app_guardian_0_first, studentName: `${values.student_first} ${values.student_last}`, reference, pendingSignatures: status !== "submitted" });
-    const emailEvents = [emailOutbox({ to: app.recipientEmail, ...confirmation, tags: { workflow: "application", message_type: "submitted" } }, clock()), ...taskEmails.map(mail => emailOutbox(mail, clock()))];
+    const emailEvents = [emailOutbox({ to: app.recipientEmail, ...confirmation, tags: { workflow: "application", message_type: "submitted", record_id: app.id } }, clock()), ...taskEmails.map(mail => emailOutbox(mail, clock()))];
     const slackNotifications = slackStatusNotifications(slack, next, clock());
-    await store.submitApplication({ applicationId: app.id, expectedRevision: app.revision, application: next, revisionRecord: applicationRevision(next, { kind: "submitted", values, savedAt: signedAt, saveMode: "submission" }), signatureTasks, outboxEvents: [...emailEvents, ...slackNotifications, ...operations.map(operation => sheetOutbox(operation, clock()))], auditEvents: [audit] });
+    try {
+      await store.submitApplication({ applicationId: app.id, expectedRevision: app.revision, application: next, revisionRecord: applicationRevision(next, { kind: "submitted", values, savedAt: signedAt, saveMode: "submission" }), signatureTasks, outboxEvents: [...emailEvents, ...slackNotifications, ...operations.map(operation => sheetOutbox(operation, clock()))], auditEvents: [audit] });
+    } catch (error) {
+      await Promise.all([removeArtifact(snapshot, "application_submission_failed"), removeArtifact(signatureFile, "application_submission_failed")]);
+      throw error;
+    }
     await dispatchOutbox(50);
     const statusSessionToken = await issueStatusSession(invitation || { id: app.invitationId }, next, session.email);
     return { applicationId: app.id, reference, status, requiresStaffReview, statusSessionToken, expiresInSeconds: APPLICATION_SESSION_IDLE_MS / 1000, idleTimeoutSeconds: APPLICATION_SESSION_IDLE_MS / 1000, absoluteTimeoutSeconds: APPLICATION_SESSION_ABSOLUTE_MS / 1000, statusContext: statusContext(next) };
@@ -1209,7 +1368,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     if (valid) {
       const verificationCode = code();
       await store.putChallenge({ id: challengeId, purpose: "application_signature", subjectHash: taskHash, email, applicationId: task.applicationId, guardianId: task.guardianId, taskGeneration: task.generation || 1, codeHmac: hmac(otpSecret, `${challengeId}:${verificationCode}`), attempts: 0, maxAttempts: 5, createdAt: clock(), expiresAt: clock() + 600_000, ttl: Math.floor((clock() + 86400_000) / 1000) });
-      await mailer.send({ to: email, ...signatureOtp({ code: verificationCode }), tags: { workflow: "application", message_type: "signature_otp" } });
+      await mailer.send({ to: email, ...signatureOtp({ code: verificationCode }), tags: { workflow: "application", message_type: "signature_otp", record_id: app.id } });
     }
     return { challengeId, expiresInSeconds: 600, resendAfterSeconds: 30, message: "If the signing request and email address match, a verification code has been sent." };
   }
@@ -1287,11 +1446,16 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     const emails = [];
     if (status === "submitted") {
       for (const recipient of signerControls.filter(item => item.contactPermission)) {
-        if (recipient.currentEmail) emails.push(emailOutbox({ to: recipient.currentEmail, ...applicationComplete({ firstName: app.values[`app_guardian_${recipient.guardianIndex}_first`], studentName: `${app.values.student_first} ${app.values.student_last}`, reference: app.reference }), tags: { workflow: "application", message_type: "complete" } }, clock()));
+        if (recipient.currentEmail) emails.push(emailOutbox({ to: recipient.currentEmail, ...applicationComplete({ firstName: app.values[`app_guardian_${recipient.guardianIndex}_first`], studentName: `${app.values.student_first} ${app.values.student_last}`, reference: app.reference }), tags: { workflow: "application", message_type: "complete", record_id: app.id } }, clock()));
       }
     }
     const slackNotifications = slackStatusNotifications(slack, next, clock());
-    await store.completeSignature({ applicationId: app.id, taskTokenHash: session.taskTokenHash, guardianIndex: session.guardianIndex, application: next, outboxEvents: [...emails, ...slackNotifications, ...operations.map(operation => sheetOutbox(operation, clock()))], auditEvents: [audit] });
+    try {
+      await store.completeSignature({ applicationId: app.id, taskTokenHash: session.taskTokenHash, guardianIndex: session.guardianIndex, application: next, outboxEvents: [...emails, ...slackNotifications, ...operations.map(operation => sheetOutbox(operation, clock()))], auditEvents: [audit] });
+    } catch (error) {
+      await removeArtifact(signatureFile, "guardian_signature_transaction_failed");
+      throw error;
+    }
     await dispatchOutbox(50);
     return { applicationId: app.id, reference: app.reference, status };
   }
@@ -1299,6 +1463,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
   async function dispatchOutbox(limit = 25) {
     const items = await store.listOutbox(limit);
     let completed = 0;
+    let failed = 0;
     for (const item of items) {
       const claimed = await store.claimOutbox(item, clock());
       if (!claimed) continue;
@@ -1325,11 +1490,23 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
         await store.completeOutbox(item, result || { completed: true });
         completed += 1;
       } catch (error) {
-        await store.releaseOutbox(item).catch(() => {});
-        console.error("Rosewood outbox delivery failed", { id: item.data.id, kind: item.data.kind, message: error.message });
+        failed += 1;
+        const attempts = Number(claimed.attempts || 1);
+        if (attempts >= MAX_OUTBOX_ATTEMPTS && store.failOutbox) {
+          try {
+            await store.failOutbox(item, { attempts, failedAt: nowIso(), errorCode: error.code || error.name || "ERROR" });
+            console.error("Rosewood outbox permanently failed", { id: item.data.id, kind: item.data.kind, attempts, code: error.code || error.name || "ERROR" });
+          } catch (terminalError) {
+            await store.releaseOutbox(item).catch(() => {});
+            console.error("Rosewood outbox terminal handling failed", { id: item.data.id, kind: item.data.kind, code: terminalError.code || terminalError.name || "ERROR" });
+          }
+        } else {
+          await store.releaseOutbox(item).catch(() => {});
+          console.error("Rosewood outbox delivery failed", { id: item.data.id, kind: item.data.kind, attempts, code: error.code || error.name || "ERROR" });
+        }
       }
     }
-    return { examined: items.length, completed };
+    return { examined: items.length, completed, failed };
   }
 
   const routes = new Map([
@@ -1370,6 +1547,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
   async function handler(event) {
     const origin = headers(event).origin || allowedOrigins[0];
     if (event?.source === "aws.events") return dispatchOutbox(50);
+    if (event?.Records?.some(record => record?.EventSource === "aws:sns" || record?.eventSource === "aws:sns")) return processSesFeedback(event);
     if (method(event) === "OPTIONS") return response(204, {}, origin);
     try {
       if (!allowedOrigins.includes(origin)) throw appError(403, "ORIGIN_NOT_ALLOWED", "This request origin is not permitted.");
@@ -1383,5 +1561,6 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
   }
 
   handler.dispatchOutbox = dispatchOutbox;
+  handler.processSesFeedback = processSesFeedback;
   return handler;
 }

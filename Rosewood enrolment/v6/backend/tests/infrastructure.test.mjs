@@ -100,3 +100,28 @@ test("Slack status delivery is secret-backed, routed and part of the durable out
   assert.match(service, /item\.data\.kind === "slack"/);
   assert.match(build, /"slack-notifier\.mjs"/);
 });
+
+test("SES delivery feedback is configured, encrypted and correlated through the Lambda", async () => {
+  const [template, index, service] = await Promise.all([
+    readFile(new URL("../template.yaml", import.meta.url), "utf8"),
+    readFile(new URL("../index.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../service.mjs", import.meta.url), "utf8")
+  ]);
+
+  assert.match(template, /RosewoodSesConfigurationSet:/);
+  assert.match(template, /RosewoodSesEventDestination:/);
+  assert.match(template, /RosewoodSesEventsTopic:/);
+  assert.match(template, /RosewoodSesEventsKey:/);
+  assert.match(template, /KmsMasterKeyId: !GetAtt RosewoodSesEventsKey\.Arn/);
+  assert.match(template, /Sid: AllowSesEncryptedEventPublishing/);
+  for (const eventType of ["send", "delivery", "deliveryDelay", "bounce", "complaint", "reject", "renderingFailure"]) {
+    assert.match(template, new RegExp(`- ${eventType}`));
+  }
+  assert.match(template, /Principal:\n\s+Service: ses\.amazonaws\.com/);
+  assert.match(template, /Principal: sns\.amazonaws\.com/);
+  assert.match(template, /SES_CONFIGURATION_SET_MANAGED: !Ref RosewoodSesConfigurationSet/);
+  assert.match(index, /config\.SES_CONFIGURATION_SET_MANAGED \|\| config\.SES_CONFIGURATION_SET/);
+  assert.match(service, /recordSignatureDelivery/);
+  assert.match(service, /recordSesEvent/);
+  assert.doesNotMatch(service, /recipient_email:.*processSesFeedback/);
+});
