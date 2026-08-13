@@ -44,7 +44,9 @@
 .visa-evidence-note { padding: .7rem .8rem; border-left: 3px solid var(--terracotta); background: #fff9f3; }
 .immunisation-guidance { padding: .85rem 1rem; border-left: 3px solid var(--sky); border-radius: 0 10px 10px 0; background: var(--sky-pale); }
 .immunisation-guidance p { margin: 0; }
-.immunisation-guidance a { color: var(--navy); font-weight: 800; text-underline-offset: 2px; }
+.immunisation-guidance a { color: var(--navy); font-weight: 800; text-decoration-line: underline; text-decoration-color: var(--terracotta); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.immunisation-guidance a:hover { color: var(--terracotta); text-decoration-thickness: 3px; }
+.external-link-mark { display: inline-block; margin-left: .12rem; font-size: .82em; font-weight: 900; }
 .immunisation-guidance a:focus-visible { outline: 3px solid var(--sky); outline-offset: 3px; }
 .government-context { margin: 0 0 1.25rem; padding: .9rem 1rem; border-left: 3px solid var(--sky); border-radius: 0 10px 10px 0; color: var(--muted); background: var(--sky-pale); }
 .government-context strong { display: block; margin-bottom: .25rem; color: var(--navy); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; }

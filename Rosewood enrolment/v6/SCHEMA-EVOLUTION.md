@@ -29,8 +29,8 @@ deliberately creating a new version.
 Current launch contracts:
 
 ```text
-EOI:         rosewood-eoi-2026.11
-Application: rosewood-application-2026.11
+EOI:         rosewood-eoi-2026.12
+Application: rosewood-application-2026.12
 ```
 
 The original `2026.1`, `2026.2`, `2026.3` and `2026.4` contracts and validators remain
@@ -96,6 +96,12 @@ selects catalogues and wording by the record's pinned form version, so V10 and e
 drafts remain renderable exactly as saved. EOI advances to V11 because it shares the
 repinned family asset and adds a stable client idempotency key; the backend also stores
 EOI idempotency atomically. No existing definition is edited in place.
+The `2026.12` release preserves both V6.11 data contracts and answer keys. It clarifies
+that the required Immunisation History Statement applies regardless of the child's
+vaccination status and gives the official Health Victoria link a stronger visible link
+treatment. The EOI questions remain unchanged and advance to `2026.12` only because
+the shared family HTML, JavaScript and CSS assets are repinned. No validation, storage,
+projection, consent or submission behaviour changes.
 
 Acceptance, Decline and the Enrolment Agreement must receive their own independent
 version series when their backends are built. They must not reuse the Application

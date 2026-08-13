@@ -59,6 +59,11 @@ test("V6.8 exposes the revised responsive application experience without retired
   assert.doesNotMatch(source, /Your browser may offer a saved address/);
   assert.match(studentSource, /student_address[^\n]+autocomplete: "off"/);
   assert.match(studentSource, /https:\/\/www\.health\.vic\.gov\.au\/immunisation\/primary-school-immunisation-requirements/);
+  assert.match(studentSource, /regardless of the child’s vaccination status/);
+  assert.match(studentSource, /You can obtain the statement through myGov/);
+  assert.match(studentSource, /class="immunisation-law-link"/);
+  assert.match(css, /\.immunisation-guidance a \{[^}]+text-decoration-line: underline/);
+  assert.match(css, /\.external-link-mark/);
   assert.match(source, /application_special_aptitudes/);
   assert.match(source, /application_mentoring_value/);
   assert.match(source, /application_intended_years/);

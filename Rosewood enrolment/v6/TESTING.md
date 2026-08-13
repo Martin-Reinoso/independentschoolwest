@@ -842,3 +842,22 @@ malware-scanning posture remain governance decisions rather than technical relea
 claims. The removed attendee export is no longer served from the live repository but
 remains in historical Git commits; rewriting public history requires separate explicit
 approval.
+## V6.12 Immunisation Guidance Verification
+
+Verified locally on 14 August 2026 using synthetic data only.
+
+- the Medical Details guidance includes "regardless of the child's vaccination
+  status" and directs families to obtain the statement through myGov
+- "Victorian law" retains the official Health Victoria URL, visible underline,
+  external-link marker, screen-reader new-tab label and keyboard focus ring
+- V6.12 preserves the complete V6.11 EOI and Application data contracts; V6.11 and
+  earlier definitions remain addressable
+- the family HTML, JavaScript and CSS SHA-256 values match the pinned V6.12 definition
+- all 96 backend tests pass, including frontend wording/style, immutable definition,
+  canary and compatibility checks
+- 73 tracked HTML/CSS files pass the static-reference gate and 364 tracked files pass
+  the private-data/secret gate
+- JavaScript syntax, `git diff --check` and the locked deployment build pass
+- local desktop and 390 px mobile browser checks confirm readable wrapping, no
+  horizontal overflow, visible external-link treatment and a clear keyboard focus ring
+- production publishing and deployment are recorded separately after they occur

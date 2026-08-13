@@ -112,10 +112,10 @@ their original immutable definition.
   upgrade revision and audit event, and does not submit or duplicate the record.
 - Submitted applications, submitted snapshots and signature evidence never upgrade.
 
-# V6.11 EOI And Application Question Matrix
+# V6.12 EOI And Application Question Matrix
 
-`rosewood-eoi-2026.11` and `rosewood-application-2026.11` are the current contracts.
-V6.10 and earlier remain immutable for submitted records.
+`rosewood-eoi-2026.12` and `rosewood-application-2026.12` are the current contracts.
+V6.11 and earlier remain immutable for submitted records.
 
 | Area | V6.11 question or rule | Required/condition | Storage and downstream rule |
 | --- | --- | --- | --- |
@@ -127,7 +127,7 @@ V6.10 and earlier remain immutable for submitted records.
 | Student primary address | Home Care Arrangement | Required compact single-select; Other and Shared Custody require details | Existing care keys; Student projection |
 | EOI address completion | Optional Google Places suggestions | Primary-contact address; manual entry always available | Populates existing EOI address keys; no autosave or Google-specific storage; submitted only with the EOI |
 | Application address completion | Optional Google Places suggestions | Student primary and guardian residential/postal only; manual entry always available | Populates existing answer keys and autosaves them; no Place ID, coordinates, search history or geolocation stored |
-| Immunisation guidance | Victorian law | Official Health Victoria link; not an acknowledgement | No stored answer; existing immunisation response remains required |
+| Immunisation guidance | Victorian law requires an Immunisation History Statement for primary school enrolment, regardless of the child's vaccination status | Official Health Victoria link is visibly underlined and marked as opening externally; not an acknowledgement | No stored answer; existing immunisation response remains required |
 | Survey | Special aptitude subjects | Optional | `application_special_aptitudes`; Conditions projection |
 | Survey | Preferred school subjects | Optional | `application_preferred_subjects`; Conditions projection |
 | Survey | Subjects where special help may be needed | Optional | `application_subjects_needing_help`; Conditions projection |
@@ -143,7 +143,7 @@ V6.10 and earlier remain immutable for submitted records.
 | Parent / Carer commitments | Fee, photography/social-media and Grade 12 withdrawal clauses are not part of Application | Existing acknowledgement remains required | V11 renders the scoped commitment list; V10 and earlier retain their pinned wording |
 | EOI submission | Stable idempotency key | Generated per attempted submission and reused for retries | The EOI, idempotency result, audit and outbox work are one DynamoDB transaction |
 
-## V6.11 Session And Migration Rules
+## V6.12 Session And Migration Rules
 
 - Save and continue later closes only the selected child's editing/status sessions,
   clears child answers from page memory and retains the family session.
