@@ -352,7 +352,7 @@ Step 1. Export Stripe reconciliation data locally:
 STRIPE_SECRET_KEY=REDACTED \
 python3 "Stripe donation/scripts/export-stripe-reconciliation-data.py" \
   --days=90 \
-  --out-dir .codex-temp/stripe-recon/data
+  --out-dir "$HOME/Documents/random/ffe-private-runtime/stripe-recon/data"
 ```
 
 Step 2. Push those CSVs into the Google Sheet:
@@ -360,7 +360,7 @@ Step 2. Push those CSVs into the Google Sheet:
 ```bash
 GOOGLE_SERVICE_ACCOUNT_JSON=/path/to/service-account.json \
 GOOGLE_SHEETS_SPREADSHEET_ID=spreadsheet_id \
-STRIPE_RECON_DATA_DIR=.codex-temp/stripe-recon/data \
+STRIPE_RECON_DATA_DIR="$HOME/Documents/random/ffe-private-runtime/stripe-recon/data" \
 node "Stripe donation/scripts/backfill-stripe-google-sheet.mjs"
 ```
 
@@ -394,7 +394,8 @@ node "Stripe donation/scripts/repair-stripe-google-sheet.mjs"
 
 The script:
 
-- saves a private JSON backup under `.codex-temp/stripe-sheet-backups/`
+- saves a private JSON backup under
+  `$HOME/Documents/random/ffe-private-runtime/stripe-sheet-backups/`
 - rebuilds `Payouts` from `Payout Transactions` using the current 9-column schema
 - fills gross, fee, net, and payout fields on matching `Donations` rows
 - restores the `Reconciliation` formulas to the current columns

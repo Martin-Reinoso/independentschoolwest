@@ -23,7 +23,7 @@ const headers = {
     "Application Invitations": ["invitation_id", "application_id", "recipient_contact_id", "recipient_email", "student_id", "source_eoi_id", "status", "created_at", "expires_at", "first_sent_at", "last_sent_at", "send_count", "opened_at", "verified_at", "submitted_at", "schema_version", "application_ids_json", "form_version", "form_definition_hash"],
     "Workflow Links": ["link_id", "source_workflow", "source_record_id", "target_workflow", "target_record_id", "linked_by", "linked_at", "prefill_fields_json", "schema_version", "form_version", "form_definition_hash"],
     "Progress": ["application_id", "current_stage", "status", "revision", "last_saved_at", "last_activity_at", "percent_complete", "schema_version", "form_version", "form_definition_hash"],
-    "Email Events": ["email_event_id", "occurred_at", "message_type", "workflow", "record_id", "recipient_email", "ses_message_id", "delivery_status", "bounce_type", "complaint_type", "details_json", "schema_version"],
+    "Email Events": ["email_event_id", "occurred_at", "message_type", "workflow", "record_id", "recipient_email", "ses_message_id", "delivery_status", "bounce_type", "complaint_type", "details_json", "schema_version", "provider_event_type"],
     "Audit": ["event_id", "occurred_at", "workflow", "record_id", "event_type", "actor_type", "actor_id", "details_json", "schema_version"]
   }
 };

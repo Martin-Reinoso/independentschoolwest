@@ -36,13 +36,14 @@ server-acknowledged application create, start, save and submission also writes a
 append-only DynamoDB revision. Staff can inspect a selected historical revision through
 an authorised, audited endpoint. See `../SCHEMA-EVOLUTION.md` before changing fields,
 options, validation or required status.
-The current `2026.10` contracts pin the family, staff and signing HTML/JavaScript/CSS,
+The current `2026.11` contracts pin the family, staff and signing HTML/JavaScript/CSS,
 policy projection and all original Word/PDF policy assets. Policy viewing is frontend-
 only and does not create an application answer, acknowledgement or audit event.
-EOI `2026.10` preserves the V6.9 data contract and adds optional Google address
-assistance to the primary-contact address. Application `2026.10` preserves the exact
-V6.9 data contract and advances because it shares the repinned family assets. Manual
-entry remains available and no Place ID, coordinates or search history is stored.
+EOI `2026.11` preserves the V6.10 data contract and optional Google address assistance.
+Application `2026.11` preserves the V6.10 data contract while correcting the active
+occupation catalogue and Parent / Carer commitment scope. Earlier versions retain
+their pinned display data. Manual entry remains available and no Place ID, coordinates
+or search history is stored.
 
 `GOOGLE_MAPS_BROWSER_API_KEY` is read from the existing Secrets Manager configuration.
 It is returned through the no-store EOI runtime-config route and an OTP-verified
@@ -86,6 +87,10 @@ API and Places API (New). Never commit the key or print it in logs.
 - Amazon SES from `Rosewood College Enrolment <enrolment@ffe.org.au>` with replies to
   `enrolment@ffe.org.au`
 - EventBridge outbox retry every minute
+- eight-attempt outbox ceiling with retained failure records and a CloudWatch alarm
+- stack-managed SES configuration set and encrypted delivery-feedback topic
+- separate Slack incoming webhooks for pending-signature notifications to private
+  `#enrolments-committee` and completed Applications to board-access-only `#enrolments`
 - CloudWatch error alarm and 90-day application logs
 - SNS email alerts for Lambda errors and failed backup/restore jobs
 - a read-only EventBridge production canary every 30 minutes
@@ -101,6 +106,25 @@ changes to `ALARM` after two consecutive failed or missing 30-minute observation
 returns to `OK` after recovery. Persistent failures therefore do not generate an email
 on every run. New SNS email subscriptions require the recipient to confirm the AWS
 subscription once before alerts can be delivered.
+
+Slack is a notification surface only. `SLACK_PENDING_WEBHOOK_URL` and
+`SLACK_COMPLETION_WEBHOOK_URL` are held in the existing AWS configuration secret and
+must never be printed, committed or returned through an API. The transaction queues a
+pending outbox item after primary submission and after an intermediate guardian signs
+while another required electronic signer remains. It queues a completion item when the
+authoritative status becomes `submitted`: immediately for a one-guardian application,
+or after the last required signature. `staff_review_required` does not notify. Messages
+contain only student and signer names, the Application reference, relevant Melbourne
+time and generic staff-portal link; they contain no email, answers, documents, medical
+information or internal identifiers. Failed delivery releases the outbox lease for the
+normal one-minute retry. After eight failures the item moves to `OUTBOX_FAILED` and the
+alarm notifies operations. DynamoDB remains the source of truth.
+
+SES message IDs are indexed against non-sensitive tags and pending signer-task metadata.
+Configuration-set events update send/delivery/delay/bounce/complaint/reject/rendering
+state idempotently, append restricted audit evidence and project an Email Events row
+without a recipient address. A signature event that arrives before its correlation
+index fails transiently so SNS retries it rather than losing signer status.
 
 Family OTP challenges expire after 10 minutes, allow five attempts and have resend and
 network throttles. Family and child-application sessions use a sliding 20-minute
@@ -196,7 +220,6 @@ files do not belong in Git or command output.
 
 - Approve legal retention and deletion rules.
 - Replace the shared staff identity with approved named accounts and access reviews.
-- Correlate SES bounce and complaint feedback into operational records automatically.
 - Approve remaining collection-notice, consent and signature wording.
 - Build Acceptance, Decline and Enrolment Agreement persistence as separate workflows.
 

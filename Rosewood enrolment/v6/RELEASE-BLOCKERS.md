@@ -40,12 +40,17 @@ real family information until the applicable blockers are closed.
 - separate guardian signature tasks and a calculated required-signature set
 - server timestamps, authenticated signer linkage and append-only audit events
 - confirmation messages that do not expose sensitive answers or reusable private links
+- idempotent and rate-limited EOI submission with compensating external-artifact cleanup
+- bounded outbox retries with retained terminal failures and operations alarm
+- encrypted SES delivery-event ingestion with message/task correlation and restricted
+  Operations/audit projection
+- pull-request checks for backend tests/build, broken local assets, private exports and
+  high-confidence committed secrets
 
 ## Remaining Backend And Security
 
 - approved named staff accounts, role ownership and periodic access review beyond the
   current shared allowlisted mailbox; the restricted CLI remains an emergency fallback
-- automatic SES bounce/complaint correlation into Operations records
 - approved legal retention/deletion and incident-response rules; current AWS backup
   periods are operational recovery controls only
 - extend the approved immutable document catalogue as conduct and post-offer documents

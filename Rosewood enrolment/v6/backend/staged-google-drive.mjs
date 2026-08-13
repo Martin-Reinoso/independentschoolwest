@@ -24,6 +24,10 @@ export class StagedGoogleDriveStore {
     return this.drive.storeSignature(input);
   }
 
+  deleteArtifact(artifact) {
+    return this.drive.deleteArtifact(artifact);
+  }
+
   async createUpload({ uploadId, applicationId, category, fileName, mimeType, size, checksumSha256 }) {
     const storageKey = `pending/${applicationId}/${uploadId}`;
     const uploadHeaders = {

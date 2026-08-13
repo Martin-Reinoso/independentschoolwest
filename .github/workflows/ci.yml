@@ -1,0 +1,45 @@
+name: Repository checks
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  static-site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check local links and assets
+        run: node scripts/check-static-site.mjs
+      - name: Check public repository data
+        run: node scripts/check-public-data.mjs
+
+  enrolment-backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Rosewood enrolment/v6/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: Rosewood enrolment/v6/backend/pnpm-lock.yaml
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run automated tests
+        run: pnpm test
+      - name: Build deployment artifact
+        run: pnpm build

@@ -77,3 +77,51 @@ test("production canary is scheduled, publishes restricted metrics and alarms th
   assert.equal((template.match(/DatapointsToAlarm: 2/g) || []).length, 3);
   assert.equal((template.match(/OKActions:/g) || []).length, 3);
 });
+
+test("Slack status delivery is secret-backed, routed and part of the durable outbox", async () => {
+  const [template, index, service, build] = await Promise.all([
+    readFile(new URL("../template.yaml", import.meta.url), "utf8"),
+    readFile(new URL("../index.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../service.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/build-deployment.mjs", import.meta.url), "utf8")
+  ]);
+
+  assert.match(index, /config\.SLACK_PENDING_WEBHOOK_URL \|\| config\.SLACK_WEBHOOK_URL/);
+  assert.match(index, /config\.SLACK_COMPLETION_WEBHOOK_URL/);
+  assert.match(index, /new SlackNotifier/);
+  assert.match(template, /STAFF_PORTAL_URL: https:\/\/ffe\.org\.au\/pages\/rosewood-enrolment-admin-v6\.html/);
+  assert.doesNotMatch(template, /hooks\.slack\.com/);
+  assert.match(service, /type === "signature_pending"/);
+  assert.match(service, /app\.status === "pending_signatures" && slack\.pendingEnabled/);
+  assert.match(service, /app\.status === "submitted" && slack\.completionEnabled/);
+  assert.match(service, /studentName:/);
+  assert.match(service, /signedBy:/);
+  assert.match(service, /awaitingSignatures:/);
+  assert.match(service, /item\.data\.kind === "slack"/);
+  assert.match(build, /"slack-notifier\.mjs"/);
+});
+
+test("SES delivery feedback is configured, encrypted and correlated through the Lambda", async () => {
+  const [template, index, service] = await Promise.all([
+    readFile(new URL("../template.yaml", import.meta.url), "utf8"),
+    readFile(new URL("../index.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../service.mjs", import.meta.url), "utf8")
+  ]);
+
+  assert.match(template, /RosewoodSesConfigurationSet:/);
+  assert.match(template, /RosewoodSesEventDestination:/);
+  assert.match(template, /RosewoodSesEventsTopic:/);
+  assert.match(template, /RosewoodSesEventsKey:/);
+  assert.match(template, /KmsMasterKeyId: !GetAtt RosewoodSesEventsKey\.Arn/);
+  assert.match(template, /Sid: AllowSesEncryptedEventPublishing/);
+  for (const eventType of ["send", "delivery", "deliveryDelay", "bounce", "complaint", "reject", "renderingFailure"]) {
+    assert.match(template, new RegExp(`- ${eventType}`));
+  }
+  assert.match(template, /Principal:\n\s+Service: ses\.amazonaws\.com/);
+  assert.match(template, /Principal: sns\.amazonaws\.com/);
+  assert.match(template, /SES_CONFIGURATION_SET_MANAGED: !Ref RosewoodSesConfigurationSet/);
+  assert.match(index, /config\.SES_CONFIGURATION_SET_MANAGED \|\| config\.SES_CONFIGURATION_SET/);
+  assert.match(service, /recordSignatureDelivery/);
+  assert.match(service, /recordSesEvent/);
+  assert.doesNotMatch(service, /recipient_email:.*processSesFeedback/);
+});

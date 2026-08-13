@@ -29,8 +29,8 @@ deliberately creating a new version.
 Current launch contracts:
 
 ```text
-EOI:         rosewood-eoi-2026.10
-Application: rosewood-application-2026.10
+EOI:         rosewood-eoi-2026.11
+Application: rosewood-application-2026.11
 ```
 
 The original `2026.1`, `2026.2`, `2026.3` and `2026.4` contracts and validators remain
@@ -89,6 +89,13 @@ address, suburb, state, postcode and country keys. The EOI state selector conver
 Google short state code such as `VIC` to its existing long option such as `Victoria`.
 Application advances to `2026.10` only because it shares the repinned family assets.
 No schema, validation, projection column or stored Google identifier is introduced.
+The `2026.11` release preserves both V6.10 data contracts and answer keys. It corrects
+the active occupation catalogue and removes fee payment, photography/social-media and
+Grade 12 withdrawal clauses from the active Parent / Carer commitments. The frontend
+selects catalogues and wording by the record's pinned form version, so V10 and earlier
+drafts remain renderable exactly as saved. EOI advances to V11 because it shares the
+repinned family asset and adds a stable client idempotency key; the backend also stores
+EOI idempotency atomically. No existing definition is edited in place.
 
 Acceptance, Decline and the Enrolment Agreement must receive their own independent
 version series when their backends are built. They must not reuse the Application

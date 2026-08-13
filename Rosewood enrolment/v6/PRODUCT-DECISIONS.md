@@ -288,6 +288,28 @@ Source: https://www.abs.gov.au/statistics/classifications/australian-standard-cl
 - The link remains a high-entropy, expiring signing-task link. Opening it does not expose
   the application; the invited email and OTP are still required before review.
 
+## Staff Application Notifications
+
+- The private Slack `#enrolments-committee` channel receives a status notification when
+  an Application reaches `pending_signatures`, and another update when an intermediate
+  guardian signs but at least one required electronic signature remains outstanding.
+- The board-access-only workspace channel `#enrolments` receives the completion
+  notification only when the Application reaches the authoritative `submitted` state.
+  A one-guardian application reaches this state at primary submission; a multi-guardian
+  application reaches it only after the final required guardian signs.
+- `staff_review_required` does not trigger a Slack notification.
+- Slack receives the student's name, completed parent/guardian signer names, outstanding
+  signer names for a pending event, Application reference, Melbourne status time and a
+  link to the authenticated staff portal. Email addresses, answers, documents, medical
+  details and internal application identifiers are excluded.
+- The notification is a durable, retryable DynamoDB outbox operation. Slack is not a
+  system of record, audit history or staff authorisation boundary.
+- Both incoming-webhook URLs are restricted configuration in AWS Secrets Manager. They
+  must not appear in Git, CloudFormation parameters, logs, Sheet projections or staff
+  APIs.
+- No setup/test enrolment message is sent. The first enrolment notification in each
+  channel is reserved for a genuine Application event.
+
 ## Frontend and Backend Boundary
 
 EOI and Application for Enrolment are live backend workflows. The server independently
@@ -297,3 +319,21 @@ draft revisions, upload constraints, signatures, persistence and audit events.
 Acceptance, decline and the post-offer Enrolment Agreement remain separate non-writing
 previews. They must not reuse the EOI or Application records when their backends are
 implemented.
+
+## V6.11 Production Hardening Decisions
+
+- New EOI/Application records use immutable `2026.11` definitions. V10 and earlier
+  catalogues and wording remain available to their pinned records.
+- Fee payment, photography/social-media permission and Grade 12 withdrawal notice do
+  not belong in the Application Parent / Carer commitments. They require separately
+  approved post-offer or operational processes.
+- EOI retries must be idempotent and rate-limited before external artifacts are made.
+  A failed authoritative transaction triggers best-effort deletion of the artifact it
+  created; it never creates another EOI to compensate.
+- Email, Slack and Sheet outbox events stop after eight failed attempts and become a
+  retained, alarmed failure record. Replaying one requires authorised operational
+  recovery and the original idempotency boundary.
+- SES acceptance is not delivery. Configuration-set events are the source for delivery,
+  delay and permanent-failure status and must be recorded without recipient addresses.
+- GitHub pull requests must pass backend tests/build, local-asset resolution and
+  public-data/secret checks before merge.

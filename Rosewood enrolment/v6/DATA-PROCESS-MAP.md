@@ -60,6 +60,7 @@ flowchart LR
     Drive["Restricted Google Drive files"]
     Outbox["Durable DynamoDB outbox"]
     SES["Amazon SES email"]
+    Slack["Private Slack enrolments committee"]
     Sheets["Private Google Sheets projections"]
     Backup["PITR and locked Sydney backups"]
     Canary["Read-only scheduled production canary"]
@@ -77,6 +78,7 @@ flowchart LR
     Lambda -->|"Delete successful staging object"| Staging
     MainDB --> Outbox
     Outbox -->|"Retry every minute"| SES
+    Outbox -->|"Minimal final-completion notice"| Slack
     Outbox -->|"Replaceable reporting rows"| Sheets
     MainDB --> Backup
     AuditDB --> Backup
@@ -113,6 +115,7 @@ asset, backend-health and EOI-address checks.
 | Signature image | Restricted Google Drive | DynamoDB and Sheet metadata | Staff API does not return the image. |
 | Audit events | Separate append-only DynamoDB table | EOI, Application and Operations audit tabs | Detailed application views and state changes create events. |
 | Email work and receipts | DynamoDB outbox/receipts plus SES | Operations Email Events | Outbox is retried every minute. |
+| Slack completion work and receipts | DynamoDB outbox/receipts | Private `#enrolments-committee` message | Contains reference, completion time and staff-portal link only. Slack is not authoritative. |
 | Backups | DynamoDB PITR and locked AWS Backup vault | None | Drive recovery is governed separately by Google account controls. |
 
 ## End-to-End State Model
@@ -685,7 +688,7 @@ flowchart LR
     Answers --> Drive["Authorised staff separately use restricted Drive"]
 ```
 
-## Asynchronous Email and Sheet Processing
+## Asynchronous Email, Slack and Sheet Processing
 
 Business-state changes, audit events and their outbox work are written together where
 the workflow requires atomicity. Delivery is then attempted immediately for major
@@ -695,9 +698,11 @@ operations and retried by EventBridge every minute.
 stateDiagram-v2
     [*] --> Pending: Outbox item created
     Pending --> Leased: Worker claims 60-second lease
-    Leased --> SentReceipt: SES or Sheet operation succeeds
-    Leased --> Pending: Delivery fails and lease is released
+    Leased --> SentReceipt: SES, Slack or Sheet operation succeeds
+    Leased --> Pending: Delivery fails before attempt 8
+    Leased --> FailedReceipt: Attempt 8 fails; alarm metric emitted
     SentReceipt --> [*]: Pending item removed; receipt retained temporarily
+    FailedReceipt --> [*]: Failure retained for authorised recovery
 ```
 
 ### Automatic Emails
@@ -717,9 +722,27 @@ stateDiagram-v2
 | Guardian access | Invited guardian email | Six-digit signing OTP |
 | Final required signature | Guardian emails | Application complete confirmation |
 
-SES sends as `enrolment@ffe.org.au`. SPF, DKIM and DMARC have been verified. Bounce and
-complaint notifications reach the operations mailbox, but automatic correlation back
-into individual Operations records remains a future improvement.
+SES sends as `enrolment@ffe.org.au`. SPF, DKIM and DMARC have been verified. The
+stack-managed configuration set sends encrypted delivery feedback to the Lambda for
+send, delivery, delay, bounce, complaint, reject and rendering failure. Events are
+deduplicated and projected without recipient addresses. Pending guardian controls are
+updated through the SES message/task index; lower-ranked late events cannot downgrade a
+final state.
+
+### Staff Slack Notifications
+
+| Trigger | Destination | Information disclosed |
+| --- | --- | --- |
+| Application reaches `pending_signatures`, including after an intermediate signer completes while another remains | Private `#enrolments-committee` | Student name, completed signer names, outstanding signer names, Application reference, Melbourne submission time and authenticated staff-portal link |
+| Application reaches authoritative `submitted` status | Board-access-only workspace channel `#enrolments` | Student name, all completed signer names, Application reference, Melbourne completion time and authenticated staff-portal link |
+
+The same transaction that changes the Application state queues the corresponding Slack
+outbox event. A pending event is queued after the primary signature and after each
+intermediate required signature while another permitted electronic signer remains. A
+completion event is queued immediately for a one-guardian application or when the last
+required signer completes. `staff_review_required` does not notify. Delivery is retried
+by the existing one-minute outbox worker, and a receipt prevents duplicate delivery
+after success. Slack stores no application answers and cannot change workflow state.
 
 ## Google Sheets Projection Map
 
@@ -869,7 +892,6 @@ signature revision hashes also retain the form version and definition hash. See
    workflows only after their governance contracts are approved.
 7. Decide whether automated upload scanning becomes necessary if volume, risk or file
    types expand.
-9. Add automatic SES bounce/complaint correlation into Operations records.
 
 ## Implementation Route Appendix
 

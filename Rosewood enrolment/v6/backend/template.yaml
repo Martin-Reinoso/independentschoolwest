@@ -248,6 +248,83 @@ Resources:
       Endpoint: !Ref SecondarySecurityNotificationEmail
       TopicArn: !Ref RosewoodSecurityTopic
 
+  RosewoodSesEventsKey:
+    Type: AWS::KMS::Key
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Description: Rosewood SES delivery event notifications
+      EnableKeyRotation: true
+      PendingWindowInDays: 30
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: EnableAccountAdministration
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:root
+            Action: kms:*
+            Resource: "*"
+          - Sid: AllowSesEncryptedEventPublishing
+            Effect: Allow
+            Principal:
+              Service: ses.amazonaws.com
+            Action:
+              - kms:Decrypt
+              - kms:GenerateDataKey
+            Resource: "*"
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+
+  RosewoodSesEventsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: Rosewood enrolment SES delivery events
+      KmsMasterKeyId: !GetAtt RosewoodSesEventsKey.Arn
+
+  RosewoodSesEventsTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref RosewoodSesEventsTopic
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: SesDeliveryEvents
+            Effect: Allow
+            Principal:
+              Service: ses.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref RosewoodSesEventsTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+
+  RosewoodSesConfigurationSet:
+    Type: AWS::SES::ConfigurationSet
+    Properties:
+      Name: !Sub ${AWS::StackName}-transactional
+
+  RosewoodSesEventDestination:
+    Type: AWS::SES::ConfigurationSetEventDestination
+    DependsOn: RosewoodSesEventsTopicPolicy
+    Properties:
+      ConfigurationSetName: !Ref RosewoodSesConfigurationSet
+      EventDestination:
+        Name: RosewoodSesDeliveryFeedback
+        Enabled: true
+        MatchingEventTypes:
+          - send
+          - delivery
+          - deliveryDelay
+          - bounce
+          - complaint
+          - reject
+          - renderingFailure
+        SnsDestination:
+          TopicARN: !Ref RosewoodSesEventsTopic
+
   RosewoodBackupRole:
     Type: AWS::IAM::Role
     Properties:
@@ -339,6 +416,17 @@ Resources:
     Properties:
       LogGroupName: !Sub /aws/lambda/${AWS::StackName}-service
       RetentionInDays: 90
+
+  RosewoodOutboxPermanentFailureMetric:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref RosewoodLogGroup
+      FilterPattern: '"Rosewood outbox permanently failed"'
+      MetricTransformations:
+        - MetricNamespace: Rosewood/Enrolment
+          MetricName: OutboxPermanentFailures
+          MetricValue: "1"
+          DefaultValue: 0
 
   RosewoodRole:
     Type: AWS::IAM::Role
@@ -439,6 +527,7 @@ Resources:
           SENDER_EMAIL: !Ref SenderEmail
           SENDER_NAME: !Ref SenderName
           REPLY_TO_EMAIL: !Ref ReplyToEmail
+          SES_CONFIGURATION_SET_MANAGED: !Ref RosewoodSesConfigurationSet
           GOOGLE_EOI_FOLDER_ID: !Ref GoogleEoiFolderId
           GOOGLE_APPLICATION_FOLDER_ID: !Ref GoogleApplicationFolderId
           GOOGLE_EOI_SPREADSHEET_ID: !Ref GoogleEoiSpreadsheetId
@@ -451,6 +540,7 @@ Resources:
           STAFF_ROLES: !Ref StaffRoles
           APPLICATION_PAGE_URL: https://ffe.org.au/pages/rosewood-enrolment-v6.html
           APPLICATION_SIGNING_PAGE_URL: https://ffe.org.au/pages/rosewood-application-sign-v6.html
+          STAFF_PORTAL_URL: https://ffe.org.au/pages/rosewood-enrolment-admin-v6.html
           PUBLIC_SITE_BASE_URL: !Ref PublicSiteBaseUrl
           PUBLIC_API_BASE_URL: !Ref PublicApiBaseUrl
 
@@ -479,7 +569,7 @@ Resources:
   RosewoodOutboxSchedule:
     Type: AWS::Events::Rule
     Properties:
-      Description: Retry Rosewood V6 email and Google Sheets projection operations
+      Description: Retry Rosewood V6 email, Slack notification and Google Sheets projection operations
       ScheduleExpression: rate(1 minute)
       State: ENABLED
       Targets:
@@ -493,6 +583,22 @@ Resources:
       Action: lambda:InvokeFunction
       Principal: events.amazonaws.com
       SourceArn: !GetAtt RosewoodOutboxSchedule.Arn
+
+  RosewoodSesEventsSubscription:
+    Type: AWS::SNS::Subscription
+    DependsOn: RosewoodSesEventsPermission
+    Properties:
+      Protocol: lambda
+      Endpoint: !GetAtt RosewoodFunction.Arn
+      TopicArn: !Ref RosewoodSesEventsTopic
+
+  RosewoodSesEventsPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref RosewoodFunction
+      Action: lambda:InvokeFunction
+      Principal: sns.amazonaws.com
+      SourceArn: !Ref RosewoodSesEventsTopic
 
   RosewoodCanarySchedule:
     Type: AWS::Events::Rule
@@ -522,6 +628,21 @@ Resources:
       Dimensions:
         - Name: FunctionName
           Value: !Ref RosewoodFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref RosewoodSecurityTopic
+
+  RosewoodOutboxPermanentFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: A Rosewood email, Slack notification or Google Sheets projection exhausted all delivery attempts
+      Namespace: Rosewood/Enrolment
+      MetricName: OutboxPermanentFailures
       Statistic: Sum
       Period: 300
       EvaluationPeriods: 1
@@ -613,5 +734,9 @@ Outputs:
     Value: !If [CreateRecordsKey, !GetAtt RosewoodKey.Arn, !Ref RecordsKmsKeyArn]
   SecurityTopicArn:
     Value: !Ref RosewoodSecurityTopic
+  SesConfigurationSetName:
+    Value: !Ref RosewoodSesConfigurationSet
+  SesEventsTopicArn:
+    Value: !Ref RosewoodSesEventsTopic
   CanaryScheduleName:
     Value: !Ref RosewoodCanarySchedule

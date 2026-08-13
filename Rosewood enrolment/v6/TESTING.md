@@ -711,3 +711,77 @@ EOI, invitation, OTP, family session, application, upload, signature or workflow
 - one clearly labelled setup-test publication produced two successful SNS deliveries,
   matching the two confirmed recipients; routine successful canary runs remain silent
 - production Lambda deployment commit `b6aa4c5` is the tested monitoring release
+
+## Private Slack Completion Notifications
+
+Local verification completed on 9 August 2026 without sending a Slack test message or
+submitting a production application.
+
+- the internal Slack app **Rosewood Enrolment Notifications** is installed in the
+  FamiliesForEducation workspace and its incoming webhook is assigned to the private
+  `#enrolments-committee` channel
+- the generated webhook is stored as `SLACK_WEBHOOK_URL` in the existing Sydney AWS
+  configuration secret; its value is absent from Git, CloudFormation and ordinary logs
+- all 79 Node tests pass, including one-guardian completion, completion after a corrected
+  additional-guardian signing request, suppression while signatures are pending or
+  staff review is required, minimal message content, disabled configuration, delivery
+  failure and durable-outbox infrastructure checks
+- JavaScript syntax, `git diff --check`, the frozen-lockfile build and immutable frontend
+  asset gates pass
+- Slack receives only the Application reference, Melbourne completion time and generic
+  staff-portal link; the synthetic tests verify that names, email, medical information,
+  guardian data and internal application IDs are excluded
+- no setup/test message was posted, preserving the first channel notification for a
+  genuine completed Application
+- reviewed change set `rosewood-slack-completion-20260809-633d36a` modified Lambda
+  code/environment and recalculated only the existing outbox/canary targets and
+  invocation permissions; it did not replace or modify DynamoDB, audit, KMS, backups,
+  document staging, Google storage, Secrets Manager resources or alarms
+- CloudFormation reached `UPDATE_COMPLETE`; Lambda is `Active` with a successful
+  update and the one-minute outbox rule remains enabled with its expanded email, Slack
+  and Sheet retry description
+- `/v6/health` retained schema `rosewood-v6-2026-08-08-form-v8`, EOI
+  `rosewood-eoi-2026.10` and Application `rosewood-application-2026.10`
+- a manual non-writing production-canary invocation returned HTTP 200 with no function
+  error and all three availability checks passed; the Lambda error and all three canary
+  alarms remain `OK`
+- Slack automatically recorded its standard **added an integration to this channel**
+  system event. No completion-style or synthetic notification was posted, so the first
+  enrolment notification remains reserved for a genuine completed Application
+- deployment source commit `633d36a` is the tested Slack completion release
+
+## Routed Slack Signature Status Notifications
+
+Implementation verification completed on 9 August 2026 without sending a Slack test
+message or submitting, reopening or changing a production family Application.
+
+- the existing internal Slack app has a second incoming webhook assigned to
+  `#enrolments`; the original private `#enrolments-committee` route remains separate
+- the restricted Sydney configuration secret holds `SLACK_PENDING_WEBHOOK_URL` for
+  `#enrolments-committee` and `SLACK_COMPLETION_WEBHOOK_URL` for `#enrolments`; both
+  values remain absent from Git, CloudFormation, ordinary logs and API responses
+- all 83 Node tests pass, including initial pending status, an intermediate signer with
+  another signer outstanding, one-guardian completion, multi-guardian completion after
+  email correction, staff-review suppression and independent webhook routing
+- synthetic message tests require student and parent/guardian signer names while
+  rejecting email addresses, medical fields, answer keys and internal identifiers
+- pending status is queued transactionally when permitted signatures remain; completion
+  is queued transactionally only at authoritative `submitted`; `staff_review_required`
+  remains silent
+- no synthetic webhook request was made, preserving each channel's first enrolment
+  notification for a genuine Application event; Slack may show its standard integration
+  installation system event independently
+- reviewed change set `rosewood-slack-routing-20260809-f8a1916` updated Lambda code in
+  place and recalculated only the existing outbox/canary targets and invocation
+  permissions; it did not modify or replace DynamoDB, audit, KMS, backups, document
+  staging, Google configuration, Secrets Manager resources or alarms
+- CloudFormation reached `UPDATE_COMPLETE`; Lambda is `Active` with a successful update,
+  `/v6/health` retains schema `rosewood-v6-2026-08-08-form-v8`, EOI
+  `rosewood-eoi-2026.10` and Application `rosewood-application-2026.10`, and DynamoDB
+  point-in-time recovery remains enabled
+- the one-minute outbox and 30-minute canary rules are enabled; the Lambda error alarm
+  and all three canary alarms are `OK`
+- a manual non-writing canary invocation returned HTTP 200 with no function error and
+  all three availability checks passed; the production outbox had no pending Slack event
+  before or after the release
+- deployment source commit `f8a1916` is the tested split-routing release

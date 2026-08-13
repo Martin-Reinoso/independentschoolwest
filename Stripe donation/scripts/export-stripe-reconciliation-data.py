@@ -35,7 +35,11 @@ def parse_args(argv):
     if days < 1:
         raise ValueError("--days must be positive")
     if out_dir is None:
-        out_dir = ".codex-temp/stripe-recon/data"
+        private_root = os.environ.get("FFE_PRIVATE_RUNTIME_DIR")
+        if private_root:
+            out_dir = str(Path(private_root) / "stripe-recon" / "data")
+        else:
+            out_dir = str(Path.home() / "Documents" / "random" / "ffe-private-runtime" / "stripe-recon" / "data")
     return days, Path(out_dir)
 
 
