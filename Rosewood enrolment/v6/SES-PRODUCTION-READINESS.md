@@ -1,6 +1,6 @@
 # SES Production Readiness
 
-Audit date: 5 August 2026
+Audit date: 13 August 2026
 AWS region: `ap-southeast-2`
 
 This record covers the transactional sender used for EOI acknowledgements, application
@@ -57,6 +57,9 @@ The following were verified against authoritative DNS and the organisation mailb
 7. The production Lambda role has an equivalent inline least-privilege policy. The
    reusable managed policy remains unattached and must never be attached to a human
    user.
+8. The V6 production stack owns a configuration set and encrypted SNS-to-Lambda event
+   route for send, delivery, delay, bounce, complaint, reject and rendering failure.
+   It uses a dedicated retained KMS key rather than broadening the records-key policy.
 
 ## Test Sequence
 
@@ -82,8 +85,9 @@ links, family details, recipient lists, SMTP credentials or AWS identifiers in G
   outbox event so feedback can be correlated without exposing message contents.
 - Application invitation HTML uses one `BEGIN APPLICATION` link. Its plain-text MIME
   alternative contains the private URL once for clients that do not render HTML.
-- Stop retries for permanent bounces and complaints. Account suppression is a safety
-  net, not a replacement for application-level delivery state.
+- The service stores application-level delivery state for send, delivery, delay,
+  bounce, complaint, reject and rendering failure. Account suppression remains a
+  safety net.
 - Rate-limit OTP creation independently of SES. A successful SES API response means the
   message was accepted for delivery, not that the family received it.
 - Keep invitations, OTPs and guardian links out of analytics and ordinary support email.
@@ -95,6 +99,7 @@ links, family details, recipient lists, SMTP credentials or AWS identifiers in G
 ## Status
 
 `READY` for the implemented EOI and Application transactional messages. Operational
-staff receive bounce and complaint alerts. Automatic feedback correlation back into the
-Operations Sheet remains a backend follow-up and is not required for SES authentication
-or delivery readiness.
+staff receive bounce and complaint alerts. Configuration-set feedback is correlated by
+SES message ID, deduplicated, written to restricted audit/Operations records without a
+recipient address and applied to pending guardian delivery status. SES acceptance is
+kept distinct from mailbox delivery.

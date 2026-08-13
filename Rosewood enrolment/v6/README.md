@@ -121,6 +121,13 @@ request. Google Sheets show the record's actual form version but remain replacea
 reports. `SCHEMA-EVOLUTION.md` defines the mandatory process for adding, removing,
 renaming or changing questions and for migrating existing records.
 
+The current `2026.11` release preserves the V6.10 data contracts while correcting the
+active occupation catalogue and removing fee, photography/social-media and Grade 12
+withdrawal clauses from the Application commitments. Older drafts continue to render
+their pinned catalogue and wording. EOI submission is idempotent and rate-limited;
+external artifacts are removed after failed persistence transactions; and outbox work
+moves to a retained failure record with an alarm after eight unsuccessful attempts.
+
 The Application welcome uses the three approved Rosewood policies stored under
 `pages/rosewood-policies/`. Selecting one changes the current URL through the History
 API and renders its approved wording in the enrolment page; it does not call the
@@ -166,6 +173,12 @@ excluded. Slack is never an application database or audit record. Both webhooks 
 stored only in the existing AWS configuration secret. `staff_review_required` does not
 notify.
 
+All SES messages use the stack-managed configuration set. Encrypted SES feedback for
+send, delivery, delay, bounce, complaint, reject and rendering failure is deduplicated,
+audited and projected without recipient addresses. Pending signer controls are updated
+through the stored SES message/task correlation, so `accepted_by_ses` is distinct from
+Delivered and permanent delivery failures are visible to the family and staff portal.
+
 V6 is hidden from site navigation and the sitemap and has `noindex`. Its URL is still
 public and is not an access-control boundary.
 
@@ -179,7 +192,7 @@ live/preview boundaries. See these records together with
 `SOURCE-COMPLIANCE.md`, `TESTING.md`, `STAFF-PORTAL-RUNBOOK.md` and
 `RELEASE-BLOCKERS.md` before inviting real families.
 
-`V6.7-CHANGE-MAP.md`, `V6.8-CHANGE-MAP.md` and `V6.9-CHANGE-MAP.md` record the preceding
-contract releases. `V6.10-CHANGE-MAP.md` records the current extension of optional
-Google address assistance to EOI, including key controls, privacy limits, fallback,
-compatibility and release gates.
+`V6.7-CHANGE-MAP.md`, `V6.8-CHANGE-MAP.md`, `V6.9-CHANGE-MAP.md` and
+`V6.10-CHANGE-MAP.md` record the preceding contract releases.
+`V6.11-CHANGE-MAP.md` records the current interface corrections, idempotency,
+bounded-retry, artifact-cleanup, SES-feedback and repository-release gates.

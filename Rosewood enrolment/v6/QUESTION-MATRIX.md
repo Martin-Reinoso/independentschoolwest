@@ -112,12 +112,12 @@ their original immutable definition.
   upgrade revision and audit event, and does not submit or duplicate the record.
 - Submitted applications, submitted snapshots and signature evidence never upgrade.
 
-# V6.10 EOI And Application Question Matrix
+# V6.11 EOI And Application Question Matrix
 
-`rosewood-eoi-2026.10` and `rosewood-application-2026.10` are the current contracts.
-V6.9 and earlier remain immutable for submitted records.
+`rosewood-eoi-2026.11` and `rosewood-application-2026.11` are the current contracts.
+V6.10 and earlier remain immutable for submitted records.
 
-| Area | V6.10 question or rule | Required/condition | Storage and downstream rule |
+| Area | V6.11 question or rule | Required/condition | Storage and downstream rule |
 | --- | --- | --- | --- |
 | Child selector | Direct invitation source | Not displayed to families | Operational source remains on invitation/application records and in staff portal |
 | Child selector | Information from your Expression of Interest has been included. | Displayed only when `sourceEoiId` is present | Informational only; no new answer |
@@ -139,14 +139,17 @@ V6.9 and earlier remain immutable for submitted records.
 | Survey | Desired personal qualities | Optional | `application_desired_personal_qualities`; Conditions projection |
 | Survey | Value of mentoring to parents | Optional | `application_mentoring_value`; Conditions projection |
 | Survey | Intended years at Rosewood | Optional integer from 1 to 13 | `application_intended_years`; Conditions projection |
+| Guardian occupation | Corrected, alphabetised occupation catalogue | Required | V11 uses corrected labels; V10 and earlier render their original pinned catalogue so saved values remain selectable |
+| Parent / Carer commitments | Fee, photography/social-media and Grade 12 withdrawal clauses are not part of Application | Existing acknowledgement remains required | V11 renders the scoped commitment list; V10 and earlier retain their pinned wording |
+| EOI submission | Stable idempotency key | Generated per attempted submission and reused for retries | The EOI, idempotency result, audit and outbox work are one DynamoDB transaction |
 
-## V6.10 Session And Migration Rules
+## V6.11 Session And Migration Rules
 
 - Save and continue later closes only the selected child's editing/status sessions,
   clears child answers from page memory and retains the family session.
 - Return to child applications opens the selector without another OTP while that family
   session remains valid.
-- Opening an editable older application upgrades it to V6.10 in one conditional
+- Opening an editable older application upgrades it to V6.11 in one conditional
   transaction while preserving all existing answer keys and revision history.
 - Submitted applications and signature evidence remain pinned to their submitted form
   definition and never upgrade.

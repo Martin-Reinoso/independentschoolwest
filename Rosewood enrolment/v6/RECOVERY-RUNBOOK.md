@@ -10,7 +10,8 @@
 
 ## Daily Checks
 
-1. Confirm the Lambda error alarm and all three production-canary alarms are `OK`.
+1. Confirm the Lambda error alarm, outbox permanent-failure alarm and all three
+   production-canary alarms are `OK`.
 2. Confirm the latest scheduled backup jobs for both DynamoDB tables completed.
 3. Investigate any backup or application-error notification before normal processing.
 4. Confirm the restricted enrolment Drive has no public or link-wide sharing.
@@ -104,18 +105,36 @@ the outbox receipt and SES feedback. `accepted_by_ses` is not proof that the rec
 mailbox accepted or displayed the message. Never expose a full historical email in an
 ordinary log or family-facing response.
 
-## Recover Or Diagnose A V6.10 Draft Upgrade
+## Recover SES Delivery Feedback Or Failed Outbox Work
+
+1. For a signer-delivery issue, inspect the authorised application status and the
+   corresponding `EMAIL_MESSAGE#messageId` index; do not search logs by full email.
+2. Confirm the stack configuration set, encrypted SNS topic, Lambda subscription and
+   permission are active in `ap-southeast-2`.
+3. `accepted_by_ses`, `delivered`, `delayed`, `bounced`, `complained`, `rejected` and
+   `rendering_failed` are distinct states. Do not manually mark delivery based only on
+   an outbox receipt.
+4. Duplicate SNS notifications are safe. If a signature event reached Lambda before
+   its message index, Lambda intentionally fails that invocation so SNS retries after
+   correlation is committed.
+5. If `RosewoodOutboxPermanentFailureAlarm` fires, inspect the restricted
+   `OUTBOX_FAILED` record by event ID and type. Do not copy its payload into a ticket.
+   Resolve the provider/configuration cause before any authorised replay.
+6. Never replay a completed event or create a new application to compensate. Preserve
+   the original business record and use an idempotent recovery operation.
+
+## Recover Or Diagnose A V6.11 Draft Upgrade
 
 Editable older drafts upgrade only when the family verifies the invitation or selects
 that child. The operation is conditional on the prior revision and form version.
 
 1. Check for `application.form_definition_upgraded` in the restricted audit record and
    an immutable `form_definition_upgraded` application revision.
-2. Confirm the current record is `rosewood-application-2026.10` and that aggregate answer
+2. Confirm the current record is `rosewood-application-2026.11` and that aggregate answer
    key count did not decrease. Do not print family answers into logs or tickets.
    A retained `previous_school_attended`, `previous_school_name` or
    `previous_school_year_level` value is expected historical data and must not be
-   deleted merely because V6.8 through V6.10 no longer render it.
+   deleted merely because V6.8 through V6.11 no longer render it.
 3. If the conditional update lost a race, ask the family to refresh; do not manually
    change `formVersion`, revision or answers.
 4. Never run this process against a submitted, pending-signature, staff-review or

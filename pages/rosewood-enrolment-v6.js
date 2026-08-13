@@ -16,7 +16,7 @@
   const invitationToken = params.get("invite") || "";
   const policyDocuments = window.rosewoodPolicyDocuments || {};
   const policyOrder = ["enrolment-policy", "enrolment-procedure", "privacy-policy"];
-  const SUPPORTED_APPLICATION_FORM_VERSIONS = new Set(["rosewood-application-2026.1", "rosewood-application-2026.2", "rosewood-application-2026.3", "rosewood-application-2026.4", "rosewood-application-2026.5", "rosewood-application-2026.6", "rosewood-application-2026.7", "rosewood-application-2026.8", "rosewood-application-2026.9", "rosewood-application-2026.10"]);
+  const SUPPORTED_APPLICATION_FORM_VERSIONS = new Set(["rosewood-application-2026.1", "rosewood-application-2026.2", "rosewood-application-2026.3", "rosewood-application-2026.4", "rosewood-application-2026.5", "rosewood-application-2026.6", "rosewood-application-2026.7", "rosewood-application-2026.8", "rosewood-application-2026.9", "rosewood-application-2026.10", "rosewood-application-2026.11"]);
   const CONTACT_PERMISSION_YES = "Yes, the school may contact this person";
   const CONTACT_PERMISSION_NO = "No, do not contact this person";
   const APPLICATION_SESSION_STORAGE_KEY = "rosewood-enrolment-v6-active-session";
@@ -39,6 +39,7 @@
     eoiAddressAutocomplete: null,
     eoiAddressConfigLoaded: false,
     eoiResult: null,
+    eoiSubmissionKey: "",
     submitResult: null,
     statusContext: null,
     correction: null,
@@ -294,13 +295,45 @@
     "Not in paid work during the past 12 months",
     "Prefer not to answer / Unknown"
   ];
-  const occupations = "Academic;Accountant;Acting/Theatre;Advertising;Agriculture/Farming;Agronomist;Analyst;Animal Worker;Antique/Art Dealer;Architecture/Drafting;Armed Services;Artist/Painter;Author/Writer;Aviation/Pilot/Hostess;Banking;Bookmaker;Builder;Business Admin/Manager;Butcher;Caterer;Chemist / Pharmacy;Cleaner;Clerk;Communications;Composing;Computers;Construction/Building;Consultant;Consulting Services;Contractor;Cook;Counselling;Deli Owner;Dental Technician;Dentistry;Detective;Development Officer;Diplomatic Corps;Director;Doctor (Medicine);Driver;Economist;Editor;Education;Electrician;Engineering;Entertainment;Fashion;Financial Services;Fire Officer;Food/Catering;Foreman;Garden/Plants;General Administration;Geology;Germany;Government Departments;Grazier;Hair Dresser;Health Services;Home Duties;Homemaker/Houseperson;Hospitality;Hotel;Insurance;Interior Design;Interpreter;Investor;Jewellery Services;Laundry Proprietor;Lawyer;Legal Services;Library Services;Manager;Manufacturer;Manufacturing Industry;Marketing;Mechanic;Media/TV/Radio/Newspapers;Medical Records Admin;Merchant;Minister;Motel Proprietor;Nurse;Optometrist;Panel Shop Prop;Personnel;Phamacist;Photography;Physiotherapist;Plumber;Postman;Professional Polo Player;Programmer;Psychologist;Public Servant;Publishing;Radiographer;Real Estate;Recreation;Religion;Removalist;Retailer;Retired;Sales Manager;Salesman;Scientist;Secretarial/Clerical;Self Employed;Social Work;Sport/Athletics;Storeman;Student;Surveyor;Technician;Tradespeople;Transport;Transport Operator;Travel Industry;Veterinarian;Viticulture;Volunteer Worker;Welder;Winemaker".split(";");
+  const legacyOccupations = "Academic;Accountant;Acting/Theatre;Advertising;Agriculture/Farming;Agronomist;Analyst;Animal Worker;Antique/Art Dealer;Architecture/Drafting;Armed Services;Artist/Painter;Author/Writer;Aviation/Pilot/Hostess;Banking;Bookmaker;Builder;Business Admin/Manager;Butcher;Caterer;Chemist / Pharmacy;Cleaner;Clerk;Communications;Composing;Computers;Construction/Building;Consultant;Consulting Services;Contractor;Cook;Counselling;Deli Owner;Dental Technician;Dentistry;Detective;Development Officer;Diplomatic Corps;Director;Doctor (Medicine);Driver;Economist;Editor;Education;Electrician;Engineering;Entertainment;Fashion;Financial Services;Fire Officer;Food/Catering;Foreman;Garden/Plants;General Administration;Geology;Germany;Government Departments;Grazier;Hair Dresser;Health Services;Home Duties;Homemaker/Houseperson;Hospitality;Hotel;Insurance;Interior Design;Interpreter;Investor;Jewellery Services;Laundry Proprietor;Lawyer;Legal Services;Library Services;Manager;Manufacturer;Manufacturing Industry;Marketing;Mechanic;Media/TV/Radio/Newspapers;Medical Records Admin;Merchant;Minister;Motel Proprietor;Nurse;Optometrist;Panel Shop Prop;Personnel;Phamacist;Photography;Physiotherapist;Plumber;Postman;Professional Polo Player;Programmer;Psychologist;Public Servant;Publishing;Radiographer;Real Estate;Recreation;Religion;Removalist;Retailer;Retired;Sales Manager;Salesman;Scientist;Secretarial/Clerical;Self Employed;Social Work;Sport/Athletics;Storeman;Student;Surveyor;Technician;Tradespeople;Transport;Transport Operator;Travel Industry;Veterinarian;Viticulture;Volunteer Worker;Welder;Winemaker".split(";");
+  const occupations = legacyOccupations
+    .filter(occupation => occupation !== "Germany")
+    .map(occupation => ({
+      "Aviation/Pilot/Hostess": "Aviation / Pilot / Cabin Crew",
+      Composing: "Composer",
+      Computers: "Information Technology",
+      "Garden/Plants": "Gardening / Horticulture",
+      "Hair Dresser": "Hairdresser",
+      "Panel Shop Prop": "Panel Shop Proprietor",
+      Phamacist: "Pharmacist",
+      Postman: "Postal Worker",
+      Salesman: "Salesperson",
+      Storeman: "Storeperson"
+    })[occupation] || occupation)
+    .sort((left, right) => left.localeCompare(right, "en-AU"));
   const emergencyRelationships = ["Father", "Mother", "Stepfather", "Stepmother", "Guardian", "Uncle", "Aunt", "Grandparent", "Friend", "Sibling", "Unknown"];
   const countryCodes = ["AD","AE","AF","AG","AI","AL","AM","AO","AQ","AR","AS","AT","AU","AW","AX","AZ","BA","BB","BD","BE","BF","BG","BH","BI","BJ","BL","BM","BN","BO","BQ","BR","BS","BT","BV","BW","BY","BZ","CA","CC","CD","CF","CG","CH","CI","CK","CL","CM","CN","CO","CR","CU","CV","CW","CX","CY","CZ","DE","DJ","DK","DM","DO","DZ","EC","EE","EG","EH","ER","ES","ET","FI","FJ","FK","FM","FO","FR","GA","GB","GD","GE","GF","GG","GH","GI","GL","GM","GN","GP","GQ","GR","GS","GT","GU","GW","GY","HK","HM","HN","HR","HT","HU","ID","IE","IL","IM","IN","IO","IQ","IR","IS","IT","JE","JM","JO","JP","KE","KG","KH","KI","KM","KN","KP","KR","KW","KY","KZ","LA","LB","LC","LI","LK","LR","LS","LT","LU","LV","LY","MA","MC","MD","ME","MF","MG","MH","MK","ML","MM","MN","MO","MP","MQ","MR","MS","MT","MU","MV","MW","MX","MY","MZ","NA","NC","NE","NF","NG","NI","NL","NO","NP","NR","NU","NZ","OM","PA","PE","PF","PG","PH","PK","PL","PM","PN","PR","PS","PT","PW","PY","QA","RE","RO","RS","RU","RW","SA","SB","SC","SD","SE","SG","SH","SI","SJ","SK","SL","SM","SN","SO","SR","SS","ST","SV","SX","SY","SZ","TC","TD","TF","TG","TH","TJ","TK","TL","TM","TN","TO","TR","TT","TV","TW","TZ","UA","UG","UM","US","UY","UZ","VA","VC","VE","VG","VI","VN","VU","WF","WS","YE","YT","ZA","ZM","ZW","XK"];
   const regionNames = typeof Intl.DisplayNames === "function" ? new Intl.DisplayNames(["en-AU"], { type: "region" }) : null;
   const countryCatalogue = [...new Set(countryCodes.map(code => regionNames?.of(code) || code))].sort((left, right) => left.localeCompare(right, "en-AU"));
   const hhcStudentCommitments = ["Attend school regularly and punctually", "Participate in Religious Education lessons and liturgical celebrations", "Do the prescribed homework and home study each evening", "Co-operate with all staff members", "Observe the College rules as specified in the Student Planner", "Wear the uniform correctly", "Behave appropriately on public transport", "Participate in sporting activities", "Attend all compulsory College excursions, camps, retreats and reflection days"];
-  const hhcParentCommitments = ["Support the Catholic ethos and practices of the College", "Pay all fees by the due date", "Promote the College in the community", "Attend Parent/Teacher interviews", "Notify the College in writing when my/our child is unable to attend school", "Provide an environment which supports our child's learning", "Provide the correct uniform and support the College uniform rules", "Communicate with the College on matters of concern", "Notify the College if our child has any special learning needs", "Support the College by attendance at functions organised by the College and Parents and Friends Association where possible", "Obtain the permission of the Principal for prolonged absences", "Inform the College when relevant family details change", "The College taking photographs/video footage of my/our child that may appear in College publications, promotions and social media. Parents/Guardians should notify the College in writing if permission is not given", "Provide, in writing to the Principal, at least ten school weeks notice if seeking to cease the enrolment of my/our child before the completion of Grade 12"];
+  const legacyParentCommitments = ["Support the Catholic ethos and practices of the College", "Pay all fees by the due date", "Promote the College in the community", "Attend Parent/Teacher interviews", "Notify the College in writing when my/our child is unable to attend school", "Provide an environment which supports our child's learning", "Provide the correct uniform and support the College uniform rules", "Communicate with the College on matters of concern", "Notify the College if our child has any special learning needs", "Support the College by attendance at functions organised by the College and Parents and Friends Association where possible", "Obtain the permission of the Principal for prolonged absences", "Inform the College when relevant family details change", "The College taking photographs/video footage of my/our child that may appear in College publications, promotions and social media. Parents/Guardians should notify the College in writing if permission is not given", "Provide, in writing to the Principal, at least ten school weeks notice if seeking to cease the enrolment of my/our child before the completion of Grade 12"];
+  const hhcParentCommitments = legacyParentCommitments.filter(commitment => ![
+    "Pay all fees by the due date",
+    "The College taking photographs/video footage of my/our child that may appear in College publications, promotions and social media. Parents/Guardians should notify the College in writing if permission is not given",
+    "Provide, in writing to the Principal, at least ten school weeks notice if seeking to cease the enrolment of my/our child before the completion of Grade 12"
+  ].includes(commitment));
+
+  function applicationReleaseNumber() {
+    return Number(String(state.formVersion || "rosewood-application-2026.11").split(".").pop()) || 11;
+  }
+
+  function occupationOptions() {
+    return applicationReleaseNumber() >= 11 ? occupations : legacyOccupations;
+  }
+
+  function parentCommitments() {
+    return applicationReleaseNumber() >= 11 ? hhcParentCommitments : legacyParentCommitments;
+  }
 
   const languageList = document.querySelector("#language-list");
   languageList.innerHTML = languageCatalogue.map(language => `<option value="${esc(language)}"></option>`).join("");
@@ -697,7 +730,7 @@
       field(prefix + "address", "Residential Address", { required: true, className: "span-two", autocomplete: "off" }) + field(prefix + "suburb", "Suburb", { required: true, autocomplete: "off" }) + field(prefix + "state", "State", { required: true, autocomplete: "off" }) + field(prefix + "postcode", "Postcode", { required: true, autocomplete: "off" }) + field(prefix + "country", "Country", { required: true, list: "country-list", value: "Australia", autocomplete: "off", hint: "Start typing to search." }) + choices(prefix + "postal_same", "Postal Address Same as Residential?", yesNo, { required: true, className: "span-three" }) +
       `<div class="conditional-panel span-three" data-postal="${prefix}postal_same"><div class="field-grid">${addressLookup(`${prefix}postal-search`, { line: prefix + "postal_address", suburb: prefix + "postal_suburb", state: prefix + "postal_state", postcode: prefix + "postal_postcode", country: prefix + "postal_country" }, `Find Contact ${index + 1}'s postal address`)}${field(prefix + "postal_address", "Postal Address", { required: true, className: "span-two", autocomplete: "off" })}${field(prefix + "postal_suburb", "Postal Suburb", { required: true, autocomplete: "off" })}${field(prefix + "postal_state", "Postal State", { required: true, autocomplete: "off" })}${field(prefix + "postal_postcode", "Postal Postcode", { required: true, autocomplete: "off" })}${field(prefix + "postal_country", "Postal Country", { required: true, list: "country-list", autocomplete: "off" })}</div></div>` +
       `<h5 class="subsection-heading span-three">Occupation and education</h5>` +
-      field(prefix + "occupation_group", "Occupational Group", { type: "select", options: occupationGroups, required: true, className: "span-two", hint: "Please refer to the ACARA Parent Occupation Groups guide to help select the appropriate occupational group." }) + field(prefix + "occupation", "Occupation", { type: "select", options: occupations, required: true }) + field(prefix + "employer", "Employer") +
+      field(prefix + "occupation_group", "Occupational Group", { type: "select", options: occupationGroups, required: true, className: "span-two", hint: "Please refer to the ACARA Parent Occupation Groups guide to help select the appropriate occupational group." }) + field(prefix + "occupation", "Occupation", { type: "select", options: occupationOptions(), required: true }) + field(prefix + "employer", "Employer") +
       field(prefix + "school_education", "School Level Education", { type: "select", options: ["Year 12", "Year 11", "Year 10", "Year 9 or below"], required: true }) + field(prefix + "further_education", "University / Further Education", { type: "select", options: ["Bachelor degree or above", "Advanced Diploma / Diploma", "Certificate I-IV", "No post-school qualification"], required: true }) +
       `<h5 class="subsection-heading span-three">Residency</h5>` +
       field(prefix + "birth_country", "Country of Birth", { list: "country-list", required: true, hint: "Start typing to search." }) + field(prefix + "nationality", "Nationality", { list: "country-list", required: true, hint: "Start typing to search." }) + field(prefix + "ethnicity", "Ethnicity") + field(prefix + "languages", "Record all languages spoken", { list: "language-list", required: true, hint: "Start typing to search; separate multiple languages with commas." }) +
@@ -738,7 +771,7 @@
     const list = items => `<ul class="agreement-list">${items.map(item => `<li>${esc(item)}</li>`).join("")}</ul>`;
     return intro("Conditions", "Review the three Parent / Carer Agreement sections and confirm each one before continuing.", "Application for enrolment") +
       section("Student commitments", `<p class="agreement-lead">I/We agree that if my/our child is enrolled at Rosewood College he/she should:</p>${list(hhcStudentCommitments)}${check("application_student_agreement", "I / We agree to the student commitments above.", { required: true })}`) +
-      section("Parent / Carer commitments", `<p class="agreement-lead">If my/our child is enrolled at Rosewood College, I/we agree to:</p>${list(hhcParentCommitments)}${check("application_parent_agreement", "I / We agree to the parent / carer commitments above.", { required: true })}`) +
+      section("Parent / Carer commitments", `<p class="agreement-lead">If my/our child is enrolled at Rosewood College, I/we agree to:</p>${list(parentCommitments())}${check("application_parent_agreement", "I / We agree to the parent / carer commitments above.", { required: true })}`) +
       section("Acknowledgement", `${check("application_agreement_acknowledgement", "I/We acknowledge having read the particulars contained in this enrolment form and understand my/our obligations to support Rosewood College in all areas of my/our child's education.", { required: true })}`) +
       section("Student and family survey", `<p class="section-copy">These questions are optional.</p><div class="field-grid survey-grid">${field("application_special_aptitudes", "In which subjects does your child have special aptitude?", { type: "textarea" })}${field("application_preferred_subjects", "What are your child's preferred school subjects?", { type: "textarea" })}${field("application_subjects_needing_help", "In which subjects may your child be in need of special help?", { type: "textarea" })}${field("application_hobbies_cultural_pursuits", "What are your child's main hobbies or cultural pursuits (apart from sporting interests)?", { type: "textarea" })}${choices("application_sport_participation", "Does your child participate in any sports organised through the school or independent of the school?", yesNo, { className: "span-three" })}${choices("application_extracurricular_activities", "Does your child attend any extra-curricular school activity, for example, debating, Scouts or Girl Guides, youth groups etc?", yesNo, { className: "span-three" })}${choices("application_local_library", "Does your child belong to a local library?", yesNo, { className: "span-three" })}${field("application_school_attractions", "What attracts you most to the school?", { type: "textarea" })}${field("application_desired_personal_qualities", "What personal qualities would you most like to see developed in your child at the school?", { type: "textarea" })}${field("application_mentoring_value", "What value do you think the mentoring system would have for you as parents?", { type: "textarea" })}${field("application_intended_years", "How many years do you intend your child to study at our school?", { type: "number", min: 1, max: 13 })}</div>`) + actions();
   }
@@ -1958,7 +1991,8 @@
   async function handleLiveSubmit() {
     if (state.workflow === "eoi" && state.screen === 0) {
       setBusy(true, "Submitting...");
-      state.eoiResult = await api("/v6/eoi", { method: "POST", body: JSON.stringify({ values: state.values }) });
+      state.eoiSubmissionKey ||= idempotencyKey();
+      state.eoiResult = await api("/v6/eoi", { method: "POST", headers: { "Idempotency-Key": state.eoiSubmissionKey }, body: JSON.stringify({ values: state.values }) });
       state.saveStatus = "saved";
       state.lastSavedLabel = "submitted";
       return next();

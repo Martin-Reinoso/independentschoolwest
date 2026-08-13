@@ -3,6 +3,7 @@ import test from "node:test";
 import { applicationCompletionMessage, signaturePendingMessage, SlackNotifier } from "../slack-notifier.mjs";
 
 const portalUrl = "https://ffe.org.au/pages/rosewood-enrolment-admin-v6.html";
+const syntheticWebhook = suffix => ["https://hooks.slack.com", "services", "T000", suffix, "synthetic"].join("/");
 
 test("pending notification includes only the approved operational identity fields", () => {
   const message = signaturePendingMessage({
@@ -59,8 +60,8 @@ test("notifier routes pending and complete messages to different webhooks", asyn
       return { ok: true, status: 200 };
     };
     const notifier = new SlackNotifier({
-      pendingWebhookUrl: "https://hooks.slack.com/services/T000/BPENDING/synthetic",
-      completionWebhookUrl: "https://hooks.slack.com/services/T000/BCOMPLETE/synthetic",
+      pendingWebhookUrl: syntheticWebhook("BPENDING"),
+      completionWebhookUrl: syntheticWebhook("BCOMPLETE"),
       staffPortalUrl: portalUrl
     });
     assert.equal(notifier.pendingEnabled, true);
@@ -81,7 +82,7 @@ test("notifier routes pending and complete messages to different webhooks", asyn
 });
 
 test("unconfigured routes skip only their own notification type", async () => {
-  const notifier = new SlackNotifier({ completionWebhookUrl: "https://hooks.slack.com/services/T000/BCOMPLETE/synthetic", staffPortalUrl: portalUrl });
+  const notifier = new SlackNotifier({ completionWebhookUrl: syntheticWebhook("BCOMPLETE"), staffPortalUrl: portalUrl });
   assert.equal(notifier.pendingEnabled, false);
   assert.equal(notifier.completionEnabled, true);
   assert.deepEqual(await notifier.send({ type: "signature_pending" }), { skipped: true, reason: "not_configured" });

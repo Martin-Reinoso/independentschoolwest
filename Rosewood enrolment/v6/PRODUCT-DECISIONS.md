@@ -319,3 +319,21 @@ draft revisions, upload constraints, signatures, persistence and audit events.
 Acceptance, decline and the post-offer Enrolment Agreement remain separate non-writing
 previews. They must not reuse the EOI or Application records when their backends are
 implemented.
+
+## V6.11 Production Hardening Decisions
+
+- New EOI/Application records use immutable `2026.11` definitions. V10 and earlier
+  catalogues and wording remain available to their pinned records.
+- Fee payment, photography/social-media permission and Grade 12 withdrawal notice do
+  not belong in the Application Parent / Carer commitments. They require separately
+  approved post-offer or operational processes.
+- EOI retries must be idempotent and rate-limited before external artifacts are made.
+  A failed authoritative transaction triggers best-effort deletion of the artifact it
+  created; it never creates another EOI to compensate.
+- Email, Slack and Sheet outbox events stop after eight failed attempts and become a
+  retained, alarmed failure record. Replaying one requires authorised operational
+  recovery and the original idempotency boundary.
+- SES acceptance is not delivery. Configuration-set events are the source for delivery,
+  delay and permanent-failure status and must be recorded without recipient addresses.
+- GitHub pull requests must pass backend tests/build, local-asset resolution and
+  public-data/secret checks before merge.

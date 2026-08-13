@@ -699,8 +699,10 @@ stateDiagram-v2
     [*] --> Pending: Outbox item created
     Pending --> Leased: Worker claims 60-second lease
     Leased --> SentReceipt: SES, Slack or Sheet operation succeeds
-    Leased --> Pending: Delivery fails and lease is released
+    Leased --> Pending: Delivery fails before attempt 8
+    Leased --> FailedReceipt: Attempt 8 fails; alarm metric emitted
     SentReceipt --> [*]: Pending item removed; receipt retained temporarily
+    FailedReceipt --> [*]: Failure retained for authorised recovery
 ```
 
 ### Automatic Emails
@@ -720,9 +722,12 @@ stateDiagram-v2
 | Guardian access | Invited guardian email | Six-digit signing OTP |
 | Final required signature | Guardian emails | Application complete confirmation |
 
-SES sends as `enrolment@ffe.org.au`. SPF, DKIM and DMARC have been verified. Bounce and
-complaint notifications reach the operations mailbox, but automatic correlation back
-into individual Operations records remains a future improvement.
+SES sends as `enrolment@ffe.org.au`. SPF, DKIM and DMARC have been verified. The
+stack-managed configuration set sends encrypted delivery feedback to the Lambda for
+send, delivery, delay, bounce, complaint, reject and rendering failure. Events are
+deduplicated and projected without recipient addresses. Pending guardian controls are
+updated through the SES message/task index; lower-ranked late events cannot downgrade a
+final state.
 
 ### Staff Slack Notifications
 
@@ -887,7 +892,6 @@ signature revision hashes also retain the form version and definition hash. See
    workflows only after their governance contracts are approved.
 7. Decide whether automated upload scanning becomes necessary if volume, risk or file
    types expand.
-9. Add automatic SES bounce/complaint correlation into Operations records.
 
 ## Implementation Route Appendix
 

@@ -8,7 +8,7 @@ async function source(relativePath) {
   return readFile(new URL(relativePath, root), "utf8");
 }
 
-test("V6.10 extends Google address assistance to EOI without replacing manual address fields", async () => {
+test("V6.11 retains Google address assistance for EOI without replacing manual address fields", async () => {
   const javascript = await source("pages/rosewood-enrolment-v6.js");
 
   assert.match(javascript, /PlaceAutocompleteElement/);
