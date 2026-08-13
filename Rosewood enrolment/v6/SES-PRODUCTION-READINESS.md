@@ -83,6 +83,9 @@ links, family details, recipient lists, SMTP credentials or AWS identifiers in G
 
 - Send one recipient per SES request and retain the returned SES message ID against the
   outbox event so feedback can be correlated without exposing message contents.
+- When a configuration set is supplied to `SendEmail`, the Lambda role must include
+  both the verified sender identity resources and that exact configuration-set ARN in
+  its `ses:SendEmail` resource list. Keep the exact From-address condition.
 - Application invitation HTML uses one `BEGIN APPLICATION` link. Its plain-text MIME
   alternative contains the private URL once for clients that do not render HTML.
 - The service stores application-level delivery state for send, delivery, delay,
@@ -109,3 +112,7 @@ is active in Sydney, all seven event types are enabled, the encrypted SNS topic 
 confirmed Lambda subscription, the dedicated customer-managed KMS key is enabled and
 the permanent-outbox-failure alarm is `OK`. No test email or family record was created
 for this verification.
+
+The same-day staff-login hotfix added the exact managed configuration-set ARN to the
+Lambda send policy. A controlled access-code request then returned HTTP 200 and reached
+the operations Inbox with SPF, DKIM and DMARC pass.

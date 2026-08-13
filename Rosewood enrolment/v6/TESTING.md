@@ -890,3 +890,29 @@ signature or family record was created or changed.
   reports no errors
 - AWS CloudFormation template validation and production deployment remain pending
   because the local AWS CLI session expired before the read-only validation call
+## SES Configuration-Set Permission Hotfix
+
+Diagnosed and repaired in production on 13 August 2026 after a staff access-code request
+returned the generic service error.
+
+- CloudWatch identified an AWS authorization failure on
+  `POST /v6/staff/access/request-code`: the Lambda role could send through the verified
+  sender identity but did not yet include the newly managed SES configuration-set ARN
+  in the `ses:SendEmail` resource list
+- the runtime policy now grants `ses:SendEmail` only to the verified `ffe.org.au`
+  identity, exact `enrolment@ffe.org.au` identity and
+  `rosewood-enrolment-v6-production-transactional` configuration set, while retaining
+  the exact From-address condition
+- the infrastructure regression test requires the configuration-set resource in the
+  Lambda role; all 94 backend tests, both repository safety gates, `git diff --check`,
+  the frozen-lockfile deployment build and CloudFormation validation pass
+- reviewed change set `rosewood-ses-login-permission-hotfix-20260813-1719` had one
+  static modification: the inline policy on `RosewoodRole`; it made no Lambda code,
+  database, storage, secret, backup, Google integration or form-contract change
+- CloudFormation reached `UPDATE_COMPLETE`; the Lambda remained `Active` with a
+  successful last update and `/v6/health` continued to return HTTP 200
+- one authorised production staff access-code request returned HTTP 200, created a
+  valid challenge with the documented expiry and produced no Lambda error
+- the resulting message reached the `info@ffe.org.au` Inbox; Gmail authentication
+  results reported SPF, DKIM and DMARC pass. The verification code and private message
+  identifiers are not recorded in this evidence

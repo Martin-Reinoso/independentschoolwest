@@ -123,6 +123,12 @@ ordinary log or family-facing response.
 6. Never replay a completed event or create a new application to compensate. Preserve
    the original business record and use an idempotent recovery operation.
 
+If an OTP or transactional send fails with authorization against a
+`configuration-set/...` resource, confirm the Lambda role's `ses:SendEmail` statement
+contains the exact managed configuration-set ARN as well as the verified sender
+identities. Repair it through a reviewed CloudFormation change set; do not disable the
+configuration set or broaden email permission to `*` as a workaround.
+
 ## Recover Or Diagnose A V6.11 Draft Upgrade
 
 Editable older drafts upgrade only when the family verifies the invitation or selects
