@@ -120,6 +120,15 @@ test("SES delivery feedback is configured, encrypted and correlated through the 
   assert.match(template, /Principal:\n\s+Service: ses\.amazonaws\.com/);
   assert.match(template, /Principal: sns\.amazonaws\.com/);
   assert.match(template, /SES_CONFIGURATION_SET_MANAGED: !Ref RosewoodSesConfigurationSet/);
+  const runtimeRole = template.slice(
+    template.indexOf("  RosewoodRole:"),
+    template.indexOf("  RosewoodFunction:")
+  );
+  assert.match(runtimeRole, /Sid: SendTransactionalEmail/);
+  assert.match(
+    runtimeRole,
+    /configuration-set\/\$\{RosewoodSesConfigurationSet\}/
+  );
   assert.match(index, /config\.SES_CONFIGURATION_SET_MANAGED \|\| config\.SES_CONFIGURATION_SET/);
   assert.match(service, /recordSignatureDelivery/);
   assert.match(service, /recordSesEvent/);

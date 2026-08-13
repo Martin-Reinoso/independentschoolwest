@@ -484,11 +484,13 @@ Resources:
               - Effect: Allow
                 Action: secretsmanager:GetSecretValue
                 Resource: !Sub "${ConfigSecretArn}*"
-              - Effect: Allow
+              - Sid: SendTransactionalEmail
+                Effect: Allow
                 Action: ses:SendEmail
                 Resource:
                   - !Sub arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/ffe.org.au
                   - !Sub arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/${SenderEmail}
+                  - !Sub arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:configuration-set/${RosewoodSesConfigurationSet}
                 Condition:
                   StringEquals:
                     ses:FromAddress: !Ref SenderEmail
