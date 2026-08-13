@@ -785,3 +785,60 @@ message or submitting, reopening or changing a production family Application.
   all three availability checks passed; the production outbox had no pending Slack event
   before or after the release
 - deployment source commit `f8a1916` is the tested split-routing release
+
+## V6.11 Production Hardening Release
+
+Implementation and production verification completed on 13 August 2026 without
+creating or changing an EOI, invitation, OTP, family session, application, upload,
+signature or workflow email.
+
+- Pull request `#2` passed both repository checks and merged to `main` as commit
+  `3ad28239ac489b28995195e8658000947aa53587`; the release branch and merged commit
+  have the same Git tree.
+- all 94 backend tests pass, including EOI idempotency and throttling, compensating
+  Drive cleanup, eight-attempt outbox exhaustion, SES feedback deduplication and
+  correlation, V6.10 compatibility, V6.11 immutable definitions and active-catalogue
+  corrections
+- the repository gate validates 71 tracked HTML/CSS files and found no broken local
+  reference; the public-data gate scanned 359 tracked files and found no attendee
+  export or high-confidence AWS, private-key, Slack-webhook or GitHub-token pattern
+- the locked production build, immutable asset gate, JavaScript syntax checks,
+  `git diff --check` and CloudFormation template validation pass
+- reviewed no-execute change set `rosewood-v11-hardening-20260813-1456` modified the
+  Lambda in place, refreshed only the existing outbox/canary invocation permissions
+  and targets, and added the SES feedback route, its dedicated KMS key and SNS topic,
+  plus the permanent-outbox-failure metric and alarm
+- the reviewed change set did not modify or replace the authoritative DynamoDB or
+  audit tables, records KMS key, backup vault/plan, document staging bucket,
+  Secrets Manager secret or Google Drive/Sheets parameters
+- CloudFormation reached `UPDATE_COMPLETE`; the production Lambda is `Active` with
+  `LastUpdateStatus=Successful`, runtime `nodejs22.x`, and the managed SES
+  configuration set `rosewood-enrolment-v6-production-transactional`
+- `/v6/health` returned `ok`, EOI `rosewood-eoi-2026.11` and Application
+  `rosewood-application-2026.11`
+- the SES event destination is enabled for send, delivery, delivery delay, bounce,
+  complaint, reject and rendering failure; its encrypted SNS topic has a confirmed
+  Lambda subscription and its customer-managed single-region KMS key is enabled
+- the one-minute outbox and 30-minute read-only canary EventBridge rules are enabled;
+  the Lambda error alarm, all three canary alarms and the new permanent-outbox-failure
+  alarm are `OK`
+- a manual read-only production canary invocation returned HTTP 200 with no function
+  error; public forms, backend V6.11 health and EOI address configuration all reported
+  `available=true`
+- point-in-time recovery is enabled on both authoritative DynamoDB tables; the locked
+  Sydney backup vault remains encrypted by the retained records key, applies 35-day
+  minimum and 366-day maximum retention, and reported 18 recovery points
+- both encrypted security-topic email subscriptions remain confirmed
+- GitHub Pages served the merged family HTML and JavaScript byte for byte: HTML
+  SHA-256 `e30fed23f1291ce61a151627c27f17110fdfb076d18140f015c4d873280bde05` and
+  JavaScript SHA-256 `5cba48f5b6479c91302b6b74f60b57cdbbad86147bf00ed3f31f040e7c8e8b27`
+- desktop review mode rendered the intended Rosewood two-column application gateway;
+  at `390 x 844`, all nine Application review frames remained within the 390-pixel
+  viewport with no horizontal overflow, and the browser console reported no errors
+
+GuardDuty and cross-region replication remain intentionally out of scope. Legal
+retention/deletion periods, named staff identities, privacy/legal approvals and the
+malware-scanning posture remain governance decisions rather than technical release
+claims. The removed attendee export is no longer served from the live repository but
+remains in historical Git commits; rewriting public history requires separate explicit
+approval.
