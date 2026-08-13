@@ -1,8 +1,11 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 
 const spreadsheetId = requiredEnv('GOOGLE_SHEETS_SPREADSHEET_ID');
-const dataDir = process.env.STRIPE_RECON_DATA_DIR || '.codex-temp/stripe-recon/data';
+const privateRuntimeRoot = process.env.FFE_PRIVATE_RUNTIME_DIR || path.join(os.homedir(), 'Documents', 'random', 'ffe-private-runtime');
+const dataDir = process.env.STRIPE_RECON_DATA_DIR || path.join(privateRuntimeRoot, 'stripe-recon', 'data');
 
 function requiredEnv(name) {
   const value = process.env[name] || '';

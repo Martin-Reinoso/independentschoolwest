@@ -351,7 +351,7 @@ STRIPE_SECRET_KEY=REDACTED node "Stripe donation/scripts/export-stripe-donations
 Use:
 
 ```bash
-STRIPE_SECRET_KEY=REDACTED python3 "Stripe donation/scripts/export-stripe-reconciliation-data.py" --days=90 --out-dir .codex-temp/stripe-recon/data
+STRIPE_SECRET_KEY=REDACTED python3 "Stripe donation/scripts/export-stripe-reconciliation-data.py" --days=90 --out-dir "$HOME/Documents/random/ffe-private-runtime/stripe-recon/data"
 ```
 
 These exports are useful for:

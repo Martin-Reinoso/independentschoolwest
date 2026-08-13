@@ -1,9 +1,12 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 
 const spreadsheetId = requiredEnv('GOOGLE_SHEETS_SPREADSHEET_ID');
 const serviceAccountPath = requiredEnv('GOOGLE_SERVICE_ACCOUNT_JSON');
-const backupDir = process.env.STRIPE_SHEET_BACKUP_DIR || '.codex-temp/stripe-sheet-backups';
+const privateRuntimeRoot = process.env.FFE_PRIVATE_RUNTIME_DIR || path.join(os.homedir(), 'Documents', 'random', 'ffe-private-runtime');
+const backupDir = process.env.STRIPE_SHEET_BACKUP_DIR || path.join(privateRuntimeRoot, 'stripe-sheet-backups');
 
 const PAYOUT_HEADERS = [
   'payout_date', 'payout_id', 'trace_id', 'payout_amount', 'donations_grouped_in_this_payout',
