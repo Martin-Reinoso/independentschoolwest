@@ -26,6 +26,12 @@ Rosewood enrolment/st-lawrence-reference/raw/
 outputs/stripe-reconciliation-20*/
 stripe-donations-recent.csv
 
+# Registration exports containing attendee or booking information
+**/*attendee*.csv
+**/*attendees*.csv
+**/*booking*.csv
+**/*registrant*.csv
+
 # Rosewood V2 local dependencies and browser-test artifacts
 Rosewood enrolment/v2/**/node_modules/
 Rosewood enrolment/v2/lambda-dist/
