@@ -853,9 +853,9 @@ Verified locally on 14 August 2026 using synthetic data only.
 - V6.12 preserves the complete V6.11 EOI and Application data contracts; V6.11 and
   earlier definitions remain addressable
 - the family HTML, JavaScript and CSS SHA-256 values match the pinned V6.12 definition
-- all 96 backend tests pass, including frontend wording/style, immutable definition,
+- all 94 backend tests pass, including frontend wording/style, immutable definition,
   canary and compatibility checks
-- 73 tracked HTML/CSS files pass the static-reference gate and 364 tracked files pass
+- 73 tracked HTML/CSS files pass the static-reference gate and 365 tracked files pass
   the private-data/secret gate
 - JavaScript syntax, `git diff --check` and the locked deployment build pass
 - local desktop and 390 px mobile browser checks confirm readable wrapping, no
