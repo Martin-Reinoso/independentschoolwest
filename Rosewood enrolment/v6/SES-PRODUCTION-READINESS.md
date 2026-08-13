@@ -103,3 +103,9 @@ staff receive bounce and complaint alerts. Configuration-set feedback is correla
 SES message ID, deduplicated, written to restricted audit/Operations records without a
 recipient address and applied to pending guardian delivery status. SES acceptance is
 kept distinct from mailbox delivery.
+
+Production verification on 13 August 2026 confirmed that the managed configuration set
+is active in Sydney, all seven event types are enabled, the encrypted SNS topic has a
+confirmed Lambda subscription, the dedicated customer-managed KMS key is enabled and
+the permanent-outbox-failure alarm is `OK`. No test email or family record was created
+for this verification.
