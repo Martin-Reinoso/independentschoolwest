@@ -947,3 +947,21 @@ notification.
 - 73 tracked HTML/CSS files pass the static-reference gate, 364 tracked files pass the
   private-data/secret gate, JavaScript syntax and `git diff --check` pass, the locked
   production deployment build succeeds and CloudFormation validates
+- reviewed no-execute change set
+  `rosewood-monitoring-hardening-20260813-a1d6951` added only the two availability
+  alarms, Lambda-throttle alarm, SES-delivery-failure alarm and log metric; it updated
+  the canary cadence/periods and Lambda code in place and recalculated existing event
+  targets/permissions without modifying or replacing DynamoDB, audit, KMS, backups,
+  document staging, Google configuration, Secrets Manager or form contracts
+- CloudFormation reached `UPDATE_COMPLETE`, stack termination protection remains
+  enabled, Lambda is `Active` with a successful update, the one-minute outbox rule is
+  enabled and the canary rule is enabled at `rate(10 minutes)`
+- a manual non-writing production canary returned HTTP 200 with no function error; all
+  five checks reported `available=true`, including the protected workflow and projected
+  delivery-pipeline checks
+- `/v6/health` returned HTTP 200 with EOI `rosewood-eoi-2026.11` and Application
+  `rosewood-application-2026.11`; all nine production alarms are `OK`
+- both encrypted security-topic subscriptions remain confirmed for `info@ffe.org.au`
+  and `frjativa@gmail.com`; no setup/test alert, OTP, workflow email or Slack message
+  was sent deliberately
+- deployment source commit `a1d6951` is the tested monitoring release
