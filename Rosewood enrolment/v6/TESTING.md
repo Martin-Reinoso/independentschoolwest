@@ -911,8 +911,13 @@ returned the generic service error.
   database, storage, secret, backup, Google integration or form-contract change
 - CloudFormation reached `UPDATE_COMPLETE`; the Lambda remained `Active` with a
   successful last update and `/v6/health` continued to return HTTP 200
+- stack-level termination protection is enabled in addition to both authoritative
+  tables' deletion protection
 - one authorised production staff access-code request returned HTTP 200, created a
   valid challenge with the documented expiry and produced no Lambda error
 - the resulting message reached the `info@ffe.org.au` Inbox; Gmail authentication
   results reported SPF, DKIM and DMARC pass. The verification code and private message
   identifiers are not recorded in this evidence
+- a post-hotfix read-only production canary returned HTTP 200 with no function error;
+  public forms, backend V6.11 health and EOI address configuration all remained
+  available, and all five production alarms remained `OK`

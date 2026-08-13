@@ -3,6 +3,8 @@
 ## Safety Rules
 
 - Use only `ap-southeast-2` and verify the AWS account before any restore.
+- Keep stack termination protection enabled during normal operation. Disabling it
+  requires explicit change approval and is not needed for ordinary stack updates.
 - Never restore over production. Restore to a new table, validate it, then change
   configuration through a reviewed deployment.
 - Do not print or export family values while diagnosing recovery.
