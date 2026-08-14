@@ -27,7 +27,7 @@ export function applicationInvitation({ firstName, studentName, entryLevel, entr
   const assistance = "If you require assistance or have questions, please do not hesitate to get in touch at enrolment@ffe.org.au.";
   const signoff = "Kind regards,\n\nRosewood College Enrolment Team";
   const expiry = `This private invitation expires on ${expiresAt}.`;
-  const directIntro = "Thank you for considering Rosewood College for your child’s education. We appreciate the opportunity to learn more about your family and your hopes for your child’s schooling.";
+  const directIntro = "Thank you for considering Rosewood College for your child’s education.";
   const directInvite = "We are pleased to invite you to begin an Application for Enrolment using the private link below. When prompted, please enter the same email address that received this invitation.";
   const interest = [entryLevel, entryYear].filter(Boolean).join(", ");
   const linkedIntro = `Our records indicate that you have expressed interest${interest ? ` in ${interest}` : ""} at Rosewood College${studentName ? ` for your child ${studentName}` : ""}.`;

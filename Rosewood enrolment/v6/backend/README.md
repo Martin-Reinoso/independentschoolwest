@@ -131,7 +131,7 @@ without a recipient address. A signature event that arrives before its correlati
 index fails transiently so SNS retries it rather than losing signer status.
 
 Family OTP challenges expire after 10 minutes, allow five attempts and have resend and
-network throttles. Family and child-application sessions use a sliding 20-minute
+network throttles. Family and child-application sessions use a sliding 90-minute
 inactivity timeout with an eight-hour absolute limit; staff sessions expire after two
 hours and guardian-signing sessions retain their separate 30-minute limit. Sessions stay
 are server-side and can be explicitly revoked. The family page may keep only opaque

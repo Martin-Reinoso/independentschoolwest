@@ -327,22 +327,22 @@ test("family sessions slide after activity, expire after inactivity and can be r
   const invitationToken = new URL(created.invitationUrl).searchParams.get("invite");
   const requested = JSON.parse((await service(event("/v6/application/access/request-code", "POST", { invitationToken, email: "family@example.com" }))).body);
   const verified = JSON.parse((await service(event("/v6/application/access/verify-code", "POST", { invitationToken, challengeId: requested.challengeId, code: "123456" }))).body);
-  assert.equal(verified.idleTimeoutSeconds, 1200);
+  assert.equal(verified.idleTimeoutSeconds, 5400);
   assert.equal(verified.absoluteTimeoutSeconds, 28800);
 
   const familySession = [...store.sessions.values()].find(session => session.scope === "application_family");
-  assert.equal(familySession.expiresAt, now + 20 * 60_000);
+  assert.equal(familySession.expiresAt, now + 90 * 60_000);
   now += 60_000;
   const active = await service(event("/v6/application/records", "POST", { studentFirstName: "Avery", studentLastName: "Example" }, verified.familySessionToken));
   assert.equal(active.statusCode, 200);
-  assert.equal([...store.sessions.values()].find(session => session.scope === "application_family").expiresAt, now + 20 * 60_000);
+  assert.equal([...store.sessions.values()].find(session => session.scope === "application_family").expiresAt, now + 90 * 60_000);
 
   const applicationToken = JSON.parse(active.body).sessionToken;
   const logout = await service(event("/v6/session/logout", "POST", {}, applicationToken));
   assert.equal(logout.statusCode, 200);
   assert.equal([...store.sessions.values()].some(session => session.scope === "application" && session.applicationId === created.applicationId), false);
 
-  now += 21 * 60_000;
+  now += 91 * 60_000;
   const expired = await service(event("/v6/application/records", "POST", { studentFirstName: "Jordan", studentLastName: "Example" }, verified.familySessionToken));
   assert.equal(expired.statusCode, 401);
   assert.equal(JSON.parse(expired.body).error, "SESSION_EXPIRED");
@@ -358,7 +358,7 @@ test("an active older draft is upgraded once with every saved answer preserved",
     formVersion: legacy.formVersion,
     formDefinitionHash: legacy.definitionHash,
     schemaVersion: legacy.schemaVersion,
-    values: { ...original.values, student_first: "Avery", legacy_removed_question: "Preserve this answer" }
+    values: { ...original.values, student_first: "Avery", legacy_removed_question: "Preserve this answer", reports_attached: "No", medicare_expiry: "2029-07-31", future_sibling_count: "7+" }
   });
   const invitationToken = new URL(created.invitationUrl).searchParams.get("invite");
   const requested = JSON.parse((await service(event("/v6/application/access/request-code", "POST", { invitationToken, email: "family@example.com" }))).body);
@@ -367,6 +367,9 @@ test("an active older draft is upgraded once with every saved answer preserved",
   assert.equal(upgraded.formVersion, currentFormDefinition("application").formVersion);
   assert.equal(upgraded.values.student_first, "Avery");
   assert.equal(upgraded.values.legacy_removed_question, "Preserve this answer");
+  assert.equal(upgraded.values.reports_attached, "N/A");
+  assert.equal(upgraded.values.medicare_expiry, "2029-07");
+  assert.equal(upgraded.values.future_sibling_count, "7");
   assert.equal(verified.context.formVersion, currentFormDefinition("application").formVersion);
   assert.equal((await store.listApplicationRevisions(created.applicationId))[0].kind, "form_definition_upgraded");
   assert.ok(store.audit.some(eventRecord => eventRecord.type === "application.form_definition_upgraded"));

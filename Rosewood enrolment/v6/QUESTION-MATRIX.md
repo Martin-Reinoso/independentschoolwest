@@ -103,7 +103,7 @@ their original immutable definition.
 
 - Same-tab refresh may restore an unexpired family, child-application or status session
   from an opaque `sessionStorage` token. No answers or documents are stored there.
-- Family/application/status sessions still expire after 20 minutes without server
+- Family/application/status sessions still expire after 90 minutes without server
   activity and after an eight-hour absolute limit.
 - **Remember me** is staff-only, opt-in and stores only the opaque staff token, email and
   expiry. The backend slides expiry to two hours after each authorised staff request.
@@ -112,19 +112,25 @@ their original immutable definition.
   upgrade revision and audit event, and does not submit or duplicate the record.
 - Submitted applications, submitted snapshots and signature evidence never upgrade.
 
-# V6.13 EOI And Application Question Matrix
+# V6.14 EOI And Application Question Matrix
 
-`rosewood-eoi-2026.13` and `rosewood-application-2026.13` are the current contracts.
-V6.12 and earlier remain immutable for submitted records.
+`rosewood-eoi-2026.14` and `rosewood-application-2026.14` are the current contracts.
+V6.13 and earlier remain immutable for submitted records.
 
-| Area | V6.13 question or rule | Required/condition | Storage and downstream rule |
+| Area | V6.14 question or rule | Required/condition | Storage and downstream rule |
 | --- | --- | --- | --- |
 | Child selector | Direct invitation source | Not displayed to families | Operational source remains on invitation/application records and in staff portal |
 | Child selector | Information from your Expression of Interest has been included. | Displayed only when `sourceEoiId` is present | Informational only; no new answer |
 | Student details | Interrupted schooling | Required; Yes requires approximate dates/details | Existing `interrupted_schooling` keys; Student projection |
+| Student details | Foundation (Prep); entry choices stop at Year 5 | Required | Stored canonical Foundation remains `Foundation`; legacy saved Year 6 remains visible only on that draft |
+| Student details | Current centre/school catalogue excludes Our Lady of Rosary and St Mary's | Required | Existing saved values remain available only on the draft that already contains them |
 | Retired previous education | Previous attendance, institution and year level | Not rendered or required | Historical values remain in earlier revisions/answer maps; omitted from V6.8 guardian review |
 | Student primary address | Share this address with other Parent/Guardian? | Required | Existing `student_address_share`; Student projection |
 | Student primary address | Home Care Arrangement | Required compact single-select; Other and Shared Custody require details | Existing care keys; Student projection |
+| Family | How many other children? | Required positive whole number from 1 to 99 after Yes | Existing `future_sibling_count`; editable legacy `7+` normalises to `7` with revision/audit evidence |
+| Student's Nationality and Citizenship | Residence, birth, nationality, optional ethnicity and languages | Existing government-reporting conditions | Existing answer keys; Other Languages is free text while Main Language keeps the catalogue |
+| General / Additional Needs | Approved duty-of-care/support explanation; Health professionals involved; Reports Attached Yes/N/A | Existing conditional rules | Existing keys; editable legacy Reports Attached `No` normalises to `N/A` with revision/audit evidence |
+| Medical Details | Medicare Expiry | Required month and year | Existing `medicare_expiry`; editable full dates normalise to `YYYY-MM` with revision/audit evidence |
 | EOI address completion | Optional Google Places suggestions | Primary-contact address; manual entry always available | Populates existing EOI address keys; no autosave or Google-specific storage; submitted only with the EOI |
 | Application address completion | Optional Google Places suggestions | Student primary and guardian residential/postal only; manual entry always available | Populates existing answer keys and autosaves them; no Place ID, coordinates, search history or geolocation stored |
 | Document upload recovery | A non-empty replacement selection clears completed failed attempts in that document category | Cancellation preserves the error for Retry; active and uploaded files remain | No answer or document record is deleted; only unsaved browser failure state is reconciled |
@@ -144,14 +150,18 @@ V6.12 and earlier remain immutable for submitted records.
 | Parent / Carer commitments | Fee, photography/social-media and Grade 12 withdrawal clauses are not part of Application | Existing acknowledgement remains required | V11 renders the scoped commitment list; V10 and earlier retain their pinned wording |
 | EOI submission | Stable idempotency key | Generated per attempted submission and reused for retries | The EOI, idempotency result, audit and outbox work are one DynamoDB transaction |
 
-## V6.13 Session And Migration Rules
+## V6.14 Session And Migration Rules
 
 - Save and continue later closes only the selected child's editing/status sessions,
   clears child answers from page memory and retains the family session.
 - Return to child applications opens the selector without another OTP while that family
   session remains valid.
-- Opening an editable older application upgrades it to V6.11 in one conditional
+- Opening an editable older application upgrades it to V6.14 in one conditional
   transaction while preserving all existing answer keys and revision history.
+- Family and application sessions expire after 90 minutes without successful server
+  activity. A blocking five-minute warning allows the family to continue before expiry.
+- Verification codes remain valid for 10 minutes. The 30-second resend cooldown is
+  displayed separately and does not shorten code validity.
 - Submitted applications and signature evidence remain pinned to their submitted form
   definition and never upgrade.
 

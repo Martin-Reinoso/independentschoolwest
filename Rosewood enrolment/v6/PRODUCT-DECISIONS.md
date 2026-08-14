@@ -166,10 +166,12 @@ workflows into the current records or API.
   clears its answers from page memory, but preserves the verified family session and
   offers **Return to child applications**. Sign out revokes the family session. The
   child selector uses Sign out rather than Back.
-- Family and child-application sessions expire after 20 minutes of inactivity and have
+- Family and child-application sessions expire after 90 minutes of inactivity and have
   an eight-hour absolute lifetime after OTP. Activity refreshes the idle window only
   when needed. Staff and guardian-signing sessions keep their separate policies.
-- The browser mirrors the 20-minute inactivity window. Expiry opens a blocking dialog
+- The browser warns after 85 minutes without successful server activity and lets the
+  family continue the session explicitly. It mirrors the 90-minute inactivity window.
+  Expiry opens a blocking dialog
   automatically, Escape cannot dismiss it, and the only action clears browser-held
   session data and returns to the Application sign-in screen. The message distinguishes
   acknowledged progress from changes that may not have saved.

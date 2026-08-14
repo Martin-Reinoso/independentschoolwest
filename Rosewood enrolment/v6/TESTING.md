@@ -143,7 +143,7 @@ Tested through a local HTTP server in the Codex in-app browser.
   serialization and unchanged-snapshot suppression
 - offline, online, failed-save and expired-session paths update the sticky status; an
   unsaved close attempt invokes the browser's standard leave warning
-- session expiry opens a blocking dialog automatically after the mirrored 20-minute
+- session expiry opens a blocking dialog automatically after the mirrored 90-minute
   inactivity window or immediately after a server expiry response; Escape is prevented,
   saved versus potentially unsaved wording is selected from current state, and Return to
   sign in clears browser session data and restores the Application gateway
@@ -183,7 +183,7 @@ Mobile viewport: 390 x 844.
   application fields, Acceptance-field rejection, server-side guardian review
   acknowledgement, staff allowlisting, safe dashboard projection, staff invitation
   response redaction, staff role restrictions, family multi-child isolation, resumed
-  saved-section context, 20-minute sliding inactivity, eight-hour absolute session
+  saved-section context, 90-minute sliding inactivity, eight-hour absolute session
   lifetime, explicit session revocation, atomic invitation-token rotation and
   customer-managed KMS access in the Lambda runtime policy, non-destructive partial
   saves, form-version mismatch rejection and audited historical-revision retrieval
@@ -1006,3 +1006,30 @@ or Slack notification.
 - the deployment observation window recorded 36 Lambda invocations, zero Lambda errors
   and zero throttles; existing V6.11/V6.12 sessions remain accepted and no family data
   was read during release verification
+
+## V6.14 Family Feedback Verification
+
+- Direct-invitation email contains the approved single opening sentence and no longer
+  contains the removed family/hopes sentence; linked-EOI wording remains separate.
+- Backend family/application/status sessions return and enforce a 5,400-second sliding
+  idle timeout. The eight-hour absolute limit is unchanged.
+- The browser mirrors 90 minutes, warns five minutes before expiry, blocks dismissal,
+  and renews only through an authenticated family, application or status request.
+- Application OTP responses remain `expiresInSeconds: 600` and
+  `resendAfterSeconds: 30`. The interface presents a distinct live 10-minute validity
+  countdown and explains that the resend delay does not shorten it.
+- V6.14 renders Foundation (Prep), removes Year 6 from new entry choices and removes
+  Our Lady of Rosary/St Mary's from new school choices while preserving an already
+  saved legacy selection in its own draft.
+- The other-child count is a required 1-99 numeric value after Yes. Reports Attached is
+  Yes/N/A. Medicare Expiry is required and accepts only `YYYY-MM`.
+- Other Languages is free text; Main Language continues using the pinned catalogue.
+- Editable upgrade coverage proves `No` to `N/A`, full-date to month and `7+` to `7`
+  normalization while preserving unrelated and retired answers.
+- Submitted records continue to resolve through their pinned immutable definition and
+  are not upgraded.
+- All 103 backend tests pass and the locked deployment bundle builds successfully.
+- Desktop semantic review confirms every approved label/option and conditional field.
+  A 390 x 844 mobile browser check reports no horizontal overflow; entry and school
+  controls fit the viewport, Medicare is a native month input and Other Languages has
+  no catalogue binding.

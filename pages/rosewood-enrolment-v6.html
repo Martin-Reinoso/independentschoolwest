@@ -10,7 +10,7 @@
   <title>Enrolment | Rosewood College</title>
   <link rel="icon" href="../img/favicon.ico" type="image/x-icon">
   <link rel="stylesheet" href="rosewood-enrolment-v5.css?v=1">
-  <link rel="stylesheet" href="rosewood-enrolment-v6.css?v=15">
+  <link rel="stylesheet" href="rosewood-enrolment-v6.css?v=16">
 </head>
 <body class="no-environment-ribbon">
   <a class="skip-link" href="#family-form">Skip to the form</a>
@@ -83,14 +83,24 @@
     <div class="session-expired-card">
       <p class="eyebrow">Application security</p>
       <h2 id="session-expired-title">Your session has expired</h2>
-      <p id="session-expired-copy">For your security, this session ended after 20 minutes without activity. Your previously saved progress is safe.</p>
+      <p id="session-expired-copy">For your security, this session ended after 90 minutes without activity. Your previously saved progress is safe.</p>
       <p>Please return to the enrolment sign-in screen and request a new verification code to continue.</p>
       <button type="button" class="button button-primary" id="return-to-sign-in">Return to sign in</button>
     </div>
   </dialog>
 
+  <dialog class="session-expired-dialog session-warning-dialog" id="session-warning-dialog" aria-labelledby="session-warning-title" aria-describedby="session-warning-copy">
+    <div class="session-expired-card">
+      <p class="eyebrow">Application security</p>
+      <h2 id="session-warning-title">Your session will expire soon</h2>
+      <p id="session-warning-copy">There has been no activity for a while. For your security, this session will expire in 5 minutes.</p>
+      <p>Your successfully saved progress is safe. Select continue to keep working without signing in again.</p>
+      <button type="button" class="button button-primary" id="continue-session">Continue session</button>
+    </div>
+  </dialog>
+
   <script src="rosewood-enrolment-languages.js?v=1"></script>
   <script src="rosewood-enrolment-policies-v6.js?v=1"></script>
-  <script src="rosewood-enrolment-v6.js?v=22"></script>
+  <script src="rosewood-enrolment-v6.js?v=25"></script>
 </body>
 </html>

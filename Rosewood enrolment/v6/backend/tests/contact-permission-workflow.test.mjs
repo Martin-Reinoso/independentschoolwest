@@ -231,6 +231,7 @@ function validSubmissionValues(permission) {
   values.interrupted_schooling = "No";
   values.formal_assessment = "No";
   values.healthcare_card = "No";
+  values.medicare_expiry = "2030-06";
   for (let index = 0; index < 2; index += 1) {
     const prefix = `app_guardian_${index}_`;
     for (const suffix of ["first", "last", "mobile", "relationship", "contact_type", "sms", "healthcare", "address", "suburb", "state", "postcode", "country", "occupation_group", "occupation", "school_education", "further_education", "birth_country", "nationality", "languages", "residency", "indigenous", "marital", "religion"]) values[`${prefix}${suffix}`] = "Synthetic";

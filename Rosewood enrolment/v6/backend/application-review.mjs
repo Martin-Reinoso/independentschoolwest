@@ -23,6 +23,17 @@ function date(value) {
   }).format(new Date(`${text}T00:00:00.000Z`));
 }
 
+function monthYear(value) {
+  if (!present(value)) return "Not provided";
+  const text = String(value);
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(text)) return date(text);
+  return new Intl.DateTimeFormat("en-AU", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${text}-01T00:00:00.000Z`));
+}
+
+function yearLevel(value) {
+  return value === "Foundation" ? "Foundation (Prep)" : display(value);
+}
+
 function timestamp(value) {
   if (!present(value)) return "Not provided";
   const parsed = new Date(value);
@@ -80,6 +91,7 @@ function formReleaseAtLeast(formVersion, minimum) {
 
 function studentSections(values, options = {}) {
   const v8 = formReleaseAtLeast(options.formVersion, 8);
+  const v14 = formReleaseAtLeast(options.formVersion, 14);
   return [
     section("student", "Student", [
       group("Student details", [
@@ -91,9 +103,9 @@ function studentSections(values, options = {}) {
         field(values, "student_gender", "Gender"),
         field(values, "student_religion", "Religion"),
         field(values, "student_religion_other", "Other religion", { when: value => value.student_religion === "Other" || present(value.student_religion_other) }),
-        field(values, "current_level", "Current school year"),
+        field(values, "current_level", "Current school year", { format: yearLevel }),
         field(values, "entry_year", "Year the student will commence at Rosewood College"),
-        field(values, "entry_level", "Year level of entry at Rosewood College"),
+        field(values, "entry_level", "Year level of entry at Rosewood College", { format: yearLevel }),
         field(values, "current_school", "Current Early Learning Centre / Kindergarten / Primary School"),
         field(values, "current_school_other", "Other Early Learning Centre / Kindergarten / Primary School", { when: value => value.current_school === "Other" || present(value.current_school_other) }),
         ...(v8 ? [
@@ -129,15 +141,15 @@ function studentSections(values, options = {}) {
       ]),
       group("Family", [
         field(values, "future_siblings", "Do you have any other children that may attend our school?"),
-        field(values, "future_sibling_count", "How many children?", { when: value => value.future_siblings === "Yes" || present(value.future_sibling_count) })
+        field(values, "future_sibling_count", v14 ? "How many other children?" : "How many children?", { when: value => value.future_siblings === "Yes" || present(value.future_sibling_count) })
       ])
     ]),
-    section("nationality", "Nationality and Citizenship", [
+    section("nationality", v14 ? "Student's Nationality and Citizenship" : "Nationality and Citizenship", [
       group("Government requirement", [
-        field(values, "residence_country", "Student's current country of residence"),
-        field(values, "birth_country", "Student's country of birth"),
-        field(values, "nationality", "Student's country of nationality"),
-        field(values, "ethnicity", "Student's ethnicity"),
+        field(values, "residence_country", v14 ? "Current Country of Residence" : "Student's current country of residence"),
+        field(values, "birth_country", v14 ? "Country of Birth" : "Student's country of birth"),
+        field(values, "nationality", v14 ? "Country of Nationality" : "Student's country of nationality"),
+        field(values, "ethnicity", v14 ? "ethnicity" : "Student's ethnicity"),
         field(values, "arrival_date", "When did the student arrive in or return to live in Australia?", { format: date }),
         field(values, "residency_status", "What is the residential status of the student?"),
         field(values, "australian_citizen", "Is the student an Australian citizen?"),
@@ -160,7 +172,7 @@ function studentSections(values, options = {}) {
         field(values, "need_other", "Other additional need", { when: value => includes(value, "need_categories", "Other") || present(value.need_other) }),
         field(values, "current_adjustments", "Adjustments or support currently provided"),
         field(values, "rosewood_adjustments", "Adjustments or support that may assist at Rosewood College"),
-        field(values, "professional_categories", "Health professionals"),
+        field(values, "professional_categories", v14 ? "Health professionals involved" : "Health professionals"),
         field(values, "professional_other", "Other health professional", { when: value => includes(value, "professional_categories", "Other") || present(value.professional_other) }),
         field(values, "reports_attached", "Reports attached"),
         field(values, "ndis_support", "NDIS support"),
@@ -197,7 +209,7 @@ function studentSections(values, options = {}) {
         field(values, "doctor_phone", "Doctor phone"),
         field(values, "medicare_number", "Medicare number"),
         field(values, "medicare_reference", "Medicare reference number"),
-        field(values, "medicare_expiry", "Medicare expiry", { format: date }),
+        field(values, "medicare_expiry", "Medicare expiry", { format: v14 ? monthYear : date }),
         field(values, "private_insurance", "Private insurance", { when: value => present(value.private_insurance) }),
         field(values, "private_insurance_provider", "Private health insurance provider"),
         field(values, "private_insurance_policy", "Private health insurance policy number"),

@@ -10,7 +10,7 @@ const MIME_TYPES = new Set(["application/pdf", "image/png", "image/jpeg"]);
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const INVITATION_LIFETIME_MS = 14 * 86400_000;
 const MAX_FAMILY_APPLICATIONS = 8;
-const APPLICATION_SESSION_IDLE_MS = 20 * 60_000;
+const APPLICATION_SESSION_IDLE_MS = 90 * 60_000;
 const APPLICATION_SESSION_ABSOLUTE_MS = 8 * 60 * 60_000;
 const MAX_OUTBOX_ATTEMPTS = 8;
 const APPLICATION_VALIDATORS = new Map(Object.keys(FORM_DEFINITIONS.application).map(formVersion => [formVersion, { sanitize: sanitizeApplication, validate: validateApplicationForSubmission }]));
@@ -959,18 +959,39 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     return { applicationId: app.id, invitationId: app.invitationId, sourceEoiId: app.sourceEoiId || null, recipientEmail: app.recipientEmail, status: app.status, revision: app.revision, screen: Number(app.screen || 0), currentStage: app.currentStage || "gateway", percentComplete: Number(app.percentComplete || 0), values: app.values || {}, guardianCount: app.guardianCount || 1, emergencyCount: app.emergencyCount || 2, documents: Object.values(app.documents || {}).flat().map(document => ({ category: document.category, documentId: document.documentId, fileName: document.fileName, size: document.size })), studentName: [app.values.student_first, app.values.student_last].filter(Boolean).join(" "), updatedAt: app.updatedAt, addressAutocomplete: googleMapsBrowserApiKey ? { enabled: true, provider: "google_places", apiKey: googleMapsBrowserApiKey, region: "AU" } : { enabled: false, provider: "manual" }, ...recordFormReference(app, "application") };
   }
 
+  function migrateEditableValues(values, fromFormVersion, toFormVersion) {
+    const next = { ...(values || {}) };
+    const normalized = [];
+    if (!formReleaseAtLeast(fromFormVersion, 14) && formReleaseAtLeast(toFormVersion, 14)) {
+      if (next.reports_attached === "No") {
+        next.reports_attached = "N/A";
+        normalized.push("reports_attached");
+      }
+      if (/^\d{4}-\d{2}-\d{2}$/.test(next.medicare_expiry || "")) {
+        next.medicare_expiry = next.medicare_expiry.slice(0, 7);
+        normalized.push("medicare_expiry");
+      }
+      if (next.future_sibling_count === "7+") {
+        next.future_sibling_count = "7";
+        normalized.push("future_sibling_count");
+      }
+    }
+    return { values: next, normalized };
+  }
+
   async function upgradeEditableApplication(app) {
     if (!app || !["invited", "in_progress"].includes(app.status || "invited") || app.formVersion === currentFormDefinition("application").formVersion) return app;
     const definition = await ensureDefinition(store, "application", currentFormDefinition("application").formVersion);
     const updatedAt = nowIso();
-    const next = { ...app, revision: Number(app.revision || 0) + 1, updatedAt, formVersion: definition.formVersion, formDefinitionHash: definition.definitionHash, schemaVersion: definition.schemaVersion };
-    const audit = createAuditEvent({ workflow: "application", recordId: app.id, invitationId: app.invitationId, type: "application.form_definition_upgraded", at: updatedAt, actorType: "system", actorId: "form-version-service", stage: app.currentStage || "gateway", details: { fromFormVersion: app.formVersion || "legacy", toFormVersion: definition.formVersion, answersPreserved: true } });
+    const migration = migrateEditableValues(app.values, app.formVersion, definition.formVersion);
+    const next = { ...app, values: migration.values, revision: Number(app.revision || 0) + 1, updatedAt, formVersion: definition.formVersion, formDefinitionHash: definition.definitionHash, schemaVersion: definition.schemaVersion };
+    const audit = createAuditEvent({ workflow: "application", recordId: app.id, invitationId: app.invitationId, type: "application.form_definition_upgraded", at: updatedAt, actorType: "system", actorId: "form-version-service", stage: app.currentStage || "gateway", details: { fromFormVersion: app.formVersion || "legacy", toFormVersion: definition.formVersion, answersPreserved: true, normalizedFields: migration.normalized } });
     const operations = [
       sheetOperation("application", "Applications", mapApplicationRow(next), ["application_id"]),
       sheetOperation("operations", "Progress", { application_id: app.id, current_stage: app.currentStage || "gateway", status: app.status || "invited", revision: next.revision, last_saved_at: updatedAt, last_activity_at: updatedAt, percent_complete: Number(app.percentComplete || 0), ...projectionVersion(next, "application") }, ["application_id"]),
       auditSheetOperation(audit)
     ];
-    return store.upgradeApplicationDefinition({ application: next, expectedRevision: app.revision || 0, expectedFormVersion: app.formVersion, revisionRecord: applicationRevision(next, { kind: "form_definition_upgraded", values: next.values, savedAt: updatedAt, changed: [] }), outboxEvents: operations.map(operation => sheetOutbox(operation, clock())), auditEvents: [audit] });
+    return store.upgradeApplicationDefinition({ application: next, expectedRevision: app.revision || 0, expectedFormVersion: app.formVersion, revisionRecord: applicationRevision(next, { kind: "form_definition_upgraded", values: next.values, savedAt: updatedAt, changed: changedFields(app.values, next.values) }), outboxEvents: operations.map(operation => sheetOutbox(operation, clock())), auditEvents: [audit] });
   }
 
   function familyApplicationSummary(app) {
