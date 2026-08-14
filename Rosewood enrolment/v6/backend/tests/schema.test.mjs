@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { APPLICATION_REQUIRED_FIELDS, APPLICATION_SURVEY_FIELDS, APPLICATION_V7_REQUIRED_FIELDS, APPLICATION_V8_REQUIRED_FIELDS, CONTACT_PERMISSION_NO, CONTACT_PERMISSION_YES, sanitizeApplication, splitApplication, validateApplicationForSubmission, validateEoi } from "../schema.mjs";
+import { APPLICATION_REQUIRED_FIELDS, APPLICATION_SURVEY_FIELDS, APPLICATION_V7_REQUIRED_FIELDS, APPLICATION_V8_REQUIRED_FIELDS, APPLICATION_V14_REQUIRED_FIELDS, CONTACT_PERMISSION_NO, CONTACT_PERMISSION_YES, sanitizeApplication, splitApplication, validateApplicationForSubmission, validateEoi } from "../schema.mjs";
 
 function validEoi() {
   return {
@@ -132,6 +132,26 @@ test("V8 retires previous education from the active contract and preserves the o
   const split = splitApplication(validated, "app-synthetic", 1, 2);
   assert.equal(split.conditions.application_mentoring_value, "No");
   assert.equal(split.student.previous_school_attended, undefined);
+});
+
+test("V14 requires a month-and-year Medicare expiry and a positive other-child count", () => {
+  const values = validV7Application();
+  delete values.previous_school_attended;
+  Object.assign(values, {
+    future_siblings: "Yes",
+    future_sibling_count: "2",
+    medicare_expiry: "2030-06"
+  });
+  const validated = validateApplicationForSubmission(values, 1, 2, "rosewood-application-2026.14");
+  assert.ok(APPLICATION_V14_REQUIRED_FIELDS.includes("medicare_expiry"));
+  assert.equal(validated.medicare_expiry, "2030-06");
+
+  values.medicare_expiry = "2030-06-30";
+  values.future_sibling_count = "7+";
+  assert.throws(
+    () => validateApplicationForSubmission(values, 1, 2, "rosewood-application-2026.14"),
+    error => error.details.missing.includes("medicare_expiry:invalid") && error.details.missing.includes("future_sibling_count:invalid")
+  );
 });
 
 test("V8 survey answers remain optional", () => {

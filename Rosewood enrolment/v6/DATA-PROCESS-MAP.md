@@ -156,7 +156,7 @@ prefills approved values. The original EOI remains unchanged.
    sent to that guardian's current permitted application email. No signing task or OTP
    is issued when contact permission is No.
 4. Staff access requires an allowlisted email and OTP.
-5. Family and child-application sessions expire after 20 minutes of inactivity and
+5. Family and child-application sessions expire after 90 minutes of inactivity and
    cannot exceed eight hours after verification. Guardian-signing sessions expire
    after 30 minutes. Staff sessions expire after two hours.
 6. Session tokens stay in browser memory. V6 uses no cookies, local storage, session
@@ -339,7 +339,7 @@ sequenceDiagram
     API->>SES: Send six-digit OTP
     Family->>Page: Enter OTP
     Page->>API: Verify one-time challenge
-    API->>DB: Consume challenge and create 20-minute idle family session
+    API->>DB: Consume challenge and create 90-minute idle family session
     API->>Audit: Record email verification
     API-->>Page: Return only applications attached to the family invitation
     Family->>Page: Select an existing child or enter another child
@@ -351,7 +351,7 @@ sequenceDiagram
 The API returns a generic response when requesting a code so the endpoint does not
 confirm whether an invitation/email combination exists. The browser receives the raw
 family and application session tokens and keeps them only in memory. Activity refreshes
-their 20-minute idle window up to an eight-hour absolute limit. The family token
+their 90-minute idle window up to an eight-hour absolute limit. The family token
 can list/select only the applications attached to its invitation. Every subsequent
 draft, upload and submission request is scoped server-side to the selected child
 application in its separate application session.
@@ -414,7 +414,9 @@ navigation. If the family later reopens the private invitation after expiry, com
 OTP returns them to the last acknowledged section. The child selector has Sign out
 rather than Back, so it cannot return to an already-consumed OTP screen.
 
-The browser mirrors the server's sliding 20-minute inactivity period. A successful
+The browser mirrors the server's sliding 90-minute inactivity period and warns the
+family five minutes before idle expiry. Choosing Continue session performs an
+authorised read and renews the sliding window. A successful
 authenticated request resets the browser timer. If the timer elapses, or the API reports
 an expired/required session, a blocking dialog explains that the last acknowledged
 progress remains safe and whether newer changes may need to be re-entered. It cannot be
@@ -428,8 +430,8 @@ from browser memory and returns to the private Application gateway for a new OTP
 | Student Details | Names, preferred name, DOB, gender, religion, current school/year, intended entry and interrupted schooling | Religion Other and Current School Other reveal required text fields. Interruption details appear after Yes. The separate previous-attendance question is retired in V6.8. | Draft `values`; final Student projection |
 | Student Primary Address | Address sharing, address, suburb, state, postcode, country and compact Home Care Arrangement | Optional Google search fills the existing structured controls; the family reviews/edits them and manual entry remains available. Other care requires details; Shared Custody requires a parenting schedule. | Draft `values`; final Student projection |
 | Family | Whether other children may attend and how many | Count appears only after Yes. | Draft `values`; final Student projection |
-| Nationality and Citizenship | Residence, birth, nationality, ethnicity, arrival/return date, residency, citizenship, evidence, visas, Indigenous status and languages | Non-citizen paths reveal residency evidence; most evidence choices require visa subclass/expiry. | Draft `values`; final Student projection |
-| General / Additional Needs | Formal assessment/report availability, need categories, current and possible Rosewood adjustments, professionals, reports, NDIS, court/parenting orders and other information | Assessment details appear after Yes. Need category and adjustment questions appear after additional-needs Yes; several support fields remain visible regardless. | Draft `values`; final Student projection |
+| Student's Nationality and Citizenship | Residence, birth, nationality, ethnicity, arrival/return date, residency, citizenship, evidence, visas, Indigenous status and languages | Non-citizen paths reveal residency evidence; most evidence choices require visa subclass/expiry. Main Language uses the catalogue; Other Languages is free text. | Draft `values`; final Student projection |
+| General / Additional Needs | Formal assessment/report availability, need categories, current and possible Rosewood adjustments, professionals involved, reports, NDIS, court/parenting orders and other information | Assessment details appear after Yes. Need category and adjustment questions appear after additional-needs Yes; several support fields remain visible regardless. Reports Attached is Yes/N/A. | Draft `values`; final Student projection |
 | Sacraments | Parish and optional sacrament date/location details | Date/location appears for each selected sacrament; future dates are rejected in the browser and backend. | Draft `values`; final Student projection as sacrament JSON |
 | Medical Details | Conditions, allergies, optional EpiPen/Anapen choice, immunisation, humanitarian health, doctor, Medicare number/reference, insurance provider/policy, ambulance and Health Care Card | Other condition reveals text; doctor name/address/phone, Medicare number/reference, ambulance and card response are required; card details appear after Yes. | Draft `values`; final Student projection |
 

@@ -176,6 +176,8 @@ input[type="date"] { width: 100%; max-width: 100%; min-width: 0; }
 .session-expired-card h2 { margin: 0 0 1rem; color: var(--navy); font: 600 clamp(1.8rem, 6vw, 2.45rem) Baskerville, serif; line-height: 1.05; }
 .session-expired-card > p:not(.eyebrow) { margin: 0 0 1rem; color: var(--ink); line-height: 1.65; }
 .session-expired-card .button { width: 100%; margin-top: .5rem; }
+.session-warning-dialog .session-expired-card { border-top: 5px solid var(--amber, #c47a24); }
+.code-validity { margin: -.15rem 0 .85rem; color: var(--navy); font-weight: 650; }
 .gateway-welcome-copy .gateway-policy-note { margin-bottom: .25rem; color: var(--muted); font-size: .84rem; }
 .welcome-policy-links { margin: 0 0 1.1rem; }
 .welcome-policy-links ul { display: flex; flex-wrap: wrap; gap: .25rem 1rem; margin: 0; padding: 0; list-style: none; }

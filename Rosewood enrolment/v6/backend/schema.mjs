@@ -1,5 +1,6 @@
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 export const SCHEMA_VERSION = "rosewood-v6-2026-08-08-form-v8";
 export const CONTACT_PERMISSION_YES = "Yes, the school may contact this person";
@@ -61,6 +62,8 @@ export const APPLICATION_V7_REQUIRED_FIELDS = [
 export const APPLICATION_V8_STATIC_FIELDS = [...APPLICATION_V7_STATIC_FIELDS];
 
 export const APPLICATION_V8_REQUIRED_FIELDS = APPLICATION_V7_REQUIRED_FIELDS.filter(key => key !== "previous_school_attended");
+
+export const APPLICATION_V14_REQUIRED_FIELDS = [...APPLICATION_V8_REQUIRED_FIELDS, "medicare_expiry"];
 
 export const APPLICATION_SURVEY_FIELDS = [
   "application_special_aptitudes",
@@ -141,8 +144,9 @@ export function contactPermissionAllowed(value, formVersion = "rosewood-applicat
 export function validateApplicationForSubmission(input, guardianCount = 1, emergencyCount = 2, formVersion = "rosewood-application-2026.6") {
   const values = sanitizeApplication(input);
   const v8 = formReleaseAtLeast(formVersion, 8);
+  const v14 = formReleaseAtLeast(formVersion, 14);
   const v7OrLater = formReleaseAtLeast(formVersion, 7);
-  const requiredFields = v8 ? APPLICATION_V8_REQUIRED_FIELDS : v7OrLater ? APPLICATION_V7_REQUIRED_FIELDS : APPLICATION_REQUIRED_FIELDS;
+  const requiredFields = v14 ? APPLICATION_V14_REQUIRED_FIELDS : v8 ? APPLICATION_V8_REQUIRED_FIELDS : v7OrLater ? APPLICATION_V7_REQUIRED_FIELDS : APPLICATION_REQUIRED_FIELDS;
   const missing = requiredFields.filter(key => !truthy(values[key]));
   for (let index = 0; index < Math.max(1, Math.min(MAX_GUARDIANS, Number(guardianCount))); index += 1) {
     const prefix = `app_guardian_${index}_`;
@@ -171,6 +175,7 @@ export function validateApplicationForSubmission(input, guardianCount = 1, emerg
   if (arrangements.includes("Other") && !truthy(values.care_other)) missing.push("care_other");
   if (arrangements.includes("Shared Custody") && !truthy(values.shared_parenting)) missing.push("shared_parenting");
   if (values.future_siblings === "Yes" && !truthy(values.future_sibling_count)) missing.push("future_sibling_count");
+  if (v14 && values.future_siblings === "Yes" && (!/^\d+$/.test(values.future_sibling_count || "") || Number(values.future_sibling_count) < 1 || Number(values.future_sibling_count) > 99)) missing.push("future_sibling_count:invalid");
   if (values.australian_citizen === "No" && !truthy(values.residency_evidence)) missing.push("residency_evidence");
   if (values.australian_citizen === "No" && values.residency_evidence && values.residency_evidence !== "Eligible for Australian Passport") for (const key of ["visa_subclass", "visa_expiry"]) if (!truthy(values[key])) missing.push(key);
   if (values.additional_needs === "Yes" && !truthy(values.need_categories)) missing.push("need_categories");
@@ -179,6 +184,7 @@ export function validateApplicationForSubmission(input, guardianCount = 1, emerg
   if ((Array.isArray(values.professional_categories) ? values.professional_categories : [values.professional_categories]).includes("Other") && !truthy(values.professional_other)) missing.push("professional_other");
   if ((Array.isArray(values.medical_conditions) ? values.medical_conditions : [values.medical_conditions]).includes("Other") && !truthy(values.other_medical_condition)) missing.push("other_medical_condition");
   if (v7OrLater && values.healthcare_card === "Yes") for (const key of ["student_healthcare_number", "student_healthcare_expiry"]) if (!truthy(values[key])) missing.push(key);
+  if (v14 && truthy(values.medicare_expiry) && !MONTH_PATTERN.test(values.medicare_expiry)) missing.push("medicare_expiry:invalid");
   if (!v7OrLater) {
     if (values.fee_option === "Both Parents / Guardian") for (const key of ["fee_both_nominee", "fee_both_date"]) if (!truthy(values[key])) missing.push(key);
     if (values.fee_option === "One Parent / Guardian") for (const key of ["fee_one_nominee", "fee_one_date"]) if (!truthy(values[key])) missing.push(key);

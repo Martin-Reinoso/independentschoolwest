@@ -56,6 +56,7 @@ test("invitation emails use the approved direct and EOI-linked variants", () => 
   const signatureExplanation = "You are receiving this email because you were listed as a parent or guardian in a Rosewood College Application for Enrolment and your signature has been requested. Please use the private link below to verify your email, review the application and provide your signature. If you did not expect this request, please do not sign or forward the link and contact enrolment@ffe.org.au.";
   assert.equal(application.subject, "Invitation to Apply for Enrolment at Rosewood College");
   assert.match(application.text, /Thank you for considering Rosewood College for your child’s education/);
+  assert.doesNotMatch(application.text, /opportunity to learn more about your family and your hopes/);
   assert.match(application.text, /same email address that received this invitation/);
   assert.match(application.text, /Rosewood College Enrolment Team/);
   assert.match(application.text, /expires on 4 September 2026/);

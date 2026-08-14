@@ -10,13 +10,14 @@
   const frameSelect = document.querySelector("#frame-select");
   const sessionExpiredDialog = document.querySelector("#session-expired-dialog");
   const sessionExpiredCopy = document.querySelector("#session-expired-copy");
+  const sessionWarningDialog = document.querySelector("#session-warning-dialog");
   const params = new URLSearchParams(location.search);
   const reviewMode = params.get("review") === "1";
   const apiBase = "https://6zyzo44sdb5zmmx53toktqrnuu0sikyd.lambda-url.ap-southeast-2.on.aws";
   const invitationToken = params.get("invite") || "";
   const policyDocuments = window.rosewoodPolicyDocuments || {};
   const policyOrder = ["enrolment-policy", "enrolment-procedure", "privacy-policy"];
-  const SUPPORTED_APPLICATION_FORM_VERSIONS = new Set(["rosewood-application-2026.1", "rosewood-application-2026.2", "rosewood-application-2026.3", "rosewood-application-2026.4", "rosewood-application-2026.5", "rosewood-application-2026.6", "rosewood-application-2026.7", "rosewood-application-2026.8", "rosewood-application-2026.9", "rosewood-application-2026.10", "rosewood-application-2026.11", "rosewood-application-2026.12", "rosewood-application-2026.13"]);
+  const SUPPORTED_APPLICATION_FORM_VERSIONS = new Set(["rosewood-application-2026.1", "rosewood-application-2026.2", "rosewood-application-2026.3", "rosewood-application-2026.4", "rosewood-application-2026.5", "rosewood-application-2026.6", "rosewood-application-2026.7", "rosewood-application-2026.8", "rosewood-application-2026.9", "rosewood-application-2026.10", "rosewood-application-2026.11", "rosewood-application-2026.12", "rosewood-application-2026.13", "rosewood-application-2026.14"]);
   const CONTACT_PERMISSION_YES = "Yes, the school may contact this person";
   const CONTACT_PERMISSION_NO = "No, do not contact this person";
   const APPLICATION_SESSION_STORAGE_KEY = "rosewood-enrolment-v6-active-session";
@@ -53,16 +54,19 @@
     counts: { appGuardian: 2, sibling: 1, futureSibling: 1, relative: 1, emergency: 2, acceptanceGuardian: 2, declineGuardian: 1 }
   };
   let resendTimer;
+  let otpValidityTimer;
   let autosaveTimer;
   let autosaveMaxTimer;
   let sessionExpiryTimer;
+  let sessionWarningTimer;
   let saveQueue = Promise.resolve();
   let googlePlacesPromise;
   const documentUploads = new Map();
   const boundAddressLookups = new WeakSet();
   const AUTOSAVE_DEBOUNCE_MS = 1200;
   const AUTOSAVE_MAX_WAIT_MS = 8000;
-  const APPLICATION_IDLE_SECONDS = 20 * 60;
+  const APPLICATION_IDLE_SECONDS = 90 * 60;
+  const SESSION_WARNING_SECONDS = 5 * 60;
 
   function liveWorkflow() {
     return !reviewMode && ["eoi", "application"].includes(state.workflow);
@@ -242,15 +246,20 @@
 
   function clearSessionExpiryTimer() {
     clearTimeout(sessionExpiryTimer);
+    clearTimeout(sessionWarningTimer);
     sessionExpiryTimer = undefined;
+    sessionWarningTimer = undefined;
   }
 
   function armSessionExpiry(seconds = APPLICATION_IDLE_SECONDS) {
     clearSessionExpiryTimer();
-    if (!liveWorkflow() || state.workflow !== "application" || !(state.sessionToken || state.familySessionToken)) return;
+    if (!liveWorkflow() || state.workflow !== "application" || !(state.sessionToken || state.familySessionToken || state.statusSessionToken)) return;
     const idleDelay = Math.max(1, Number(seconds) || APPLICATION_IDLE_SECONDS) * 1000;
     const absoluteDelay = state.sessionAbsoluteExpiresAt ? Math.max(0, state.sessionAbsoluteExpiresAt - Date.now()) : idleDelay;
-    sessionExpiryTimer = window.setTimeout(showSessionExpired, Math.min(idleDelay, absoluteDelay));
+    const expiryDelay = Math.min(idleDelay, absoluteDelay);
+    const warningDelay = Math.max(0, expiryDelay - SESSION_WARNING_SECONDS * 1000);
+    sessionWarningTimer = window.setTimeout(showSessionWarning, warningDelay);
+    sessionExpiryTimer = window.setTimeout(showSessionExpired, expiryDelay);
   }
 
   function beginSessionExpiry(result) {
@@ -263,24 +272,50 @@
     const unsaved = forceUnsaved || ["dirty", "saving", "offline", "error"].includes(state.saveStatus) || pendingDocumentFiles() || Boolean(state.signatures.application_signature);
     clearAutosaveTimers();
     clearSessionExpiryTimer();
+    if (sessionWarningDialog.open) sessionWarningDialog.close();
     state.saveStatus = "expired";
     sessionExpiredCopy.textContent = unsaved
-      ? "For your security, this session ended after 20 minutes without activity. Your last successfully saved progress is safe, but changes made after the last save may need to be entered again."
-      : "For your security, this session ended after 20 minutes without activity. Your previously saved progress is safe.";
+      ? "For your security, this session ended after 90 minutes without activity. Your last successfully saved progress is safe, but changes made after the last save may need to be entered again."
+      : "For your security, this session ended after 90 minutes without activity. Your previously saved progress is safe.";
     errorSummary.hidden = true;
     updateSaveState(workflows.application.screens[state.screen]);
     sessionExpiredDialog.showModal();
   }
 
+  function showSessionWarning() {
+    if (!liveWorkflow() || state.workflow !== "application" || sessionExpiredDialog.open || sessionWarningDialog.open) return;
+    sessionWarningDialog.showModal();
+  }
+
+  async function continueSession() {
+    const button = document.querySelector("#continue-session");
+    const previous = button.textContent;
+    button.disabled = true;
+    button.textContent = "Continuing...";
+    try {
+      if (state.sessionToken) await api("/v6/application/context", { method: "GET" });
+      else if (state.familySessionToken) await api("/v6/application/family", { method: "GET", authToken: state.familySessionToken });
+      else if (state.statusSessionToken) await api("/v6/application/status", { method: "GET", authToken: state.statusSessionToken });
+      if (sessionWarningDialog.open) sessionWarningDialog.close();
+    } catch (error) {
+      if (sessionWarningDialog.open) sessionWarningDialog.close();
+      showServiceError(error);
+    } finally {
+      button.disabled = false;
+      button.textContent = previous;
+    }
+  }
+
   const yesNo = ["Yes", "No"];
   const languageCatalogue = window.rosewoodLanguageCatalogue || ["English"];
   const years = Array.from({ length: 20 }, (_, index) => String(2027 + index));
-  const primaryLevels = ["Foundation", "Year 1", "Year 2", "Year 3", "Year 4", "Year 5", "Year 6"];
-  const currentLevels = ["Not at School", "Early Years / Kinder", ...primaryLevels];
+  const foundationOption = { value: "Foundation", label: "Foundation (Prep)" };
+  const entryLevels = [foundationOption, "Year 1", "Year 2", "Year 3", "Year 4", "Year 5"];
+  const currentLevels = ["Not at School", "Early Years / Kinder", foundationOption, "Year 1", "Year 2", "Year 3", "Year 4", "Year 5", "Year 6"];
   const titles = ["Mr", "Mrs", "Ms", "Dr", "Miss"];
   const relationships = ["Father", "Mother", "Stepfather", "Stepmother", "Guardian", "Uncle", "Aunt", "Grandparent", "Friend", "Unknown", "Brother"];
   const religions = ["Catholic", "Buddhist", "Christian Other", "Hindu", "Islam / Muslim", "Jewish", "Sikh", "No Religion", "Orthodox", "Pentecostal", "Booked for Baptism", "Evangelical", "Anglican", "Other"];
-  const currentSchools = ["*Not At School", "Our Lady of Rosary", "St Mary's", "Aspire Atherstone", "Aspire Cobblebank", "Aspire Thornhill Park", "Binap Primary School", "Botanica Springs Kindergarten", "Bridge Road Kindergarten", "Brookfield Kindergarten", "Exford Primary School", "Eynesbury Kindergarten", "Eynesbury Primary School", "Kool Kids Weir Views", "Melton South Early Learning Kinder", "Melton South Primary School", "Mt Carberry Preschool", "St Anthony's Catholic Primary School", "St Catherine of Siena Catholic Primary School", "St Dominic's Catholic Primary School", "Strathtulloh Primary School", "Other"];
+  const currentSchools = ["*Not At School", "Aspire Atherstone", "Aspire Cobblebank", "Aspire Thornhill Park", "Binap Primary School", "Botanica Springs Kindergarten", "Bridge Road Kindergarten", "Brookfield Kindergarten", "Exford Primary School", "Eynesbury Kindergarten", "Eynesbury Primary School", "Kool Kids Weir Views", "Melton South Early Learning Kinder", "Melton South Primary School", "Mt Carberry Preschool", "St Anthony's Catholic Primary School", "St Catherine of Siena Catholic Primary School", "St Dominic's Catholic Primary School", "Strathtulloh Primary School", "Other"];
   const needCategories = ["Autism (ASD)", "Acquired Brain Injury", "ADD / ADHD", "Anxiety", "Behavioural Concerns", "Giftedness", "Global Development Delay", "Oral language / communication difficulties", "Intellectual disability / developmental delay", "Physical impairment", "Mental health issues", "Vision impairment", "Hearing impairment", "Other"];
   const professionalCategories = ["Paediatrician", "Psychologist", "Speech Pathologist", "Occupational Therapist", "Physiotherapist", "Other"];
   const medicalConditions = ["No medical condition", "Anaphylaxis", "Asthma", "Diabetes", "Epilepsy", "Migraines", "Other"];
@@ -325,7 +360,7 @@
   ].includes(commitment));
 
   function applicationReleaseNumber() {
-    return Number(String(state.formVersion || "rosewood-application-2026.13").split(".").pop()) || 13;
+    return Number(String(state.formVersion || "rosewood-application-2026.14").split(".").pop()) || 14;
   }
 
   function occupationOptions() {
@@ -372,7 +407,9 @@
     if (options.type === "textarea") {
       control = `<textarea id="${name}" name="${name}" ${attributes(options)}>${esc(value)}</textarea>`;
     } else if (options.type === "select") {
-      control = `<select id="${name}" name="${name}" ${attributes(options)}><option value="">Select...</option>${(options.options || []).map(option => `<option value="${esc(option)}"${value === option ? " selected" : ""}>${esc(option)}</option>`).join("")}</select>`;
+      const configured = (options.options || []).map(option => typeof option === "object" ? option : { value: option, label: option });
+      const legacy = value && !configured.some(option => option.value === value) ? [{ value, label: `${value} (previously selected)` }] : [];
+      control = `<select id="${name}" name="${name}" ${attributes(options)}><option value="">Select...</option>${configured.concat(legacy).map(option => `<option value="${esc(option.value)}"${value === option.value ? " selected" : ""}>${esc(option.label)}</option>`).join("")}</select>`;
     } else if (options.type === "file") {
       control = `<input id="${name}" name="${name}" type="file" ${attributes(options)}><span class="file-state" data-file-state>Nothing selected</span>`;
     } else {
@@ -642,7 +679,7 @@
   function renderOtp(kind) {
     const live = liveWorkflow() && kind === "application";
     return intro("Enter your verification code", live ? "A six-digit code has been sent to your invited email address. It expires after 10 minutes." : "A six-digit code would be sent to the invited email address in production.", workflows[kind].label) +
-      section("Verification", `<div class="field-grid two">${field(`${kind}_code`, "Verification Code", { required: true, maxlength: 6, hint: live ? "Enter the most recent code sent by Rosewood College." : "Review frame only." })}</div><div class="inline-actions"><button type="button" class="button button-secondary" data-action="resend-code" data-resend-kind="${kind}">Resend code</button><button type="button" class="button button-quiet" data-action="back">Change email</button></div><p class="resend-status" data-resend-status="${kind}" aria-live="polite"></p>`) + actions({ label: "Verify" });
+      section("Verification", `<div class="field-grid two">${field(`${kind}_code`, "Verification Code", { required: true, maxlength: 6, hint: live ? "Enter the most recent code sent by Rosewood College." : "Review frame only." })}</div><p class="code-validity" data-code-validity="${kind}" role="status" aria-live="polite">This code is valid for 10:00.</p><div class="inline-actions"><button type="button" class="button button-secondary" data-action="resend-code" data-resend-kind="${kind}">Resend code</button><button type="button" class="button button-quiet" data-action="back">Change email</button></div><p class="resend-status" data-resend-status="${kind}" aria-live="polite"></p>`) + actions({ label: "Verify" });
   }
 
   function renderSelector(kind) {
@@ -688,7 +725,7 @@
     return intro("Expression of Interest Form", "Complete the contact, address and student details below.", "Expression of interest") +
       section("Primary Contact Details", `<div class="field-grid">${field("eoi_language", "Language", { type: "select", options: ["English"] })}${field("eoi_title", "Salutation", { type: "select", options: titles })}${field("eoi_first", "Primary Contact First Name", { required: true })}${field("eoi_last", "Primary Contact Last Name", { required: true })}${field("eoi_relationship", "Relationship", { type: "select", options: relationships.concat("Other"), required: true })}${field("eoi_email", "Email", { type: "email", required: true })}${field("eoi_mobile", "Mobile Phone Number", { type: "tel", required: true, hint: "Australia +61" })}</div><div class="inline-actions"><button type="button" class="button button-quiet" data-static>Refresh language</button></div>${communicationNotice()}`) +
       section("Primary Contact Address", `${addressLookup("eoi-address-search", { line: "eoi_address", suburb: "eoi_suburb", state: "eoi_state", postcode: "eoi_postcode", country: "eoi_country" }, "Find the primary contact address")}<div class="field-grid">${field("eoi_address", "Contact Address", { required: true, className: "span-two", autocomplete: "off" })}${field("eoi_suburb", "Suburb", { required: true, autocomplete: "off" })}${field("eoi_state", "State", { type: "select", options: ["Victoria", "New South Wales", "Australian Capital Territory", "Queensland", "South Australia", "Western Australia", "Tasmania", "Northern Territory"], autocomplete: "off" })}${field("eoi_postcode", "Postcode", { required: true, autocomplete: "off" })}${field("eoi_country", "Contact Country", { required: true, list: "country-list", value: "Australia", autocomplete: "off" })}</div>`) +
-      section("Student Details", `<div class="field-grid">${field("eoi_student_first", "Student First Name", { required: true })}${field("eoi_student_last", "Student Last Name", { required: true })}${field("eoi_dob", "Date of Birth", { type: "date", required: true })}</div>${choices("eoi_gender", "Gender", ["Male", "Female"], { required: true })}<div class="field-grid">${field("eoi_religion", "Religion", { type: "select", options: religions, required: true })}${field("eoi_year", "Year of Enrolment", { type: "select", options: Array.from({ length: 21 }, (_, i) => String(2026 + i)), required: true })}${field("eoi_level", "Year Level of Entry", { type: "select", options: primaryLevels, required: true })}${field("eoi_current_school", "Current School", { type: "select", options: currentSchools })}${field("eoi_current_year", "Current School Year", { type: "select", options: currentLevels })}</div>${choices("eoi_needs", "Additional Needs", yesNo, { required: true })}<div data-conditional="eoi-needs">${field("eoi_need_category", "Please Specify", { type: "select", options: needCategories, required: true })}</div>${choices("eoi_family_connection", "Family Connection", ["Current Family", "Previous Family", "New Family"], { required: true })}${choices("eoi_other_children", "Other children who may attend", yesNo, { required: true })}<div class="field-grid">${field("eoi_discovery", "How did you first hear about the school?", { type: "select", options: discoverySources.concat("Other"), required: true, className: "span-two" })}${field("eoi_information", "Additional Information or Questions", { type: "textarea", className: "span-three" })}</div>`) +
+      section("Student Details", `<div class="field-grid">${field("eoi_student_first", "Student First Name", { required: true })}${field("eoi_student_last", "Student Last Name", { required: true })}${field("eoi_dob", "Date of Birth", { type: "date", required: true })}</div>${choices("eoi_gender", "Gender", ["Male", "Female"], { required: true })}<div class="field-grid">${field("eoi_religion", "Religion", { type: "select", options: religions, required: true })}${field("eoi_year", "Year of Enrolment", { type: "select", options: Array.from({ length: 21 }, (_, i) => String(2026 + i)), required: true })}${field("eoi_level", "Year Level of Entry", { type: "select", options: entryLevels, required: true })}${field("eoi_current_school", "Current School", { type: "select", options: currentSchools })}${field("eoi_current_year", "Current School Year", { type: "select", options: currentLevels })}</div>${choices("eoi_needs", "Additional Needs", yesNo, { required: true })}<div data-conditional="eoi-needs">${field("eoi_need_category", "Please Specify", { type: "select", options: needCategories, required: true })}</div>${choices("eoi_family_connection", "Family Connection", ["Current Family", "Previous Family", "New Family"], { required: true })}${choices("eoi_other_children", "Other children who may attend", yesNo, { required: true })}<div class="field-grid">${field("eoi_discovery", "How did you first hear about the school?", { type: "select", options: discoverySources.concat("Other"), required: true, className: "span-two" })}${field("eoi_information", "Additional Information or Questions", { type: "textarea", className: "span-three" })}</div>`) +
       actions({ label: liveWorkflow() ? "Submit expression of interest" : "Submit expression of interest preview", back: false });
   }
 
@@ -706,13 +743,13 @@
 
   function renderApplicationStudent() {
     return intro("Student", "Provide the student, residence, family, background, support, sacramental and medical information requested in the application.", "Application for enrolment") +
-      section("Student Details", `<div class="field-grid">${field("student_first", "First Name", { required: true, autocomplete: "given-name" })}${field("student_middle", "Middle Name", { autocomplete: "additional-name" })}${field("student_last", "Last Name", { required: true, autocomplete: "family-name" })}${field("student_preferred", "Preferred Name")}${field("student_dob", "Date of Birth", { type: "date", required: true })}${field("student_gender", "Gender", { type: "select", options: ["Male", "Female"], required: true })}${field("student_religion", "Religion", { type: "select", options: religions, required: true })}</div><div class="conditional-panel" data-conditional="other-religion"><div class="field-grid">${field("student_religion_other", "Other religion", { required: true, className: "span-three" })}</div></div><div class="field-grid student-enrolment-grid">${field("current_level", "Current School Year", { type: "select", options: currentLevels, required: true })}${field("entry_year", "Year the student will commence at Rosewood College", { type: "select", options: years, required: true, value: "2027" })}${field("entry_level", "Year Level of Entry at Rosewood College", { type: "select", options: primaryLevels, required: true })}${field("current_school", "Current Early Learning Centre / Kindergarten / Primary School", { type: "select", options: currentSchools, required: true, className: "span-three student-school-field" })}</div><div class="conditional-panel" data-conditional="other-current-school"><div class="field-grid">${field("current_school_other", "Other Early Learning Centre / Kindergarten / Primary School", { required: true, className: "span-three" })}</div></div>${choices("interrupted_schooling", "Interrupted schooling: Has the student experienced any extended absence or interruption to their schooling?", yesNo, { required: true })}<div class="conditional-panel" data-conditional="interrupted-schooling"><div class="field-grid">${field("interrupted_schooling_details", "Please provide approximate dates and brief details", { type: "textarea", required: true, className: "span-three" })}</div></div>`) +
+      section("Student Details", `<div class="field-grid">${field("student_first", "First Name", { required: true, autocomplete: "given-name" })}${field("student_middle", "Middle Name", { autocomplete: "additional-name" })}${field("student_last", "Last Name", { required: true, autocomplete: "family-name" })}${field("student_preferred", "Preferred Name")}${field("student_dob", "Date of Birth", { type: "date", required: true })}${field("student_gender", "Gender", { type: "select", options: ["Male", "Female"], required: true })}${field("student_religion", "Religion", { type: "select", options: religions, required: true })}</div><div class="conditional-panel" data-conditional="other-religion"><div class="field-grid">${field("student_religion_other", "Other religion", { required: true, className: "span-three" })}</div></div><div class="field-grid student-enrolment-grid">${field("current_level", "Current School Year", { type: "select", options: currentLevels, required: true })}${field("entry_year", "Year the student will commence at Rosewood College", { type: "select", options: years, required: true, value: "2027" })}${field("entry_level", "Year Level of Entry at Rosewood College", { type: "select", options: entryLevels, required: true })}${field("current_school", "Current Early Learning Centre / Kindergarten / Primary School", { type: "select", options: currentSchools, required: true, className: "span-three student-school-field" })}</div><div class="conditional-panel" data-conditional="other-current-school"><div class="field-grid">${field("current_school_other", "Other Early Learning Centre / Kindergarten / Primary School", { required: true, className: "span-three" })}</div></div>${choices("interrupted_schooling", "Interrupted schooling: Has the student experienced any extended absence or interruption to their schooling?", yesNo, { required: true })}<div class="conditional-panel" data-conditional="interrupted-schooling"><div class="field-grid">${field("interrupted_schooling_details", "Please provide approximate dates and brief details", { type: "textarea", required: true, className: "span-three" })}</div></div>`) +
       section("Student Primary Address", `${choices("student_address_share", "Share this address with other Parent/Guardian?", ["Yes, share", "No, keep private"], { required: true })}${addressLookup("student-address-search", { line: "student_address", suburb: "student_suburb", state: "student_state", postcode: "student_postcode", country: "student_country" }, "Find the student's address")}<div class="field-grid">${field("student_address", "Address", { required: true, className: "span-two", autocomplete: "off" })}${field("student_suburb", "Suburb", { required: true, autocomplete: "off" })}${field("student_state", "State", { required: true, autocomplete: "off" })}${field("student_postcode", "Postcode", { required: true, autocomplete: "off" })}${field("student_country", "Country", { required: true, list: "country-list", value: "Australia", autocomplete: "off", hint: "Start typing to search the full country catalogue." })}${field("care_arrangement", "Home Care Arrangement", { type: "select", options: ["Both Parents", "Mother Only", "Father Only", "Shared Custody", "Carer / Guardian", "Out-of-home care", "Kinship", "Other"], required: true, className: "span-two" })}</div><div class="conditional-panel" data-conditional="other-care-arrangement"><div class="field-grid">${field("care_other", "Other Care Arrangement", { required: true, className: "span-three" })}</div></div><div class="conditional-panel" data-conditional="shared-parenting"><div class="field-grid">${field("shared_parenting", "Shared Parenting Schedule", { type: "textarea", required: true, className: "span-three" })}</div></div>`) +
-      section("Family", `${choices("future_siblings", "Do you have any other children that may attend our school?", yesNo, { required: true, className: "family-question" })}<div class="conditional-panel" data-conditional="future-siblings">${choices("future_sibling_count", "How many children?", ["1", "2", "3", "4", "5", "6", "7+"], { required: true })}</div>`) +
-      section("Nationality and Citizenship", `<div class="government-context"><strong>Government Requirement</strong><p>The information in this section is about the student and is collected to meet government reporting requirements.</p></div><div class="field-grid country-catalogue-grid">${field("residence_country", "Student's current country of residence", { required: true, list: "country-list", hint: "Start typing to search the full country catalogue." })}${field("birth_country", "Student's country of birth", { required: true, list: "country-list", hint: "In which country was the student born? Start typing to search." })}${field("nationality", "Student's country of nationality", { required: true, list: "country-list", hint: "Start typing to search the full country catalogue." })}${field("ethnicity", "Student's ethnicity", { hint: "If not born in Australia" })}</div><div class="field-grid citizenship-date-row">${field("arrival_date", "When did the student arrive in or return to live in Australia?", { type: "date", className: "span-three mobile-safe-date", hint: "For students born overseas, enter the date they first arrived to live in Australia. If the student previously lived in Australia and later lived overseas, enter the date they most recently returned to live in Australia." })}${field("residency_status", "What is the residential status of the student?", { type: "select", options: ["Permanent", "Temporary"], required: true, className: "span-three" })}</div>${choices("australian_citizen", "Citizenship Status", yesNo, { required: true, intro: "Is the student an Australian citizen?", className: "citizenship-question" })}<div class="conditional-panel" data-conditional="residency-evidence">${choices("residency_evidence", "Evidence of Australian Residency", ["Permanent Resident", "Eligible for Australian Passport", "Temporary Resident", "Other / Visitor / Overseas Student"], { required: true, grid: true })}<div class="conditional-panel visa-panel" data-conditional="visa-details"><p class="visa-evidence-note">Please provide up to date evidence of visa status from the Department of Home Affairs, including any changes to visa or citizenship as soon as notified</p><div class="field-grid">${field("visa_subclass", "Visa subclass", { required: true })}${field("visa_expiry", "Visa expiry", { type: "date", required: true })}${field("previous_visa", "Previous visa subclass")}</div></div></div>${choices("indigenous_status", "Aboriginal / Torres Strait Islander Status", ["Aboriginal", "Torres Strait Islander", "Aboriginal and Torres Strait Islander", "Not Applicable"], { required: true })}<h5 class="content-subheading">Languages</h5><div class="field-grid two">${field("main_language", "Main Language", { list: "language-list", required: true, hint: "Start typing to search the language catalogue." })}${field("other_languages", "Other Languages", { list: "language-list", hint: "Start typing to search." })}</div>`) +
-      section("General / Additional Needs", `<div class="needs-introduction"><p>To meet duty of care obligations and facilitate the smooth transition of your child into the school, please provide all required information. This will assist the school to implement appropriate adjustments and strategies to meet the particular needs of your child. If the information is not provided or is incomplete, incorrect or misleading, current or ongoing enrolment may be reviewed.</p><p class="needs-assurance"><strong>*Please Note:</strong> This information will not impact the offer of enrolment.</p></div>${choices("formal_assessment", "Has the student completed a formal assessment relating to learning, development, wellbeing or giftedness?", yesNo, { required: true })}<div class="conditional-panel" data-conditional="formal-assessment"><div class="field-grid">${field("formal_assessment_details", "Please provide brief details of the assessment", { type: "textarea", required: true, className: "span-three" })}</div>${choices("formal_assessment_report", "Is a report available?", yesNo, { required: true })}</div>${choices("additional_needs", "General / Additional Needs", yesNo, { required: true })}<div data-conditional="additional-needs">${choices("need_categories", "Please Specify", needCategories, { multiple: true, grid: true, required: true })}<div data-conditional="other-need" class="field-grid">${field("need_other", "Other Additional Need", { required: true, className: "span-three" })}</div><div class="field-grid">${field("current_adjustments", "What adjustments or support is currently provided for the student?", { type: "textarea", className: "span-three" })}${field("rosewood_adjustments", "What adjustments or support may assist the student at Rosewood College?", { type: "textarea", className: "span-three" })}</div></div>${choices("professional_categories", "Health Professionals", professionalCategories, { multiple: true, grid: true })}<div data-conditional="other-professional" class="field-grid">${field("professional_other", "Other Health Professional", { required: true })}</div>${choices("reports_attached", "Reports Attached", yesNo, { required: true })}${choices("ndis_support", "NDIS Support", yesNo, { required: true })}${choices("court_orders", "Court or Parenting Orders", yesNo, { required: true })}<div class="field-grid">${field("other_relevant_information", "Other Relevant Information", { type: "textarea", className: "span-three" })}</div>`) +
+      section("Family", `${choices("future_siblings", "Do you have any other children that may attend our school?", yesNo, { required: true, className: "family-question" })}<div class="conditional-panel" data-conditional="future-siblings"><div class="field-grid two">${field("future_sibling_count", "How many other children?", { type: "number", min: 1, max: 99, required: true })}</div></div>`) +
+      section("Student's Nationality and Citizenship", `<div class="government-context"><strong>Government Requirement</strong><p>The information in this section is about the student and is collected to meet government reporting requirements.</p></div><div class="field-grid country-catalogue-grid">${field("residence_country", "Current Country of Residence", { required: true, list: "country-list", hint: "Start typing to search the full country catalogue." })}${field("birth_country", "Country of Birth", { required: true, list: "country-list", hint: "In which country was the student born? Start typing to search." })}${field("nationality", "Country of Nationality", { required: true, list: "country-list", hint: "Start typing to search the full country catalogue." })}${field("ethnicity", "ethnicity", { hint: "If not born in Australia" })}</div><div class="field-grid citizenship-date-row">${field("arrival_date", "When did the student arrive in or return to live in Australia?", { type: "date", className: "span-three mobile-safe-date", hint: "For students born overseas, enter the date they first arrived to live in Australia. If the student previously lived in Australia and later lived overseas, enter the date they most recently returned to live in Australia." })}${field("residency_status", "What is the residential status of the student?", { type: "select", options: ["Permanent", "Temporary"], required: true, className: "span-three" })}</div>${choices("australian_citizen", "Citizenship Status", yesNo, { required: true, intro: "Is the student an Australian citizen?", className: "citizenship-question" })}<div class="conditional-panel" data-conditional="residency-evidence">${choices("residency_evidence", "Evidence of Australian Residency", ["Permanent Resident", "Eligible for Australian Passport", "Temporary Resident", "Other / Visitor / Overseas Student"], { required: true, grid: true })}<div class="conditional-panel visa-panel" data-conditional="visa-details"><p class="visa-evidence-note">Please provide up to date evidence of visa status from the Department of Home Affairs, including any changes to visa or citizenship as soon as notified</p><div class="field-grid">${field("visa_subclass", "Visa subclass", { required: true })}${field("visa_expiry", "Visa expiry", { type: "date", required: true })}${field("previous_visa", "Previous visa subclass")}</div></div></div>${choices("indigenous_status", "Aboriginal / Torres Strait Islander Status", ["Aboriginal", "Torres Strait Islander", "Aboriginal and Torres Strait Islander", "Not Applicable"], { required: true })}<h5 class="content-subheading">Languages</h5><div class="field-grid two">${field("main_language", "Main Language", { list: "language-list", required: true, hint: "Start typing to search the language catalogue." })}${field("other_languages", "Other Languages")}</div>`) +
+      section("General / Additional Needs", `<div class="needs-introduction"><p>To help Rosewood College meet its duty of care and support your child’s transition, please provide complete and accurate information about their learning, development, health and wellbeing needs. This will help us understand and plan appropriate adjustments and support. We may contact you to clarify the information provided or request relevant reports.</p></div>${choices("formal_assessment", "Has the student completed a formal assessment relating to learning, development, wellbeing or giftedness?", yesNo, { required: true })}<div class="conditional-panel" data-conditional="formal-assessment"><div class="field-grid">${field("formal_assessment_details", "Please provide brief details of the assessment", { type: "textarea", required: true, className: "span-three" })}</div>${choices("formal_assessment_report", "Is a report available?", yesNo, { required: true })}</div>${choices("additional_needs", "General / Additional Needs", yesNo, { required: true })}<div data-conditional="additional-needs">${choices("need_categories", "Please Specify", needCategories, { multiple: true, grid: true, required: true })}<div data-conditional="other-need" class="field-grid">${field("need_other", "Other Additional Need", { required: true, className: "span-three" })}</div><div class="field-grid">${field("current_adjustments", "What adjustments or support is currently provided for the student?", { type: "textarea", className: "span-three" })}${field("rosewood_adjustments", "What adjustments or support may assist the student at Rosewood College?", { type: "textarea", className: "span-three" })}</div></div>${choices("professional_categories", "Health professionals involved", professionalCategories, { multiple: true, grid: true })}<div data-conditional="other-professional" class="field-grid">${field("professional_other", "Other Health Professional", { required: true })}</div>${choices("reports_attached", "Reports Attached", ["Yes", "N/A"], { required: true })}${choices("ndis_support", "NDIS Support", yesNo, { required: true })}${choices("court_orders", "Court or Parenting Orders", yesNo, { required: true })}<div class="field-grid">${field("other_relevant_information", "Other Relevant Information", { type: "textarea", className: "span-three" })}</div>`) +
       section("Sacraments", `<div class="field-grid">${field("parish", "Parish where student lives", { className: "span-three" })}</div>${["Baptism", "Reconciliation", "Eucharist", "Confirmation"].map(item => `${check(`sacrament_${item}`, item)}<div class="conditional-panel" data-sacrament="sacrament_${item}"><div class="field-grid two">${field(`sacrament_${item}_date`, `${item} Date`, { type: "date", max: melbourneDate() })}${field(`sacrament_${item}_location`, `${item} Location`)}</div></div>`).join("")}`) +
-      section("Medical Details", `${choices("medical_conditions", "Medical Conditions", medicalConditions, { multiple: true, grid: true, required: true })}<div data-conditional="other-medical" class="field-grid">${field("other_medical_condition", "Other medical condition", { required: true, className: "span-three" })}</div><div class="field-grid">${field("condition_details", "Condition Details", { type: "textarea", className: "span-two" })}${field("allergy_details", "Allergy Details", { type: "textarea" })}</div>${choices("anaphylaxis_risk", "Anaphylaxis Risk", yesNo, { required: true })}${choices("anaphylaxis_device", "EpiPen / Anapen", ["EpiPen", "Anapen"], { multiple: true, max: 1, hint: "Optional. Select the active option again to clear it." })}<div class="immunisation-guidance"><p>Vaccinations are recorded on the Australian Immunisation Register (AIR). <a class="immunisation-law-link" href="https://www.health.vic.gov.au/immunisation/primary-school-immunisation-requirements" target="_blank" rel="noopener noreferrer">Victorian law <span class="external-link-mark" aria-hidden="true">&#8599;</span><span class="visually-hidden"> (opens in a new tab)</span></a> requires an Immunisation History Statement for primary school enrolment, regardless of the child’s vaccination status. You can obtain the statement through myGov and upload it later in this application.</p></div>${choices("immunisation", "Is Immunisation History Statement held and will be uploaded with this application?", yesNo, { required: true })}${choices("humanitarian_health", "If the student entered Australia on a humanitarian visa, did they receive a refugee health check?", yesNo)}<div class="field-grid">${field("doctor_name", "Doctor Name", { required: true })}${field("doctor_address", "Doctor's practice/Address", { required: true, className: "span-two" })}${field("doctor_phone", "Doctor Phone", { type: "tel", required: true })}${field("medicare_number", "Medicare Number", { required: true })}${field("medicare_reference", "Medicare Ref Number", { required: true })}${field("medicare_expiry", "Medicare Expiry", { type: "date" })}${field("private_insurance_provider", "Private health insurance provider")}${field("private_insurance_policy", "Private health insurance policy number")}</div>${choices("ambulance_cover", "Ambulance Cover", yesNo, { required: true })}${choices("healthcare_card", "Health Care Card", yesNo, { required: true })}<div class="conditional-panel" data-student-healthcare="healthcare_card"><div class="field-grid two">${field("student_healthcare_number", "Health Care Card No.", { required: true })}${field("student_healthcare_expiry", "Health Care Card Expiry", { type: "date", required: true })}</div></div>`) + actions();
+      section("Medical Details", `${choices("medical_conditions", "Medical Conditions", medicalConditions, { multiple: true, grid: true, required: true })}<div data-conditional="other-medical" class="field-grid">${field("other_medical_condition", "Other medical condition", { required: true, className: "span-three" })}</div><div class="field-grid">${field("condition_details", "Condition Details", { type: "textarea", className: "span-two" })}${field("allergy_details", "Allergy Details", { type: "textarea" })}</div>${choices("anaphylaxis_risk", "Anaphylaxis Risk", yesNo, { required: true })}${choices("anaphylaxis_device", "EpiPen / Anapen", ["EpiPen", "Anapen"], { multiple: true, max: 1, hint: "Optional. Select the active option again to clear it." })}<div class="immunisation-guidance"><p>Vaccinations are recorded on the Australian Immunisation Register (AIR). <a class="immunisation-law-link" href="https://www.health.vic.gov.au/immunisation/primary-school-immunisation-requirements" target="_blank" rel="noopener noreferrer">Victorian law <span class="external-link-mark" aria-hidden="true">&#8599;</span><span class="visually-hidden"> (opens in a new tab)</span></a> requires an Immunisation History Statement for primary school enrolment, regardless of the child’s vaccination status. You can obtain the statement through myGov and upload it later in this application.</p></div>${choices("immunisation", "Is Immunisation History Statement held and will be uploaded with this application?", yesNo, { required: true })}${choices("humanitarian_health", "If the student entered Australia on a humanitarian visa, did they receive a refugee health check?", yesNo)}<div class="field-grid">${field("doctor_name", "Doctor Name", { required: true })}${field("doctor_address", "Doctor's practice/Address", { required: true, className: "span-two" })}${field("doctor_phone", "Doctor Phone", { type: "tel", required: true })}${field("medicare_number", "Medicare Number", { required: true })}${field("medicare_reference", "Medicare Ref Number", { required: true })}${field("medicare_expiry", "Medicare Expiry", { type: "month", required: true })}${field("private_insurance_provider", "Private health insurance provider")}${field("private_insurance_policy", "Private health insurance policy number")}</div>${choices("ambulance_cover", "Ambulance Cover", yesNo, { required: true })}${choices("healthcare_card", "Health Care Card", yesNo, { required: true })}<div class="conditional-panel" data-student-healthcare="healthcare_card"><div class="field-grid two">${field("student_healthcare_number", "Health Care Card No.", { required: true })}${field("student_healthcare_expiry", "Health Care Card Expiry", { type: "date", required: true })}</div></div>`) + actions();
   }
 
   function applicationGuardianFields(index) {
@@ -834,7 +871,7 @@
   }
 
   function renderSigningOtp() {
-    return intro("Enter the code", "A code has been sent to your email address. Enter the code to continue.", "Guardian signing") + section("Verification", `<div class="field-grid two">${field("signing_code", "Verification Code", { required: true, maxlength: 6, hint: "Use 123456 in this frontend review. Production codes expire after 30 minutes." })}</div><div class="inline-actions"><button type="button" class="button button-secondary" data-action="resend-code" data-resend-kind="signing">Resend code</button><button type="button" class="button button-quiet" data-action="back">Change email</button></div><p class="resend-status" data-resend-status="signing" aria-live="polite"></p>`) + actions({ label: "Verify" });
+    return intro("Enter the code", "A code has been sent to your email address. Enter the code to continue.", "Guardian signing") + section("Verification", `<div class="field-grid two">${field("signing_code", "Verification Code", { required: true, maxlength: 6, hint: "Use 123456 in this frontend review. Production codes expire after 10 minutes." })}</div><div class="inline-actions"><button type="button" class="button button-secondary" data-action="resend-code" data-resend-kind="signing">Resend code</button><button type="button" class="button button-quiet" data-action="back">Change email</button></div><p class="resend-status" data-resend-status="signing" aria-live="polite"></p>`) + actions({ label: "Verify" });
   }
 
   function renderSigningIntroduction() {
@@ -915,7 +952,7 @@
   }
 
   function renderDeclineStudent() {
-    return intro("Student", "Confirm the student and provide the required decline information.", "Decline of Enrolment Offer") + section("Student Details", `<div class="field-grid">${field("decline_first", "First Name", { value: "Avery", required: true })}${field("decline_last", "Last Name", { value: "Example", required: true })}${choices("decline_gender", "Gender", ["Male", "Female"], { required: true, className: "span-three" })}${field("decline_school", "School Name", { value: "Rosewood College", readonly: true, required: true })}${field("decline_level", "Year Level Commencing", { type: "select", options: primaryLevels, required: true, hint: "Please select a year level" })}${field("decline_year", "Commencement Year", { type: "select", options: years, required: true, hint: "Please select a starting year" })}</div>`) + section("Decline of Enrolment Offer", choices("decline_offer", "Decision", ["Thank you for your offer of a place, but we will not be seeking a place at Rosewood College."], { required: true }) + `<div class="field-grid">${field("decline_reason", "Reason for Decline", { type: "textarea", required: true, className: "span-three" })}${field("decline_destination", "Name of School", { required: true, className: "span-two", hint: "Please provide the name of the school where you will be enrolling your child." })}</div>`) + actions();
+    return intro("Student", "Confirm the student and provide the required decline information.", "Decline of Enrolment Offer") + section("Student Details", `<div class="field-grid">${field("decline_first", "First Name", { value: "Avery", required: true })}${field("decline_last", "Last Name", { value: "Example", required: true })}${choices("decline_gender", "Gender", ["Male", "Female"], { required: true, className: "span-three" })}${field("decline_school", "School Name", { value: "Rosewood College", readonly: true, required: true })}${field("decline_level", "Year Level Commencing", { type: "select", options: entryLevels, required: true, hint: "Please select a year level" })}${field("decline_year", "Commencement Year", { type: "select", options: years, required: true, hint: "Please select a starting year" })}</div>`) + section("Decline of Enrolment Offer", choices("decline_offer", "Decision", ["Thank you for your offer of a place, but we will not be seeking a place at Rosewood College."], { required: true }) + `<div class="field-grid">${field("decline_reason", "Reason for Decline", { type: "textarea", required: true, className: "span-three" })}${field("decline_destination", "Name of School", { required: true, className: "span-two", hint: "Please provide the name of the school where you will be enrolling your child." })}</div>`) + actions();
   }
 
   function renderDeclineGuardians() {
@@ -1097,6 +1134,7 @@
 
   function render() {
     clearInterval(resendTimer);
+    clearInterval(otpValidityTimer);
     const workflow = workflows[state.workflow];
     const policy = activePolicy();
     if (policy) {
@@ -1149,7 +1187,10 @@
     bindCanvas();
     showInlineServerValidation();
     const resendButton = root.querySelector("[data-resend-kind]");
-    if (resendButton && state.otpResends[resendButton.dataset.resendKind]) startResendCountdown(resendButton.dataset.resendKind);
+    if (resendButton && state.otpResends[resendButton.dataset.resendKind]) {
+      startResendCountdown(resendButton.dataset.resendKind);
+      startOtpValidityCountdown(resendButton.dataset.resendKind);
+    }
     const panel = document.querySelector(".form-panel");
     if (panel && state.screen > 0) panel.scrollIntoView({ block: "start" });
     persistBrowserSession();
@@ -1448,6 +1489,24 @@
     resendTimer = setInterval(update, 1000);
   }
 
+  function startOtpValidityCountdown(kind) {
+    clearInterval(otpValidityTimer);
+    const update = () => {
+      const record = state.otpResends[kind];
+      const status = root.querySelector(`[data-code-validity="${CSS.escape(kind)}"]`);
+      if (!record?.expiresAt || !status) return clearInterval(otpValidityTimer);
+      const seconds = Math.max(0, Math.ceil((record.expiresAt - Date.now()) / 1000));
+      const minutes = Math.floor(seconds / 60);
+      const remainder = String(seconds % 60).padStart(2, "0");
+      status.textContent = seconds > 0
+        ? `This code is valid for ${minutes}:${remainder}. The resend delay below does not shorten this time.`
+        : "This code has expired. Request a new code to continue.";
+      if (!seconds) clearInterval(otpValidityTimer);
+    };
+    update();
+    otpValidityTimer = setInterval(update, 1000);
+  }
+
   async function resendCode(kind) {
     const record = state.otpResends[kind] || { count: 0, availableAt: 0 };
     state.otpResends[kind] = record;
@@ -1464,12 +1523,14 @@
         state.challengeId = result.challengeId;
         record.count += 1;
         record.availableAt = Date.now() + result.resendAfterSeconds * 1000;
+        record.expiresAt = Date.now() + result.expiresInSeconds * 1000;
         status.textContent = "A new code has been sent if the invitation and email address match.";
       } catch (error) {
         status.textContent = error.message;
         record.availableAt = Date.now() + 30000;
       }
-      return startResendCountdown(kind);
+      startResendCountdown(kind);
+      return startOtpValidityCountdown(kind);
     }
     window.setTimeout(() => {
       record.count += 1;
@@ -2031,7 +2092,7 @@
       setBusy(true, "Sending code...");
       const result = await api("/v6/application/access/request-code", { method: "POST", body: JSON.stringify({ invitationToken, email: state.values.application_gateway_email }) });
       state.challengeId = result.challengeId;
-      state.otpResends.application = { count: 1, availableAt: Date.now() + result.resendAfterSeconds * 1000 };
+      state.otpResends.application = { count: 1, availableAt: Date.now() + result.resendAfterSeconds * 1000, expiresAt: Date.now() + result.expiresInSeconds * 1000 };
       return next();
     }
     if (state.screen === 1) {
@@ -2251,7 +2312,9 @@
 
   frameSelect.addEventListener("change", () => { captureValues(); state.screen = Number(frameSelect.value); render(); });
   sessionExpiredDialog.addEventListener("cancel", event => event.preventDefault());
+  sessionWarningDialog.addEventListener("cancel", event => event.preventDefault());
   document.querySelector("#return-to-sign-in").addEventListener("click", returnToSignIn);
+  document.querySelector("#continue-session").addEventListener("click", continueSession);
   window.addEventListener("offline", () => {
     if (!applicationDraftActive()) return;
     clearAutosaveTimers();

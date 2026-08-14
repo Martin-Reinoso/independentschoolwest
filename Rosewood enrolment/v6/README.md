@@ -82,7 +82,7 @@ The family page does not store application answers in cookies, local storage, se
 storage or IndexedDB. It stores only opaque family/application/status session tokens,
 the verified email, current screen and absolute expiry in per-tab `sessionStorage` so a
 refresh can resume without another OTP while the server session is valid. Family and
-child-application sessions expire after 20 minutes of
+child-application sessions expire after 90 minutes of
 inactivity, with an eight-hour absolute limit. A family invitation and email OTP reveal
 only the child records attached to that invitation; selecting or creating a child
 produces a separate application-scoped session. Application answers autosave after a
@@ -200,5 +200,6 @@ live/preview boundaries. See these records together with
 
 `V6.7-CHANGE-MAP.md`, `V6.8-CHANGE-MAP.md`, `V6.9-CHANGE-MAP.md` and
 `V6.10-CHANGE-MAP.md` record the preceding contract releases.
-`V6.11-CHANGE-MAP.md`, `V6.12-CHANGE-MAP.md` and `V6.13-CHANGE-MAP.md` record the
-current interface, immunisation-guidance and upload-recovery releases.
+`V6.11-CHANGE-MAP.md`, `V6.12-CHANGE-MAP.md`, `V6.13-CHANGE-MAP.md` and
+`V6.14-CHANGE-MAP.md` record the current interface, immunisation-guidance,
+upload-recovery and family-feedback releases.

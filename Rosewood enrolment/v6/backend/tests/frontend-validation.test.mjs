@@ -84,6 +84,34 @@ test("V6.8 exposes the revised responsive application experience without retired
   assert.match(adminSource, /rosewood-enrolment-staff-v6-session/);
 });
 
+test("V6.14 applies the approved family feedback without weakening verification or saved-draft safety", async () => {
+  const [source, html] = await Promise.all([
+    readFile(new URL("../../../../pages/rosewood-enrolment-v6.js", import.meta.url), "utf8"),
+    readFile(new URL("../../../../pages/rosewood-enrolment-v6.html", import.meta.url), "utf8")
+  ]);
+  const studentSource = source.slice(source.indexOf("function renderApplicationStudent"), source.indexOf("function applicationGuardianFields"));
+  assert.match(source, /const APPLICATION_IDLE_SECONDS = 90 \* 60/);
+  assert.match(source, /const SESSION_WARNING_SECONDS = 5 \* 60/);
+  assert.match(html, /Your session will expire soon/);
+  assert.match(source, /This code is valid for \$\{minutes\}:\$\{remainder\}/);
+  assert.match(source, /The resend delay below does not shorten this time/);
+  assert.match(source, /label: "Foundation \(Prep\)"/);
+  assert.doesNotMatch(source.slice(source.indexOf("const entryLevels"), source.indexOf("const currentLevels")), /Year 6/);
+  assert.doesNotMatch(source.slice(source.indexOf("const currentSchools"), source.indexOf("const needCategories")), /Our Lady of Rosary|St Mary's/);
+  assert.match(studentSource, /How many other children\?/);
+  assert.match(studentSource, /future_sibling_count.*type: "number"/);
+  assert.match(studentSource, /Student's Nationality and Citizenship/);
+  assert.match(studentSource, /Current Country of Residence/);
+  assert.match(studentSource, /Country of Birth/);
+  assert.match(studentSource, /Country of Nationality/);
+  assert.match(studentSource, /Health professionals involved/);
+  assert.match(studentSource, /reports_attached", "Reports Attached", \["Yes", "N\/A"\]/);
+  assert.match(studentSource, /medicare_expiry", "Medicare Expiry", \{ type: "month", required: true \}/);
+  assert.match(studentSource, /field\("other_languages", "Other Languages"\)/);
+  assert.doesNotMatch(studentSource, /This information will not impact the offer of enrolment/);
+  assert.match(studentSource, /We may contact you to clarify the information provided or request relevant reports/);
+});
+
 test("guardian signing renders the complete server-provided application review", async () => {
   const [source, html, css] = await Promise.all([
     readFile(new URL("../../../../pages/rosewood-application-sign-v6.js", import.meta.url), "utf8"),

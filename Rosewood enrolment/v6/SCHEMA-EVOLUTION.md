@@ -29,8 +29,8 @@ deliberately creating a new version.
 Current launch contracts:
 
 ```text
-EOI:         rosewood-eoi-2026.13
-Application: rosewood-application-2026.13
+EOI:         rosewood-eoi-2026.14
+Application: rosewood-application-2026.14
 ```
 
 The original `2026.1`, `2026.2`, `2026.3` and `2026.4` contracts and validators remain
@@ -108,6 +108,15 @@ attempts and their stale page/card warnings for that category before the new tra
 begins. Cancellation, successful uploads, active transfers and failures in other
 categories are preserved. EOI advances only because it shares the repinned family HTML
 and JavaScript. No schema, answer, validation, projection or storage contract changes.
+The `2026.14` release changes the active Application question/validation contract. It
+requires Medicare expiry as month/year, changes the conditional other-child count to a
+positive whole number, updates approved labels/needs guidance, changes Reports Attached
+to Yes/N/A, removes Year 6 and two schools from new catalogue choices, and makes Other
+Languages free text. Editable older drafts upgrade conditionally: Reports Attached No
+becomes N/A, a full Medicare date retains its year/month, and 7+ becomes 7. The upgrade
+records the changed keys and normalized fields while preserving every other answer.
+Submitted records and signature evidence never upgrade. EOI advances because it shares
+the repinned frontend and entry/school catalogues.
 
 Acceptance, Decline and the Enrolment Agreement must receive their own independent
 version series when their backends are built. They must not reuse the Application
