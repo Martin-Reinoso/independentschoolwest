@@ -93,19 +93,23 @@ API and Places API (New). Never commit the key or print it in logs.
   `#enrolments-committee` and completed Applications to board-access-only `#enrolments`
 - CloudWatch error alarm and 90-day application logs
 - SNS email alerts for Lambda errors and failed backup/restore jobs
-- a read-only EventBridge production canary every 30 minutes
-- independent CloudWatch alarms for public form assets, backend health/form versions and
-  EOI Google-address configuration
+- a read-only EventBridge production canary every 10 minutes
+- independent CloudWatch alarms for public form assets, backend health/form versions,
+  EOI Google-address configuration, protected workflow routes and stale outbox work
+- separate alarms for Lambda errors/throttling, terminal outbox failure and SES
+  transactional-email delivery failure
 - alarm and recovery email notifications through the existing encrypted SNS topic to
   `info@ffe.org.au` and `frjativa@gmail.com`
 
-The production canary performs only public `GET` requests. It does not create an EOI,
-invitation, OTP, session, application, upload, signature or email. Every run publishes
-three aggregate availability values in the `Rosewood/Enrolment` namespace. An alarm
-changes to `ALARM` after two consecutive failed or missing 30-minute observations and
-returns to `OK` after recovery. Persistent failures therefore do not generate an email
-on every run. New SNS email subscriptions require the recipient to confirm the AWS
-subscription once before alerts can be delivered.
+The production canary performs only public or deliberately unauthenticated `GET`
+requests plus a projection-limited DynamoDB query for pending outbox timestamps and
+attempt counters. It does not load outbox payloads or create an EOI, invitation, OTP,
+session, application, upload, signature or email. Every run publishes five aggregate
+availability values in the `Rosewood/Enrolment` namespace. An availability alarm changes
+to `ALARM` after two consecutive failed or missing 10-minute observations and returns
+to `OK` after recovery. Persistent failures therefore do not generate an email on every
+run. New SNS email subscriptions require the recipient to confirm the AWS subscription
+once before alerts can be delivered.
 
 Slack is a notification surface only. `SLACK_PENDING_WEBHOOK_URL` and
 `SLACK_COMPLETION_WEBHOOK_URL` are held in the existing AWS configuration secret and

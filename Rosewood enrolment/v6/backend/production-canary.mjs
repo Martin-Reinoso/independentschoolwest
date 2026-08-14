@@ -1,8 +1,10 @@
 import { CloudWatchClient, PutMetricDataCommand } from "@aws-sdk/client-cloudwatch";
+import { DynamoStore } from "./dynamo-store.mjs";
 import { currentFormDefinition } from "./form-definitions.mjs";
 
 const METRIC_NAMESPACE = "Rosewood/Enrolment";
 const REQUEST_TIMEOUT_MS = 10_000;
+const OUTBOX_STALE_AFTER_MS = 15 * 60_000;
 
 const PUBLIC_ASSETS = [
   {
@@ -56,6 +58,21 @@ async function fetchResponse(fetchImpl, url, options = {}) {
   return response;
 }
 
+async function fetchExpectedSessionRequired(fetchImpl, url, siteBaseUrl) {
+  const response = await fetchImpl(url, {
+    cache: "no-store",
+    redirect: "follow",
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    headers: {
+      origin: siteBaseUrl,
+      "user-agent": "Rosewood-Enrolment-Production-Canary/1.0"
+    }
+  });
+  if (response.status !== 401) throw new Error(`Protected workflow route returned HTTP ${response.status}.`);
+  const payload = await response.json();
+  if (payload?.error !== "SESSION_REQUIRED") throw new Error("Protected workflow route did not fail closed.");
+}
+
 async function checkPublicAssets({ fetchImpl, siteBaseUrl }) {
   await Promise.all(PUBLIC_ASSETS.map(async asset => {
     const response = await fetchResponse(fetchImpl, `${siteBaseUrl}${asset.path}`);
@@ -96,6 +113,27 @@ async function checkEoiAddressConfiguration({ fetchImpl, apiBaseUrl, siteBaseUrl
   }
 }
 
+async function checkApplicationWorkflow({ fetchImpl, apiBaseUrl, siteBaseUrl }) {
+  await Promise.all([
+    "/v6/application/context",
+    "/v6/application/status",
+    "/v6/staff/dashboard"
+  ].map(path => fetchExpectedSessionRequired(fetchImpl, `${apiBaseUrl}${path}`, siteBaseUrl)));
+}
+
+async function checkOperationalPipeline({ operationalStore, now }) {
+  const pending = await operationalStore.inspectOutbox(25);
+  if (!Array.isArray(pending)) throw new Error("The delivery queue could not be inspected.");
+  if (!pending.length) return;
+
+  const createdTimes = pending.map(item => Date.parse(item?.data?.createdAt || ""));
+  if (createdTimes.some(value => !Number.isFinite(value))) throw new Error("The delivery queue contains an invalid timestamp.");
+  const oldestAgeMs = now.getTime() - Math.min(...createdTimes);
+  if (oldestAgeMs > OUTBOX_STALE_AFTER_MS) {
+    throw new Error("The email, Sheets or Slack delivery queue has been pending for more than 15 minutes.");
+  }
+}
+
 async function observedCheck(name, check) {
   const startedAt = Date.now();
   try {
@@ -115,14 +153,18 @@ export async function runProductionCanary({
   env = process.env,
   fetchImpl = fetch,
   metricsClient = new CloudWatchClient({}),
+  operationalStore,
   now = new Date()
 } = {}) {
   const siteBaseUrl = baseUrl(env.PUBLIC_SITE_BASE_URL || "https://ffe.org.au", "PUBLIC_SITE_BASE_URL");
   const apiBaseUrl = baseUrl(env.PUBLIC_API_BASE_URL, "PUBLIC_API_BASE_URL");
+  const pipelineStore = operationalStore || new DynamoStore({ tableName: env.ROSEWOOD_TABLE_NAME });
   const checks = await Promise.all([
     observedCheck("PublicFormAvailability", () => checkPublicAssets({ fetchImpl, siteBaseUrl })),
     observedCheck("BackendHealthAvailability", () => checkBackendHealth({ fetchImpl, apiBaseUrl })),
-    observedCheck("EoiAddressAvailability", () => checkEoiAddressConfiguration({ fetchImpl, apiBaseUrl, siteBaseUrl }))
+    observedCheck("EoiAddressAvailability", () => checkEoiAddressConfiguration({ fetchImpl, apiBaseUrl, siteBaseUrl })),
+    observedCheck("ApplicationWorkflowAvailability", () => checkApplicationWorkflow({ fetchImpl, apiBaseUrl, siteBaseUrl })),
+    observedCheck("OperationalPipelineAvailability", () => checkOperationalPipeline({ operationalStore: pipelineStore, now }))
   ]);
 
   await metricsClient.send(new PutMetricDataCommand({

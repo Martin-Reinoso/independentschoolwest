@@ -890,3 +890,81 @@ signature or family record was created or changed.
   reports no errors
 - AWS CloudFormation template validation and production deployment remain pending
   because the local AWS CLI session expired before the read-only validation call
+## SES Configuration-Set Permission Hotfix
+
+Diagnosed and repaired in production on 13 August 2026 after a staff access-code request
+returned the generic service error.
+
+- CloudWatch identified an AWS authorization failure on
+  `POST /v6/staff/access/request-code`: the Lambda role could send through the verified
+  sender identity but did not yet include the newly managed SES configuration-set ARN
+  in the `ses:SendEmail` resource list
+- the runtime policy now grants `ses:SendEmail` only to the verified `ffe.org.au`
+  identity, exact `enrolment@ffe.org.au` identity and
+  `rosewood-enrolment-v6-production-transactional` configuration set, while retaining
+  the exact From-address condition
+- the infrastructure regression test requires the configuration-set resource in the
+  Lambda role; all 94 backend tests, both repository safety gates, `git diff --check`,
+  the frozen-lockfile deployment build and CloudFormation validation pass
+- reviewed change set `rosewood-ses-login-permission-hotfix-20260813-1719` had one
+  static modification: the inline policy on `RosewoodRole`; it made no Lambda code,
+  database, storage, secret, backup, Google integration or form-contract change
+- CloudFormation reached `UPDATE_COMPLETE`; the Lambda remained `Active` with a
+  successful last update and `/v6/health` continued to return HTTP 200
+- stack-level termination protection is enabled in addition to both authoritative
+  tables' deletion protection
+- one authorised production staff access-code request returned HTTP 200, created a
+  valid challenge with the documented expiry and produced no Lambda error
+- the resulting message reached the `info@ffe.org.au` Inbox; Gmail authentication
+  results reported SPF, DKIM and DMARC pass. The verification code and private message
+  identifiers are not recorded in this evidence
+- a post-hotfix read-only production canary returned HTTP 200 with no function error;
+  public forms, backend V6.11 health and EOI address configuration all remained
+  available, and all five production alarms remained `OK`
+
+## Ten-Minute Production Monitoring Hardening
+
+Implemented and verified locally on 13 August 2026 without creating an EOI,
+invitation, OTP, session, application, upload, signature, workflow email or Slack
+notification.
+
+- the non-writing canary cadence advances from 30 minutes to 10 minutes; availability
+  alarms still require two consecutive failures or missing observations before paging
+  and send a recovery notification after service returns
+- `ApplicationWorkflowAvailability` verifies that Application context/status and staff
+  dashboard routes remain reachable while rejecting unauthenticated access with
+  `SESSION_REQUIRED`
+- `OperationalPipelineAvailability` detects email, Sheets or Slack work pending for
+  more than 15 minutes through a projection-limited DynamoDB query that reads only
+  creation timestamps and attempt counters, never queued payloads
+- separate alarms detect Lambda throttling and idempotently recorded SES bounce,
+  complaint, rejection or rendering failure; the existing Lambda error and permanent
+  outbox-failure alarms remain unchanged
+- all alarm actions use the existing encrypted security topic with confirmed
+  `info@ffe.org.au` and `frjativa@gmail.com` subscriptions; healthy checks remain silent
+- all 96 backend tests pass, including healthy/failing protected-route checks, stale
+  pipeline detection, metric independence and payload non-disclosure
+- 73 tracked HTML/CSS files pass the static-reference gate, 364 tracked files pass the
+  private-data/secret gate, JavaScript syntax and `git diff --check` pass, the locked
+  production deployment build succeeds and CloudFormation validates
+- reviewed no-execute change set
+  `rosewood-monitoring-hardening-20260813-a1d6951` added only the two availability
+  alarms, Lambda-throttle alarm, SES-delivery-failure alarm and log metric; it updated
+  the canary cadence/periods and Lambda code in place and recalculated existing event
+  targets/permissions without modifying or replacing DynamoDB, audit, KMS, backups,
+  document staging, Google configuration, Secrets Manager or form contracts
+- CloudFormation reached `UPDATE_COMPLETE`, stack termination protection remains
+  enabled, Lambda is `Active` with a successful update, the one-minute outbox rule is
+  enabled and the canary rule is enabled at `rate(10 minutes)`
+- a manual non-writing production canary returned HTTP 200 with no function error; all
+  five checks reported `available=true`, including the protected workflow and projected
+  delivery-pipeline checks
+- the first automatic 10-minute EventBridge run published fresh healthy datapoints for
+  all five metrics at 00:32 Melbourne time; all nine alarms remained `OK` and Lambda
+  reported zero errors throughout the deployment verification window
+- `/v6/health` returned HTTP 200 with EOI `rosewood-eoi-2026.11` and Application
+  `rosewood-application-2026.11`; all nine production alarms are `OK`
+- both encrypted security-topic subscriptions remain confirmed for `info@ffe.org.au`
+  and `frjativa@gmail.com`; no setup/test alert, OTP, workflow email or Slack message
+  was sent deliberately
+- deployment source commit `a1d6951` is the tested monitoring release

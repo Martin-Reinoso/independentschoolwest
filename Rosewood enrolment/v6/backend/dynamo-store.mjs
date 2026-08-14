@@ -445,6 +445,19 @@ export class DynamoStore {
     return response.Items || [];
   }
 
+  async inspectOutbox(limit = 25) {
+    const response = await this.client.send(new QueryCommand({
+      TableName: this.tableName,
+      KeyConditionExpression: "PK = :pk AND begins_with(SK, :prefix)",
+      ExpressionAttributeNames: { "#data": "data", "#createdAt": "createdAt", "#attempts": "attempts" },
+      ExpressionAttributeValues: { ":pk": "OUTBOX", ":prefix": "PENDING#" },
+      ProjectionExpression: "#data.#createdAt, #attempts",
+      Limit: limit,
+      ConsistentRead: true
+    }));
+    return response.Items || [];
+  }
+
   async claimOutbox(item, nowMs) {
     try {
       const response = await this.client.send(new UpdateCommand({ TableName: this.tableName, Key: this.key(item.PK, item.SK), UpdateExpression: "SET #leaseUntil = :lease, #attempts = if_not_exists(#attempts, :zero) + :one", ConditionExpression: "attribute_exists(PK) AND (attribute_not_exists(#leaseUntil) OR #leaseUntil < :now)", ExpressionAttributeNames: { "#leaseUntil": "leaseUntil", "#attempts": "attempts" }, ExpressionAttributeValues: { ":lease": nowMs + 60_000, ":now": nowMs, ":zero": 0, ":one": 1 }, ReturnValues: "ALL_NEW" }));

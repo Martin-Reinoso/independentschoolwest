@@ -66,13 +66,17 @@ file into Drive. The staging object is deleted after a successful move and aband
 objects expire after one day; S3 is not an authoritative or staff-facing file store.
 GuardDuty and long-term S3 document storage are outside the launch scope.
 
-Production availability is checked every 30 minutes without writing applicant data.
+Production availability is checked every 10 minutes without writing applicant data.
 The scheduled AWS canary verifies the public family, signing and staff assets, backend
-health and immutable form versions, and the EOI Google-address runtime configuration.
-Three CloudWatch alarms notify `info@ffe.org.au` and `frjativa@gmail.com` after two
+health and immutable form versions, the EOI Google-address runtime configuration,
+fail-closed protection on the Application/status/staff routes and whether email,
+Sheets or Slack delivery work has remained pending for more than 15 minutes. Five
+availability alarms notify `info@ffe.org.au` and `frjativa@gmail.com` after two
 consecutive failed or missing checks and send a recovery notification when service
-returns to normal. Both SNS subscriptions were confirmed and delivery-tested on
-9 August 2026; any future new recipient must confirm the AWS subscription once.
+returns to normal. Separate alarms cover Lambda errors, Lambda throttling, terminal
+outbox failure and SES bounce, complaint, rejection or rendering failure. Both SNS
+subscriptions were confirmed and delivery-tested on 9 August 2026; any future new
+recipient must confirm the AWS subscription once.
 
 The family page does not store application answers in cookies, local storage, session
 storage or IndexedDB. It stores only opaque family/application/status session tokens,
