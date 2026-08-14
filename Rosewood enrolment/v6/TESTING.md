@@ -888,8 +888,8 @@ signature or family record was created or changed.
 - desktop review mode renders five document upload cards at 1280 px without overflow;
   at `390 x 844`, all five cards remain inside the viewport and the browser console
   reports no errors
-- AWS CloudFormation template validation and production deployment remain pending
-  because the local AWS CLI session expired before the read-only validation call
+- AWS CloudFormation template validation passes; production publication and deployment
+  are recorded in the V6.13 evidence below
 ## SES Configuration-Set Permission Hotfix
 
 Diagnosed and repaired in production on 13 August 2026 after a staff access-code request
@@ -968,3 +968,41 @@ notification.
   and `frjativa@gmail.com`; no setup/test alert, OTP, workflow email or Slack message
   was sent deliberately
 - deployment source commit `a1d6951` is the tested monitoring release
+
+## V6.13 Production Release And Source Reconciliation
+
+Published and deployed in Sydney on 15 August 2026 without creating or changing an
+EOI, invitation, OTP, family session, application, upload, signature, workflow email
+or Slack notification.
+
+- pull request `#4` passed both repository checks and merged V6.13 to `main` as commit
+  `dab96858b29d3d100db0b2925f24d4a8dcaa6cfa`; GitHub Pages then served the reviewed
+  HTML and JavaScript byte for byte
+- live HTML SHA-256 is `7a0b03851fd371997c459b2552a4b7201f4f11891b18d3862f996fd79396d25c`
+  and live JavaScript SHA-256 is
+  `8224a86b88e2808bddb6c836a434e41e770288394145f9a719e1e57cc0f1ea07`
+- the first no-execute change set exposed that the SES permission and expanded
+  monitoring deployed on 13 August were absent from `main`; it proposed removing four
+  alarms and one metric filter, so it was deleted and was never executed
+- pull request `#5` passed both checks and merged the exact production-hardening commits
+  into `main` as `e3bc884bc79122e503d1e730e840517948cd5e7d`; its tree preserves V6.13
+  contracts and assets while restoring the already-running monitored-production source
+- all 101 reconciled backend tests pass, including upload recovery, V6.11/V6.12
+  compatibility, protected-route fail-closed checks and stale-delivery-pipeline checks;
+  the locked deployment bundle, static-reference gate, public-data gate, JavaScript
+  syntax, `git diff --check` and CloudFormation validation pass
+- reviewed change set `rosewood-v13-reconciled-20260814-e3bc884` modified Lambda code in
+  place and recalculated only existing canary/outbox permissions, schedule targets and
+  the SES-events Lambda subscription; it had no removals and did not modify or replace
+  DynamoDB, audit, KMS, document staging, backups, secrets, Google configuration,
+  alarms, API URL or family-session resources
+- CloudFormation reached `UPDATE_COMPLETE`; termination protection remains enabled,
+  Lambda is `Active` with a successful update, and `/v6/health` reports EOI
+  `rosewood-eoi-2026.13` and Application `rosewood-application-2026.13`
+- the one-minute outbox and ten-minute canary schedules are enabled; the read-only
+  canary returned HTTP 200 with all five checks available and all nine alarms remain
+  `OK`
+- point-in-time recovery remains enabled on the authoritative records and audit tables
+- the deployment observation window recorded 36 Lambda invocations, zero Lambda errors
+  and zero throttles; existing V6.11/V6.12 sessions remain accepted and no family data
+  was read during release verification
