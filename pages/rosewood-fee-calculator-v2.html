@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en-AU" class="no-js">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+  <meta name="description" content="A calmer, step-by-step preview for planning estimated 2027 Rosewood College fees and refundable bond choices.">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'none'; font-src 'self'; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'">
+  <link rel="canonical" href="https://ffe.org.au/pages/rosewood-fee-calculator.html">
+  <title>2027 Fee Planner V2 Preview | Rosewood College</title>
+  <link rel="icon" href="../img/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="rosewood-fee-calculator-v2.css?v=1">
+  <script src="rosewood-fee-calculator.js?v=1" defer></script>
+  <script src="rosewood-fee-calculator-v2.js?v=1" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#fee-planner">Skip to fee planner</a>
+
+  <div class="page-shell">
+    <aside class="story-panel" aria-labelledby="page-title">
+      <div class="story-pattern" aria-hidden="true"></div>
+      <a class="back-link" href="rosewood-fee-calculator.html">
+        <span aria-hidden="true">&#8592;</span>
+        Current fee calculator
+      </a>
+
+      <div class="story-content">
+        <img class="rosewood-emblem" src="../img/rosewood-emblem-corrected-transparent.png" alt="Rosewood College">
+        <p class="story-kicker">2027 fee planning · V2 preview</p>
+        <h1 id="page-title">A clearer way to plan for school.</h1>
+        <p class="story-copy">Start with what applies to your family. We will show the reductions first, keep the refundable bond separate, and leave the full calculation within easy reach.</p>
+
+        <ul class="family-benefits" aria-label="2027 family fee benefits">
+          <li>
+            <span aria-hidden="true">01</span>
+            <p><strong>$1,000 Foundation Year reduction</strong><small>Per student, applied first against 2027 tuition</small></p>
+          </li>
+          <li>
+            <span aria-hidden="true">02</span>
+            <p><strong>Sibling tuition reductions</strong><small>Increasing for each additional child</small></p>
+          </li>
+          <li>
+            <span aria-hidden="true">03</span>
+            <p><strong>A refundable family bond</strong><small>Separate from recurring school fees</small></p>
+          </li>
+        </ul>
+
+        <div class="privacy-promise">
+          <span aria-hidden="true">R</span>
+          <p><strong>Private by design</strong><small>No names or contact details. Nothing is saved or sent.</small></p>
+        </div>
+      </div>
+
+      <div class="story-footer">
+        <span>Rosewood College</span>
+        <span>Melton, Victoria</span>
+      </div>
+    </aside>
+
+    <main class="planner-panel" id="fee-planner">
+      <header class="planner-header">
+        <div class="mobile-brand">
+          <img src="../img/rosewood-emblem-corrected-transparent.png" alt="">
+          <span>Rosewood College</span>
+        </div>
+        <div class="header-title">
+          <p class="eyebrow">Fee planner</p>
+          <h2 id="header-step-title">Your family</h2>
+        </div>
+        <span class="preview-badge">V2 preview</span>
+      </header>
+
+      <section class="noscript-panel static-fallback" id="static-fee-fallback" aria-labelledby="fallback-title">
+        <p class="eyebrow">Fee planning</p>
+        <h2 id="fallback-title">The personalised fee planner is unavailable.</h2>
+        <p>The published 2027 starting point is $6,990 tuition and a $910 Student Resource Levy per student, with a $1,000 Foundation Year reduction applied first. Sibling and other tuition reductions may also apply.</p>
+        <p>Enable JavaScript or reload the page to try again. You can also <a href="rosewood-fee-schedule.html">read the complete 2027 fee schedule</a> or email <a href="mailto:info@ffe.org.au?subject=Rosewood%20College%202027%20fees">info@ffe.org.au</a> with a fee question.</p>
+      </section>
+
+      <section class="print-incomplete" aria-labelledby="print-incomplete-title">
+        <p class="eyebrow">Rosewood College 2027 fee planner</p>
+        <h1 id="print-incomplete-title">Complete the planner before printing an estimate.</h1>
+        <p>No fee estimate has been prepared on this page yet. Return to the planner, complete all four steps, and then choose <strong>Print estimate</strong>.</p>
+        <p>Read the <a href="rosewood-fee-schedule.html">complete 2027 fee schedule</a>, or email <a href="mailto:info@ffe.org.au?subject=Rosewood%20College%202027%20fees">info@ffe.org.au</a> with a fee question.</p>
+      </section>
+
+      <div class="planner-app" id="planner-app" hidden>
+        <nav class="progress" aria-label="Fee planning progress">
+          <div class="progress-meta">
+            <span id="progress-label">Step 1 of 4</span>
+            <span id="progress-percent">25% complete</span>
+          </div>
+          <div class="progress-track" aria-hidden="true"><span id="progress-bar"></span></div>
+          <ol>
+            <li aria-current="step"><span>1</span><strong>Family</strong></li>
+            <li><span>2</span><strong>Payment</strong></li>
+            <li><span>3</span><strong>Bond</strong></li>
+            <li><span>4</span><strong>Estimate</strong></li>
+          </ol>
+        </nav>
+
+        <p class="planner-status" id="planner-status" role="status" aria-live="polite" aria-atomic="true"></p>
+
+        <form id="v2-fee-form" class="fee-journey" novalidate>
+          <section class="journey-step" data-step="1" aria-labelledby="family-step-heading">
+            <div class="step-heading">
+              <p class="eyebrow">Your family</p>
+              <h2 id="family-step-heading" tabindex="-1">How many children will attend together?</h2>
+              <p>This lets us apply each sibling tuition reduction automatically.</p>
+            </div>
+
+            <fieldset class="family-count-fieldset">
+              <legend>Children attending Rosewood at the same time</legend>
+              <div class="family-count-grid">
+                <label><input type="radio" name="children-count" value="1"><span><strong>1</strong><small>child</small></span></label>
+                <label><input type="radio" name="children-count" value="2"><span><strong>2</strong><small>children</small></span></label>
+                <label><input type="radio" name="children-count" value="3"><span><strong>3</strong><small>children</small></span></label>
+                <label><input type="radio" name="children-count" value="4"><span><strong>4</strong><small>children</small></span></label>
+                <label class="family-count-five"><input type="radio" name="children-count" value="5plus"><span><strong>5+</strong><small>children</small></span></label>
+              </div>
+              <div class="large-family-panel" id="large-family-panel" hidden>
+                <label for="v2-large-family-count">Exact number of children</label>
+                <input id="v2-large-family-count" type="number" min="5" max="20" value="5" inputmode="numeric" aria-describedby="large-family-help">
+                <p id="large-family-help"><strong>From the fifth child onwards, tuition is fully reduced.</strong> Only the $910 Student Resource Levy applies to each additional child.</p>
+              </div>
+            </fieldset>
+            <p class="field-help">For more than 20 children attending together, ask the College for a tailored estimate.</p>
+
+            <div class="reassurance-card">
+              <span class="reassurance-icon" aria-hidden="true">+</span>
+              <p><strong>Sibling tuition reductions are applied automatically and increase for additional children.</strong><small>The second child receives 15% off tuition, the third 30%, the fourth 45%, and the fifth and every subsequent child 100%. The resource levy still applies.</small></p>
+            </div>
+
+            <div class="step-actions step-actions-end">
+              <button class="button button-primary" type="button" data-next-step="2">Continue</button>
+            </div>
+          </section>
+
+          <section class="journey-step" data-step="2" aria-labelledby="payment-step-heading" hidden>
+            <div class="step-heading">
+              <p class="eyebrow">Payment rhythm</p>
+              <h2 id="payment-step-heading" tabindex="-1">Choose the timing that suits your family.</h2>
+              <p>Both options show the complete annual fee. They differ in timing, and the annual option includes a 5% tuition reduction.</p>
+            </div>
+
+            <fieldset class="choice-fieldset">
+              <legend class="sr-only">Payment timing</legend>
+              <div class="choice-grid choice-grid-two">
+                <label class="choice-card">
+                  <input type="radio" name="payment" value="term">
+                  <span class="choice-content">
+                    <span class="choice-topline"><span class="choice-check" aria-hidden="true"></span><span class="choice-info-pill">Four scheduled invoices</span></span>
+                    <strong>Pay by term</strong>
+                    <small>Tuition is invoiced at the start of each term. The full resource levy is included in Term 1.</small>
+                  </span>
+                </label>
+                <label class="choice-card choice-card-saving">
+                  <input type="radio" name="payment" value="annual">
+                  <span class="choice-content">
+                    <span class="choice-topline"><span class="choice-check" aria-hidden="true"></span><span class="choice-info-pill">One upfront payment + 5% tuition reduction</span></span>
+                    <strong>Pay for the year</strong>
+                    <small>Pay at the start of Term 1 and receive a further 5% reduction on tuition after earlier percentage reductions.</small>
+                  </span>
+                </label>
+              </div>
+            </fieldset>
+
+            <p class="gentle-note"><strong>Choose the timing that best fits your family's budget.</strong></p>
+
+            <div class="step-actions">
+              <button class="button button-secondary" type="button" data-previous-step="1">Back</button>
+              <button class="button button-primary" type="button" data-next-step="3">Continue</button>
+            </div>
+          </section>
+
+          <section class="journey-step" data-step="3" aria-labelledby="bond-step-heading" hidden>
+            <div class="step-heading">
+              <p class="eyebrow">Refundable family bond</p>
+              <h2 id="bond-step-heading" tabindex="-1">Choose how your family would like to arrange the bond.</h2>
+              <p>Every family selects a bond separate from annual school fees. The money is returned as your child or family leaves Rosewood.</p>
+            </div>
+
+            <fieldset class="choice-fieldset bond-fieldset">
+              <legend class="sr-only">Refundable family bond arrangement</legend>
+              <label class="choice-card bond-standard-card">
+                <input type="radio" name="bond" value="a">
+                <span class="choice-content">
+                  <span class="choice-topline"><span class="choice-check" aria-hidden="true"></span><span class="choice-info-pill">Smaller bond · no tuition reduction</span></span>
+                  <strong>Option A</strong>
+                  <span class="bond-amount">$2,000 refundable bond</span>
+                  <small>No tuition reduction. No further bond is required when additional siblings join.</small>
+                </span>
+              </label>
+
+              <details class="bond-alternatives" id="bond-alternatives">
+                <summary>
+                  <span><strong>Compare tuition-saving bond options</strong><small id="bond-alternatives-summary-copy">Larger refundable bonds can reduce tuition by a further 5% each year.</small></span>
+                  <span class="summary-action">Compare</span>
+                </summary>
+                <div class="alternative-grid">
+                  <label class="choice-card choice-card-saving">
+                    <input type="radio" name="bond" value="b10">
+                    <span class="choice-content">
+                      <span class="choice-topline"><span class="choice-check" aria-hidden="true"></span><span class="choice-info-pill">Larger bond · 5% off first child's tuition</span></span>
+                      <strong>Option B</strong>
+                      <span class="bond-amount">$10,000 refundable bond</span>
+                      <small>The first child receives the tuition reduction every year at Rosewood, up to Year 12.</small>
+                    </span>
+                  </label>
+                  <label class="choice-card choice-card-saving" id="v2-bond-b20-card">
+                    <input type="radio" name="bond" value="b20" id="v2-bond-b20">
+                    <span class="choice-content">
+                      <span class="choice-topline"><span class="choice-check" aria-hidden="true"></span><span class="choice-info-pill">Larger bond · 5% off every child's tuition</span></span>
+                      <strong>Option B for siblings</strong>
+                      <span class="bond-amount">$20,000 refundable bond</span>
+                      <small>Available to families with two or more children. This is the maximum bond regardless of family size.</small>
+                    </span>
+                  </label>
+                </div>
+                <p class="bond-choice-caution"><strong>Choose the balance that works for your family.</strong> Option A keeps the bond lower. Option B uses a larger refundable bond to unlock an ongoing tuition reduction.</p>
+              </details>
+            </fieldset>
+
+            <p class="bond-discount-assumption" id="bond-discount-assumption" hidden><strong>Option B estimate:</strong> the 5% tuition reduction applies immediately. This calculator assumes a full calendar year and the selected bond is paid at the start.</p>
+
+            <div class="bond-context">
+              <span aria-hidden="true">i</span>
+              <p><strong>Why a refundable bond?</strong><small>The bond helps fund school buildings and long-term financial stability. It replaces an annual development levy for families.</small></p>
+            </div>
+
+            <div class="step-actions">
+              <button class="button button-secondary" type="button" data-previous-step="2">Back</button>
+              <button class="button button-primary" type="button" id="show-estimate">Show my estimate</button>
+            </div>
+          </section>
+        </form>
+
+        <section class="estimate" id="v2-estimate" aria-labelledby="estimate-heading" tabindex="-1" hidden>
+          <div class="estimate-intro">
+            <div>
+              <p class="eyebrow">Your family's 2027 planning view</p>
+              <h2 id="estimate-heading" tabindex="-1">A manageable view of the full picture.</h2>
+              <p id="estimate-selection-summary"></p>
+            </div>
+            <div class="estimate-actions">
+              <button class="button button-secondary" type="button" id="edit-estimate">Edit choices</button>
+              <button class="button button-primary" type="button" id="print-v2-estimate">Print estimate</button>
+            </div>
+          </div>
+
+          <section class="reductions-celebration savings-first" aria-labelledby="savings-heading">
+            <div class="celebration-mark" aria-hidden="true">&#10003;</div>
+            <div>
+              <p>Included in your 2027 estimate</p>
+              <h3 id="savings-heading"><span id="foundation-benefit">$0.00</span> Foundation Year reduction</h3>
+              <small>$1,000 for every child as a thank you to Rosewood's founding families.</small>
+              <div class="savings-total">
+                <span>Total tuition reductions</span>
+              <strong id="total-reductions">$0.00</strong>
+              </div>
+              <small id="reduction-summary">Foundation, sibling and selected-choice reductions are all included.</small>
+              <div class="reduction-groups">
+                <span>Automatically applied <b id="automatic-reductions">$0.00</b></span>
+                <span>From selected choices <b id="choice-reductions">$0.00</b></span>
+              </div>
+            </div>
+          </section>
+
+          <div class="included-value">
+            <span aria-hidden="true">R</span>
+            <p><strong>More of the school experience is already covered.</strong><small>The Student Resource Levy included in annual fees supports books, stationery, IT equipment, camps, excursions, incursions, specialised learning resources and student printed material.</small></p>
+          </div>
+
+          <section class="budgeting-view" aria-labelledby="budgeting-view-heading">
+            <div class="budgeting-content">
+              <div class="budgeting-heading">
+                <p class="eyebrow">A gentler way to plan</p>
+                <h3 id="budgeting-view-heading">Picture the annual school fees across the year</h3>
+                <p>Includes the Student Resource Levy and excludes the refundable bond.</p>
+                <p id="budgeting-note" hidden><strong>Planning view only:</strong> weekly and fortnightly amounts are not payment plans offered by the College.</p>
+              </div>
+              <div class="budgeting-amounts">
+                <div><span>About each week</span><strong id="weekly-equivalent">$0.00</strong></div>
+                <div><span>About each fortnight</span><strong id="fortnightly-equivalent">$0.00</strong></div>
+              </div>
+            </div>
+          </section>
+
+          <div class="selected-plan" aria-label="Selected fee choices">
+            <button type="button" data-edit-step="1"><span>Family</span><strong id="family-choice-summary">-</strong><small>Edit</small></button>
+            <button type="button" data-edit-step="2"><span>Payment</span><strong id="payment-choice-summary">-</strong><small>Edit</small></button>
+            <button type="button" data-edit-step="3"><span>Bond</span><strong id="bond-choice-summary">-</strong><small>Edit</small></button>
+          </div>
+
+          <div class="complete-summary" aria-label="Complete 2027 estimate">
+            <article class="annual-view-card">
+              <p>Estimated annual school fees</p>
+              <strong id="v2-annual-fees">$0.00</strong>
+              <small>After all reductions, including the Student Resource Levy</small>
+            </article>
+            <article class="bond-view-card">
+              <p>Selected refundable bond</p>
+              <strong id="summary-bond-due">$0.00</strong>
+              <small id="bond-result-copy">Returned as your child or family leaves Rosewood</small>
+            </article>
+            <article class="combined-view-card">
+              <p>Full hypothetical picture</p>
+              <strong id="summary-combined-total">$0.00</strong>
+              <small>Annual fees plus the selected refundable bond</small>
+            </article>
+          </div>
+
+          <section class="opportunities" aria-labelledby="opportunities-heading">
+            <div class="section-heading-row">
+              <div>
+                <p class="eyebrow">Optional comparisons</p>
+                <h3 id="opportunities-heading">Compare other arrangements</h3>
+              </div>
+              <p>Choose an option to update this estimate instantly. Each card shows the annual fee change and any change to the refundable bond.</p>
+            </div>
+            <div class="opportunity-grid" id="opportunity-grid" tabindex="-1"></div>
+          </section>
+
+          <nav class="result-tools" aria-label="Estimate details">
+            <button type="button" data-dialog-panel="calculation"><span aria-hidden="true">01</span>How it was calculated</button>
+            <button type="button" id="payment-timing-trigger" data-dialog-panel="payment"><span aria-hidden="true">02</span>Payment schedule</button>
+            <button type="button" data-dialog-panel="notes"><span aria-hidden="true">03</span>Fee notes</button>
+            <a href="rosewood-fee-schedule.html"><span aria-hidden="true">↗</span>Full fee schedule</a>
+          </nav>
+
+          <dialog class="fee-detail-dialog" id="fee-detail-dialog" aria-labelledby="fee-detail-dialog-title">
+            <div class="dialog-shell">
+              <header>
+                <div><p class="eyebrow">Your estimate details</p><h2 id="fee-detail-dialog-title">How it was calculated</h2></div>
+                <button type="button" class="dialog-close" id="dialog-close" aria-label="Close details">&times;</button>
+              </header>
+
+              <section class="dialog-panel calculation-content" data-dialog-content="calculation">
+              <section class="breakdown-card" aria-labelledby="v2-breakdown-heading">
+                <div class="section-heading-row compact-heading">
+                  <div><p class="eyebrow">Family total</p><h3 id="v2-breakdown-heading">Fee calculation</h3></div>
+                  <span>All figures AUD</span>
+                </div>
+                <dl class="breakdown-list">
+                  <div><dt>Tuition before reductions</dt><dd id="v2-base-tuition">$0.00</dd></div>
+                  <div class="reduction-row foundation-row"><dt>Foundation Year reduction</dt><dd id="v2-foundation-discount">-$0.00</dd></div>
+                  <div class="reduction-row"><dt>Sibling reduction</dt><dd id="v2-sibling-discount">-$0.00</dd></div>
+                  <div class="reduction-row"><dt>Bond reduction</dt><dd id="v2-bond-discount">-$0.00</dd></div>
+                  <div class="reduction-row"><dt>Annual-payment reduction</dt><dd id="v2-annual-discount">-$0.00</dd></div>
+                  <div class="subtotal-row"><dt>Tuition after reductions</dt><dd id="v2-net-tuition">$0.00</dd></div>
+                  <div><dt>Student Resource Levy</dt><dd id="v2-resource-levy">$0.00</dd></div>
+                  <div class="total-row"><dt>Estimated annual school fees</dt><dd id="v2-breakdown-total">$0.00</dd></div>
+                </dl>
+              </section>
+
+              <section class="student-breakdown" aria-labelledby="v2-student-heading">
+                <div class="section-heading-row compact-heading">
+                  <div><p class="eyebrow">Student by student</p><h3 id="v2-student-heading">Family fee detail</h3></div>
+                </div>
+                <div class="table-wrap" tabindex="0" role="region" aria-label="Student fee calculation table">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th scope="col">Student</th>
+                        <th scope="col">Foundation</th>
+                        <th scope="col">Sibling</th>
+                        <th scope="col">Bond</th>
+                        <th scope="col">Annual</th>
+                        <th scope="col">Levy</th>
+                        <th scope="col">Annual fee</th>
+                      </tr>
+                    </thead>
+                    <tbody id="v2-student-rows"></tbody>
+                  </table>
+                </div>
+                <div class="student-cards" id="v2-student-cards"></div>
+              </section>
+              </section>
+
+              <section class="dialog-panel" data-dialog-content="payment" hidden>
+                <p class="dialog-intro">Term payments divide tuition across four invoices. The full Student Resource Levy is included in Term 1.</p>
+                <div class="payment-schedule" id="v2-payment-schedule"></div>
+                <p class="schedule-note" id="v2-schedule-note"></p>
+              </section>
+
+              <section class="dialog-panel assumption-copy" data-dialog-content="notes" hidden>
+                <p><strong>How discounts compound:</strong> the $1,000 Foundation Year reduction is applied first. Sibling, bond and annual-payment percentage reductions then apply one after another to the tuition remaining, so percentage discounts multiply rather than add.</p>
+                <p><strong>Option B timing:</strong> the 5% tuition reduction applies immediately. The estimate covers a full calendar year and assumes the selected bond is paid at the start.</p>
+                <p><strong>Bond refunds:</strong> Option A is returned when the last family member leaves. Under Option B, the first $10,000 is returned when the first child leaves and the second $10,000 is returned when the last child leaves.</p>
+                <p><strong>Not included:</strong> uniforms and other family-paid items.</p>
+                <p><a href="rosewood-fee-schedule.html">Read the complete 2027 fee schedule</a> for all fees, inclusions and bond arrangements.</p>
+              </section>
+            </div>
+          </dialog>
+
+          <div class="print-record" aria-hidden="true">
+            <p><strong>Rosewood College 2027 Fee Planner V2</strong></p>
+            <p>Fee schedule version: v1.0 · Estimate prepared: <span id="print-date"></span></p>
+            <p id="print-selection-record"></p>
+            <p>Calculation order: the $1,000 Foundation Year reduction is applied first, followed by the sibling, bond and annual-payment percentage reductions. Percentage reductions compound and each stage is rounded to the nearest cent.</p>
+          </div>
+
+          <div class="estimate-disclaimer">
+            <strong>Planning estimate only</strong>
+            <p>This calculator is not an invoice or offer. Read the <a href="rosewood-fee-schedule.html">complete 2027 fee schedule</a> for fees, inclusions and bond arrangements. Opening in 2027 remains subject to Victorian Registration and Qualifications Authority approval.</p>
+          </div>
+
+          <div class="result-actions">
+            <button class="button button-secondary" type="button" id="start-again">Start again</button>
+            <a class="button button-primary" href="mailto:info@ffe.org.au?subject=Rosewood%20College%202027%20fee%20question">Ask the College a fee question</a>
+          </div>
+        </section>
+      </div>
+
+      <footer class="planner-footer">
+        <span>Rosewood College fee planner</span>
+        <span>Schedule v1.0 · Preview only</span>
+      </footer>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,740 @@
+:root {
+  --navy: #15233b;
+  --navy-deep: #0b1526;
+  --navy-soft: #243a59;
+  --terracotta: #c64b3b;
+  --terracotta-dark: #9e382d;
+  --sky: #78c9ee;
+  --sky-pale: #e9f7fd;
+  --cream: #f5efe4;
+  --paper: #fffdf9;
+  --ink: #172135;
+  --muted: #676b72;
+  --line: #d9d3c8;
+  --line-strong: #bfb6a7;
+  --success: #207052;
+  --warning: #9a5c16;
+  --shadow: 0 24px 70px rgba(15, 27, 48, .12);
+  --radius: 18px;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  min-width: 320px;
+  color: var(--ink);
+  background: var(--cream);
+  font: 16px/1.55 "Avenir Next", Avenir, "Gill Sans", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select { font: inherit; }
+button, label, select { -webkit-tap-highlight-color: transparent; }
+a { color: inherit; }
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+a:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid rgba(120, 201, 238, .85);
+  outline-offset: 3px;
+}
+.skip-link {
+  position: fixed;
+  z-index: 100;
+  top: 1rem;
+  left: 1rem;
+  padding: .7rem 1rem;
+  border-radius: 8px;
+  color: var(--navy);
+  background: white;
+  transform: translateY(-180%);
+}
+.skip-link:focus { transform: translateY(0); }
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.page-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: clamp(350px, 36vw, 610px) minmax(0, 1fr);
+}
+.story-panel {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  min-height: 620px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: clamp(2rem, 5vh, 4.5rem) clamp(2.1rem, 4.7vw, 5rem);
+  color: var(--cream);
+  background:
+    radial-gradient(circle at 75% 20%, rgba(120, 201, 238, .21), transparent 28%),
+    radial-gradient(circle at 15% 86%, rgba(198, 75, 59, .25), transparent 32%),
+    linear-gradient(148deg, var(--navy-soft), var(--navy-deep) 72%);
+}
+.story-panel::after {
+  content: "";
+  position: absolute;
+  right: -240px;
+  bottom: 8%;
+  width: 430px;
+  height: 430px;
+  border: 1px solid rgba(120, 201, 238, .22);
+  border-radius: 50%;
+  box-shadow: 0 0 0 58px rgba(120, 201, 238, .04), 0 0 0 116px rgba(120, 201, 238, .02);
+}
+.story-pattern {
+  position: absolute;
+  inset: 0;
+  opacity: .35;
+  background-image: linear-gradient(30deg, transparent 48%, rgba(255, 255, 255, .045) 49%, rgba(255, 255, 255, .045) 51%, transparent 52%);
+  background-size: 52px 90px;
+  mask-image: linear-gradient(to bottom, #000, transparent 78%);
+}
+.story-content,
+.story-footer,
+.back-link { position: relative; z-index: 1; }
+.back-link {
+  width: fit-content;
+  display: inline-flex;
+  gap: .55rem;
+  align-items: center;
+  color: rgba(246, 240, 230, .72);
+  font-size: .76rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+.back-link:hover { color: white; }
+.back-link span { color: var(--sky); font-size: 1.1rem; }
+.rosewood-emblem {
+  width: clamp(100px, min(11vw, 18vh), 165px);
+  height: auto;
+  margin-bottom: clamp(1.6rem, 3.5vh, 2.8rem);
+  filter: drop-shadow(0 16px 28px rgba(0, 0, 0, .28));
+}
+.story-kicker,
+.eyebrow {
+  margin: 0 0 .5rem;
+  color: var(--terracotta);
+  font-size: .71rem;
+  font-weight: 800;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+.story-kicker { color: var(--sky); }
+.story-panel h1 {
+  max-width: 480px;
+  margin: 0;
+  font: 500 clamp(2.55rem, min(4vw, 6vh), 4.45rem)/.98 Baskerville, "Iowan Old Style", Georgia, serif;
+  letter-spacing: -.035em;
+}
+.story-copy {
+  max-width: 450px;
+  margin: 1.25rem 0 0;
+  color: rgba(246, 240, 230, .76);
+  font-size: 1rem;
+}
+.fee-facts {
+  max-width: 470px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .6rem;
+  margin: clamp(1.8rem, 4vh, 3.2rem) 0 0;
+  padding: 1rem 0 0;
+  border-top: 1px solid rgba(255, 255, 255, .13);
+}
+.fee-facts div { min-width: 0; }
+.fee-facts dt {
+  color: rgba(246, 240, 230, .58);
+  font-size: .66rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.fee-facts dd {
+  margin: .18rem 0 0;
+  color: white;
+  font: 600 clamp(1.05rem, 1.6vw, 1.4rem) Baskerville, Georgia, serif;
+}
+.fee-facts span {
+  display: block;
+  margin-top: .12rem;
+  color: rgba(246, 240, 230, .5);
+  font-size: .64rem;
+}
+.story-footer {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, .12);
+  color: rgba(246, 240, 230, .5);
+  font-size: .67rem;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.calculator-panel {
+  min-width: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: radial-gradient(circle at 95% 2%, rgba(120, 201, 238, .12), transparent 25rem), var(--paper);
+}
+.calculator-header {
+  position: sticky;
+  z-index: 20;
+  top: 0;
+  min-height: 78px;
+  display: flex;
+  justify-content: space-between;
+  gap: 1.25rem;
+  align-items: center;
+  padding: .75rem clamp(1.4rem, 4vw, 4.5rem);
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 253, 249, .94);
+  box-shadow: 0 8px 24px rgba(21, 35, 59, .045);
+  backdrop-filter: blur(14px);
+}
+.calculator-header h2 {
+  margin: 0;
+  font: 600 clamp(1.4rem, 2.3vw, 1.85rem)/1.06 Baskerville, "Iowan Old Style", Georgia, serif;
+}
+.calculator-header .eyebrow { margin-bottom: .2rem; }
+.schedule-badge {
+  flex: 0 0 auto;
+  padding: .38rem .65rem;
+  border: 1px solid #c7e3ef;
+  border-radius: 999px;
+  color: var(--navy);
+  background: var(--sky-pale);
+  font-size: .7rem;
+  font-weight: 800;
+  letter-spacing: .05em;
+}
+.mobile-brand { display: none; }
+.calculator-content {
+  width: min(100%, 1180px);
+  margin: 0 auto;
+  padding: clamp(2.3rem, 5vw, 4.5rem) clamp(1.4rem, 4vw, 4.5rem) 4rem;
+}
+.noscript-warning {
+  margin-bottom: 1.2rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid #d59945;
+  border-left: 4px solid #d59945;
+  border-radius: 10px;
+  color: #5f4624;
+  background: #fff8e9;
+}
+.noscript-warning strong { display: block; color: var(--navy); }
+.noscript-warning a { color: var(--navy); font-weight: 800; }
+.intro { max-width: 770px; margin-bottom: 2rem; }
+.intro h2,
+.important-notes > .notes-heading h2,
+.contact-card h2 {
+  margin: 0;
+  color: var(--navy);
+  font: 600 clamp(2rem, 4vw, 3.2rem)/1 Baskerville, "Iowan Old Style", Georgia, serif;
+  letter-spacing: -.025em;
+}
+.intro > p:last-child,
+.contact-card p {
+  max-width: 680px;
+  margin: .85rem 0 0;
+  color: var(--muted);
+}
+.calculator-form { display: grid; gap: 1rem; }
+.input-card,
+.breakdown-card,
+.student-breakdown {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, .86);
+  box-shadow: 0 9px 28px rgba(21, 35, 59, .04);
+}
+.input-card { padding: clamp(1.15rem, 3vw, 1.6rem); }
+.card-heading {
+  display: flex;
+  gap: .9rem;
+  align-items: center;
+  margin-bottom: 1.15rem;
+}
+.card-number {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--navy);
+  background: var(--sky-pale);
+  font: 700 1.2rem Baskerville, Georgia, serif;
+}
+.card-heading h3,
+.section-title-row h3 {
+  margin: 0;
+  color: var(--navy);
+  font: 600 clamp(1.35rem, 2.4vw, 1.75rem)/1.08 Baskerville, "Iowan Old Style", Georgia, serif;
+}
+.student-count-field,
+.bond-paid-field {
+  max-width: 480px;
+  display: grid;
+  gap: .4rem;
+}
+.student-count-field > span,
+.bond-paid-field > span {
+  color: var(--navy);
+  font-size: .82rem;
+  font-weight: 800;
+}
+.student-count-field select,
+.bond-paid-field select {
+  width: 100%;
+  min-height: 50px;
+  padding: .75rem 2.4rem .75rem .85rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  color: var(--ink);
+  background: white;
+}
+.student-count-field select:focus,
+.bond-paid-field select:focus { border-color: #3c8eb8; box-shadow: 0 0 0 4px rgba(120, 201, 238, .17); outline: 0; }
+.bond-paid-field { margin-top: 1rem; }
+.field-help {
+  max-width: 850px;
+  margin: .7rem 0 0;
+  color: var(--muted);
+  font-size: .75rem;
+}
+.choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .75rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.choice-grid-three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.choice-card { position: relative; min-width: 0; display: block; }
+.choice-card input { position: absolute; opacity: 0; pointer-events: none; }
+.choice-content {
+  min-height: 100%;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: .15rem .7rem;
+  align-content: start;
+  padding: 1rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  color: #4d4b48;
+  background: white;
+  cursor: pointer;
+  transition: border-color .2s, box-shadow .2s, background-color .2s, transform .2s;
+}
+.choice-content:hover { border-color: var(--navy); transform: translateY(-1px); }
+.choice-check {
+  grid-row: 1 / span 3;
+  width: 20px;
+  height: 20px;
+  margin-top: .08rem;
+  border: 2px solid var(--line-strong);
+  border-radius: 50%;
+  background: white;
+  box-shadow: inset 0 0 0 4px white;
+}
+.choice-content strong,
+.choice-content small,
+.choice-label { grid-column: 2; }
+.choice-content strong { color: var(--navy); }
+.choice-content small { color: var(--muted); font-size: .76rem; line-height: 1.5; }
+.choice-label {
+  color: var(--terracotta-dark);
+  font-size: .65rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.choice-card input:checked + .choice-content {
+  border-color: var(--navy);
+  background: var(--sky-pale);
+  box-shadow: inset 0 0 0 1px var(--navy);
+}
+.choice-card input:checked + .choice-content .choice-check {
+  border-color: var(--navy);
+  background: var(--navy);
+}
+.choice-card input:focus-visible + .choice-content { outline: 3px solid rgba(120, 201, 238, .85); outline-offset: 3px; }
+.choice-card input:disabled + .choice-content {
+  color: #777;
+  border-color: #ddd8cf;
+  background: #f1efeb;
+  cursor: not-allowed;
+  opacity: .67;
+  transform: none;
+}
+.choice-card input:disabled + .choice-content strong,
+.choice-card input:disabled + .choice-content small,
+.choice-card input:disabled + .choice-content .choice-label { color: #777; }
+.bond-intro {
+  display: grid;
+  gap: .15rem;
+  margin-bottom: 1rem;
+  padding: .8rem .9rem;
+  border-left: 3px solid var(--sky);
+  border-radius: 0 10px 10px 0;
+  color: var(--muted);
+  background: var(--sky-pale);
+  font-size: .8rem;
+}
+.bond-intro strong { color: var(--navy); }
+.selection-message { min-height: 1.2rem; margin: .35rem 0 0; color: var(--terracotta-dark); font-size: .75rem; font-weight: 700; }
+
+.estimate {
+  margin-top: 2rem;
+  overflow: hidden;
+  border: 1px solid rgba(21, 35, 59, .18);
+  border-radius: 22px;
+  background: white;
+  box-shadow: var(--shadow);
+}
+.estimate-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  align-items: flex-end;
+  padding: clamp(1.5rem, 4vw, 2.4rem);
+  color: white;
+  background:
+    radial-gradient(circle at 88% 12%, rgba(120, 201, 238, .24), transparent 16rem),
+    linear-gradient(140deg, var(--navy-soft), var(--navy-deep));
+}
+.estimate-hero .eyebrow { color: var(--sky); }
+.estimate-hero h2 {
+  margin: 0;
+  font: 600 clamp(2.7rem, 6vw, 4.8rem)/.92 Baskerville, "Iowan Old Style", Georgia, serif;
+  letter-spacing: -.045em;
+}
+.estimate-hero p:last-child { margin: .75rem 0 0; color: rgba(255, 255, 255, .65); font-size: .83rem; }
+.estimate-actions { flex: 0 0 auto; display: flex; gap: .55rem; }
+.button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .45rem;
+  padding: .68rem 1rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+.button-primary { color: white; background: var(--terracotta); box-shadow: 0 8px 18px rgba(198, 75, 59, .2); }
+.button-primary:hover { background: var(--terracotta-dark); }
+.button-secondary { color: white; border-color: rgba(255, 255, 255, .38); background: transparent; }
+.button-secondary:hover { border-color: white; background: rgba(255, 255, 255, .08); }
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.summary-card { min-width: 0; padding: 1.2rem 1.35rem; background: var(--paper); }
+.summary-card p { margin: 0; color: var(--muted); font-size: .72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.summary-card strong { display: block; margin: .3rem 0 .15rem; color: var(--navy); font: 600 clamp(1.55rem, 3.2vw, 2.15rem) Baskerville, Georgia, serif; }
+.summary-card small { display: block; color: var(--muted); font-size: .7rem; line-height: 1.4; }
+.bond-card { background: #fbf8f2; }
+.commitment-card { background: var(--sky-pale); }
+.saving-note {
+  display: flex;
+  gap: .75rem;
+  align-items: center;
+  margin: 1.25rem clamp(1.15rem, 3vw, 1.7rem) 0;
+  padding: .8rem .95rem;
+  border-radius: 12px;
+  color: #294057;
+  background: var(--sky-pale);
+}
+.saving-note > span {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--navy);
+  background: var(--sky);
+  font: 700 1rem Baskerville, Georgia, serif;
+}
+.saving-note p { margin: 0; font-size: .8rem; }
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  padding: 1.25rem clamp(1.15rem, 3vw, 1.7rem);
+}
+.breakdown-card { padding: 1.15rem; box-shadow: none; }
+.section-title-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+.section-title-row > span { color: var(--muted); font-size: .66rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.breakdown-list { margin: 0; }
+.breakdown-list > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .48rem 0;
+  border-bottom: 1px solid #ebe7df;
+}
+.breakdown-list dt { color: var(--muted); font-size: .77rem; }
+.breakdown-list dd { margin: 0; color: var(--navy); font-size: .82rem; font-weight: 800; text-align: right; }
+.breakdown-list .discount-row dd { color: var(--success); }
+.breakdown-list .subtotal-row { margin-top: .15rem; border-top: 1px solid var(--line-strong); }
+.breakdown-list .subtotal-row dt,
+.breakdown-list .total-row dt { color: var(--navy); font-weight: 800; }
+.breakdown-list .total-row { margin-top: .15rem; padding-top: .7rem; border-top: 2px solid var(--navy); border-bottom: 0; }
+.breakdown-list .total-row dd { font-size: 1rem; }
+.payment-schedule { display: grid; gap: .55rem; }
+.schedule-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: .1rem 1rem;
+  padding: .65rem .75rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fbf8f2;
+}
+.schedule-row strong { color: var(--navy); font-size: .8rem; }
+.schedule-row > span { grid-row: 1 / span 2; grid-column: 2; align-self: center; color: var(--navy); font-weight: 800; }
+.schedule-row small { color: var(--muted); font-size: .67rem; }
+.schedule-note { margin: .75rem 0 0; color: var(--muted); font-size: .7rem; }
+.student-breakdown { margin: 0 clamp(1.15rem, 3vw, 1.7rem) 1.7rem; padding: 1.15rem; box-shadow: none; }
+.table-wrap { max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+table { width: 100%; min-width: 850px; border-collapse: collapse; }
+th, td { padding: .72rem .75rem; border-bottom: 1px solid var(--line); text-align: right; vertical-align: middle; }
+th:first-child, td:first-child { text-align: left; }
+th {
+  color: var(--muted);
+  background: #f5f1e9;
+  font-size: .65rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+td { color: var(--navy); font-size: .75rem; }
+td:first-child { font-weight: 800; }
+tbody tr:last-child td { border-bottom: 0; }
+.zero-discount { color: var(--muted); }
+
+.important-notes { margin-top: 3rem; }
+.notes-heading { max-width: 760px; margin-bottom: 1.3rem; }
+.notes-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; }
+.notes-grid article {
+  min-width: 0;
+  padding: 1.15rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: white;
+}
+.note-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  margin-bottom: .75rem;
+  border-radius: 50%;
+  color: white;
+  background: var(--success);
+  font-weight: 900;
+}
+.note-icon-alert { background: var(--warning); }
+.notes-grid h3 { margin: 0 0 .45rem; color: var(--navy); font: 600 1.18rem Baskerville, Georgia, serif; }
+.notes-grid p { margin: 0; color: var(--muted); font-size: .77rem; }
+.assumptions { margin-top: 1rem; border: 1px solid var(--line); border-radius: 14px; background: white; }
+.assumptions summary { padding: .9rem 1rem; color: var(--navy); cursor: pointer; font-size: .8rem; font-weight: 800; }
+.assumptions[open] summary { border-bottom: 1px solid var(--line); }
+.assumptions > div { padding: .9rem 1rem; }
+.assumptions p { margin: 0 0 .7rem; color: var(--muted); font-size: .76rem; }
+.assumptions p:last-child { margin-bottom: 0; }
+.print-assumption { display: none; }
+.estimate-disclaimer {
+  margin-top: 1rem;
+  padding: 1rem 1.1rem;
+  border-left: 4px solid #d59945;
+  border-radius: 0 12px 12px 0;
+  color: #5f4624;
+  background: #fff8e9;
+}
+.estimate-disclaimer strong { color: var(--navy); }
+.estimate-disclaimer p { margin: .25rem 0 0; font-size: .77rem; }
+.estimate-disclaimer a { color: var(--navy); font-weight: 800; }
+.contact-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  align-items: center;
+  margin-top: 3rem;
+  padding: clamp(1.4rem, 4vw, 2.3rem);
+  border-radius: 20px;
+  color: white;
+  background: var(--navy);
+  box-shadow: var(--shadow);
+}
+.contact-card h2 { color: white; font-size: clamp(1.8rem, 3vw, 2.5rem); }
+.contact-card p { color: rgba(255, 255, 255, .65); }
+.contact-card .button { flex: 0 0 auto; }
+.calculator-footer {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem clamp(1.4rem, 4vw, 4.5rem);
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: .69rem;
+}
+.calculator-footer a { color: var(--navy); font-weight: 800; }
+
+@media (max-width: 1120px) {
+  .choice-grid-three { grid-template-columns: 1fr; }
+  .detail-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 980px) {
+  .page-shell { display: block; }
+  .story-panel {
+    position: relative;
+    height: auto;
+    min-height: 370px;
+    padding: 1.7rem clamp(1.4rem, 5vw, 3rem) 2rem;
+  }
+  .story-content {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0 1.4rem;
+    align-items: start;
+  }
+  .rosewood-emblem { grid-row: 1 / span 4; width: 120px; margin: .2rem 0 0; }
+  .story-kicker { margin-top: .3rem; }
+  .story-panel h1 { max-width: 620px; font-size: clamp(2.5rem, 7vw, 4rem); }
+  .story-copy { max-width: 650px; }
+  .fee-facts { grid-column: 1 / -1; width: 100%; max-width: 720px; margin-top: 1.5rem; }
+  .story-footer { margin-top: .5rem; }
+}
+
+@media (max-width: 720px) {
+  .story-panel { min-height: 330px; }
+  .story-content { display: block; }
+  .rosewood-emblem { display: none; }
+  .story-panel h1 { font-size: clamp(2.4rem, 12vw, 3.4rem); }
+  .story-copy { font-size: .9rem; }
+  .fee-facts { margin-top: 1.25rem; }
+  .story-footer { display: none; }
+  .calculator-header { min-height: 70px; gap: .7rem; padding: .65rem 1rem; }
+  .mobile-brand { min-width: 0; display: flex; gap: .5rem; align-items: center; color: var(--navy); font-size: .66rem; font-weight: 800; line-height: 1.1; }
+  .mobile-brand img { width: 32px; height: 32px; object-fit: contain; }
+  .calculator-header > div:nth-child(2) { margin-left: auto; text-align: right; }
+  .calculator-header h2 { max-width: 180px; overflow: hidden; font-size: 1.12rem; text-overflow: ellipsis; white-space: nowrap; }
+  .calculator-header .eyebrow { font-size: .58rem; }
+  .schedule-badge { display: none; }
+  .calculator-content { padding: 2.2rem 1rem 3rem; }
+  .choice-grid,
+  .summary-grid,
+  .notes-grid { grid-template-columns: 1fr; }
+  .summary-grid { gap: 1px; }
+  .estimate-hero { align-items: stretch; flex-direction: column; }
+  .estimate-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .detail-grid { padding: 1rem; }
+  .student-breakdown { margin: 0 1rem 1rem; }
+  .contact-card { align-items: stretch; flex-direction: column; }
+  .contact-card .button { width: 100%; }
+  .calculator-footer { align-items: flex-start; flex-direction: column; padding: 1rem; }
+}
+
+@media (max-width: 430px) {
+  .story-panel { min-height: 360px; padding: 1.35rem 1.1rem 1.7rem; }
+  .fee-facts { gap: .35rem; }
+  .fee-facts dd { font-size: 1rem; }
+  .fee-facts dt, .fee-facts span { font-size: .58rem; }
+  .mobile-brand span { display: none; }
+  .calculator-header h2 { max-width: 205px; }
+  .estimate-actions { grid-template-columns: 1fr; }
+  .section-title-row { display: block; }
+  .section-title-row > span { display: block; margin-top: .35rem; }
+}
+
+@media print {
+  @page { margin: 14mm; }
+  body { color: #000; background: white; font-size: 11pt; }
+  .skip-link,
+  .story-panel,
+  .calculator-header,
+  .calculator-form,
+  .estimate-actions,
+  .saving-note,
+  .notes-heading,
+  .notes-grid,
+  .assumptions,
+  .contact-card,
+  .calculator-footer { display: none !important; }
+  .page-shell { display: block; }
+  .calculator-panel { min-height: auto; background: white; }
+  .calculator-content, .estimate { width: 100%; max-width: none; }
+  .calculator-content { padding: 0; }
+  .intro { margin-bottom: 1rem; }
+  .intro::before { content: "Rosewood College - 2027 Fee Estimate"; display: block; margin-bottom: .4rem; color: #15233b; font: 600 24pt Baskerville, Georgia, serif; }
+  .intro .eyebrow,
+  .intro h2 { display: none; }
+  .estimate { margin: 0; overflow: visible; border: 0; box-shadow: none; }
+  .estimate-hero { padding: 1rem; border: 2px solid #15233b; color: #15233b !important; background: white !important; }
+  .estimate-hero .eyebrow { color: #9e382d; }
+  .estimate-hero p:last-child { color: #676b72; }
+  .estimate-hero h2 { font-size: 30pt; }
+  .summary-grid { grid-template-columns: 1fr; break-inside: avoid; }
+  .detail-grid { grid-template-columns: 1fr; padding: 1rem 0; }
+  .breakdown-card { break-inside: avoid; }
+  .student-breakdown { margin: 0; }
+  .table-wrap { overflow: visible; }
+  table { min-width: 0; table-layout: fixed; font-size: 7.5pt; }
+  th, td { padding: .4rem .3rem; }
+  .important-notes { margin-top: 1rem; }
+  .print-assumption {
+    display: block;
+    margin-bottom: .7rem;
+    padding: .75rem .85rem;
+    border: 1px solid #bfb6a7;
+    border-radius: 10px;
+    color: #172135;
+    font-size: 8.5pt;
+    break-inside: avoid;
+  }
+  .estimate-disclaimer { break-inside: avoid; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}
