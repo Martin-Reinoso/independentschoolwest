@@ -881,7 +881,7 @@ signature or family record was created or changed.
   V6.12 and earlier immutable definitions remain addressable
 - all 99 backend and source-contract tests pass, including the exact frontend helper
   extraction, immutable definitions, compatibility, submission and upload lifecycle
-- 73 tracked HTML/CSS files pass the static-reference gate and 365 tracked files pass
+- 74 tracked HTML/CSS files pass the static-reference gate and 368 tracked files pass
   the private-data and high-confidence secret gate
 - JavaScript syntax, `git diff --check`, pinned V6.13 asset hashes and the locked
   production deployment bundle pass
