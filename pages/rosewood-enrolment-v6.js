@@ -16,7 +16,7 @@
   const invitationToken = params.get("invite") || "";
   const policyDocuments = window.rosewoodPolicyDocuments || {};
   const policyOrder = ["enrolment-policy", "enrolment-procedure", "privacy-policy"];
-  const SUPPORTED_APPLICATION_FORM_VERSIONS = new Set(["rosewood-application-2026.1", "rosewood-application-2026.2", "rosewood-application-2026.3", "rosewood-application-2026.4", "rosewood-application-2026.5", "rosewood-application-2026.6", "rosewood-application-2026.7", "rosewood-application-2026.8", "rosewood-application-2026.9", "rosewood-application-2026.10", "rosewood-application-2026.11"]);
+  const SUPPORTED_APPLICATION_FORM_VERSIONS = new Set(["rosewood-application-2026.1", "rosewood-application-2026.2", "rosewood-application-2026.3", "rosewood-application-2026.4", "rosewood-application-2026.5", "rosewood-application-2026.6", "rosewood-application-2026.7", "rosewood-application-2026.8", "rosewood-application-2026.9", "rosewood-application-2026.10", "rosewood-application-2026.11", "rosewood-application-2026.12", "rosewood-application-2026.13"]);
   const CONTACT_PERMISSION_YES = "Yes, the school may contact this person";
   const CONTACT_PERMISSION_NO = "No, do not contact this person";
   const APPLICATION_SESSION_STORAGE_KEY = "rosewood-enrolment-v6-active-session";
@@ -137,6 +137,7 @@
     const first = missing[0];
     const action = first ? `<li class="validation-summary-action"><button type="button" class="button button-secondary" data-validation-screen="${first.screen}">Review ${esc(first.section)}</button></li>` : "";
     errorSummary.querySelector("ul").innerHTML = `<li>${esc(missing.length ? "Review the information below before submitting the application." : error.message)}</li>${details}${action}`;
+    errorSummary.dataset.errorCode = error.code || "";
     errorSummary.hidden = false;
     errorSummary.focus();
   }
@@ -324,7 +325,7 @@
   ].includes(commitment));
 
   function applicationReleaseNumber() {
-    return Number(String(state.formVersion || "rosewood-application-2026.11").split(".").pop()) || 11;
+    return Number(String(state.formVersion || "rosewood-application-2026.13").split(".").pop()) || 13;
   }
 
   function occupationOptions() {
@@ -711,7 +712,7 @@
       section("Nationality and Citizenship", `<div class="government-context"><strong>Government Requirement</strong><p>The information in this section is about the student and is collected to meet government reporting requirements.</p></div><div class="field-grid country-catalogue-grid">${field("residence_country", "Student's current country of residence", { required: true, list: "country-list", hint: "Start typing to search the full country catalogue." })}${field("birth_country", "Student's country of birth", { required: true, list: "country-list", hint: "In which country was the student born? Start typing to search." })}${field("nationality", "Student's country of nationality", { required: true, list: "country-list", hint: "Start typing to search the full country catalogue." })}${field("ethnicity", "Student's ethnicity", { hint: "If not born in Australia" })}</div><div class="field-grid citizenship-date-row">${field("arrival_date", "When did the student arrive in or return to live in Australia?", { type: "date", className: "span-three mobile-safe-date", hint: "For students born overseas, enter the date they first arrived to live in Australia. If the student previously lived in Australia and later lived overseas, enter the date they most recently returned to live in Australia." })}${field("residency_status", "What is the residential status of the student?", { type: "select", options: ["Permanent", "Temporary"], required: true, className: "span-three" })}</div>${choices("australian_citizen", "Citizenship Status", yesNo, { required: true, intro: "Is the student an Australian citizen?", className: "citizenship-question" })}<div class="conditional-panel" data-conditional="residency-evidence">${choices("residency_evidence", "Evidence of Australian Residency", ["Permanent Resident", "Eligible for Australian Passport", "Temporary Resident", "Other / Visitor / Overseas Student"], { required: true, grid: true })}<div class="conditional-panel visa-panel" data-conditional="visa-details"><p class="visa-evidence-note">Please provide up to date evidence of visa status from the Department of Home Affairs, including any changes to visa or citizenship as soon as notified</p><div class="field-grid">${field("visa_subclass", "Visa subclass", { required: true })}${field("visa_expiry", "Visa expiry", { type: "date", required: true })}${field("previous_visa", "Previous visa subclass")}</div></div></div>${choices("indigenous_status", "Aboriginal / Torres Strait Islander Status", ["Aboriginal", "Torres Strait Islander", "Aboriginal and Torres Strait Islander", "Not Applicable"], { required: true })}<h5 class="content-subheading">Languages</h5><div class="field-grid two">${field("main_language", "Main Language", { list: "language-list", required: true, hint: "Start typing to search the language catalogue." })}${field("other_languages", "Other Languages", { list: "language-list", hint: "Start typing to search." })}</div>`) +
       section("General / Additional Needs", `<div class="needs-introduction"><p>To meet duty of care obligations and facilitate the smooth transition of your child into the school, please provide all required information. This will assist the school to implement appropriate adjustments and strategies to meet the particular needs of your child. If the information is not provided or is incomplete, incorrect or misleading, current or ongoing enrolment may be reviewed.</p><p class="needs-assurance"><strong>*Please Note:</strong> This information will not impact the offer of enrolment.</p></div>${choices("formal_assessment", "Has the student completed a formal assessment relating to learning, development, wellbeing or giftedness?", yesNo, { required: true })}<div class="conditional-panel" data-conditional="formal-assessment"><div class="field-grid">${field("formal_assessment_details", "Please provide brief details of the assessment", { type: "textarea", required: true, className: "span-three" })}</div>${choices("formal_assessment_report", "Is a report available?", yesNo, { required: true })}</div>${choices("additional_needs", "General / Additional Needs", yesNo, { required: true })}<div data-conditional="additional-needs">${choices("need_categories", "Please Specify", needCategories, { multiple: true, grid: true, required: true })}<div data-conditional="other-need" class="field-grid">${field("need_other", "Other Additional Need", { required: true, className: "span-three" })}</div><div class="field-grid">${field("current_adjustments", "What adjustments or support is currently provided for the student?", { type: "textarea", className: "span-three" })}${field("rosewood_adjustments", "What adjustments or support may assist the student at Rosewood College?", { type: "textarea", className: "span-three" })}</div></div>${choices("professional_categories", "Health Professionals", professionalCategories, { multiple: true, grid: true })}<div data-conditional="other-professional" class="field-grid">${field("professional_other", "Other Health Professional", { required: true })}</div>${choices("reports_attached", "Reports Attached", yesNo, { required: true })}${choices("ndis_support", "NDIS Support", yesNo, { required: true })}${choices("court_orders", "Court or Parenting Orders", yesNo, { required: true })}<div class="field-grid">${field("other_relevant_information", "Other Relevant Information", { type: "textarea", className: "span-three" })}</div>`) +
       section("Sacraments", `<div class="field-grid">${field("parish", "Parish where student lives", { className: "span-three" })}</div>${["Baptism", "Reconciliation", "Eucharist", "Confirmation"].map(item => `${check(`sacrament_${item}`, item)}<div class="conditional-panel" data-sacrament="sacrament_${item}"><div class="field-grid two">${field(`sacrament_${item}_date`, `${item} Date`, { type: "date", max: melbourneDate() })}${field(`sacrament_${item}_location`, `${item} Location`)}</div></div>`).join("")}`) +
-      section("Medical Details", `${choices("medical_conditions", "Medical Conditions", medicalConditions, { multiple: true, grid: true, required: true })}<div data-conditional="other-medical" class="field-grid">${field("other_medical_condition", "Other medical condition", { required: true, className: "span-three" })}</div><div class="field-grid">${field("condition_details", "Condition Details", { type: "textarea", className: "span-two" })}${field("allergy_details", "Allergy Details", { type: "textarea" })}</div>${choices("anaphylaxis_risk", "Anaphylaxis Risk", yesNo, { required: true })}${choices("anaphylaxis_device", "EpiPen / Anapen", ["EpiPen", "Anapen"], { multiple: true, max: 1, hint: "Optional. Select the active option again to clear it." })}<div class="immunisation-guidance"><p>Vaccinations are recorded on the Australian Immunisation Register (AIR). <a href="https://www.health.vic.gov.au/immunisation/primary-school-immunisation-requirements" target="_blank" rel="noopener noreferrer">Victorian law<span class="visually-hidden"> (opens in a new tab)</span></a> requires an Immunisation History Statement for primary school enrolment. You can obtain it through myGov and upload it later in this application.</p></div>${choices("immunisation", "Is Immunisation History Statement held and will be uploaded with this application?", yesNo, { required: true })}${choices("humanitarian_health", "If the student entered Australia on a humanitarian visa, did they receive a refugee health check?", yesNo)}<div class="field-grid">${field("doctor_name", "Doctor Name", { required: true })}${field("doctor_address", "Doctor's practice/Address", { required: true, className: "span-two" })}${field("doctor_phone", "Doctor Phone", { type: "tel", required: true })}${field("medicare_number", "Medicare Number", { required: true })}${field("medicare_reference", "Medicare Ref Number", { required: true })}${field("medicare_expiry", "Medicare Expiry", { type: "date" })}${field("private_insurance_provider", "Private health insurance provider")}${field("private_insurance_policy", "Private health insurance policy number")}</div>${choices("ambulance_cover", "Ambulance Cover", yesNo, { required: true })}${choices("healthcare_card", "Health Care Card", yesNo, { required: true })}<div class="conditional-panel" data-student-healthcare="healthcare_card"><div class="field-grid two">${field("student_healthcare_number", "Health Care Card No.", { required: true })}${field("student_healthcare_expiry", "Health Care Card Expiry", { type: "date", required: true })}</div></div>`) + actions();
+      section("Medical Details", `${choices("medical_conditions", "Medical Conditions", medicalConditions, { multiple: true, grid: true, required: true })}<div data-conditional="other-medical" class="field-grid">${field("other_medical_condition", "Other medical condition", { required: true, className: "span-three" })}</div><div class="field-grid">${field("condition_details", "Condition Details", { type: "textarea", className: "span-two" })}${field("allergy_details", "Allergy Details", { type: "textarea" })}</div>${choices("anaphylaxis_risk", "Anaphylaxis Risk", yesNo, { required: true })}${choices("anaphylaxis_device", "EpiPen / Anapen", ["EpiPen", "Anapen"], { multiple: true, max: 1, hint: "Optional. Select the active option again to clear it." })}<div class="immunisation-guidance"><p>Vaccinations are recorded on the Australian Immunisation Register (AIR). <a class="immunisation-law-link" href="https://www.health.vic.gov.au/immunisation/primary-school-immunisation-requirements" target="_blank" rel="noopener noreferrer">Victorian law <span class="external-link-mark" aria-hidden="true">&#8599;</span><span class="visually-hidden"> (opens in a new tab)</span></a> requires an Immunisation History Statement for primary school enrolment, regardless of the child’s vaccination status. You can obtain the statement through myGov and upload it later in this application.</p></div>${choices("immunisation", "Is Immunisation History Statement held and will be uploaded with this application?", yesNo, { required: true })}${choices("humanitarian_health", "If the student entered Australia on a humanitarian visa, did they receive a refugee health check?", yesNo)}<div class="field-grid">${field("doctor_name", "Doctor Name", { required: true })}${field("doctor_address", "Doctor's practice/Address", { required: true, className: "span-two" })}${field("doctor_phone", "Doctor Phone", { type: "tel", required: true })}${field("medicare_number", "Medicare Number", { required: true })}${field("medicare_reference", "Medicare Ref Number", { required: true })}${field("medicare_expiry", "Medicare Expiry", { type: "date" })}${field("private_insurance_provider", "Private health insurance provider")}${field("private_insurance_policy", "Private health insurance policy number")}</div>${choices("ambulance_cover", "Ambulance Cover", yesNo, { required: true })}${choices("healthcare_card", "Health Care Card", yesNo, { required: true })}<div class="conditional-panel" data-student-healthcare="healthcare_card"><div class="field-grid two">${field("student_healthcare_number", "Health Care Card No.", { required: true })}${field("student_healthcare_expiry", "Health Care Card Expiry", { type: "date", required: true })}</div></div>`) + actions();
   }
 
   function applicationGuardianFields(index) {
@@ -1344,6 +1345,7 @@
   }
 
   function validate() {
+    delete errorSummary.dataset.errorCode;
     errorSummary.hidden = true;
     root.querySelectorAll(".is-invalid").forEach(element => element.classList.remove("is-invalid"));
     root.querySelectorAll("[data-validation-for]").forEach(message => { message.hidden = true; });
@@ -1598,6 +1600,12 @@
     return ({ pdf: "application/pdf", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg" })[extension] || "application/octet-stream";
   }
 
+  function documentFileValidationMessage(file, mimeType) {
+    const allowedTypes = ["application/pdf", "image/png", "image/jpeg"];
+    if (!allowedTypes.includes(mimeType) || file.size < 1 || file.size > 10 * 1024 * 1024) return "Use a PDF, PNG or JPEG file no larger than 10 MB.";
+    return "";
+  }
+
   async function sha256Base64(file) {
     const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
     return btoa(String.fromCharCode(...new Uint8Array(digest)));
@@ -1617,6 +1625,17 @@
 
   function documentUploadKey(category, file) {
     return `${category}:${file.name}:${file.size}:${file.lastModified}`;
+  }
+
+  function clearSupersededDocumentUploadErrors(uploads, category, hasReplacement) {
+    if (!hasReplacement) return false;
+    let changed = false;
+    for (const [key, upload] of uploads) {
+      if (upload.category !== category || upload.status !== "error" || upload.promise) continue;
+      uploads.delete(key);
+      changed = true;
+    }
+    return changed;
   }
 
   function documentUploadLabel(upload) {
@@ -1714,8 +1733,9 @@
     setDocumentUploadState(upload, "preparing", 1);
     const operation = (async () => {
       const mimeType = mimeTypeFor(upload.file);
-      if (!["application/pdf", "image/png", "image/jpeg"].includes(mimeType) || upload.file.size < 1 || upload.file.size > 10 * 1024 * 1024) {
-        const error = new Error("Use a PDF, PNG or JPEG file no larger than 10 MB.");
+      const validationMessage = documentFileValidationMessage(upload.file, mimeType);
+      if (validationMessage) {
+        const error = new Error(validationMessage);
         error.code = "INVALID_DOCUMENT";
         throw error;
       }
@@ -1750,7 +1770,16 @@
     const match = input.name.match(/^application_document_(\d+)$/);
     const category = match ? applicationDocuments[Number(match[1])]?.[3] : "";
     if (!category) return;
-    for (const file of input.files || []) {
+    const selectedFiles = [...(input.files || [])];
+    if (!selectedFiles.length) return;
+    const removedFailedUploads = clearSupersededDocumentUploadErrors(documentUploads, category, true);
+    if (removedFailedUploads) renderDocumentUploadState(category);
+    if (errorSummary.dataset.errorCode === "DOCUMENT_UPLOAD_FAILED") {
+      delete errorSummary.dataset.errorCode;
+      errorSummary.hidden = true;
+      errorSummary.querySelector("ul").innerHTML = "";
+    }
+    for (const file of selectedFiles) {
       const key = documentUploadKey(category, file);
       const existing = documentUploads.get(key);
       if (existing?.status === "uploaded" || existing?.promise) continue;

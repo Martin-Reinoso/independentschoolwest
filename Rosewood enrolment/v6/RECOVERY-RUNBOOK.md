@@ -130,7 +130,7 @@ that child. The operation is conditional on the prior revision and form version.
 
 1. Check for `application.form_definition_upgraded` in the restricted audit record and
    an immutable `form_definition_upgraded` application revision.
-2. Confirm the current record is `rosewood-application-2026.11` and that aggregate answer
+2. Confirm the current record is `rosewood-application-2026.13` and that aggregate answer
    key count did not decrease. Do not print family answers into logs or tickets.
    A retained `previous_school_attended`, `previous_school_name` or
    `previous_school_year_level` value is expected historical data and must not be
