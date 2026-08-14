@@ -861,3 +861,32 @@ Verified locally on 14 August 2026 using synthetic data only.
 - local desktop and 390 px mobile browser checks confirm readable wrapping, no
   horizontal overflow, visible external-link treatment and a clear keyboard focus ring
 - production publishing and deployment are recorded separately after they occur
+
+## V6.13 Document Upload Recovery Verification
+
+Verified locally on 14 August 2026 using synthetic file metadata and the frontend
+review workflow only. No production application, invitation, session, upload, email,
+signature or family record was created or changed.
+
+- selecting one or more replacement files clears completed failed attempts only in
+  the same document category before the new attempt starts
+- cancelling the file picker preserves the existing warning and Retry action; active
+  uploads, completed uploads and failures in other document categories remain intact
+- automated coverage passes for unsupported type followed by a valid file, retrying
+  the same filename, multiple failed selections followed by replacements, empty files,
+  files larger than 10 MB, accepted PDF/PNG/JPEG files and the exact 10 MB boundary
+- a document-upload service summary is cleared only when a replacement is selected;
+  unrelated server errors retain their own code and presentation
+- V6.13 preserves the complete V6.12 EOI and Application contracts and answer keys;
+  V6.12 and earlier immutable definitions remain addressable
+- all 99 backend and source-contract tests pass, including the exact frontend helper
+  extraction, immutable definitions, compatibility, submission and upload lifecycle
+- 73 tracked HTML/CSS files pass the static-reference gate and 365 tracked files pass
+  the private-data and high-confidence secret gate
+- JavaScript syntax, `git diff --check`, pinned V6.13 asset hashes and the locked
+  production deployment bundle pass
+- desktop review mode renders five document upload cards at 1280 px without overflow;
+  at `390 x 844`, all five cards remain inside the viewport and the browser console
+  reports no errors
+- AWS CloudFormation template validation and production deployment remain pending
+  because the local AWS CLI session expired before the read-only validation call

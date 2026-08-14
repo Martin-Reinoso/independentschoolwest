@@ -16,7 +16,7 @@
   const invitationToken = params.get("invite") || "";
   const policyDocuments = window.rosewoodPolicyDocuments || {};
   const policyOrder = ["enrolment-policy", "enrolment-procedure", "privacy-policy"];
-  const SUPPORTED_APPLICATION_FORM_VERSIONS = new Set(["rosewood-application-2026.1", "rosewood-application-2026.2", "rosewood-application-2026.3", "rosewood-application-2026.4", "rosewood-application-2026.5", "rosewood-application-2026.6", "rosewood-application-2026.7", "rosewood-application-2026.8", "rosewood-application-2026.9", "rosewood-application-2026.10", "rosewood-application-2026.11", "rosewood-application-2026.12"]);
+  const SUPPORTED_APPLICATION_FORM_VERSIONS = new Set(["rosewood-application-2026.1", "rosewood-application-2026.2", "rosewood-application-2026.3", "rosewood-application-2026.4", "rosewood-application-2026.5", "rosewood-application-2026.6", "rosewood-application-2026.7", "rosewood-application-2026.8", "rosewood-application-2026.9", "rosewood-application-2026.10", "rosewood-application-2026.11", "rosewood-application-2026.12", "rosewood-application-2026.13"]);
   const CONTACT_PERMISSION_YES = "Yes, the school may contact this person";
   const CONTACT_PERMISSION_NO = "No, do not contact this person";
   const APPLICATION_SESSION_STORAGE_KEY = "rosewood-enrolment-v6-active-session";
@@ -137,6 +137,7 @@
     const first = missing[0];
     const action = first ? `<li class="validation-summary-action"><button type="button" class="button button-secondary" data-validation-screen="${first.screen}">Review ${esc(first.section)}</button></li>` : "";
     errorSummary.querySelector("ul").innerHTML = `<li>${esc(missing.length ? "Review the information below before submitting the application." : error.message)}</li>${details}${action}`;
+    errorSummary.dataset.errorCode = error.code || "";
     errorSummary.hidden = false;
     errorSummary.focus();
   }
@@ -324,7 +325,7 @@
   ].includes(commitment));
 
   function applicationReleaseNumber() {
-    return Number(String(state.formVersion || "rosewood-application-2026.12").split(".").pop()) || 12;
+    return Number(String(state.formVersion || "rosewood-application-2026.13").split(".").pop()) || 13;
   }
 
   function occupationOptions() {
@@ -1344,6 +1345,7 @@
   }
 
   function validate() {
+    delete errorSummary.dataset.errorCode;
     errorSummary.hidden = true;
     root.querySelectorAll(".is-invalid").forEach(element => element.classList.remove("is-invalid"));
     root.querySelectorAll("[data-validation-for]").forEach(message => { message.hidden = true; });
@@ -1598,6 +1600,12 @@
     return ({ pdf: "application/pdf", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg" })[extension] || "application/octet-stream";
   }
 
+  function documentFileValidationMessage(file, mimeType) {
+    const allowedTypes = ["application/pdf", "image/png", "image/jpeg"];
+    if (!allowedTypes.includes(mimeType) || file.size < 1 || file.size > 10 * 1024 * 1024) return "Use a PDF, PNG or JPEG file no larger than 10 MB.";
+    return "";
+  }
+
   async function sha256Base64(file) {
     const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
     return btoa(String.fromCharCode(...new Uint8Array(digest)));
@@ -1617,6 +1625,17 @@
 
   function documentUploadKey(category, file) {
     return `${category}:${file.name}:${file.size}:${file.lastModified}`;
+  }
+
+  function clearSupersededDocumentUploadErrors(uploads, category, hasReplacement) {
+    if (!hasReplacement) return false;
+    let changed = false;
+    for (const [key, upload] of uploads) {
+      if (upload.category !== category || upload.status !== "error" || upload.promise) continue;
+      uploads.delete(key);
+      changed = true;
+    }
+    return changed;
   }
 
   function documentUploadLabel(upload) {
@@ -1714,8 +1733,9 @@
     setDocumentUploadState(upload, "preparing", 1);
     const operation = (async () => {
       const mimeType = mimeTypeFor(upload.file);
-      if (!["application/pdf", "image/png", "image/jpeg"].includes(mimeType) || upload.file.size < 1 || upload.file.size > 10 * 1024 * 1024) {
-        const error = new Error("Use a PDF, PNG or JPEG file no larger than 10 MB.");
+      const validationMessage = documentFileValidationMessage(upload.file, mimeType);
+      if (validationMessage) {
+        const error = new Error(validationMessage);
         error.code = "INVALID_DOCUMENT";
         throw error;
       }
@@ -1750,7 +1770,16 @@
     const match = input.name.match(/^application_document_(\d+)$/);
     const category = match ? applicationDocuments[Number(match[1])]?.[3] : "";
     if (!category) return;
-    for (const file of input.files || []) {
+    const selectedFiles = [...(input.files || [])];
+    if (!selectedFiles.length) return;
+    const removedFailedUploads = clearSupersededDocumentUploadErrors(documentUploads, category, true);
+    if (removedFailedUploads) renderDocumentUploadState(category);
+    if (errorSummary.dataset.errorCode === "DOCUMENT_UPLOAD_FAILED") {
+      delete errorSummary.dataset.errorCode;
+      errorSummary.hidden = true;
+      errorSummary.querySelector("ul").innerHTML = "";
+    }
+    for (const file of selectedFiles) {
       const key = documentUploadKey(category, file);
       const existing = documentUploads.get(key);
       if (existing?.status === "uploaded" || existing?.promise) continue;

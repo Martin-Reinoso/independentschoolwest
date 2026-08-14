@@ -29,8 +29,8 @@ deliberately creating a new version.
 Current launch contracts:
 
 ```text
-EOI:         rosewood-eoi-2026.12
-Application: rosewood-application-2026.12
+EOI:         rosewood-eoi-2026.13
+Application: rosewood-application-2026.13
 ```
 
 The original `2026.1`, `2026.2`, `2026.3` and `2026.4` contracts and validators remain
@@ -102,6 +102,12 @@ vaccination status and gives the official Health Victoria link a stronger visibl
 treatment. The EOI questions remain unchanged and advance to `2026.12` only because
 the shared family HTML, JavaScript and CSS assets are repinned. No validation, storage,
 projection, consent or submission behaviour changes.
+The `2026.13` release preserves both V6.12 data contracts and answer keys. It fixes the
+shared document uploader so selecting a genuine replacement clears completed failed
+attempts and their stale page/card warnings for that category before the new transfer
+begins. Cancellation, successful uploads, active transfers and failures in other
+categories are preserved. EOI advances only because it shares the repinned family HTML
+and JavaScript. No schema, answer, validation, projection or storage contract changes.
 
 Acceptance, Decline and the Enrolment Agreement must receive their own independent
 version series when their backends are built. They must not reuse the Application

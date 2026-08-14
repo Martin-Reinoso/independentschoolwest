@@ -83,7 +83,9 @@ inactivity, with an eight-hour absolute limit. A family invitation and email OTP
 only the child records attached to that invitation; selecting or creating a child
 produces a separate application-scoped session. Application answers autosave after a
 short pause and during continuous typing. Selecting a document starts its upload
-immediately and displays per-file progress and inline retryable errors. Next and **Save
+immediately and displays per-file progress and inline retryable errors. Selecting a
+replacement file clears superseded failed attempts in that document category without
+removing files already uploaded or still transferring. Next and **Save
 and continue later** wait for any active transfer, flush the draft and, for save-later,
 close the selected child's editing session while preserving the verified family session.
 The confirmation provides **Return to child applications**; the family can choose another
@@ -121,12 +123,12 @@ request. Google Sheets show the record's actual form version but remain replacea
 reports. `SCHEMA-EVOLUTION.md` defines the mandatory process for adding, removing,
 renaming or changing questions and for migrating existing records.
 
-The current `2026.11` release preserves the V6.10 data contracts while correcting the
-active occupation catalogue and removing fee, photography/social-media and Grade 12
-withdrawal clauses from the Application commitments. Older drafts continue to render
-their pinned catalogue and wording. EOI submission is idempotent and rate-limited;
-external artifacts are removed after failed persistence transactions; and outbox work
-moves to a retained failure record with an alarm after eight unsuccessful attempts.
+The current `2026.13` release preserves the V6.12 data contracts while correcting
+document-upload recovery after an invalid file selection. A genuine replacement clears
+the superseded failed state and starts immediately; cancelling the picker changes
+nothing, and uploaded or active transfers remain intact. V6.12 includes the revised
+immunisation guidance and clearer official Victorian-law link. Older definitions remain
+addressable and submitted records are not rewritten.
 
 The Application welcome uses the three approved Rosewood policies stored under
 `pages/rosewood-policies/`. Selecting one changes the current URL through the History
@@ -194,5 +196,5 @@ live/preview boundaries. See these records together with
 
 `V6.7-CHANGE-MAP.md`, `V6.8-CHANGE-MAP.md`, `V6.9-CHANGE-MAP.md` and
 `V6.10-CHANGE-MAP.md` record the preceding contract releases.
-`V6.11-CHANGE-MAP.md` records the current interface corrections, idempotency,
-bounded-retry, artifact-cleanup, SES-feedback and repository-release gates.
+`V6.11-CHANGE-MAP.md`, `V6.12-CHANGE-MAP.md` and `V6.13-CHANGE-MAP.md` record the
+current interface, immunisation-guidance and upload-recovery releases.

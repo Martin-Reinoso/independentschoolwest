@@ -11,6 +11,10 @@ Decision date: 7 August 2026
   to begin it.
 - Each file shows preparation, percentage, securing, uploaded or inline retryable-error
   state. The sticky status reflects active or failed uploads as well as draft saving.
+- Choosing one or more replacement files removes completed failed attempts only for
+  that document category before the replacements begin. It must also clear the stale
+  inline and global upload warning. Cancelling the picker changes nothing; already
+  uploaded files, active transfers and failures in other categories remain intact.
 - Next and Save and continue later may be selected during transfer and wait for active
   files before proceeding.
 - Google Drive remains the authoritative restricted file store. Private Sydney S3 is
