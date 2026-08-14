@@ -1033,3 +1033,34 @@ or Slack notification.
   A 390 x 844 mobile browser check reports no horizontal overflow; entry and school
   controls fit the viewport, Medicare is a native month input and Other Languages has
   no catalogue binding.
+
+## V6.14 Production Release
+
+Published and deployed in Sydney on 15 August 2026 without creating or changing an
+EOI, invitation, OTP, family session, application, upload, signature, workflow email
+or Slack notification.
+
+- pull request `#7` passed the enrolment-backend and static-site repository checks and
+  merged V6.14 to `main` as commit
+  `4f3871bb8770509e5cbec0a5605cd6d09dbd2546`
+- GitHub Pages completed successfully and serves the reviewed assets byte for byte:
+  HTML `11a50c0c1a42214997b0b844c90e9c87bd2a3c6e1ca922f983622ba2eedb84a7`,
+  JavaScript `b40860aaa9c96a70879c684fcaed18889082d573a7fb0a62eaab5eb5f6f4ea22`
+  and CSS `ad64b038c8d9803bf48ba93e7e37896f78c72c4828efaeab95309a29a3d3643d`
+- reviewed no-execute change set
+  `rosewood-v14-family-feedback-20260815-4f3871b` modified Lambda code in place and
+  recalculated only existing canary/outbox targets and permissions and the SES-events
+  Lambda subscription; it contained no additions, removals or changes to DynamoDB,
+  audit, KMS, document staging, backups, secrets, Google configuration, alarms or the
+  public API URL
+- CloudFormation reached `UPDATE_COMPLETE`; termination protection remains enabled,
+  Lambda is `Active` with a successful update, and `/v6/health` reports EOI
+  `rosewood-eoi-2026.14` and Application `rosewood-application-2026.14`
+- the one-minute outbox and ten-minute canary schedules are enabled; a manual
+  non-writing production canary returned HTTP 200 with all five checks available and
+  all nine production alarms remain `OK`
+- both security-topic email subscriptions remain confirmed; the SES configuration set
+  remains enabled for send, delivery, delivery delay, bounce, complaint, reject and
+  rendering-failure events, with its encrypted SNS topic and Lambda subscription intact
+- no OTP or workflow email was sent because this release did not change SES/IAM
+  permissions and verification used only read-only health and canary paths
