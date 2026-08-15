@@ -127,12 +127,12 @@ request. Google Sheets show the record's actual form version but remain replacea
 reports. `SCHEMA-EVOLUTION.md` defines the mandatory process for adding, removing,
 renaming or changing questions and for migrating existing records.
 
-The current `2026.13` release preserves the V6.12 data contracts while correcting
-document-upload recovery after an invalid file selection. A genuine replacement clears
-the superseded failed state and starts immediately; cancelling the picker changes
-nothing, and uploaded or active transfers remain intact. V6.12 includes the revised
-immunisation guidance and clearer official Victorian-law link. Older definitions remain
-addressable and submitted records are not rewritten.
+The current `2026.15` release preserves the V6.14 data contract while clarifying the
+other-children question and targeting the exact incomplete family control from server
+validation. V6.14 contains the preceding family-feedback field changes, V6.13 corrects
+document-upload recovery and V6.12 contains the revised immunisation guidance and
+clearer official Victorian-law link. Older definitions remain addressable and
+submitted records are not rewritten.
 
 The Application welcome uses the three approved Rosewood policies stored under
 `pages/rosewood-policies/`. Selecting one changes the current URL through the History
@@ -201,5 +201,6 @@ live/preview boundaries. See these records together with
 `V6.7-CHANGE-MAP.md`, `V6.8-CHANGE-MAP.md`, `V6.9-CHANGE-MAP.md` and
 `V6.10-CHANGE-MAP.md` record the preceding contract releases.
 `V6.11-CHANGE-MAP.md`, `V6.12-CHANGE-MAP.md`, `V6.13-CHANGE-MAP.md` and
-`V6.14-CHANGE-MAP.md` record the current interface, immunisation-guidance,
-upload-recovery and family-feedback releases.
+`V6.14-CHANGE-MAP.md` and `V6.15-CHANGE-MAP.md` record the current interface,
+immunisation-guidance, upload-recovery, family-feedback and family-question clarity
+releases.

@@ -92,6 +92,7 @@ function formReleaseAtLeast(formVersion, minimum) {
 function studentSections(values, options = {}) {
   const v8 = formReleaseAtLeast(options.formVersion, 8);
   const v14 = formReleaseAtLeast(options.formVersion, 14);
+  const v15 = formReleaseAtLeast(options.formVersion, 15);
   return [
     section("student", "Student", [
       group("Student details", [
@@ -140,8 +141,8 @@ function studentSections(values, options = {}) {
         field(values, "student_country", "Country")
       ]),
       group("Family", [
-        field(values, "future_siblings", "Do you have any other children that may attend our school?"),
-        field(values, "future_sibling_count", v14 ? "How many other children?" : "How many children?", { when: value => value.future_siblings === "Yes" || present(value.future_sibling_count) })
+        field(values, "future_siblings", v15 ? "Do you have any other children, apart from this child, who may apply to Rosewood College in the future?" : "Do you have any other children that may attend our school?"),
+        field(values, "future_sibling_count", v15 ? "How many other children may apply?" : v14 ? "How many other children?" : "How many children?", { when: value => value.future_siblings === "Yes" || present(value.future_sibling_count) })
       ])
     ]),
     section("nationality", v14 ? "Student's Nationality and Citizenship" : "Nationality and Citizenship", [

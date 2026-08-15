@@ -98,7 +98,6 @@ test("V6.14 applies the approved family feedback without weakening verification 
   assert.match(source, /label: "Foundation \(Prep\)"/);
   assert.doesNotMatch(source.slice(source.indexOf("const entryLevels"), source.indexOf("const currentLevels")), /Year 6/);
   assert.doesNotMatch(source.slice(source.indexOf("const currentSchools"), source.indexOf("const needCategories")), /Our Lady of Rosary|St Mary's/);
-  assert.match(studentSource, /How many other children\?/);
   assert.match(studentSource, /future_sibling_count.*type: "number"/);
   assert.match(studentSource, /Student's Nationality and Citizenship/);
   assert.match(studentSource, /Current Country of Residence/);
@@ -110,6 +109,24 @@ test("V6.14 applies the approved family feedback without weakening verification 
   assert.match(studentSource, /field\("other_languages", "Other Languages"\)/);
   assert.doesNotMatch(studentSource, /This information will not impact the offer of enrolment/);
   assert.match(studentSource, /We may contact you to clarify the information provided or request relevant reports/);
+});
+
+test("V6.15 uses family-facing wording and navigates to the exact unanswered family control", async () => {
+  const source = await readFile(new URL("../../../../pages/rosewood-enrolment-v6.js", import.meta.url), "utf8");
+  const studentSource = source.slice(source.indexOf("function renderApplicationStudent"), source.indexOf("function applicationGuardianFields"));
+  const validationSource = source.slice(source.indexOf("function missingAnswerGuidance"), source.indexOf("function field"));
+  const inlineSource = source.slice(source.indexOf("function showInlineServerValidation"), source.indexOf("function clearResolvedServerValidation"));
+
+  assert.match(studentSource, /Do you have any other children, apart from this child, who may apply to Rosewood College in the future\?/);
+  assert.match(studentSource, /Do not include the child named in this application\./);
+  assert.match(studentSource, /How many other children may apply\?/);
+  assert.match(validationSource, /future_siblings: \{ section: "Student – Family"/);
+  assert.match(validationSource, /Please select Yes or No for “Do you have any other children who may apply\?”/);
+  assert.match(validationSource, /Please enter how many other children may apply\./);
+  assert.match(source, /data-validation-field="\$\{esc\(first\.field\)\}"/);
+  assert.match(source, /field: action\.dataset\.validationField \|\| ""/);
+  assert.match(inlineSource, /requestedControl \|\| firstControl/);
+  assert.match(inlineSource, /behavior: "smooth"/);
 });
 
 test("guardian signing renders the complete server-provided application review", async () => {

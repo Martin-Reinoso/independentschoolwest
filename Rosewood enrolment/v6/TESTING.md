@@ -1064,3 +1064,25 @@ or Slack notification.
   rendering-failure events, with its encrypted SNS topic and Lambda subscription intact
 - no OTP or workflow email was sent because this release did not change SES/IAM
   permissions and verification used only read-only health and canary paths
+
+## V6.15 Family Question Clarity Verification
+
+- The Student Family section displays the approved other-children question, the note
+  not to include the child named in the application and the conditional **How many
+  other children may apply?** numeric field.
+- Exact server-validation guidance covers an unanswered Yes/No response, a missing
+  count and a count outside the whole-number 1-to-99 range. It does not expose the
+  internal `future_siblings` or `future_sibling_count` names.
+- The validation action carries the exact field identifier, updates conditional
+  visibility, scrolls to the requested control, applies the inline invalid state and
+  moves keyboard focus to that control.
+- Browser interaction verified that Yes reveals the required count and No hides it.
+  At 390 x 844, the 321-pixel question area wraps cleanly inside the 355-pixel Family
+  card and the 390-pixel document has no horizontal overflow.
+- V6.15 guardian review uses the clearer labels while a synthetic V6.14 submitted
+  review retains its pinned historical wording.
+- V6.15 changes no stored key, answer meaning, required/conditional rule, numeric range,
+  Sheet projection, submission rule or signature state. Editable older drafts retain
+  every answer; submitted records and signature evidence do not upgrade.
+- All 106 backend tests pass. JavaScript syntax, `git diff --check`, the locked
+  deployment build, 80-file static-reference gate and 381-file public-data gate pass.

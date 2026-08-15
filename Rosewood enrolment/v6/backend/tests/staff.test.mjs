@@ -375,6 +375,23 @@ test("an active older draft is upgraded once with every saved answer preserved",
   assert.ok(store.audit.some(eventRecord => eventRecord.type === "application.form_definition_upgraded"));
 });
 
+test("an active V14 draft adopts V15 wording without transforming its family answers", async () => {
+  const { service, store } = staffService();
+  const created = await createApplicationInvitation({ store, recipientEmail: "family@example.com", firstName: "Alex", applicationUrl: "https://ffe.org.au/form", clock });
+  const v14 = getFormDefinition("application", "rosewood-application-2026.14");
+  const original = store.applications.get(created.applicationId);
+  const values = { ...original.values, future_siblings: "Yes", future_sibling_count: "2", saved_marker: "Preserve this answer" };
+  store.applications.set(original.id, { ...original, formVersion: v14.formVersion, formDefinitionHash: v14.definitionHash, schemaVersion: v14.schemaVersion, values });
+  const invitationToken = new URL(created.invitationUrl).searchParams.get("invite");
+  const requested = JSON.parse((await service(event("/v6/application/access/request-code", "POST", { invitationToken, email: "family@example.com" }))).body);
+  await service(event("/v6/application/access/verify-code", "POST", { invitationToken, challengeId: requested.challengeId, code: "123456" }));
+  const upgraded = store.applications.get(created.applicationId);
+
+  assert.equal(upgraded.formVersion, "rosewood-application-2026.15");
+  assert.deepEqual(upgraded.values, values);
+  assert.deepEqual(store.audit.find(eventRecord => eventRecord.type === "application.form_definition_upgraded").details.normalizedFields, []);
+});
+
 test("remembered staff sessions slide for two hours after each authorised activity", async () => {
   let now = clock();
   const { service, store } = staffService({ clockFn: () => now });

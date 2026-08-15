@@ -29,8 +29,8 @@ deliberately creating a new version.
 Current launch contracts:
 
 ```text
-EOI:         rosewood-eoi-2026.14
-Application: rosewood-application-2026.14
+EOI:         rosewood-eoi-2026.15
+Application: rosewood-application-2026.15
 ```
 
 The original `2026.1`, `2026.2`, `2026.3` and `2026.4` contracts and validators remain
@@ -117,6 +117,13 @@ becomes N/A, a full Medicare date retains its year/month, and 7+ becomes 7. The 
 records the changed keys and normalized fields while preserving every other answer.
 Submitted records and signature evidence never upgrade. EOI advances because it shares
 the repinned frontend and entry/school catalogues.
+The `2026.15` release changes only the family-facing other-children wording, its exact
+validation guidance and field-targeted navigation. The stored `future_siblings` and
+`future_sibling_count` keys, required/conditional rules, numeric range, projections and
+submission semantics are unchanged. Editable older applications upgrade through the
+existing conditional definition transaction without answer transformation. Submitted
+records and signature evidence remain pinned to their original definition. EOI
+advances only because it shares the repinned family frontend assets.
 
 Acceptance, Decline and the Enrolment Agreement must receive their own independent
 version series when their backends are built. They must not reuse the Application

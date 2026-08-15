@@ -423,3 +423,13 @@ test("V8 guardian review omits retired previous education and includes the optio
   assert.equal(conditions.groups.at(-1).title, "Student and family survey");
   assert.match(JSON.stringify(conditions.groups.at(-1)), /Mathematics|trusted adult relationship/);
 });
+
+test("V15 guardian review uses the clearer family wording without rewriting V14 reviews", () => {
+  const values = { future_siblings: "Yes", future_sibling_count: "2" };
+  const v14 = buildApplicationReview({ formVersion: "rosewood-application-2026.14", guardianCount: 1, emergencyCount: 2, values, documents: {}, signatures: [] });
+  const v15 = buildApplicationReview({ formVersion: "rosewood-application-2026.15", guardianCount: 1, emergencyCount: 2, values, documents: {}, signatures: [] });
+  const familyFields = review => review.sections.find(section => section.id === "student").groups.find(group => group.title === "Family").items;
+
+  assert.deepEqual(familyFields(v14).map(field => field.label), ["Do you have any other children that may attend our school?", "How many other children?"]);
+  assert.deepEqual(familyFields(v15).map(field => field.label), ["Do you have any other children, apart from this child, who may apply to Rosewood College in the future?", "How many other children may apply?"]);
+});
