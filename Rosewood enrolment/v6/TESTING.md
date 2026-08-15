@@ -1086,3 +1086,34 @@ or Slack notification.
   every answer; submitted records and signature evidence do not upgrade.
 - All 106 backend tests pass. JavaScript syntax, `git diff --check`, the locked
   deployment build, 80-file static-reference gate and 381-file public-data gate pass.
+
+## V6.15 Production Release
+
+Published and deployed in Sydney on 16 August 2026 without creating or changing an
+EOI, invitation, OTP, family session, application, upload, signature, workflow email
+or Slack notification.
+
+- pull request `#10` passed both repository checks and merged V6.15 to `main` as commit
+  `d76b7ea64240acf32152755331b43190fb0d9981`
+- GitHub Pages completed successfully and serves the reviewed assets byte for byte:
+  HTML `87b622dec1164b5a49ee1c9cdbfafb8e492a2f1b09fb3d7dc8698ba1dd794541`,
+  JavaScript `ddcd2f7132c18e61db98b54ad734d2bda9f062f08f0837a083023a543648c951`
+  and CSS `ad64b038c8d9803bf48ba93e7e37896f78c72c4828efaeab95309a29a3d3643d`
+- reviewed no-execute change set
+  `rosewood-v15-family-clarity-20260816-d76b7ea` modified Lambda code in place and
+  recalculated only existing canary/outbox schedules and permissions and the SES-events
+  Lambda subscription; it contained no additions, removals or changes to DynamoDB,
+  audit, KMS, document staging, backups, secrets, Google configuration, alarms or the
+  public API URL
+- CloudFormation reached `UPDATE_COMPLETE`; termination protection remains enabled,
+  Lambda is `Active` with a successful update, and `/v6/health` reports EOI
+  `rosewood-eoi-2026.15` and Application `rosewood-application-2026.15`
+- the one-minute outbox and ten-minute canary schedules are enabled; a manual
+  non-writing production canary returned HTTP 200 with all five checks available and
+  all nine production alarms remain `OK`
+- both security-topic email subscriptions remain confirmed for `info@ffe.org.au` and
+  `frjativa@gmail.com`; the SES configuration set remains enabled for send, delivery,
+  delivery delay, bounce, complaint, reject and rendering-failure events, with its
+  encrypted SNS topic and Lambda subscription intact
+- no OTP or workflow email was sent because this release changed no SES/IAM permission
+  and verification used only read-only health and canary paths
