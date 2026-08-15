@@ -36,14 +36,14 @@ server-acknowledged application create, start, save and submission also writes a
 append-only DynamoDB revision. Staff can inspect a selected historical revision through
 an authorised, audited endpoint. See `../SCHEMA-EVOLUTION.md` before changing fields,
 options, validation or required status.
-The current `2026.11` contracts pin the family, staff and signing HTML/JavaScript/CSS,
+The current `2026.15` contracts pin the family, staff and signing HTML/JavaScript/CSS,
 policy projection and all original Word/PDF policy assets. Policy viewing is frontend-
 only and does not create an application answer, acknowledgement or audit event.
-EOI `2026.11` preserves the V6.10 data contract and optional Google address assistance.
-Application `2026.11` preserves the V6.10 data contract while correcting the active
-occupation catalogue and Parent / Carer commitment scope. Earlier versions retain
-their pinned display data. Manual entry remains available and no Place ID, coordinates
-or search history is stored.
+EOI `2026.15` preserves its earlier data contract. Application `2026.15` preserves the
+V6.14 answer and validation contract while clarifying the other-children wording and
+targeting the exact incomplete field from validation guidance. Earlier versions retain
+their pinned display data. Manual address entry remains available and no Place ID,
+coordinates or search history is stored.
 
 `GOOGLE_MAPS_BROWSER_API_KEY` is read from the existing Secrets Manager configuration.
 It is returned through the no-store EOI runtime-config route and an OTP-verified

@@ -135,7 +135,8 @@ workflows into the current records or API.
   Conditions page must enforce it before the family reaches Signature.
 - If final server validation still finds an earlier incomplete answer, the response is
   translated into the family-facing field label and section. The page provides a direct
-  review action and highlights the affected control in that section.
+  review action that carries the exact missing field, reveals any applicable conditional
+  panel, scrolls to the affected control, highlights it and moves keyboard focus to it.
 - A signature drawing is held only in the current browser session until submission. It
   survives navigation between form sections but is never included in draft autosaves.
 - The declarations, date and additional-guardian acknowledgement must restore with the
@@ -204,9 +205,11 @@ The following St Lawrence application fields are hidden for Rosewood's first int
 
 The production schema should reserve nullable, inactive fields and repeat structures
 for them. They must not be rendered, required, silently defaulted or used in decisions
-until Rosewood explicitly enables them for a later intake. The visible future-family
-question asks only whether other children may attend and, when Yes, records a count of
-1 to 6 or 7+.
+until Rosewood explicitly enables them for a later intake. The visible family question
+asks whether there are other children, apart from the child named in the application,
+who may apply to Rosewood in future. When Yes, it records a whole-number count from 1
+to 99. Validation must use this family-facing wording and never expose internal
+“future sibling” field names.
 
 ## Student Rules
 

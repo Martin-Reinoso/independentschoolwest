@@ -112,12 +112,12 @@ their original immutable definition.
   upgrade revision and audit event, and does not submit or duplicate the record.
 - Submitted applications, submitted snapshots and signature evidence never upgrade.
 
-# V6.14 EOI And Application Question Matrix
+# V6.15 EOI And Application Question Matrix
 
-`rosewood-eoi-2026.14` and `rosewood-application-2026.14` are the current contracts.
-V6.13 and earlier remain immutable for submitted records.
+`rosewood-eoi-2026.15` and `rosewood-application-2026.15` are the current contracts.
+V6.14 and earlier remain immutable for submitted records.
 
-| Area | V6.14 question or rule | Required/condition | Storage and downstream rule |
+| Area | V6.15 question or rule | Required/condition | Storage and downstream rule |
 | --- | --- | --- | --- |
 | Child selector | Direct invitation source | Not displayed to families | Operational source remains on invitation/application records and in staff portal |
 | Child selector | Information from your Expression of Interest has been included. | Displayed only when `sourceEoiId` is present | Informational only; no new answer |
@@ -127,7 +127,8 @@ V6.13 and earlier remain immutable for submitted records.
 | Retired previous education | Previous attendance, institution and year level | Not rendered or required | Historical values remain in earlier revisions/answer maps; omitted from V6.8 guardian review |
 | Student primary address | Share this address with other Parent/Guardian? | Required | Existing `student_address_share`; Student projection |
 | Student primary address | Home Care Arrangement | Required compact single-select; Other and Shared Custody require details | Existing care keys; Student projection |
-| Family | How many other children? | Required positive whole number from 1 to 99 after Yes | Existing `future_sibling_count`; editable legacy `7+` normalises to `7` with revision/audit evidence |
+| Family | Do you have any other children, apart from this child, who may apply to Rosewood College in the future? | Required Yes/No; note says not to include the child named in this application | Existing `future_siblings`; exact validation uses the visible family wording and targets this control |
+| Family | How many other children may apply? | Required positive whole number from 1 to 99 after Yes | Existing `future_sibling_count`; conditional field is revealed, highlighted, scrolled to and focused by its validation action; editable legacy `7+` normalises to `7` with revision/audit evidence |
 | Student's Nationality and Citizenship | Residence, birth, nationality, optional ethnicity and languages | Existing government-reporting conditions | Existing answer keys; Other Languages is free text while Main Language keeps the catalogue |
 | General / Additional Needs | Approved duty-of-care/support explanation; Health professionals involved; Reports Attached Yes/N/A | Existing conditional rules | Existing keys; editable legacy Reports Attached `No` normalises to `N/A` with revision/audit evidence |
 | Medical Details | Medicare Expiry | Required month and year | Existing `medicare_expiry`; editable full dates normalise to `YYYY-MM` with revision/audit evidence |
@@ -150,14 +151,15 @@ V6.13 and earlier remain immutable for submitted records.
 | Parent / Carer commitments | Fee, photography/social-media and Grade 12 withdrawal clauses are not part of Application | Existing acknowledgement remains required | V11 renders the scoped commitment list; V10 and earlier retain their pinned wording |
 | EOI submission | Stable idempotency key | Generated per attempted submission and reused for retries | The EOI, idempotency result, audit and outbox work are one DynamoDB transaction |
 
-## V6.14 Session And Migration Rules
+## V6.15 Session And Migration Rules
 
 - Save and continue later closes only the selected child's editing/status sessions,
   clears child answers from page memory and retains the family session.
 - Return to child applications opens the selector without another OTP while that family
   session remains valid.
-- Opening an editable older application upgrades it to V6.14 in one conditional
-  transaction while preserving all existing answer keys and revision history.
+- Opening an editable older application upgrades it to V6.15 in one conditional
+  transaction while preserving all existing answer keys and revision history. V6.15
+  changes family-facing wording and navigation only; it does not transform an answer.
 - Family and application sessions expire after 90 minutes without successful server
   activity. A blocking five-minute warning allows the family to continue before expiry.
 - Verification codes remain valid for 10 minutes. The 30-second resend cooldown is
