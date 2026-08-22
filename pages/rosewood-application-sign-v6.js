@@ -11,6 +11,15 @@
   const labels = ["Verify identity", "Review application", "Sign", "Complete"];
 
   function esc(value) { return String(value ?? "").replace(/[&<>'"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]); }
+  function melbourneDate(value = new Date()) {
+    const parts = Object.fromEntries(new Intl.DateTimeFormat("en-AU", {
+      timeZone: "Australia/Melbourne",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).formatToParts(value).map(part => [part.type, part.value]));
+    return `${parts.year}-${parts.month}-${parts.day}`;
+  }
   function setStatus(title, copy, saved = false) { status.classList.toggle("is-saved", saved); status.querySelector("strong").textContent = title; status.querySelector("small").textContent = copy; }
   function showError(message) { error.querySelector("ul").innerHTML = `<li>${esc(message)}</li>`; error.hidden = false; error.focus(); }
   function clearError() { error.hidden = true; }
@@ -52,7 +61,7 @@
   }
 
   function sign() {
-    return `<div class="section-intro"><p class="eyebrow">Electronic signature</p><h2>Sign the application</h2><p class="lead">Both declarations must be accepted before the signature area is enabled.</p></div><div class="signing-declaration"><label class="check-line"><input name="ip" type="checkbox" value="Confirmed" required><span>${esc(state.context.declarations.ip)} <span class="required">*</span></span></label><label class="check-line"><input name="terms" type="checkbox" value="Confirmed" required><span>${esc(state.context.declarations.terms)} <span class="required">*</span></span></label></div><canvas class="signing-canvas" width="960" height="220" aria-label="Signature drawing area" tabindex="0"></canvas><div class="inline-actions"><button type="button" class="button button-secondary" data-clear disabled>Clear signature</button></div><label class="field readonly-field"><span>Date</span><input type="date" value="${new Date().toISOString().slice(0, 10)}" readonly></label>${actions("Submit signature")}`;
+    return `<div class="section-intro"><p class="eyebrow">Electronic signature</p><h2>Sign the application</h2><p class="lead">Both declarations must be accepted before the signature area is enabled.</p></div><div class="signing-declaration"><label class="check-line"><input name="ip" type="checkbox" value="Confirmed" required><span>${esc(state.context.declarations.ip)} <span class="required">*</span></span></label><label class="check-line"><input name="terms" type="checkbox" value="Confirmed" required><span>${esc(state.context.declarations.terms)} <span class="required">*</span></span></label></div><canvas class="signing-canvas" width="960" height="220" aria-label="Signature drawing area" tabindex="0"></canvas><div class="inline-actions"><button type="button" class="button button-secondary" data-clear disabled>Clear signature</button></div><label class="field readonly-field"><span>Date</span><input type="date" value="${melbourneDate()}" readonly></label>${actions("Submit signature")}`;
   }
 
   function complete() {

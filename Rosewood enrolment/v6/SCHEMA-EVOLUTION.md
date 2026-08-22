@@ -30,7 +30,7 @@ Current launch contracts:
 
 ```text
 EOI:         rosewood-eoi-2026.15
-Application: rosewood-application-2026.15
+Application: rosewood-application-2026.16
 ```
 
 The original `2026.1`, `2026.2`, `2026.3` and `2026.4` contracts and validators remain
@@ -124,6 +124,12 @@ submission semantics are unchanged. Editable older applications upgrade through 
 existing conditional definition transaction without answer transformation. Submitted
 records and signature evidence remain pinned to their original definition. EOI
 advances only because it shares the repinned family frontend assets.
+The Application `2026.16` release changes only the guardian signing interface and its
+cache-pinned family entry assets. The read-only signature date is derived from
+`Australia/Melbourne` instead of UTC. It preserves the V6.15 question, validation,
+answer, projection, submission and signature-evidence contract. EOI remains at
+`2026.15`; submitted records remain pinned and editable older drafts retain every
+answer when upgraded through the existing conditional transaction.
 
 Acceptance, Decline and the Enrolment Agreement must receive their own independent
 version series when their backends are built. They must not reuse the Application

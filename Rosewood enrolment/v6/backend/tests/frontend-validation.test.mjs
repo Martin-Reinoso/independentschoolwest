@@ -143,8 +143,14 @@ test("guardian signing renders the complete server-provided application review",
   assert.match(source, /Do not proceed to signing without the complete application/);
   assert.doesNotMatch(source, /const conditions = context\.review\.conditions/);
   assert.doesNotMatch(source, /<h3>Previous school permission<\/h3>/);
+  assert.match(source, /timeZone: "Australia\/Melbourne"/);
+  assert.match(source, /formatToParts\(value\)/);
+  assert.match(source, /value="\$\{melbourneDate\(\)\}"/);
+  assert.doesNotMatch(source, /new Date\(\)\.toISOString\(\)\.slice\(0, 10\)/);
+  assert.match(await readFile(new URL("../../../../pages/rosewood-enrolment-v6.js", import.meta.url), "utf8"), /rosewood-application-2026\.16/);
+  assert.match(await readFile(new URL("../../../../pages/rosewood-enrolment-v6.html", import.meta.url), "utf8"), /rosewood-enrolment-v6\.js\?v=27/);
   assert.match(html, /rosewood-application-sign-v6\.css\?v=2/);
-  assert.match(html, /rosewood-application-sign-v6\.js\?v=4/);
+  assert.match(html, /rosewood-application-sign-v6\.js\?v=5/);
   assert.match(css, /\.application-review-section/);
   assert.match(css, /\.review-answer \{ grid-template-columns: 1fr/);
 });

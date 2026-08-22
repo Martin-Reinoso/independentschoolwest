@@ -127,9 +127,10 @@ request. Google Sheets show the record's actual form version but remain replacea
 reports. `SCHEMA-EVOLUTION.md` defines the mandatory process for adding, removing,
 renaming or changing questions and for migrating existing records.
 
-The current `2026.15` release preserves the V6.14 data contract while clarifying the
-other-children question and targeting the exact incomplete family control from server
-validation. V6.14 contains the preceding family-feedback field changes, V6.13 corrects
+The current Application `2026.16` release preserves the V6.15 data contract and fixes
+the guardian signing page's read-only date to use the Melbourne calendar day. EOI
+remains at `2026.15`. V6.15 clarifies the other-children question and targets the exact
+incomplete family control from server validation. V6.14 contains the preceding family-feedback field changes, V6.13 corrects
 document-upload recovery and V6.12 contains the revised immunisation guidance and
 clearer official Victorian-law link. Older definitions remain addressable and
 submitted records are not rewritten.
@@ -201,6 +202,6 @@ live/preview boundaries. See these records together with
 `V6.7-CHANGE-MAP.md`, `V6.8-CHANGE-MAP.md`, `V6.9-CHANGE-MAP.md` and
 `V6.10-CHANGE-MAP.md` record the preceding contract releases.
 `V6.11-CHANGE-MAP.md`, `V6.12-CHANGE-MAP.md`, `V6.13-CHANGE-MAP.md` and
-`V6.14-CHANGE-MAP.md` and `V6.15-CHANGE-MAP.md` record the current interface,
+`V6.14-CHANGE-MAP.md`, `V6.15-CHANGE-MAP.md` and `V6.16-CHANGE-MAP.md` record the current interface,
 immunisation-guidance, upload-recovery, family-feedback and family-question clarity
 releases.
