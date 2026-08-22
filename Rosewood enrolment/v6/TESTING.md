@@ -1134,3 +1134,32 @@ or Slack notification.
   `git diff --check` reports no whitespace errors.
 - No synthetic or real EOI, invitation, OTP, application, upload, signature, email or
   Slack notification was created during local verification.
+
+## V6.16 Production Release
+
+Published and deployed in Sydney on 23 August 2026 without creating or changing an
+EOI, invitation, OTP, family session, application, upload, signature, workflow email
+or Slack notification.
+
+- Pull request `#12` passed both repository checks and merged to `main` as commit
+  `da1a2579201ce57ead3a7d1a38d72d7f9fcc1b91`.
+- GitHub Pages deployment `32586589384` completed successfully. The live signing HTML
+  hash is `bfd0d16607e625ca8cf569fe0868c92bfe32bb6089115eb3b2a65dd2b1034499`
+  and signing JavaScript hash is
+  `78cc1c0a7d82eb7206db0f300cfde211064cf4ff8ee368d751bec989690f3e2e`.
+  The live script contains `Australia/Melbourne`, uses signing cache release `v=5`
+  and does not contain the retired UTC date-slicing expression.
+- Reviewed CloudFormation change set
+  `rosewood-v16-melbourne-signing-date-20260823` modified only the existing
+  `RosewoodFunction` code in place with `Replacement: False`. It made no DynamoDB,
+  audit, KMS, S3, backup, IAM, secret, schedule, alarm, SES or API URL change.
+- CloudFormation reached `UPDATE_COMPLETE`; termination protection remains enabled,
+  Lambda is `Active` with a successful Node.js 22 update, and `/v6/health` reports EOI
+  `rosewood-eoi-2026.15` and Application `rosewood-application-2026.16`.
+- The one-minute outbox and ten-minute canary schedules remain enabled. A manual
+  non-writing production canary returned HTTP 200 with all five checks available and
+  all nine production alarms remain `OK`.
+- Both security-topic email subscriptions remain confirmed. The SES configuration set
+  remains enabled for send, delivery, delivery delay, bounce, complaint, reject and
+  rendering-failure events, with its encrypted SNS topic and Lambda subscription
+  intact.
