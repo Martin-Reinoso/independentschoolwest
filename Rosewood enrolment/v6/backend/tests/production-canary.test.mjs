@@ -36,7 +36,7 @@ function healthyFetch({ breakPublicAsset = false, omitAddressKey = false } = {})
         status: "ok",
         formVersions: {
           eoi: "rosewood-eoi-2026.15",
-          application: "rosewood-application-2026.15"
+          application: "rosewood-application-2026.16"
         }
       });
     }

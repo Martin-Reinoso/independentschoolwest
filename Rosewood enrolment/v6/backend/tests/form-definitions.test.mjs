@@ -48,12 +48,13 @@ test("legacy records resolve to the current workflow contract without changing a
   assert.equal(reference.schemaVersion, "legacy-schema");
 });
 
-test("V15 keeps V10 through V14 addressable and changes only the pinned interface release", () => {
+test("V16 keeps V10 through V15 addressable and changes only the pinned signing interface release", () => {
   const previous = getFormDefinition("application", "rosewood-application-2026.10");
   const v11 = getFormDefinition("application", "rosewood-application-2026.11");
   const v12 = getFormDefinition("application", "rosewood-application-2026.12");
   const v13 = getFormDefinition("application", "rosewood-application-2026.13");
   const v14 = getFormDefinition("application", "rosewood-application-2026.14");
+  const v15 = getFormDefinition("application", "rosewood-application-2026.15");
   const current = currentFormDefinition("application");
   const previousEoi = getFormDefinition("eoi", "rosewood-eoi-2026.10");
   const v11Eoi = getFormDefinition("eoi", "rosewood-eoi-2026.11");
@@ -66,13 +67,15 @@ test("V15 keeps V10 through V14 addressable and changes only the pinned interfac
   assert.equal(v12.formVersion, "rosewood-application-2026.12");
   assert.equal(v13.formVersion, "rosewood-application-2026.13");
   assert.equal(v14.formVersion, "rosewood-application-2026.14");
-  assert.equal(current.formVersion, "rosewood-application-2026.15");
+  assert.equal(v15.formVersion, "rosewood-application-2026.15");
+  assert.equal(current.formVersion, "rosewood-application-2026.16");
   assert.deepEqual(v13.contract, previous.contract);
   assert.deepEqual(v13.contract, v11.contract);
   assert.deepEqual(v13.contract, v12.contract);
   assert.deepEqual(v14.contract.fields, v13.contract.fields);
   assert.deepEqual(v14.contract.conditionalRules, v13.contract.conditionalRules);
-  assert.deepEqual(current.contract, v14.contract);
+  assert.deepEqual(v15.contract, v14.contract);
+  assert.deepEqual(current.contract, v15.contract);
   assert.ok(current.contract.requiredFields.includes("medicare_expiry"));
   assert.ok(!v13.contract.requiredFields.includes("medicare_expiry"));
   assert.equal(v11Eoi.formVersion, "rosewood-eoi-2026.11");

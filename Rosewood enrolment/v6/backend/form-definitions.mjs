@@ -16,7 +16,7 @@ import {
 
 export const CURRENT_FORM_VERSIONS = Object.freeze({
   eoi: "rosewood-eoi-2026.15",
-  application: "rosewood-application-2026.15"
+  application: "rosewood-application-2026.16"
 });
 
 const LEGACY_SCHEMA_VERSION = "rosewood-v6-2026-08-05";
@@ -722,7 +722,7 @@ const eoi2026v15 = complete({
 
 const application2026v15 = complete({
   workflow: "application",
-  formVersion: CURRENT_FORM_VERSIONS.application,
+  formVersion: "rosewood-application-2026.15",
   schemaVersion: SCHEMA_VERSION,
   releasedAt: "2026-08-16",
   source: {
@@ -734,9 +734,31 @@ const application2026v15 = complete({
   contract: application2026v14.contract
 });
 
+const v16FrontendAssetHashes = freeze({
+  ...v15FrontendAssetHashes,
+  "pages/rosewood-application-sign-v6.html": "bfd0d16607e625ca8cf569fe0868c92bfe32bb6089115eb3b2a65dd2b1034499",
+  "pages/rosewood-application-sign-v6.js": "78cc1c0a7d82eb7206db0f300cfde211064cf4ff8ee368d751bec989690f3e2e",
+  "pages/rosewood-enrolment-v6.html": "e21bd4e7c1dd44bcf1f16edbd059708199afa165184525486bb8ee13dd421c7d",
+  "pages/rosewood-enrolment-v6.js": "e9197bb4d883ca31cda76a48d42dcfe28cb8d5dc91a5993040c4ce5a9c8233f8"
+});
+
+const application2026v16 = complete({
+  workflow: "application",
+  formVersion: CURRENT_FORM_VERSIONS.application,
+  schemaVersion: SCHEMA_VERSION,
+  releasedAt: "2026-08-23",
+  source: {
+    frontend: "pages/rosewood-enrolment-v6.html?workflow=application",
+    frontendRelease: "v6-js27-css16-form-v16-sign5",
+    frontendAssetHashes: v16FrontendAssetHashes,
+    validator: "schema.mjs#validateApplicationForSubmission"
+  },
+  contract: application2026v15.contract
+});
+
 export const FORM_DEFINITIONS = freeze({
   eoi: { [eoi2026v1.formVersion]: eoi2026v1, [eoi2026v2.formVersion]: eoi2026v2, [eoi2026v3.formVersion]: eoi2026v3, [eoi2026v4.formVersion]: eoi2026v4, [eoi2026v5.formVersion]: eoi2026v5, [eoi2026v6.formVersion]: eoi2026v6, [eoi2026v7.formVersion]: eoi2026v7, [eoi2026v8.formVersion]: eoi2026v8, [eoi2026v9.formVersion]: eoi2026v9, [eoi2026v10.formVersion]: eoi2026v10, [eoi2026v11.formVersion]: eoi2026v11, [eoi2026v12.formVersion]: eoi2026v12, [eoi2026v13.formVersion]: eoi2026v13, [eoi2026v14.formVersion]: eoi2026v14, [eoi2026v15.formVersion]: eoi2026v15 },
-  application: { [application2026v1.formVersion]: application2026v1, [application2026v2.formVersion]: application2026v2, [application2026v3.formVersion]: application2026v3, [application2026v4.formVersion]: application2026v4, [application2026v5.formVersion]: application2026v5, [application2026v6.formVersion]: application2026v6, [application2026v7.formVersion]: application2026v7, [application2026v8.formVersion]: application2026v8, [application2026v9.formVersion]: application2026v9, [application2026v10.formVersion]: application2026v10, [application2026v11.formVersion]: application2026v11, [application2026v12.formVersion]: application2026v12, [application2026v13.formVersion]: application2026v13, [application2026v14.formVersion]: application2026v14, [application2026v15.formVersion]: application2026v15 }
+  application: { [application2026v1.formVersion]: application2026v1, [application2026v2.formVersion]: application2026v2, [application2026v3.formVersion]: application2026v3, [application2026v4.formVersion]: application2026v4, [application2026v5.formVersion]: application2026v5, [application2026v6.formVersion]: application2026v6, [application2026v7.formVersion]: application2026v7, [application2026v8.formVersion]: application2026v8, [application2026v9.formVersion]: application2026v9, [application2026v10.formVersion]: application2026v10, [application2026v11.formVersion]: application2026v11, [application2026v12.formVersion]: application2026v12, [application2026v13.formVersion]: application2026v13, [application2026v14.formVersion]: application2026v14, [application2026v15.formVersion]: application2026v15, [application2026v16.formVersion]: application2026v16 }
 });
 
 export function getFormDefinition(workflow, formVersion = CURRENT_FORM_VERSIONS[workflow]) {

@@ -1117,3 +1117,20 @@ or Slack notification.
   encrypted SNS topic and Lambda subscription intact
 - no OTP or workflow email was sent because this release changed no SES/IAM permission
   and verification used only read-only health and canary paths
+
+## V6.16 Melbourne Signing Date Verification
+
+- The additional parent/guardian signing page derives its read-only Date value through
+  `Intl.DateTimeFormat` with the explicit `Australia/Melbourne` time zone.
+- The regression gate rejects the previous UTC `toISOString().slice(0, 10)` expression,
+  requires the Melbourne formatter and requires signing-script cache release `v=5`.
+- A boundary check confirms that `2026-08-22T16:45:05.546Z` displays as
+  `2026-08-23`, the correct Melbourne calendar day.
+- Application `rosewood-application-2026.16` preserves the V6.15 data contract and
+  pins the corrected signing assets. EOI remains `rosewood-eoi-2026.15`.
+- All 106 backend tests pass. Both changed JavaScript files pass syntax checks, the
+  frozen-lockfile deployment build passes its immutable-asset gate, all 81 tracked
+  HTML/CSS references resolve, the 384-file public-data scan passes and
+  `git diff --check` reports no whitespace errors.
+- No synthetic or real EOI, invitation, OTP, application, upload, signature, email or
+  Slack notification was created during local verification.

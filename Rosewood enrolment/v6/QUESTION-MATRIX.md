@@ -112,10 +112,11 @@ their original immutable definition.
   upgrade revision and audit event, and does not submit or duplicate the record.
 - Submitted applications, submitted snapshots and signature evidence never upgrade.
 
-# V6.15 EOI And Application Question Matrix
+# Current EOI And Application Question Matrix
 
-`rosewood-eoi-2026.15` and `rosewood-application-2026.15` are the current contracts.
-V6.14 and earlier remain immutable for submitted records.
+`rosewood-eoi-2026.15` and `rosewood-application-2026.16` are the current contracts.
+Application V6.16 preserves the V6.15 questions and rules; earlier definitions remain
+immutable for submitted records.
 
 | Area | V6.15 question or rule | Required/condition | Storage and downstream rule |
 | --- | --- | --- | --- |
@@ -151,15 +152,16 @@ V6.14 and earlier remain immutable for submitted records.
 | Parent / Carer commitments | Fee, photography/social-media and Grade 12 withdrawal clauses are not part of Application | Existing acknowledgement remains required | V11 renders the scoped commitment list; V10 and earlier retain their pinned wording |
 | EOI submission | Stable idempotency key | Generated per attempted submission and reused for retries | The EOI, idempotency result, audit and outbox work are one DynamoDB transaction |
 
-## V6.15 Session And Migration Rules
+## Current Session And Migration Rules
 
 - Save and continue later closes only the selected child's editing/status sessions,
   clears child answers from page memory and retains the family session.
 - Return to child applications opens the selector without another OTP while that family
   session remains valid.
-- Opening an editable older application upgrades it to V6.15 in one conditional
-  transaction while preserving all existing answer keys and revision history. V6.15
-  changes family-facing wording and navigation only; it does not transform an answer.
+- Opening an editable older application upgrades it to V6.16 in one conditional
+  transaction while preserving all existing answer keys and revision history. V6.16
+  retains the V6.15 family wording and changes only the displayed guardian-signing date;
+  it does not transform an answer.
 - Family and application sessions expire after 90 minutes without successful server
   activity. A blocking five-minute warning allows the family to continue before expiry.
 - Verification codes remain valid for 10 minutes. The 30-second resend cooldown is

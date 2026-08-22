@@ -375,7 +375,7 @@ test("an active older draft is upgraded once with every saved answer preserved",
   assert.ok(store.audit.some(eventRecord => eventRecord.type === "application.form_definition_upgraded"));
 });
 
-test("an active V14 draft adopts V15 wording without transforming its family answers", async () => {
+test("an active V14 draft adopts the current V15 wording without transforming its family answers", async () => {
   const { service, store } = staffService();
   const created = await createApplicationInvitation({ store, recipientEmail: "family@example.com", firstName: "Alex", applicationUrl: "https://ffe.org.au/form", clock });
   const v14 = getFormDefinition("application", "rosewood-application-2026.14");
@@ -387,7 +387,7 @@ test("an active V14 draft adopts V15 wording without transforming its family ans
   await service(event("/v6/application/access/verify-code", "POST", { invitationToken, challengeId: requested.challengeId, code: "123456" }));
   const upgraded = store.applications.get(created.applicationId);
 
-  assert.equal(upgraded.formVersion, "rosewood-application-2026.15");
+  assert.equal(upgraded.formVersion, "rosewood-application-2026.16");
   assert.deepEqual(upgraded.values, values);
   assert.deepEqual(store.audit.find(eventRecord => eventRecord.type === "application.form_definition_upgraded").details.normalizedFields, []);
 });
