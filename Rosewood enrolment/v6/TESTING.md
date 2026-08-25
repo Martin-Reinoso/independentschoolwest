@@ -1395,3 +1395,23 @@ families.
   homepage interface or active application state.
 - All 122 Node tests pass, including exact assertions for the revised shared-network
   limits and the unchanged per-email, per-invitation and cooldown controls.
+
+### Production release
+
+- Pull request `#25` passed the `static-site` and `enrolment-backend` checks and merged
+  to `main` as `415ccd1aa338df2beb3b90be0ae120303147036d`.
+- Reviewed change set `rosewood-network-limits-20260826-415ccd1` modified the existing
+  Lambda code in place with `Replacement: False`. CloudFormation recalculated only the
+  existing canary/outbox schedule permissions and targets and the SES-events
+  subscription endpoint. It did not modify or replace DynamoDB, audit, KMS, S3,
+  backups, secrets, IAM roles, alarms, the Function URL or any data resource.
+- CloudFormation reached `UPDATE_COMPLETE`; termination protection remains enabled and
+  the Node.js 22 Lambda is `Active` with `LastUpdateStatus: Successful`.
+- `/v6/health` retains EOI `rosewood-eoi-2026.17`, Application
+  `rosewood-application-2026.18` and request
+  `rosewood-application-link-request-2026.1`.
+- The one-minute outbox and ten-minute canary schedules are enabled. A manual
+  non-writing canary returned HTTP 200 with all five checks available, and all nine
+  production alarms are `OK`.
+- GitHub repository checks and Pages deployment for the merge completed successfully.
+  No valid request, OTP or email was generated during release verification.
