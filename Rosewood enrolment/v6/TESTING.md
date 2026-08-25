@@ -1163,3 +1163,32 @@ or Slack notification.
   remains enabled for send, delivery, delivery delay, bounce, complaint, reject and
   rendering-failure events, with its encrypted SNS topic and Lambda subscription
   intact.
+
+## V6.17 Invitation Access Renewal Verification
+
+- The staff dashboard now derives an explicit invitation-access state. An active,
+  unexpired editable invitation offers **Resend**; an editable application with an
+  expired, inactive or missing invitation index offers **Renew access**; submitted
+  applications offer neither action.
+- Synthetic missing-index and retained-expired-index tests confirm renewal keeps the
+  same invitation and application IDs, every related child application, saved values,
+  current revisions and status. It does not create or reopen an application.
+- A retained expired token is removed when renewal commits. Access request/verification
+  continues to reject expired tokens independently.
+- Renewal refuses an active invitation and a non-editable application. The DynamoDB
+  transaction is conditional on the selected application's invitation ID, editable
+  status and revision, preventing a stale portal action from overwriting concurrent
+  work.
+- Duplicate confirmations with the same high-entropy operation ID return the committed
+  renewal and do not queue another email. A different renewal attempt after access is
+  active fails closed and directs staff to refresh.
+- The confirmation explains that the existing application and revision history remain.
+  Quiet 60-second dashboard refreshes no longer clear a visible operation error.
+- The EOI `rosewood-eoi-2026.16` and Application
+  `rosewood-application-2026.17` definitions preserve the preceding question, answer,
+  validation, projection and submission contracts while pinning the updated family and
+  staff release assets.
+- All 112 backend and frontend tests pass, including existing invitation, OTP, family
+  selector, revision/autosave, upload, contact-permission, guardian-signature,
+  projection, SES, Slack and production-canary regressions. No real invitation, OTP,
+  application, upload, signature, email or Slack message was created by these tests.

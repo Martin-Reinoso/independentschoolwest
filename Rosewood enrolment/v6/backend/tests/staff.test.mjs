@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { currentFormDefinition, getFormDefinition } from "../form-definitions.mjs";
-import { createApplicationInvitation, createService, resendApplicationInvitation } from "../service.mjs";
+import { createApplicationInvitation, createService, renewApplicationInvitationAccess, resendApplicationInvitation } from "../service.mjs";
 
 const clock = () => Date.parse("2026-08-05T12:00:00.000Z");
 
@@ -26,6 +26,7 @@ class StaffStore {
     this.applications = new Map();
     this.formDefinitions = new Map();
     this.revisions = new Map();
+    this.renewals = [];
   }
   async checkRateLimit() { return true; }
   async putChallenge(challenge) { this.challenges.set(challenge.id, challenge); }
@@ -74,6 +75,13 @@ class StaffStore {
   async getInvitation(tokenHash) { return this.invitations.get(tokenHash) || null; }
   async getInvitationById(id) { return this.invitationIds.get(id) || null; }
   async getApplication(id) { return this.applications.get(id) || null; }
+  async listApplicationsByInvitationId(invitationId) { return [...this.applications.values()].filter(application => application.invitationId === invitationId); }
+  async renewInvitationAccess(value) {
+    this.renewals.push(structuredClone(value));
+    if (value.previousInvitation?.tokenHash) this.invitations.delete(value.previousInvitation.tokenHash);
+    this.invitations.set(value.tokenHash, structuredClone(value.invitation));
+    this.invitationIds.set(value.invitation.id, structuredClone(value.invitation));
+  }
   async upgradeApplicationDefinition({ application, expectedRevision, expectedFormVersion, revisionRecord, auditEvents = [] }) {
     const current = this.applications.get(application.id);
     assert.equal(current.revision, expectedRevision);
@@ -387,7 +395,7 @@ test("an active V14 draft adopts the current V15 wording without transforming it
   await service(event("/v6/application/access/verify-code", "POST", { invitationToken, challengeId: requested.challengeId, code: "123456" }));
   const upgraded = store.applications.get(created.applicationId);
 
-  assert.equal(upgraded.formVersion, "rosewood-application-2026.16");
+  assert.equal(upgraded.formVersion, "rosewood-application-2026.17");
   assert.deepEqual(upgraded.values, values);
   assert.deepEqual(store.audit.find(eventRecord => eventRecord.type === "application.form_definition_upgraded").details.normalizedFields, []);
 });
@@ -423,4 +431,127 @@ test("resending rotates the invitation token and invalidates the previous hash",
   assert.notEqual(store.rotated.tokenHash, "old-token-hash");
   assert.equal(store.rotated.invitation.tokenHash, store.rotated.tokenHash);
   assert.equal(store.rotated.outboxEvents[0].kind, "email");
+});
+
+test("staff dashboard separates active resend from missing invitation access renewal", async () => {
+  const store = new StaffStore();
+  store.records = [
+    { entity: "application", data: { id: "app-active", invitationId: "invite-active", status: "in_progress", revision: 2, recipientEmail: "active@example.com", values: {}, createdAt: "2026-08-01T00:00:00.000Z" } },
+    { entity: "application", data: { id: "app-missing", invitationId: "invite-missing", status: "in_progress", revision: 3, recipientEmail: "missing@example.com", values: {}, createdAt: "2026-08-01T00:00:00.000Z" } },
+    { entity: "application", data: { id: "app-submitted", invitationId: "invite-submitted", status: "submitted", revision: 4, recipientEmail: "submitted@example.com", values: {}, createdAt: "2026-08-01T00:00:00.000Z" } },
+    { entity: "invitation_index", data: { id: "invite-active", applicationId: "app-active", applicationIds: ["app-active"], tokenHash: "active-token", status: "active", expiresAt: clock() + 60_000, lastSentAt: "2026-08-05T11:00:00.000Z", sendCount: 1 } }
+  ];
+  const { service } = staffService({ store });
+  const sessionToken = await staffSession(service);
+  const response = await service(event("/v6/staff/dashboard", "GET", null, sessionToken));
+  const records = new Map(JSON.parse(response.body).applications.map(record => [record.applicationId, record]));
+
+  assert.equal(records.get("app-active").invitationAccessStatus, "active");
+  assert.equal(records.get("app-active").canResend, true);
+  assert.equal(records.get("app-active").canRenewAccess, false);
+  assert.equal(records.get("app-missing").invitationAccessStatus, "missing");
+  assert.equal(records.get("app-missing").canResend, false);
+  assert.equal(records.get("app-missing").canRenewAccess, true);
+  assert.equal(records.get("app-submitted").canResend, false);
+  assert.equal(records.get("app-submitted").canRenewAccess, false);
+});
+
+test("renewing missing invitation access preserves the application and is idempotent", async () => {
+  const store = new StaffStore();
+  const created = await createApplicationInvitation({ store, recipientEmail: "family@example.com", firstName: "Alex", applicationUrl: "https://ffe.org.au/form", clock });
+  const originalApplication = structuredClone(store.applications.get(created.applicationId));
+  const oldTokenHash = store.invitationIds.get(created.invitationId).tokenHash;
+  store.invitationIds.delete(created.invitationId);
+  store.invitations.delete(oldTokenHash);
+
+  const operationId = "renew-access-operation-0001";
+  const renewed = await renewApplicationInvitationAccess({ store, applicationId: created.applicationId, invitationId: created.invitationId, operationId, createdBy: "info@ffe.org.au", applicationUrl: "https://ffe.org.au/form", clock });
+  const replacement = store.invitationIds.get(created.invitationId);
+
+  assert.equal(renewed.applicationId, created.applicationId);
+  assert.equal(renewed.invitationId, created.invitationId);
+  assert.equal(renewed.deduplicated, false);
+  assert.deepEqual(store.applications.get(created.applicationId), originalApplication);
+  assert.equal(store.renewals.length, 1);
+  assert.equal(store.renewals[0].expectedApplication.revision, originalApplication.revision);
+  assert.equal(store.renewals[0].outboxEvents.filter(item => item.kind === "email").length, 1);
+  assert.equal(store.renewals[0].auditEvents[0].type, "application.invitation_access_renewed");
+  assert.equal(replacement.id, created.invitationId);
+  assert.notEqual(replacement.tokenHash, oldTokenHash);
+
+  const duplicate = await renewApplicationInvitationAccess({ store, applicationId: created.applicationId, invitationId: created.invitationId, operationId, createdBy: "info@ffe.org.au", applicationUrl: "https://ffe.org.au/form", clock });
+  assert.equal(duplicate.deduplicated, true);
+  assert.equal(store.renewals.length, 1);
+  assert.equal(store.invitationIds.get(created.invitationId).tokenHash, replacement.tokenHash);
+});
+
+test("renewal refuses to replace an invitation that is still active", async () => {
+  const store = new StaffStore();
+  const created = await createApplicationInvitation({ store, recipientEmail: "family@example.com", firstName: "Alex", applicationUrl: "https://ffe.org.au/form", clock });
+  await assert.rejects(
+    renewApplicationInvitationAccess({ store, applicationId: created.applicationId, invitationId: created.invitationId, operationId: "renew-access-operation-0002", createdBy: "info@ffe.org.au", applicationUrl: "https://ffe.org.au/form", clock }),
+    error => error.code === "INVITATION_ACCESS_ACTIVE" && error.status === 409
+  );
+  assert.equal(store.renewals.length, 0);
+});
+
+test("renewing an expired invitation revokes its retained token and preserves family applications", async () => {
+  let now = clock();
+  const store = new StaffStore();
+  const created = await createApplicationInvitation({ store, recipientEmail: "family@example.com", firstName: "Alex", applicationUrl: "https://ffe.org.au/form", clock: () => now });
+  const expiredInvitation = store.invitationIds.get(created.invitationId);
+  const secondApplication = { ...structuredClone(store.applications.get(created.applicationId)), id: "app-second-child", studentId: "student-second", revision: 5, values: { app_guardian_0_first: "Alex", app_guardian_0_email: "family@example.com", student_first: "Second" } };
+  store.applications.set(secondApplication.id, secondApplication);
+  expiredInvitation.applicationIds = [created.applicationId, secondApplication.id];
+  store.invitationIds.set(created.invitationId, expiredInvitation);
+  store.invitations.set(expiredInvitation.tokenHash, expiredInvitation);
+  now = expiredInvitation.expiresAt + 1;
+
+  await renewApplicationInvitationAccess({ store, applicationId: created.applicationId, invitationId: created.invitationId, operationId: "renew-expired-operation-0001", createdBy: "info@ffe.org.au", applicationUrl: "https://ffe.org.au/form", clock: () => now });
+  const replacement = store.invitationIds.get(created.invitationId);
+
+  assert.equal(store.invitations.has(expiredInvitation.tokenHash), false);
+  assert.deepEqual(new Set(replacement.applicationIds), new Set([created.applicationId, secondApplication.id]));
+  assert.equal(store.applications.get(secondApplication.id).revision, 5);
+  assert.equal(store.applications.size, 2);
+});
+
+test("renewal resolves an ambiguous committed retry as the same idempotent operation", async () => {
+  const store = new StaffStore();
+  const created = await createApplicationInvitation({ store, recipientEmail: "family@example.com", firstName: "Alex", applicationUrl: "https://ffe.org.au/form", clock });
+  const oldTokenHash = store.invitationIds.get(created.invitationId).tokenHash;
+  store.invitationIds.delete(created.invitationId);
+  store.invitations.delete(oldTokenHash);
+  const commit = store.renewInvitationAccess.bind(store);
+  store.renewInvitationAccess = async value => {
+    await commit(value);
+    throw Object.assign(new Error("Synthetic ambiguous transaction response"), { status: 409, code: "REVISION_CONFLICT" });
+  };
+
+  const result = await renewApplicationInvitationAccess({ store, applicationId: created.applicationId, invitationId: created.invitationId, operationId: "renew-ambiguous-operation-0001", createdBy: "info@ffe.org.au", applicationUrl: "https://ffe.org.au/form", clock });
+  assert.equal(result.deduplicated, true);
+  assert.equal(store.renewals.length, 1);
+  assert.equal(store.applications.size, 1);
+});
+
+test("staff renewal endpoint recovers one existing application without creating another", async () => {
+  const { service, store } = staffService();
+  const created = await createApplicationInvitation({ store, recipientEmail: "family@example.com", firstName: "Alex", applicationUrl: "https://ffe.org.au/form", clock });
+  const oldTokenHash = store.invitationIds.get(created.invitationId).tokenHash;
+  store.invitationIds.delete(created.invitationId);
+  store.invitations.delete(oldTokenHash);
+  const applicationCount = store.applications.size;
+  const sessionToken = await staffSession(service);
+  const body = { applicationId: created.applicationId, invitationId: created.invitationId, operationId: "staff-renew-operation-0001" };
+
+  const response = await service(event("/v6/staff/invitations/renew-access", "POST", body, sessionToken));
+  assert.equal(response.statusCode, 200);
+  assert.match(JSON.parse(response.body).message, /saved progress was preserved/);
+  assert.equal(store.applications.size, applicationCount);
+  assert.equal(store.renewals.length, 1);
+
+  const duplicate = await service(event("/v6/staff/invitations/renew-access", "POST", body, sessionToken));
+  assert.equal(duplicate.statusCode, 200);
+  assert.equal(store.applications.size, applicationCount);
+  assert.equal(store.renewals.length, 1);
 });

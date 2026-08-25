@@ -129,6 +129,7 @@ stateDiagram-v2
     EOI_Submitted --> Application_Invited: Staff explicitly creates linked invitation
     [*] --> Application_Invited: Staff creates direct invitation
     Application_Invited --> Application_Invited: Staff resend rotates invitation token
+    Application_Invited --> Application_Invited: Staff renews expired access; application is preserved
     Application_Invited --> Application_In_Progress: First successful section save
     Application_In_Progress --> Application_In_Progress: Revisioned section saves
     Application_In_Progress --> Pending_Signatures: Primary guardian submits and more signatures are required
@@ -309,6 +310,19 @@ flowchart TD
 - Initial and replacement invitations expire after 14 days.
 - Resend creates a new token, deletes the previous token-keyed record and invalidates
   the earlier URL atomically.
+- The staff dashboard offers Resend only for active editable invitation access. It
+  offers Renew access only when an editable application's invitation index is expired,
+  inactive or missing; submitted applications offer neither.
+- Renew access preserves the same invitation/application relationship and every saved
+  application revision. A conditional idempotent transaction writes one replacement
+  token/index, one email outbox event and one audit event without creating an
+  application. If an expired token hash is still indexed, it is deleted in that same
+  transaction. Access endpoints independently reject every expired token.
+- The renewed invitation records `renewedAt`, the selected
+  `renewalApplicationId` and a one-way `renewalOperationHash`. The raw operation ID and
+  raw invitation token are not returned by the dashboard or written to ordinary logs.
+  The audit event records the invitation ID, related-application count and whether the
+  prior index was missing or expired/inactive; it does not copy application answers.
 
 ## Workflow 3: Application Access
 
@@ -932,6 +946,7 @@ signature revision hashes also retain the form version and definition hash. See
 | `POST /v6/staff/applications/revision` | Return one authorised, audited immutable answer revision |
 | `POST /v6/staff/invitations` | Create direct or EOI-linked invitation |
 | `POST /v6/staff/invitations/resend` | Rotate token and resend active invitation |
+| `POST /v6/staff/invitations/renew-access` | Restore expired/missing access to the same editable application without duplicating it |
 | `POST /v6/staff/applications/contact-permission` | Explicit audited pending-signer permission change |
 
 ## Related Records

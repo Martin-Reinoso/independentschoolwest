@@ -29,8 +29,8 @@ deliberately creating a new version.
 Current launch contracts:
 
 ```text
-EOI:         rosewood-eoi-2026.15
-Application: rosewood-application-2026.16
+EOI:         rosewood-eoi-2026.16
+Application: rosewood-application-2026.17
 ```
 
 The original `2026.1`, `2026.2`, `2026.3` and `2026.4` contracts and validators remain
@@ -130,6 +130,13 @@ cache-pinned family entry assets. The read-only signature date is derived from
 answer, projection, submission and signature-evidence contract. EOI remains at
 `2026.15`; submitted records remain pinned and editable older drafts retain every
 answer when upgraded through the existing conditional transaction.
+The EOI `2026.16` and Application `2026.17` releases preserve their preceding question,
+required-field, answer, projection and submission contracts. They repin the family and
+staff assets for the staff-only invitation-access recovery interface. The application
+browser adds V6.17 to its supported immutable versions; editable older drafts upgrade
+through the existing conditional definition transaction without transforming answers.
+Submitted records and signature evidence remain pinned. Renewing access is operational
+metadata and does not create an application revision or alter its stored form version.
 
 Acceptance, Decline and the Enrolment Agreement must receive their own independent
 version series when their backends are built. They must not reuse the Application

@@ -120,6 +120,29 @@ the outbox receipt and SES feedback. `accepted_by_ses` is not proof that the rec
 mailbox accepted or displayed the message. Never expose a full historical email in an
 ordinary log or family-facing response.
 
+## Recover Expired Or Missing Application Invitation Access
+
+This recovery is for an application that is still `invited` or `in_progress` but no
+longer has usable invitation access. It is not guardian-signature recovery.
+
+1. Find the existing application in the staff portal. Do not create a new invitation.
+2. If the row offers **Resend**, its invitation is active; use the ordinary resend path
+   only when a replacement active link is required.
+3. If the row offers **Renew access**, confirm the recipient and select it once.
+4. Confirm the result says saved progress was preserved, refresh the row and require
+   it to offer **Resend** with a new 14-day expiry.
+5. If renewal reports that access is already active or that the application changed,
+   refresh the portal before taking any further action. Do not retry using a different
+   operation or create a duplicate application.
+
+Renewal is an authorised, rate-limited and audited staff operation. Its DynamoDB
+transaction requires the same application ID, invitation ID, editable status and
+revision observed by the portal. It replaces or recreates only invitation access,
+queues one private email, preserves the original application and family child IDs, and
+is idempotent for duplicate confirmation requests. Submitted applications are never
+eligible. A retained expired token is removed when its index still exists; any already
+expired token is also rejected by the access endpoint's expiry check.
+
 ## Recover SES Delivery Feedback Or Failed Outbox Work
 
 1. For a signer-delivery issue, inspect the authorised application status and the

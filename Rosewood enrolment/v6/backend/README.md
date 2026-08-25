@@ -36,14 +36,16 @@ server-acknowledged application create, start, save and submission also writes a
 append-only DynamoDB revision. Staff can inspect a selected historical revision through
 an authorised, audited endpoint. See `../SCHEMA-EVOLUTION.md` before changing fields,
 options, validation or required status.
-The current EOI `2026.15` and Application `2026.16` contracts pin the family, staff and signing HTML/JavaScript/CSS,
+The current EOI `2026.16` and Application `2026.17` contracts pin the family, staff and signing HTML/JavaScript/CSS,
 policy projection and all original Word/PDF policy assets. Policy viewing is frontend-
 only and does not create an application answer, acknowledgement or audit event.
 EOI `2026.15` preserves its earlier data contract. Application `2026.15` preserves the
 V6.14 answer and validation contract while clarifying the other-children wording and
 targeting the exact incomplete field from validation guidance. Earlier versions retain
 their pinned display data. Application `2026.16` preserves that contract and corrects
-only the guardian signing page's displayed date to the Melbourne calendar day. Manual address entry remains available and no Place ID,
+only the guardian signing page's displayed date to the Melbourne calendar day. EOI
+`2026.16` and Application `2026.17` preserve the preceding question/data contracts and
+pin the staff-only expired-access renewal interface. Manual address entry remains available and no Place ID,
 coordinates or search history is stored.
 
 `GOOGLE_MAPS_BROWSER_API_KEY` is read from the existing Secrets Manager configuration.
@@ -58,6 +60,10 @@ API and Places API (New). Never commit the key or print it in logs.
   optional and no child name is collected by staff.
 - An EOI is linked only when staff explicitly select the matching record and email.
 - Initial and replacement invitation links expire after 14 days.
+- Active editable invitations use token-rotating **Resend**. Editable applications
+  whose invitation index is expired, inactive or missing use **Renew access**. Renewal
+  keeps the same application IDs and revisions, is transactionally conditional and
+  idempotent, and never applies to a submitted application or an active invitation.
 - OTP verification creates a family-scoped session. A family can select an existing
   child or add another child, after which the service creates a separate
   application-scoped session. Each child's answers, files and signatures remain in a
@@ -158,6 +164,7 @@ POST /v6/staff/applications/detail
 POST /v6/staff/applications/revision
 POST /v6/staff/invitations
 POST /v6/staff/invitations/resend
+POST /v6/staff/invitations/renew-access
 POST /v6/staff/applications/contact-permission
 POST /v6/eoi
 POST /v6/application/access/request-code

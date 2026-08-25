@@ -18,7 +18,7 @@ preview-only workflows. Do not record or manage them through this portal.
 - AWS verifies an email OTP before returning any records or accepting a staff action.
 - The production allowlist currently contains only `info@ffe.org.au`.
 - The role model supports `admin`, `admissions` and `viewer`. Admin/admissions can
-  invite and resend; viewers cannot.
+  invite, resend and renew expired access; viewers cannot.
 - Codes expire after 10 minutes, allow five attempts and have server-side email/network
   throttling plus a 30-second resend cooldown.
 - Staff sessions expire after two hours. Without **Remember me**, the token remains in
@@ -67,9 +67,29 @@ Use **Resend** only when a family confirms they cannot use the active invitation
 - The link is delivered by SES and is never displayed in the staff browser.
 - The replacement link expires 14 days after resend. Initial links also last 14 days.
 - Resend is available while at least one child application under the invitation remains
-  editable. It is not available when the family has no editable application.
-- Earlier invitations created before token rotation was introduced may require a new
-  invitation instead of a resend.
+  editable and the invitation is still active. It is not available when the family has
+  no editable application.
+
+## Renew Expired Or Missing Access
+
+Use **Renew access** only when the portal offers it for an editable application. This
+means the application still exists but its 14-day invitation access is expired,
+inactive or no longer indexed.
+
+1. Confirm the recipient and application row.
+2. Select **Renew access** and read the confirmation that saved progress will remain.
+3. Confirm once. The replacement private link is sent by SES and lasts 14 days.
+4. Confirm the same application row remains and now offers **Resend** rather than
+   **Renew access**.
+
+Renewal keeps the same application ID, every child application under the family
+invitation, saved answers, revisions, documents and status. It does not reopen or
+duplicate an application. The backend refuses renewal if the invitation is active or
+the selected application is no longer editable. Duplicate confirmation requests with
+the same operation ID return the existing result and do not queue another email.
+
+Do not create a new invitation to work around expired access. That would create a new
+application rather than reconnect the family to the existing record.
 
 ## Application Review And Documents
 
