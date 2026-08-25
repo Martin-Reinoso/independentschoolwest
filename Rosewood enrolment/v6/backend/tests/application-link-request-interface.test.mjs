@@ -32,6 +32,17 @@ test("the unlinked review page simulates the minimal request without sending dat
   assert.doesNotMatch(homepage, /tinyurl\.com\/RosewoodCollegeEOI/);
 });
 
+test("the full homepage design review retains the launched layout without the production request client", () => {
+  const preview = read("homepage-application-request-review.html");
+
+  assert.match(preview, /Homepage design review/);
+  assert.match(preview, /no information is saved and no email is sent/i);
+  assert.match(preview, /id="application-link-request"/);
+  assert.match(preview, /rosewood-application-link-request-review\.js/);
+  assert.doesNotMatch(preview, /rosewood-application-link-request\.js/);
+  assert.match(preview, /noindex, nofollow, noarchive, nosnippet/);
+});
+
 test("the retired production request source remains byte-identical to its immutable contract", () => {
   const archivedHtml = read("Rosewood enrolment/v6/historical-assets/application-link-request-2026.1/rosewood-application-link-request.html.source");
   const archivedScript = read("Rosewood enrolment/v6/historical-assets/application-link-request-2026.1/rosewood-application-link-request.js.source");

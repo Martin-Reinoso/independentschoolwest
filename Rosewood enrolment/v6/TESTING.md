@@ -1363,6 +1363,9 @@ yet.
 - The review page is live only at
   `pages/rosewood-application-link-request-review.html`; its delivered HTML declares
   `connect-src 'none'`, and its JavaScript contains no request endpoint or network call.
+- The exact former homepage composition is available separately at
+  `homepage-application-request-review.html`. It is no-index, carries a
+  prominent design-review notice and loads only the network-disabled simulation client.
 - Reviewed change set `rosewood-public-request-pause-20260826-4f09aa1` modified the
   existing Lambda code in place with `Replacement: False` and recalculated only the
   existing canary/outbox schedule permissions and targets and SES subscription endpoint.
