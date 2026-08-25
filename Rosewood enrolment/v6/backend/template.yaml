@@ -464,6 +464,7 @@ Resources:
                   - dynamodb:Query
                   - dynamodb:Scan
                   - dynamodb:TransactWriteItems
+                  - dynamodb:ConditionCheckItem
                 Resource: !GetAtt RosewoodTable.Arn
               - Sid: AppendOnlyAudit
                 Effect: Allow
