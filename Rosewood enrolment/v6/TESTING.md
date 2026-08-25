@@ -1291,3 +1291,41 @@ after the reviewed deployment completes.
   signing, SES, Sheets, Slack and canary regressions.
 - No real family request, invitation, OTP, application, email or Slack notification was
   created by local automated verification.
+
+## V6.18 Production Release
+
+Published and deployed in Sydney on 26 August 2026 without submitting a valid public
+request and without creating an invitation, OTP, application, upload, signature,
+workflow email or Slack notification during release verification.
+
+- Pull request `#20` passed the `static-site` and `enrolment-backend` checks and merged
+  to `main` as `f0963e7dd497624bc21ff318484a84af1d19a7ca`.
+- GitHub Pages deployment `32860546691` completed successfully. The live standalone
+  request HTML, CSS and JavaScript hashes are respectively
+  `e8354882b6c29b81cefb51fd86239bf7c24a0a99b18468971e396cb8fe26328b`,
+  `f4968e5bd438d05dc492914734d57c2277aaab3054a60a758c1ba1d2105e76fc`
+  and `a4498da269df7439f56614bac08530c1f576f5f0cd80c075fa0eeb9d0e0af55c`;
+  all match the immutable request contract. The live family and staff JavaScript also
+  match their pinned V18 hashes.
+- The live standalone page exposes parent/guardian name and email and no child or
+  year-level field. The home page contains the promoted request card and no former
+  TinyURL EOI CTA.
+- Reviewed change set `rosewood-v618-public-request-20260826-f0963e7` modified only the
+  existing Lambda code in place with `Replacement: False`. CloudFormation recalculated
+  the existing canary/outbox permissions and schedule targets and the SES-events
+  subscription endpoint. It did not modify or replace DynamoDB, audit, KMS, S3,
+  backups, secrets, IAM roles, alarms, the Function URL or any data resource.
+- CloudFormation reached `UPDATE_COMPLETE`; termination protection remains enabled and
+  the Node.js 22 Lambda is `Active` with `LastUpdateStatus: Successful`.
+- `/v6/health` reports EOI `rosewood-eoi-2026.17`, Application
+  `rosewood-application-2026.18` and request
+  `rosewood-application-link-request-2026.1`.
+- A deliberately incomplete production request reached the new endpoint and returned
+  HTTP 422 `PARENT_NAME_REQUIRED` before rate limiting, persistence, outbox work or
+  email. No valid production request was submitted as a deployment canary.
+- The one-minute outbox and ten-minute canary schedules are enabled. A manual
+  non-writing canary returned HTTP 200 with all five checks available, and all nine
+  production alarms are `OK`.
+- Security-topic subscriptions remain confirmed for `info@ffe.org.au` and
+  `frjativa@gmail.com`. The SES configuration set remains enabled for send, delivery,
+  delay, bounce, complaint, reject and rendering-failure events.
