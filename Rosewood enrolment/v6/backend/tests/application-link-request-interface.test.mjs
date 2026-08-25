@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
@@ -9,9 +10,9 @@ const backendDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(backendDirectory, "../../../..");
 const read = relativePath => fs.readFileSync(path.join(repositoryRoot, relativePath), "utf8");
 
-test("the public application-link request remains a minimal two-field family gateway", () => {
-  const page = read("pages/rosewood-application-link-request.html");
-  const script = read("pages/rosewood-application-link-request.js");
+test("the unlinked review page simulates the minimal request without sending data", () => {
+  const page = read("pages/rosewood-application-link-request-review.html");
+  const script = read("pages/rosewood-application-link-request-review.js");
   const homepage = read("index.html");
 
   assert.deepEqual(APPLICATION_REQUEST_CONTRACT.fields.map(field => field.id), ["parent_guardian_name", "email"]);
@@ -20,10 +21,22 @@ test("the public application-link request remains a minimal two-field family gat
   assert.match(page, /Email address/);
   assert.match(page, /more than one child/);
   assert.doesNotMatch(page, /confirm email|child(?:'s)? name|year level/i);
-  assert.match(script, /\/v6\/application-link-requests/);
+  assert.match(page, /No information is saved and no email is sent/);
+  assert.match(page, /connect-src 'none'/);
+  assert.doesNotMatch(script, /\/v6\/application-link-requests/);
+  assert.doesNotMatch(script, /fetch\s*\(/);
   assert.doesNotMatch(script, /localStorage|sessionStorage/);
-  assert.match(homepage, /id="application-link-request"/);
-  assert.match(homepage, /Request Application Link/);
+  assert.doesNotMatch(homepage, /id="application-link-request"/);
+  assert.doesNotMatch(homepage, /Request Application Link/);
+  assert.match(homepage, /https:\/\/tinyurl\.com\/FamiliesEdEOI/);
   assert.doesNotMatch(homepage, /tinyurl\.com\/RosewoodCollegeEOI/);
 });
 
+test("the retired production request source remains byte-identical to its immutable contract", () => {
+  const archivedHtml = read("Rosewood enrolment/v6/historical-assets/application-link-request-2026.1/rosewood-application-link-request.html.source");
+  const archivedScript = read("Rosewood enrolment/v6/historical-assets/application-link-request-2026.1/rosewood-application-link-request.js.source");
+  const hash = value => crypto.createHash("sha256").update(value).digest("hex");
+
+  assert.equal(hash(archivedHtml), APPLICATION_REQUEST_CONTRACT.source.frontendAssetHashes["pages/rosewood-application-link-request.html"]);
+  assert.equal(hash(archivedScript), APPLICATION_REQUEST_CONTRACT.source.frontendAssetHashes["pages/rosewood-application-link-request.js"]);
+});

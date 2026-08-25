@@ -1329,3 +1329,26 @@ workflow email or Slack notification during release verification.
 - Security-topic subscriptions remain confirmed for `info@ffe.org.au` and
   `frjativa@gmail.com`. The SES configuration set remains enabled for send, delivery,
   delay, bounce, complaint, reject and rendering-failure events.
+
+## Public Request Pause And Review Copy
+
+Prepared on 26 August 2026 after the decision not to launch the minimal request form
+yet.
+
+- The home page is restored to the exact preceding **Register Your Child** TinyURL
+  links and no longer loads or renders the minimal request interface.
+- The production request HTML and JavaScript paths are removed. The proposal is kept
+  at `pages/rosewood-application-link-request-review.html` with `noindex`,
+  `connect-src 'none'` and a review notice stating that no information is saved and no
+  email is sent.
+- The review script performs local validation and a simulated confirmation only. It
+  contains no `fetch` call, API URL, persistence or storage access.
+- The request endpoint, immutable request contract, staff reporting and any existing
+  records remain unchanged and dormant. Existing EOI, invitation, draft, upload,
+  signature and staff workflows are not reopened or migrated.
+- The production canary now treats the restored home-page registration path and the
+  renamed network-disabled review page as the expected public assets while retaining
+  all backend, EOI address, protected-route and outbox checks.
+- All 120 Node tests pass, including the review-page no-network assertions and the
+  existing request-backend, EOI, application, upload, signature, SES, Sheets, Slack and
+  canary regression coverage.
