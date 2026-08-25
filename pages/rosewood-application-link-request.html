@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src 'none'; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'">
+  <title>Request an application link | Rosewood College</title>
+  <link rel="icon" href="../img/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="rosewood-application-link-request.css?v=1">
+</head>
+<body>
+  <a class="skip-link" href="#request-card">Skip to the request form</a>
+
+  <div class="preview-notice" role="status">
+    <strong>Form preview</strong>
+    <span>No information is saved and no email is sent from this page.</span>
+  </div>
+
+  <main class="request-page">
+    <div class="background-mark background-mark-one" aria-hidden="true"></div>
+    <div class="background-mark background-mark-two" aria-hidden="true"></div>
+
+    <section class="request-card" id="request-card" aria-labelledby="request-title">
+      <header class="request-heading">
+        <img src="../img/rosewood-emblem-corrected-transparent.png" alt="Rosewood College" width="92" height="92">
+        <div>
+          <p class="eyebrow">Rosewood College enrolment</p>
+          <h1 id="request-title">Begin your application.</h1>
+        </div>
+      </header>
+
+      <div id="request-view">
+        <p class="intro">Enter your name and email address and we will send you a private link to begin an Application for Enrolment.</p>
+        <p class="family-note"><span aria-hidden="true">R</span> One private link can be used to begin applications for more than one child.</p>
+
+        <div class="error-summary" id="error-summary" role="alert" tabindex="-1" hidden>
+          <strong>Please check the information below.</strong>
+          <ul></ul>
+        </div>
+
+        <form id="application-link-form" novalidate>
+          <label class="field" id="name-field">
+            <span>Parent/guardian name <b aria-hidden="true">*</b></span>
+            <input id="requester-name" name="requester_name" type="text" autocomplete="name" maxlength="120" required aria-describedby="name-error">
+            <small class="field-error" id="name-error"></small>
+          </label>
+
+          <label class="field" id="email-field">
+            <span>Email address <b aria-hidden="true">*</b></span>
+            <input id="requester-email" name="requester_email" type="email" inputmode="email" autocomplete="email" maxlength="254" spellcheck="false" required aria-describedby="email-help email-error">
+            <small id="email-help">Your private application link and verification code will be sent to this address.</small>
+            <small class="field-error" id="email-error"></small>
+          </label>
+
+          <div class="destination" id="destination" aria-live="polite" hidden>
+            <div>
+              <small>Application link will be sent to</small>
+              <strong id="destination-email"></strong>
+            </div>
+            <button type="button" id="edit-email">Edit email</button>
+          </div>
+
+          <p class="privacy-copy">We will use these details to provide and administer access to the enrolment application. Read the <a href="rosewood-enrolment-v6.html?workflow=application&amp;policy=privacy-policy">Rosewood College Privacy Policy</a>.</p>
+
+          <button class="request-button" type="submit">Request application link <span aria-hidden="true">&#8594;</span></button>
+        </form>
+      </div>
+
+      <section class="success-view" id="success-view" aria-labelledby="success-title" tabindex="-1" hidden>
+        <div class="success-mark" aria-hidden="true">&#10003;</div>
+        <p class="eyebrow">Request ready</p>
+        <h2 id="success-title">Check your email.</h2>
+        <p>If this were connected, a private application link would be sent to <strong id="success-email"></strong>.</p>
+        <p class="success-note">Delivery can take a few minutes. Check your junk folder if it does not appear.</p>
+        <button class="secondary-button" type="button" id="reset-preview">Test another address</button>
+      </section>
+
+      <footer>
+        <span>Rosewood College</span>
+        <a href="mailto:enrolment@ffe.org.au">Need help?</a>
+      </footer>
+    </section>
+  </main>
+
+  <script src="rosewood-application-link-request.js?v=1"></script>
+</body>
+</html>
