@@ -162,6 +162,11 @@ active-session tokens/expiry in per-tab session storage to survive a refresh; th
 page keeps an opaque token locally only after explicit **Remember me**. No answers or
 dashboard records are persisted in browser storage. Raw IP addresses are not stored.
 
+Launch-capacity throttles permit 100 public Application-link requests per shared
+network per hour, with a 500-per-day shared-network ceiling, and 100 Application-access
+OTP requests per shared network per 30 minutes. Existing per-email, per-invitation,
+cooldown, idempotency and honeypot controls remain stricter and unchanged.
+
 Application answers use revisioned autosave. The browser debounces edits, forces a save
 after eight seconds of continuous typing, suppresses unchanged drafts and identifies
 autosave, navigation, submission and save-and-close modes in audit events. The green

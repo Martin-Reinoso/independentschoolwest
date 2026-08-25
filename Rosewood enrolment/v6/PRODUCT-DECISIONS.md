@@ -48,6 +48,10 @@ Decision date: 7 August 2026
   application or create a duplicate family application.
 - Public responses are generic. Server-side idempotency, bot friction and network and
   hashed-email throttles run before records or email are created.
+- The permanent launch-capacity limits allow up to 100 public Application-link
+  requests per shared network per hour and 500 per shared network per day. Application
+  access allows up to 100 OTP requests per shared network in 30 minutes. The stricter
+  per-email, per-invitation and resend-cooldown protections remain unchanged.
 - DynamoDB is authoritative. The **Application Link Requests** Sheet tab and staff
   portal list are reporting/operational projections only.
 

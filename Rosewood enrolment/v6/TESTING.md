@@ -1343,6 +1343,7 @@ yet.
   email is sent.
 - The review script performs local validation and a simulated confirmation only. It
   contains no `fetch` call, API URL, persistence or storage access.
+
 - The request endpoint, immutable request contract, staff reporting and any existing
   records remain unchanged and dormant. Existing EOI, invitation, draft, upload,
   signature and staff workflows are not reopened or migrated.
@@ -1378,3 +1379,19 @@ yet.
   alarms are `OK`, and `/v6/health` retains EOI `rosewood-eoi-2026.17`, Application
   `rosewood-application-2026.18` and request
   `rosewood-application-link-request-2026.1`.
+
+## Launch Shared-Network Capacity Limits
+
+Prepared on 26 August 2026 for an anticipated launch audience of no more than 100
+families.
+
+- Public Application-link requests allow 100 requests per shared network per hour and
+  500 per shared network per day.
+- Application-access OTP requests allow 100 requests per shared network per 30 minutes.
+- Regression assertions preserve the existing one-request-per-30-second cooldown,
+  five-per-invitation and five-per-email OTP limits, plus the public request's
+  three-per-email hourly and five-per-email daily limits.
+- The adjustment changes no form contract, answers, invitation identifiers, sessions,
+  homepage interface or active application state.
+- All 122 Node tests pass, including exact assertions for the revised shared-network
+  limits and the unchanged per-email, per-invitation and cooldown controls.

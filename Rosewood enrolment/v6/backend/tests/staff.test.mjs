@@ -27,8 +27,12 @@ class StaffStore {
     this.formDefinitions = new Map();
     this.revisions = new Map();
     this.renewals = [];
+    this.rateLimitChecks = [];
   }
-  async checkRateLimit() { return true; }
+  async checkRateLimit(key, limit, seconds) {
+    this.rateLimitChecks.push({ key, limit, seconds });
+    return true;
+  }
   async putChallenge(challenge) { this.challenges.set(challenge.id, challenge); }
   async getChallenge(id) { return this.challenges.get(id) || null; }
   async consumeChallenge(id) { return this.challenges.get(id) || null; }
@@ -217,6 +221,13 @@ test("a restricted Google Places browser key is available to the public EOI and 
   const requestedResponse = await service(event("/v6/application/access/request-code", "POST", { invitationToken, email: "family@example.com" }));
   assert.equal(requestedResponse.statusCode, 200);
   assert.doesNotMatch(requestedResponse.body, new RegExp(browserKey));
+  const applicationOtpChecks = store.rateLimitChecks.filter(({ key }) => key.startsWith("otp-"));
+  assert.deepEqual(applicationOtpChecks.map(({ key, limit, seconds }) => ({ key: key.split(":")[0], limit, seconds })), [
+    { key: "otp-cooldown", limit: 1, seconds: 30 },
+    { key: "otp-invite", limit: 5, seconds: 1800 },
+    { key: "otp-email", limit: 5, seconds: 1800 },
+    { key: "otp-network", limit: 100, seconds: 1800 }
+  ]);
 
   const requested = JSON.parse(requestedResponse.body);
   const verifiedResponse = await service(event("/v6/application/access/verify-code", "POST", { invitationToken, challengeId: requested.challengeId, code: "123456" }));
