@@ -127,9 +127,10 @@ request. Google Sheets show the record's actual form version but remain replacea
 reports. `SCHEMA-EVOLUTION.md` defines the mandatory process for adding, removing,
 renaming or changing questions and for migrating existing records.
 
-The current Application `2026.16` release preserves the V6.15 data contract and fixes
-the guardian signing page's read-only date to use the Melbourne calendar day. EOI
-remains at `2026.15`. V6.15 clarifies the other-children question and targets the exact
+The current EOI `2026.16` and Application `2026.17` releases preserve their preceding
+question and data contracts while adding the staff-only invitation-access recovery
+interface. Application V6.16 fixed the guardian signing page's read-only date to use
+the Melbourne calendar day. V6.15 clarifies the other-children question and targets the exact
 incomplete family control from server validation. V6.14 contains the preceding family-feedback field changes, V6.13 corrects
 document-upload recovery and V6.12 contains the revised immunisation guidance and
 clearer official Victorian-law link. Older definitions remain addressable and
@@ -152,7 +153,8 @@ The staff portal keeps its ordinary two-hour session in memory. When staff expli
 select **Remember me on this device**, the opaque staff token is retained in local
 browser storage and its server expiry slides to two hours after each authorised
 activity; sign-out or expiry removes it. No staff dashboard data is persisted there. It displays operational
-summaries, creates direct or EOI-linked invitations, rotates tokens when resending and
+summaries, creates direct or EOI-linked invitations, rotates active tokens when
+resending, renews expired or missing access without replacing the application, and
 provides audited application review. It lists document metadata but does not create
 document-sharing links; authorised staff access documents through the restricted
 enrolment Drive. Viewers cannot create invitations.

@@ -38,6 +38,13 @@ Decision date: 7 August 2026
 - The backend retains the original `applicationId` on an invitation and also records
   `applicationIds` so earlier one-child records remain compatible.
 - Invitations and resends expire 14 days after they are issued.
+- An editable application with an active invitation uses **Resend**, which rotates the
+  current token. An editable application whose invitation access is expired, inactive
+  or missing uses the separate **Renew access** operation.
+- Renewal preserves the application ID, all family child records, saved answers,
+  revision history and current status. It must not create a replacement application.
+  It is conditionally written, rate-limited, idempotent and audited. It refuses an
+  active invitation or a non-editable application.
 - Direct and deliberately EOI-linked invitations use separate approved email variants.
   Both use the subject `Invitation to Apply for Enrolment at Rosewood College`, a
   private `BEGIN APPLICATION` button, enrolment contact details and the exact expiry.

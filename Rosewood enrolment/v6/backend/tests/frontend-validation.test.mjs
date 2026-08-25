@@ -82,6 +82,11 @@ test("V6.8 exposes the revised responsive application experience without retired
   assert.match(source, /Set securely to the date this application is submitted/);
   assert.match(adminHtml, /Remember me on this device/);
   assert.match(adminSource, /rosewood-enrolment-staff-v6-session/);
+  assert.match(adminSource, /record\.canRenewAccess/);
+  assert.match(adminSource, /Renew access/);
+  assert.match(adminSource, /\/v6\/staff\/invitations\/renew-access/);
+  assert.match(adminSource, /saved answers and revision history will be preserved/);
+  assert.match(adminSource, /if \(!quiet\) clearNotices\("dashboard-error"\)/);
 });
 
 test("V6.14 applies the approved family feedback without weakening verification or saved-draft safety", async () => {
@@ -147,8 +152,8 @@ test("guardian signing renders the complete server-provided application review",
   assert.match(source, /formatToParts\(value\)/);
   assert.match(source, /value="\$\{melbourneDate\(\)\}"/);
   assert.doesNotMatch(source, /new Date\(\)\.toISOString\(\)\.slice\(0, 10\)/);
-  assert.match(await readFile(new URL("../../../../pages/rosewood-enrolment-v6.js", import.meta.url), "utf8"), /rosewood-application-2026\.16/);
-  assert.match(await readFile(new URL("../../../../pages/rosewood-enrolment-v6.html", import.meta.url), "utf8"), /rosewood-enrolment-v6\.js\?v=27/);
+  assert.match(await readFile(new URL("../../../../pages/rosewood-enrolment-v6.js", import.meta.url), "utf8"), /rosewood-application-2026\.17/);
+  assert.match(await readFile(new URL("../../../../pages/rosewood-enrolment-v6.html", import.meta.url), "utf8"), /rosewood-enrolment-v6\.js\?v=28/);
   assert.match(html, /rosewood-application-sign-v6\.css\?v=2/);
   assert.match(html, /rosewood-application-sign-v6\.js\?v=5/);
   assert.match(css, /\.application-review-section/);

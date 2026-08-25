@@ -307,6 +307,17 @@ function invitationApplicationIds(invitation) {
   return [...new Set([...(Array.isArray(invitation?.applicationIds) ? invitation.applicationIds : []), invitation?.applicationId].filter(Boolean))];
 }
 
+function invitationExpiryMs(invitation) {
+  const numeric = Number(invitation?.expiresAt);
+  if (Number.isFinite(numeric)) return numeric;
+  const parsed = Date.parse(invitation?.expiresAt || "");
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function activeInvitationAccess(invitation, now) {
+  return Boolean(invitation?.id && invitation?.tokenHash && invitation.status === "active" && invitationExpiryMs(invitation) > now);
+}
+
 export function additionalGuardianSignatureRecipients(values, guardianCount, formVersion = currentFormDefinition("application").formVersion) {
   const recipients = [];
   for (let index = 1; index < Math.max(1, Math.min(6, Number(guardianCount || 1))); index += 1) {
@@ -415,6 +426,102 @@ export async function resendApplicationInvitation({ store, invitationId, created
   ];
   await store.rotateInvitation({ invitation, previousTokenHash: current.tokenHash, tokenHash, outboxEvents: [emailOutbox({ to: current.recipientEmail, ...message, tags: { workflow: "application", message_type: "invitation_resend", record_id: current.applicationId } }, now), ...operations.map(operation => sheetOutbox(operation, now))], auditEvents: [audit] });
   return { applicationId: current.applicationId, invitationId: current.id, recipientEmail: current.recipientEmail, sendCount: invitation.sendCount, expiresAt: iso(expiresAt) };
+}
+
+export async function renewApplicationInvitationAccess({ store, applicationId, invitationId, operationId, createdBy, applicationUrl, clock = () => Date.now() }) {
+  const safeApplicationId = safeText(applicationId, 200);
+  const safeInvitationId = safeText(invitationId, 200);
+  const safeOperationId = safeText(operationId, 200);
+  if (!safeApplicationId || !safeInvitationId) throw appError(422, "INVITATION_REFERENCE_REQUIRED", "Select an application whose access needs to be renewed.");
+  if (!/^[A-Za-z0-9_-]{16,200}$/.test(safeOperationId)) throw appError(422, "OPERATION_ID_REQUIRED", "Refresh the portal and start the renewal again.");
+
+  const now = clock();
+  const operationHash = sha256(`invitation-access-renewal:${safeInvitationId}:${safeOperationId}`);
+  const current = await store.getInvitationById(safeInvitationId);
+  if (current?.renewalOperationHash === operationHash && activeInvitationAccess(current, now)) {
+    return {
+      applicationId: current.renewalApplicationId || current.applicationId,
+      invitationId: current.id,
+      recipientEmail: current.recipientEmail,
+      sendCount: Number(current.sendCount || 1),
+      expiresAt: iso(current.expiresAt),
+      deduplicated: true
+    };
+  }
+  if (activeInvitationAccess(current, now)) throw appError(409, "INVITATION_ACCESS_ACTIVE", "This application already has an active invitation. Refresh the portal and use Resend if a replacement link is required.");
+
+  const selectedApplication = await store.getApplication(safeApplicationId);
+  if (!selectedApplication || selectedApplication.invitationId !== safeInvitationId) throw appError(404, "APPLICATION_NOT_FOUND", "The application attached to this invitation was not found.");
+  if (!["invited", "in_progress"].includes(selectedApplication.status || "invited")) throw appError(409, "APPLICATION_NOT_EDITABLE", "Only an editable application can have its access renewed.");
+  const recipientEmail = normalizeEmail(selectedApplication.recipientEmail);
+  if (!/^\S+@\S+\.\S+$/.test(recipientEmail)) throw appError(422, "INVALID_EMAIL", "The existing application does not have a valid invitation email. Correct the record through the authorised recovery process before renewing access.");
+
+  const relatedApplications = store.listApplicationsByInvitationId
+    ? await store.listApplicationsByInvitationId(safeInvitationId)
+    : current
+      ? await getInvitationApplications(store, current)
+      : [selectedApplication];
+  const applications = relatedApplications.length ? relatedApplications : [selectedApplication];
+  const applicationIds = [...new Set(applications.map(application => application.id).filter(Boolean))];
+  if (!applicationIds.includes(selectedApplication.id)) applicationIds.push(selectedApplication.id);
+
+  const rawToken = token();
+  const tokenHash = sha256(rawToken);
+  const sentAt = iso(now);
+  const expiresAt = now + INVITATION_LIFETIME_MS;
+  const firstName = current?.firstName || selectedApplication.values?.app_guardian_0_first || "Parent/Guardian";
+  const lastName = current?.lastName || selectedApplication.values?.app_guardian_0_last || "";
+  const studentName = [selectedApplication.values?.student_first, selectedApplication.values?.student_last].filter(Boolean).join(" ");
+  const formReference = recordFormReference(selectedApplication, "application");
+  const invitation = {
+    ...(current || {}),
+    id: safeInvitationId,
+    applicationId: current?.applicationId && applicationIds.includes(current.applicationId) ? current.applicationId : selectedApplication.id,
+    applicationIds,
+    familyRevision: Number(current?.familyRevision || 0),
+    contactId: current?.contactId || selectedApplication.contactId,
+    studentId: current?.studentId || selectedApplication.studentId,
+    recipientEmail,
+    firstName,
+    lastName,
+    sourceEoiId: current?.sourceEoiId || selectedApplication.sourceEoiId || "",
+    status: "active",
+    createdAt: current?.createdAt || selectedApplication.createdAt || sentAt,
+    expiresAt,
+    firstSentAt: current?.firstSentAt || selectedApplication.createdAt || sentAt,
+    lastSentAt: sentAt,
+    sendCount: Number(current?.sendCount || 0) + 1,
+    tokenHash,
+    renewedAt: sentAt,
+    renewalApplicationId: selectedApplication.id,
+    renewalOperationHash: operationHash,
+    ...formReference
+  };
+  const invitationUrl = `${applicationUrl}${applicationUrl.includes("?") ? "&" : "?"}workflow=application&invite=${encodeURIComponent(rawToken)}`;
+  const message = applicationInvitation({ firstName, studentName, entryLevel: selectedApplication.values?.entry_level || "", entryYear: selectedApplication.values?.entry_year || "", invitationUrl, expiresAt: invitationDate(expiresAt), linked: Boolean(selectedApplication.sourceEoiId) });
+  const audit = createAuditEvent({ workflow: "operations", recordId: selectedApplication.id, type: "application.invitation_access_renewed", at: sentAt, actorType: "staff", actorId: createdBy, details: { invitationId: safeInvitationId, applicationCount: applicationIds.length, previousAccessRecord: current ? "expired_or_inactive" : "missing" } });
+  const operations = [
+    sheetOperation("operations", "Application Invitations", { invitation_id: safeInvitationId, application_id: invitation.applicationId, application_ids_json: applicationIds, recipient_contact_id: invitation.contactId, recipient_email: invitation.recipientEmail, student_id: invitation.studentId, source_eoi_id: invitation.sourceEoiId, status: "active", created_at: invitation.createdAt, expires_at: iso(expiresAt), first_sent_at: invitation.firstSentAt, last_sent_at: sentAt, send_count: invitation.sendCount, opened_at: "", verified_at: "", submitted_at: "", ...projectionVersion(selectedApplication, "application") }, ["invitation_id"]),
+    auditSheetOperation(audit),
+    emailEvent({ messageType: "application_invitation_access_renewed", workflow: "application", recordId: selectedApplication.id, recipientEmail: invitation.recipientEmail, at: sentAt })
+  ];
+  try {
+    await store.renewInvitationAccess({
+      invitation,
+      previousInvitation: current,
+      tokenHash,
+      expectedApplication: { id: selectedApplication.id, invitationId: selectedApplication.invitationId, status: selectedApplication.status || "invited", revision: Number(selectedApplication.revision || 0) },
+      outboxEvents: [emailOutbox({ to: invitation.recipientEmail, ...message, tags: { workflow: "application", message_type: "invitation_access_renewed", record_id: selectedApplication.id } }, now), ...operations.map(operation => sheetOutbox(operation, now))],
+      auditEvents: [audit]
+    });
+  } catch (error) {
+    const raced = await store.getInvitationById(safeInvitationId);
+    if (raced?.renewalOperationHash === operationHash && activeInvitationAccess(raced, now)) {
+      return { applicationId: raced.renewalApplicationId || selectedApplication.id, invitationId: raced.id, recipientEmail: raced.recipientEmail, sendCount: Number(raced.sendCount || 1), expiresAt: iso(raced.expiresAt), deduplicated: true };
+    }
+    throw error;
+  }
+  return { applicationId: selectedApplication.id, invitationId: safeInvitationId, recipientEmail: invitation.recipientEmail, sendCount: invitation.sendCount, expiresAt: iso(expiresAt), deduplicated: false };
 }
 
 export async function queueMissingGuardianSignatureInvitations({ store, applicationId, signingPageUrl, actorId = "staff-cli", clock = () => Date.now() }) {
@@ -670,6 +777,15 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     const applicationByEoi = new Map(applicationRecords.filter(application => application.sourceEoiId).map(application => [application.sourceEoiId, application]));
     const applications = applicationRecords.map(application => {
       const invitation = invitationByApplication.get(application.id) || {};
+      const editable = ["invited", "in_progress"].includes(application.status || "invited");
+      const accessActive = activeInvitationAccess(invitation, clock());
+      const invitationAccessStatus = !editable
+        ? "not_applicable"
+        : accessActive
+          ? "active"
+          : invitation.id
+            ? invitation.status === "active" && invitationExpiryMs(invitation) <= clock() ? "expired" : "inactive"
+            : "missing";
       return {
         applicationId: application.id,
         invitationId: application.invitationId,
@@ -689,7 +805,9 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
         lastSentAt: invitation.lastSentAt || "",
         sendCount: Number(invitation.sendCount || 0),
         expiresAt: invitation.expiresAt ? iso(invitation.expiresAt) : "",
-        canResend: ["invited", "in_progress"].includes(application.status || "invited")
+        invitationAccessStatus,
+        canResend: editable && accessActive,
+        canRenewAccess: editable && !accessActive
       };
     }).sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
     const eois = eoiRecords.map(record => {
@@ -805,6 +923,23 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     const result = await resendApplicationInvitation({ store, invitationId: safeText(body.invitationId, 200), createdBy: session.email, applicationUrl: applicationPageUrl, clock });
     await dispatchOutbox(50);
     return { ...result, message: "A new private invitation link has been sent. The earlier link no longer works." };
+  }
+
+  async function renewStaffInvitationAccess(event) {
+    const session = await requireStaffSession(event, ["admin", "admissions"]);
+    const body = parseBody(event, 20_000);
+    if (!await store.checkRateLimit(`staff-renew-access:${sha256(session.email)}`, 20, 3600)) throw appError(429, "STAFF_RATE_LIMIT", "The hourly invitation-access renewal limit has been reached. Wait before trying again.");
+    const result = await renewApplicationInvitationAccess({
+      store,
+      applicationId: safeText(body.applicationId, 200),
+      invitationId: safeText(body.invitationId, 200),
+      operationId: safeText(body.operationId, 200),
+      createdBy: session.email,
+      applicationUrl: applicationPageUrl,
+      clock
+    });
+    await dispatchOutbox(50);
+    return { ...result, message: "Access to the existing application has been renewed. A new private invitation link has been sent, and saved progress was preserved." };
   }
 
   async function changeStaffContactPermission(event) {
@@ -1549,6 +1684,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     ["POST /v6/staff/applications/revision", getStaffApplicationRevision],
     ["POST /v6/staff/invitations", createStaffInvitation],
     ["POST /v6/staff/invitations/resend", resendStaffInvitation],
+    ["POST /v6/staff/invitations/renew-access", renewStaffInvitationAccess],
     ["POST /v6/staff/applications/contact-permission", changeStaffContactPermission],
     ["GET /v6/eoi/config", getEoiConfig],
     ["POST /v6/eoi", submitEoi],

@@ -159,6 +159,44 @@ export class DynamoStore {
     } catch (error) { if (conditional(error)) throw conflict("This invitation changed before it could be resent. Refresh the portal and try again."); throw error; }
   }
 
+  async renewInvitationAccess({ invitation, previousInvitation = null, tokenHash, expectedApplication, outboxEvents, auditEvents = [] }) {
+    const ttl = Math.floor(invitation.expiresAt / 1000) + 86400;
+    const indexCondition = previousInvitation
+      ? previousInvitation.tokenHash
+        ? {
+            ConditionExpression: "#data.#tokenHash = :previousTokenHash",
+            ExpressionAttributeNames: { "#data": "data", "#tokenHash": "tokenHash" },
+            ExpressionAttributeValues: { ":previousTokenHash": previousInvitation.tokenHash }
+          }
+        : {
+            ConditionExpression: "attribute_exists(PK) AND #data.#id = :previousId",
+            ExpressionAttributeNames: { "#data": "data", "#id": "id" },
+            ExpressionAttributeValues: { ":previousId": previousInvitation.id }
+          }
+      : { ConditionExpression: "attribute_not_exists(PK)" };
+    const actions = [
+      { ConditionCheck: {
+        TableName: this.tableName,
+        Key: this.key(`APP#${expectedApplication.id}`, "CURRENT"),
+        ConditionExpression: "#data.#invitationId = :invitationId AND #data.#status = :status AND #data.#revision = :revision",
+        ExpressionAttributeNames: { "#data": "data", "#invitationId": "invitationId", "#status": "status", "#revision": "revision" },
+        ExpressionAttributeValues: { ":invitationId": expectedApplication.invitationId, ":status": expectedApplication.status, ":revision": expectedApplication.revision }
+      } },
+      ...(previousInvitation?.tokenHash ? [{ Delete: { TableName: this.tableName, Key: this.key(`INVITE#${previousInvitation.tokenHash}`) } }] : []),
+      { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE#${tokenHash}`), entity: "invitation", ttl, data: invitation }, ConditionExpression: "attribute_not_exists(PK)" } },
+      { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE_ID#${invitation.id}`), entity: "invitation_index", ttl, data: invitation }, ...indexCondition } },
+      ...this.outboxActions(outboxEvents),
+      ...this.auditActions(auditEvents)
+    ];
+    try {
+      await this.client.send(new TransactWriteCommand({ TransactItems: actions }));
+      return invitation;
+    } catch (error) {
+      if (conditional(error)) throw conflict("This invitation access changed before it could be renewed. Refresh the portal and try again.");
+      throw error;
+    }
+  }
+
   async addApplicationToInvitation({ invitation, expectedFamilyRevision, application, revisionRecord, outboxEvents, auditEvents = [] }) {
     const ttl = Math.floor(invitation.expiresAt / 1000) + 86400;
     const revisionCondition = expectedFamilyRevision === 0
@@ -521,6 +559,11 @@ export class DynamoStore {
 
   async listOperationalRecords() {
     return this.scanEntities(["eoi", "application", "invitation_index", "outbox_receipt"]);
+  }
+
+  async listApplicationsByInvitationId(invitationId) {
+    const applications = await this.scanEntities(["application"]);
+    return applications.map(item => item.data).filter(application => application.invitationId === invitationId);
   }
 
   async listApplicationRevisions(applicationId, limit = 100) {

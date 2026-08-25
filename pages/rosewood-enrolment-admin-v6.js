@@ -14,6 +14,8 @@
     selectedEoi: null,
     selectedApplication: null,
     resendInvitation: null,
+    invitationActionMode: "resend",
+    invitationOperationId: "",
     resendTimer: null,
     refreshTimer: null
   };
@@ -232,7 +234,7 @@
     if (!state.sessionToken) return;
     const button = byId("refresh-button");
     if (!quiet) setLoading(button, true);
-    clearNotices("dashboard-error");
+    if (!quiet) clearNotices("dashboard-error");
     try {
       state.dashboard = await api("/v6/staff/dashboard");
       renderDashboard();
@@ -304,8 +306,15 @@
         const resend = element("button", "small-button", "Resend");
         resend.type = "button";
         resend.dataset.resendInvitation = record.invitationId;
-        resend.addEventListener("click", () => openResend(record));
+        resend.addEventListener("click", () => openInvitationAction(record, "resend"));
         actions.append(resend);
+      }
+      if (record.canRenewAccess && ["admin", "admissions"].includes(state.dashboard.staff.role)) {
+        const renew = element("button", "small-button", "Renew access");
+        renew.type = "button";
+        renew.dataset.renewInvitationAccess = record.applicationId;
+        renew.addEventListener("click", () => openInvitationAction(record, "renew"));
+        actions.append(renew);
       }
       card.append(actions);
       list.append(card);
@@ -678,9 +687,21 @@
     }
   }
 
-  function openResend(record) {
+  function newOperationId() {
+    if (crypto.randomUUID) return crypto.randomUUID();
+    const bytes = crypto.getRandomValues(new Uint8Array(24));
+    return Array.from(bytes, value => value.toString(16).padStart(2, "0")).join("");
+  }
+
+  function openInvitationAction(record, mode) {
     state.resendInvitation = record;
-    byId("confirm-copy").textContent = `A new private link will be sent to ${record.recipientEmail}. The earlier link will stop working.`;
+    state.invitationActionMode = mode;
+    state.invitationOperationId = mode === "renew" ? newOperationId() : "";
+    byId("confirm-title").textContent = mode === "renew" ? "Renew access to this application?" : "Resend this invitation?";
+    byId("confirm-copy").textContent = mode === "renew"
+      ? `A new private link will be sent to ${record.recipientEmail}. The existing application, saved answers and revision history will be preserved; no duplicate application will be created.`
+      : `A new private link will be sent to ${record.recipientEmail}. The earlier link will stop working.`;
+    byId("confirm-resend-button").querySelector("span").textContent = mode === "renew" ? "Renew access" : "Resend invitation";
     confirmDialog.showModal();
     byId("cancel-resend-button").focus();
   }
@@ -691,7 +712,12 @@
     setLoading(button, true);
     clearNotices("dashboard-error", "dashboard-message");
     try {
-      const result = await api("/v6/staff/invitations/resend", { method: "POST", body: { invitationId: state.resendInvitation.invitationId } });
+      const renew = state.invitationActionMode === "renew";
+      const path = renew ? "/v6/staff/invitations/renew-access" : "/v6/staff/invitations/resend";
+      const body = renew
+        ? { applicationId: state.resendInvitation.applicationId, invitationId: state.resendInvitation.invitationId, operationId: state.invitationOperationId }
+        : { invitationId: state.resendInvitation.invitationId };
+      const result = await api(path, { method: "POST", body });
       confirmDialog.close();
       setNotice("dashboard-message", result.message);
       await loadDashboard({ quiet: true });
@@ -701,6 +727,8 @@
     } finally {
       setLoading(button, false);
       state.resendInvitation = null;
+      state.invitationActionMode = "resend";
+      state.invitationOperationId = "";
     }
   }
 
@@ -742,7 +770,7 @@
     }
     createInvitation({ recipientEmail: state.selectedEoi.email, sourceEoiId: state.selectedEoi.eoiId }, byId("send-eoi-invite"));
   });
-  byId("cancel-resend-button").addEventListener("click", () => { state.resendInvitation = null; confirmDialog.close(); });
+  byId("cancel-resend-button").addEventListener("click", () => { state.resendInvitation = null; state.invitationActionMode = "resend"; state.invitationOperationId = ""; confirmDialog.close(); });
   byId("confirm-resend-button").addEventListener("click", confirmResend);
   inviteDialog.addEventListener("click", event => { if (event.target === inviteDialog) inviteDialog.close(); });
   confirmDialog.addEventListener("click", event => { if (event.target === confirmDialog) confirmDialog.close(); });
