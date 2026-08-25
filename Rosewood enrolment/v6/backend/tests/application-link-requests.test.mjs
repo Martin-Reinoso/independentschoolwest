@@ -24,11 +24,16 @@ class RequestStore {
     this.applications = new Map();
     this.outbox = [];
     this.rateLimitKeys = [];
+    this.rateLimitChecks = [];
     this.blockRateLimit = () => false;
   }
 
   async ensureFormDefinition(definition) { return definition; }
-  async checkRateLimit(key) { this.rateLimitKeys.push(key); return !this.blockRateLimit(key); }
+  async checkRateLimit(key, limit, seconds) {
+    this.rateLimitKeys.push(key);
+    this.rateLimitChecks.push({ key, limit, seconds });
+    return !this.blockRateLimit(key);
+  }
   async getIdempotency(key) { return structuredClone(this.idempotency.get(key) || null); }
   async getApplicationRequestByEmailHash(hash) { return structuredClone(this.requestIndexes.get(hash) || null); }
   async getInvitationById(id) { return structuredClone(this.invitationIds.get(id) || null); }
@@ -106,6 +111,12 @@ test("a public request creates one direct family invitation without creating or 
   assert.equal(mailer.sent[0].tags.workflow, "application_link_request");
   assert.match(mailer.sent[0].text, /recently requested an Application for Enrolment link/);
   assert.doesNotMatch(mailer.sent[0].text, /expressed interest/);
+  assert.deepEqual(store.rateLimitChecks.map(({ key, limit, seconds }) => ({ key: key.split(":")[0], limit, seconds })), [
+    { key: "application-request-network-hour", limit: 100, seconds: 3600 },
+    { key: "application-request-network-day", limit: 500, seconds: 86400 },
+    { key: "application-request-email-hour", limit: 3, seconds: 3600 },
+    { key: "application-request-email-day", limit: 5, seconds: 86400 }
+  ]);
 });
 
 test("an idempotent retry returns the same generic result and sends only one email", async () => {

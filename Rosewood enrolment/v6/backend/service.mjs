@@ -14,6 +14,9 @@ const MAX_FAMILY_APPLICATIONS = 8;
 const APPLICATION_SESSION_IDLE_MS = 90 * 60_000;
 const APPLICATION_SESSION_ABSOLUTE_MS = 8 * 60 * 60_000;
 const MAX_OUTBOX_ATTEMPTS = 8;
+const APPLICATION_REQUEST_NETWORK_HOURLY_LIMIT = 100;
+const APPLICATION_REQUEST_NETWORK_DAILY_LIMIT = 500;
+const APPLICATION_OTP_NETWORK_HALF_HOURLY_LIMIT = 100;
 const APPLICATION_VALIDATORS = new Map(Object.keys(FORM_DEFINITIONS.application).map(formVersion => [formVersion, { sanitize: sanitizeApplication, validate: validateApplicationForSubmission }]));
 const EOI_VALIDATORS = new Map(Object.keys(FORM_DEFINITIONS.eoi).map(formVersion => [formVersion, validateEoi]));
 
@@ -1051,8 +1054,8 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     const emailHash = sha256(recipientEmail);
     const fingerprint = networkFingerprint(event);
     for (const [key, limit, seconds] of [
-      [`application-request-network-hour:${fingerprint}`, 10, 3600],
-      [`application-request-network-day:${fingerprint}`, 30, 86400],
+      [`application-request-network-hour:${fingerprint}`, APPLICATION_REQUEST_NETWORK_HOURLY_LIMIT, 3600],
+      [`application-request-network-day:${fingerprint}`, APPLICATION_REQUEST_NETWORK_DAILY_LIMIT, 86400],
       [`application-request-email-hour:${emailHash}`, 3, 3600],
       [`application-request-email-day:${emailHash}`, 5, 86400]
     ]) {
@@ -1208,7 +1211,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     const inviteHash = sha256(rawInvite);
     const invitation = await store.getInvitation(inviteHash);
     const fingerprint = networkFingerprint(event);
-    for (const [key, limit, seconds] of [[`otp-cooldown:${inviteHash}:${sha256(email)}`, 1, 30], [`otp-invite:${inviteHash}`, 5, 1800], [`otp-email:${sha256(email)}`, 5, 1800], [`otp-network:${fingerprint}`, 10, 1800]]) {
+    for (const [key, limit, seconds] of [[`otp-cooldown:${inviteHash}:${sha256(email)}`, 1, 30], [`otp-invite:${inviteHash}`, 5, 1800], [`otp-email:${sha256(email)}`, 5, 1800], [`otp-network:${fingerprint}`, APPLICATION_OTP_NETWORK_HALF_HOURLY_LIMIT, 1800]]) {
       if (!await store.checkRateLimit(key, limit, seconds)) throw appError(429, "OTP_RATE_LIMIT", "Please wait before requesting another verification code.");
     }
     const valid = invitation && invitation.status === "active" && invitation.expiresAt > clock() && invitation.recipientEmail === email;
