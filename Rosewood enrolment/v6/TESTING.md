@@ -1226,3 +1226,36 @@ workflow email or Slack notification.
   **Renew access**, and submitted applications offer neither. The renewal confirmation
   states that the existing application, saved answers and revision history are
   preserved. The final confirmation was not selected, so no family email was sent.
+
+## V6.17 Invitation Renewal IAM Incident And Recovery
+
+On 25 August 2026, the first staff-confirmed **Renew access** request failed because
+the Lambda runtime role allowed `dynamodb:TransactWriteItems` but not the distinct
+`dynamodb:ConditionCheckItem` action used inside the renewal transaction.
+
+- DynamoDB rejected the transaction atomically. The affected application remained
+  `in_progress` at revision 2 with its pre-incident update timestamp; no invitation
+  token, application value, child record, revision, audit event or outbox email was
+  changed or created by the failed request.
+- Pull request `#17` added `dynamodb:ConditionCheckItem` only to the existing
+  `AuthoritativeRecords` statement and added an infrastructure regression test that
+  requires both conditional-check and transactional-write permissions on the retained
+  records table. Both repository checks passed and the change merged as commit
+  `574a91e070f8f074f293926bc3369b0408ccfe86`.
+- All 113 backend and frontend tests passed. The frozen-lockfile deployment build,
+  static-reference gate, public-data gate and `git diff --check` also passed.
+- Reviewed change set `rosewood-renew-iam-20260825-574a91e` modified the existing
+  `RosewoodRole` policy and Lambda code package in place with `Replacement: False`.
+  CloudFormation recalculated the existing canary/outbox permissions and SES-events
+  subscription references. It contained no DynamoDB, audit, KMS, S3, backup, secret,
+  API, alarm, form-contract or data-resource change.
+- CloudFormation reached `UPDATE_COMPLETE`; termination protection remains enabled.
+  Lambda is `Active` with a successful Node.js 22 update. IAM policy simulation reports
+  both `dynamodb:ConditionCheckItem` and `dynamodb:TransactWriteItems` as allowed on the
+  authoritative table.
+- `/v6/health` continues to report EOI `rosewood-eoi-2026.16` and Application
+  `rosewood-application-2026.17`. A manual non-writing canary returned HTTP 200 with all
+  five checks available, both schedules remain enabled and all nine alarms are `OK`.
+- The hotfix did not retry the family operation automatically. Staff must deliberately
+  select **Renew access** again so that an email is never sent merely because an
+  infrastructure recovery completed.
