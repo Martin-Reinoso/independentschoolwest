@@ -1349,6 +1349,29 @@ yet.
 - The production canary now treats the restored home-page registration path and the
   renamed network-disabled review page as the expected public assets while retaining
   all backend, EOI address, protected-route and outbox checks.
-- All 120 Node tests pass, including the review-page no-network assertions and the
+- All 121 Node tests pass, including the review-page no-network assertions and the
   existing request-backend, EOI, application, upload, signature, SES, Sheets, Slack and
   canary regression coverage.
+
+### Production pause release
+
+- Pull request `#22` passed both repository checks and merged to `main` as
+  `4f09aa1844f4b5e6be5c8679889586b10420c68f`.
+- GitHub Pages deployment `32864871770` completed successfully. The live home page
+  contains the restored **Register Your Child** links and no request-card markup or
+  script. The former standalone production URL returns HTTP 404.
+- The review page is live only at
+  `pages/rosewood-application-link-request-review.html`; its delivered HTML declares
+  `connect-src 'none'`, and its JavaScript contains no request endpoint or network call.
+- Reviewed change set `rosewood-public-request-pause-20260826-4f09aa1` modified the
+  existing Lambda code in place with `Replacement: False` and recalculated only the
+  existing canary/outbox schedule permissions and targets and SES subscription endpoint.
+  It did not change or replace DynamoDB, audit, KMS, S3, backups, secrets, IAM roles,
+  alarms, the Function URL or any data resource.
+- CloudFormation reached `UPDATE_COMPLETE`; termination protection remains enabled,
+  Lambda is active on Node.js 22 and its update status is successful. The one-minute
+  outbox and ten-minute canary schedules remain enabled.
+- A manual non-writing canary reported all five checks available. All nine production
+  alarms are `OK`, and `/v6/health` retains EOI `rosewood-eoi-2026.17`, Application
+  `rosewood-application-2026.18` and request
+  `rosewood-application-link-request-2026.1`.
