@@ -1418,8 +1418,7 @@ families.
 
 ## Discover Rosewood Forms Verification
 
-Prepared on 26 August 2026. Production release evidence is recorded only after the
-reviewed Pages and AWS deployments complete.
+Released and verified on 26 August 2026.
 
 - The current `index.html` registration path remains unchanged. Only
   `discover-rosewood.html` loads the production form client.
@@ -1445,3 +1444,32 @@ reviewed Pages and AWS deployments complete.
   validation paths, first-invalid-field focus, accessible summaries, control sizing,
   horizontal overflow and console warnings/errors. No valid public request or enquiry
   was transmitted during local visual verification.
+
+### Production release
+
+- Pull request `#28` passed the `static-site` and `enrolment-backend` checks and merged
+  to `main` as `740b213b37cb1b055e7650c19a7309611ea41e01`. GitHub Pages then built and
+  deployed that exact merge successfully. The live Discover HTML and form script have
+  the expected workflow markers; the live home page retains its preceding
+  `FamiliesEdEOI` registration links.
+- Reviewed change set `rosewood-discover-workflows-20260826-740b213` updated the Lambda
+  code/environment in place with `Replacement: False`. It recalculated only the
+  existing canary/outbox schedule permissions and targets and the SES-events
+  subscription endpoint. It did not modify or replace DynamoDB, audit, KMS, document
+  staging, backups, secrets, IAM roles, alarms or the Function URL.
+- CloudFormation reached `UPDATE_COMPLETE`; termination protection remains enabled and
+  the Node.js 22 Lambda is `Active` with `LastUpdateStatus: Successful`. Health reports
+  EOI `rosewood-eoi-2026.17`, Application `rosewood-application-2026.18`, Application
+  request `rosewood-application-link-request-2026.1` and community enquiry
+  `rosewood-community-enquiry-2026.1`.
+- The one-minute outbox and ten-minute canary schedules are enabled. A manual
+  non-writing canary returned all five checks available, all nine alarms are `OK`, and
+  both security-topic email subscriptions remain confirmed.
+- The deployed Lambda still enforces 100 Application-link requests per shared network
+  per hour, the 500-per-day ceiling and 100 Application-access OTP requests per shared
+  network per 30 minutes, together with the stricter per-email, per-invitation and
+  cooldown controls.
+- One clearly synthetic community enquiry (`ENQ-2026-2DKCMI0`) verified the production
+  DynamoDB transaction, durable email outbox and SES feedback path. SES recorded both
+  acceptance and delivery for the `new_enquiry_notification`; the test did not create
+  an EOI or Application.
