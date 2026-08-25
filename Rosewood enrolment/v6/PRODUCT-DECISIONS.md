@@ -29,6 +29,9 @@ Decision date: 7 August 2026
 - The proposed interface is retained only as the unlinked, no-index
   `pages/rosewood-application-link-request-review.html` page. It is a simulation with
   `connect-src 'none'`, no `fetch` call, no persistence and no email delivery.
+- The exact launched homepage composition is retained separately at
+  `homepage-application-request-review.html`. It is also no-index and
+  uses the simulation script, not the production request client.
 - The implemented endpoint, immutable contract and existing request records are
   retained so later activation does not require a destructive data rollback. No public
   page currently submits to that endpoint.

@@ -15,6 +15,7 @@ St Lawrence evidence.
 
 ```text
 https://ffe.org.au/pages/rosewood-application-link-request-review.html
+https://ffe.org.au/homepage-application-request-review.html
 https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=eoi
 https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=application
 https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=acceptance
@@ -31,7 +32,9 @@ do not show workflow-switching or direct frame navigation.
 
 The proposed public application-link card is paused and is not promoted on the home
 page. Its renamed no-index review page is a network-disabled simulation: it saves no
-information and sends no email. The home page has been restored to the preceding
+information and sends no email. A second no-index review URL preserves the exact
+full-homepage composition in which that card was launched, but loads the same safe
+simulation client rather than the production request client. The home page has been restored to the preceding
 **Register Your Child** links while the request experience is revised. The implemented
 request endpoint and records remain intact but dormant; staff direct and EOI-linked
 invitations continue to work. Application remains invitation-only and requires the
