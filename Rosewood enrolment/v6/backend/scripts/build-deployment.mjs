@@ -4,11 +4,12 @@ import { copyFileSync, lstatSync, mkdirSync, readFileSync, readdirSync, rmSync }
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { currentFormDefinition } from "../form-definitions.mjs";
+import { APPLICATION_REQUEST_CONTRACT } from "../application-request-contract.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.join(root, "lambda-dist");
 const repositoryRoot = path.resolve(root, "../../..");
-const files = ["index.mjs", "service.mjs", "application-review.mjs", "schema.mjs", "form-definitions.mjs", "production-canary.mjs", "dynamo-store.mjs", "google-auth.mjs", "google-drive.mjs", "staged-google-drive.mjs", "google-sheets.mjs", "ses-mailer.mjs", "slack-notifier.mjs", "email-templates.mjs", "package.json", "pnpm-lock.yaml"];
+const files = ["index.mjs", "service.mjs", "application-request-contract.mjs", "application-review.mjs", "schema.mjs", "form-definitions.mjs", "production-canary.mjs", "dynamo-store.mjs", "google-auth.mjs", "google-drive.mjs", "staged-google-drive.mjs", "google-sheets.mjs", "ses-mailer.mjs", "slack-notifier.mjs", "email-templates.mjs", "package.json", "pnpm-lock.yaml"];
 
 function run(command, args) {
   const result = spawnSync(command, args, { cwd: output, env: process.env, encoding: "utf8", stdio: "inherit" });
@@ -26,7 +27,7 @@ function assertNoSymlinks(directory) {
 }
 
 function assertFormAssets() {
-  const expected = currentFormDefinition("application").source.frontendAssetHashes;
+  const expected = { ...currentFormDefinition("application").source.frontendAssetHashes, ...APPLICATION_REQUEST_CONTRACT.source.frontendAssetHashes };
   for (const [relativePath, expectedHash] of Object.entries(expected)) {
     const actualHash = crypto.createHash("sha256").update(readFileSync(path.join(repositoryRoot, relativePath))).digest("hex");
     if (actualHash !== expectedHash) throw new Error(`Form asset changed without a new immutable form definition: ${relativePath}`);

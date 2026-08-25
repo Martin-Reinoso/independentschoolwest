@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { APPLICATION_REQUEST_CONTRACT } from "./application-request-contract.mjs";
 import { buildApplicationReview } from "./application-review.mjs";
 import { applicationComplete, applicationInvitation, applicationOtp, applicationSubmitted, eoiAcknowledgement, signatureInvitation, signatureOtp, staffOtp } from "./email-templates.mjs";
 import { currentFormDefinition, FORM_DEFINITIONS, getFormDefinition, recordFormReference } from "./form-definitions.mjs";
@@ -356,7 +357,7 @@ async function getInvitationApplications(store, invitation) {
   return (await Promise.all(invitationApplicationIds(invitation).map(applicationId => store.getApplication(applicationId)))).filter(Boolean);
 }
 
-export async function createApplicationInvitation({ store, recipientEmail, firstName = "", lastName = "", sourceEoiId = "", createdBy = "staff-cli", applicationUrl, clock = () => Date.now() }) {
+export async function createApplicationInvitation({ store, recipientEmail, firstName = "", lastName = "", sourceEoiId = "", createdBy = "staff-cli", applicationUrl, clock = () => Date.now(), invitationSource = "staff_direct", applicationRequestContext = null }) {
   const now = clock();
   const definition = await ensureDefinition(store, "application", currentFormDefinition("application").formVersion);
   const email = normalizeEmail(recipientEmail);
@@ -378,17 +379,19 @@ export async function createApplicationInvitation({ store, recipientEmail, first
   const displayFirst = eoi?.values.eoi_first || firstName;
   const displayLast = eoi?.values.eoi_last || lastName || "";
   const formReference = { formVersion: definition.formVersion, formDefinitionHash: definition.definitionHash, schemaVersion: definition.schemaVersion };
-  const invitation = { id: invitationId, applicationId, applicationIds: [applicationId], familyRevision: 0, contactId, studentId, recipientEmail: email, firstName: displayFirst, lastName: displayLast, sourceEoiId: sourceEoiId || "", status: "active", createdAt, expiresAt, firstSentAt: createdAt, lastSentAt: createdAt, sendCount: 1, tokenHash, ...formReference };
-  const application = { id: applicationId, invitationId, sourceEoiId: sourceEoiId || "", contactId, studentId, recipientEmail: email, status: "invited", revision: 0, values, guardianCount: 2, emergencyCount: 2, documents: {}, signatures: [], guardianIds: [id("guardian"), id("guardian")], createdAt, updatedAt: createdAt, ...formReference };
+  const source = eoi ? "staff_eoi_linked" : invitationSource;
+  const invitation = { id: invitationId, applicationId, applicationIds: [applicationId], familyRevision: 0, contactId, studentId, recipientEmail: email, firstName: displayFirst, lastName: displayLast, sourceEoiId: sourceEoiId || "", invitationSource: source, status: "active", createdAt, expiresAt, firstSentAt: createdAt, lastSentAt: createdAt, sendCount: 1, tokenHash, ...formReference };
+  const application = { id: applicationId, invitationId, sourceEoiId: sourceEoiId || "", invitationSource: source, contactId, studentId, recipientEmail: email, status: "invited", revision: 0, values, guardianCount: 2, emergencyCount: 2, documents: {}, signatures: [], guardianIds: [id("guardian"), id("guardian")], createdAt, updatedAt: createdAt, ...formReference };
   const invitationUrl = `${applicationUrl}${applicationUrl.includes("?") ? "&" : "?"}workflow=application&invite=${encodeURIComponent(rawToken)}`;
   const studentFirst = eoi?.values.eoi_student_first || "";
   const studentLast = eoi?.values.eoi_student_last || "";
   const studentName = [studentFirst, studentLast].filter(Boolean).join(" ");
-  const message = applicationInvitation({ firstName: displayFirst, studentName, entryLevel: eoi?.values.eoi_level || "", entryYear: eoi?.values.eoi_year || "", invitationUrl, expiresAt: invitationDate(expiresAt), linked: Boolean(eoi) });
-  const audit = createAuditEvent({ workflow: "operations", recordId: applicationId, type: eoi ? "application.invited_from_eoi" : "application.invited_directly", at: createdAt, actorType: "staff", actorId: createdBy, details: { invitationId, sourceEoiId: sourceEoiId || null } });
+  const requested = source === "public_application_request";
+  const message = applicationInvitation({ firstName: displayFirst, studentName, entryLevel: eoi?.values.eoi_level || "", entryYear: eoi?.values.eoi_year || "", invitationUrl, expiresAt: invitationDate(expiresAt), linked: Boolean(eoi), requested });
+  const audit = createAuditEvent({ workflow: "operations", recordId: applicationId, type: eoi ? "application.invited_from_eoi" : requested ? "application.request_link_invitation_created" : "application.invited_directly", at: createdAt, actorType: requested ? "public" : "staff", actorId: requested ? contactId : createdBy, details: { invitationId, sourceEoiId: sourceEoiId || null, invitationSource: source } });
   const operations = [
-    sheetOperation("operations", "Contacts", { contact_id: contactId, email, first_name: displayFirst, last_name: displayLast, mobile_phone: eoi?.values.eoi_mobile || "", source: eoi ? "eoi" : "direct_invitation", created_at: eoi?.submittedAt || createdAt, updated_at: createdAt, schema_version: SCHEMA_VERSION }, ["contact_id"]),
-    sheetOperation("operations", "Application Invitations", { invitation_id: invitationId, application_id: applicationId, application_ids_json: [applicationId], recipient_contact_id: contactId, recipient_email: email, student_id: studentId, source_eoi_id: sourceEoiId, status: "active", created_at: createdAt, expires_at: iso(expiresAt), first_sent_at: createdAt, last_sent_at: createdAt, send_count: 1, ...projectionVersion(application, "application") }, ["invitation_id"]),
+    sheetOperation("operations", "Contacts", { contact_id: contactId, email, first_name: displayFirst, last_name: displayLast, mobile_phone: eoi?.values.eoi_mobile || "", source: eoi ? "eoi" : requested ? "public_application_request" : "direct_invitation", created_at: eoi?.submittedAt || createdAt, updated_at: createdAt, schema_version: SCHEMA_VERSION }, ["contact_id"]),
+    sheetOperation("operations", "Application Invitations", { invitation_id: invitationId, application_id: applicationId, application_ids_json: [applicationId], recipient_contact_id: contactId, recipient_email: email, student_id: studentId, source_eoi_id: sourceEoiId, invitation_source: source, status: "active", created_at: createdAt, expires_at: iso(expiresAt), first_sent_at: createdAt, last_sent_at: createdAt, send_count: 1, ...projectionVersion(application, "application") }, ["invitation_id"]),
     sheetOperation("operations", "Progress", { application_id: applicationId, current_stage: "gateway", status: "invited", revision: 0, last_activity_at: createdAt, percent_complete: 0, ...projectionVersion(application, "application") }, ["application_id"]),
     sheetOperation("application", "Applications", mapApplicationRow(application), ["application_id"]),
     auditSheetOperation(audit),
@@ -396,8 +399,17 @@ export async function createApplicationInvitation({ store, recipientEmail, first
   ];
   if (studentName) operations.splice(1, 0, sheetOperation("operations", "Students", { student_id: studentId, first_name: studentFirst, last_name: studentLast, date_of_birth: eoi?.values.eoi_dob || "", source: "eoi", created_at: eoi?.submittedAt || createdAt, updated_at: createdAt, schema_version: SCHEMA_VERSION }, ["student_id"]));
   if (eoi) operations.push(sheetOperation("operations", "Workflow Links", { link_id: id("link"), source_workflow: "eoi", source_record_id: sourceEoiId, target_workflow: "application", target_record_id: applicationId, linked_by: createdBy, linked_at: createdAt, prefill_fields_json: Object.keys(values), ...projectionVersion(application, "application") }, ["link_id"]));
-  await store.createInvitation({ invitation, tokenHash, application, revisionRecord: applicationRevision(application, { kind: "created", values, savedAt: createdAt }), outboxEvents: [emailOutbox({ to: email, ...message, tags: { workflow: "application", message_type: "invitation", record_id: applicationId } }, now), ...operations.map(operation => sheetOutbox(operation, now))], auditEvents: [audit] });
-  return { applicationId, invitationId, invitationUrl, sourceEoiId: sourceEoiId || null, recipientEmail: email };
+  let applicationRequest = null;
+  let requestEmailIndex = null;
+  let idempotency = null;
+  if (applicationRequestContext) {
+    applicationRequest = { id: applicationRequestContext.requestId, parentGuardianName: applicationRequestContext.parentGuardianName, recipientEmail: email, emailHash: applicationRequestContext.emailHash, status: "invitation_queued", outcome: "created", invitationId, applicationId, contactId, requestedAt: applicationRequestContext.requestedAt, networkFingerprint: applicationRequestContext.networkFingerprint, formVersion: APPLICATION_REQUEST_CONTRACT.formVersion, formDefinitionHash: APPLICATION_REQUEST_CONTRACT.definitionHash, schemaVersion: APPLICATION_REQUEST_CONTRACT.schemaVersion };
+    requestEmailIndex = { emailHash: applicationRequestContext.emailHash, invitationId, applicationId, contactId, firstRequestId: applicationRequest.id, latestRequestId: applicationRequest.id, firstRequestedAt: applicationRequest.requestedAt, lastRequestedAt: applicationRequest.requestedAt, requestCount: 1 };
+    idempotency = applicationRequestContext.idempotency;
+    operations.push(sheetOperation("operations", "Application Link Requests", { request_id: applicationRequest.id, requested_at: applicationRequest.requestedAt, parent_guardian_name: applicationRequest.parentGuardianName, recipient_email: email, status: applicationRequest.status, outcome: applicationRequest.outcome, invitation_id: invitationId, application_id: applicationId, form_version: applicationRequest.formVersion, form_definition_hash: applicationRequest.formDefinitionHash, schema_version: applicationRequest.schemaVersion }, ["request_id"]));
+  }
+  const persisted = await store.createInvitation({ invitation, tokenHash, application, revisionRecord: applicationRevision(application, { kind: "created", values, savedAt: createdAt }), outboxEvents: [emailOutbox({ to: email, ...message, tags: { workflow: requested ? "application_link_request" : "application", message_type: requested ? "application_link_requested" : "invitation", record_id: applicationRequest?.id || applicationId } }, now), ...operations.map(operation => sheetOutbox(operation, now))], auditEvents: [audit], applicationRequest, requestEmailIndex, idempotency });
+  return { applicationId, invitationId, invitationUrl, sourceEoiId: sourceEoiId || null, recipientEmail: email, deduplicated: Boolean(persisted?.deduplicated) };
 }
 
 export async function resendApplicationInvitation({ store, invitationId, createdBy, applicationUrl, clock = () => Date.now() }) {
@@ -770,6 +782,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     const session = await requireStaffSession(event);
     const records = await store.listOperationalRecords();
     const eoiRecords = records.filter(item => item.entity === "eoi").map(item => item.data);
+    const applicationRequestRecords = records.filter(item => item.entity === "application_request").map(item => item.data);
     const applicationRecords = records.filter(item => item.entity === "application").map(item => item.data);
     const invitationRecords = records.filter(item => item.entity === "invitation_index").map(item => item.data);
     const emailReceipts = records.filter(item => item.entity === "outbox_receipt" && item.data?.kind === "email").map(item => item.data);
@@ -790,6 +803,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
         applicationId: application.id,
         invitationId: application.invitationId,
         sourceEoiId: application.sourceEoiId || null,
+        invitationSource: invitation.invitationSource || application.invitationSource || (application.sourceEoiId ? "staff_eoi_linked" : "staff_direct"),
         status: application.status || "invited",
         reference: application.reference || "",
         recipientEmail: application.recipientEmail,
@@ -826,11 +840,22 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
       };
     }).sort((a, b) => String(b.submittedAt).localeCompare(String(a.submittedAt)));
     const counts = applications.reduce((result, application) => ({ ...result, [application.status]: (result[application.status] || 0) + 1 }), {});
+    const applicationRequests = applicationRequestRecords.map(record => ({
+      requestId: record.id,
+      requestedAt: record.requestedAt,
+      parentGuardianName: record.parentGuardianName,
+      recipientEmail: record.recipientEmail,
+      status: record.status,
+      outcome: record.outcome,
+      invitationId: record.invitationId,
+      applicationId: record.applicationId
+    })).sort((left, right) => String(right.requestedAt).localeCompare(String(left.requestedAt)));
     return {
       generatedAt: nowIso(),
       staff: { email: session.email, role: session.role },
-      stats: { expressionsOfInterest: eois.length, applications: applications.length, invited: counts.invited || 0, inProgress: counts.in_progress || 0, pendingSignatures: counts.pending_signatures || 0, submitted: counts.submitted || 0 },
+      stats: { expressionsOfInterest: eois.length, applicationLinkRequests: applicationRequests.length, applications: applications.length, invited: counts.invited || 0, inProgress: counts.in_progress || 0, pendingSignatures: counts.pending_signatures || 0, submitted: counts.submitted || 0 },
       eois,
+      applicationRequests,
       applications,
       recentEmails: emailReceipts.sort((a, b) => String(b.completedAt).localeCompare(String(a.completedAt))).slice(0, 30).map(receipt => ({ occurredAt: receipt.completedAt || receipt.createdAt, messageType: receipt.payload?.tags?.message_type || "transactional_email", workflow: receipt.payload?.tags?.workflow || "application", recordId: receipt.payload?.tags?.record_id || "", recipientEmail: receipt.payload?.to || "", deliveryStatus: receipt.result?.messageId ? "sent_to_ses" : "completed" })),
       reporting: { source: "dynamodb", googleSheetsRole: "replaceable_projection" }
@@ -983,6 +1008,138 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     const revoked = await store.revokeSigningArtifacts?.(control.taskTokenHash, changedAt, "staff_contact_permission_disabled") || { challenges: 0, sessions: 0 };
     await recordAudit(createAuditEvent({ workflow: "application", recordId: app.id, invitationId: app.invitationId, type: "application.signature_security_artifacts_revoked", at: nowIso(), actorType: "staff", actorId: session.email, stage: "guardian_signatures", details: { guardianId, challengesRevoked: revoked.challenges, sessionsRevoked: revoked.sessions } }));
     await dispatchOutbox(20);
+    return result;
+  }
+
+  function acceptedApplicationLinkRequest() {
+    return {
+      accepted: true,
+      message: "If the email address can receive an application link, it will arrive shortly. Please check your inbox and junk folder."
+    };
+  }
+
+  function requestNameParts(value) {
+    const parentGuardianName = safeText(value, 120).replace(/\s+/g, " ").trim();
+    if (parentGuardianName.length < 2 || /[\u0000-\u001f\u007f]/.test(parentGuardianName)) throw appError(422, "PARENT_NAME_REQUIRED", "Enter the parent or guardian name.");
+    const parts = parentGuardianName.split(" ");
+    return {
+      parentGuardianName,
+      firstName: parts.length === 1 ? parts[0] : parts.slice(0, -1).join(" "),
+      lastName: parts.length === 1 ? "" : parts.at(-1)
+    };
+  }
+
+  async function submitApplicationLinkRequest(event) {
+    const body = parseBody(event, 12_000);
+    const result = acceptedApplicationLinkRequest();
+    const requestKey = safeText(headers(event)["idempotency-key"], 200);
+    if (!/^[A-Za-z0-9._:-]{16,200}$/.test(requestKey)) throw appError(422, "INVALID_IDEMPOTENCY_KEY", "Refresh the page and request the application link again.");
+    const idempotency = { keyHash: sha256(`application_link_request:${requestKey}`), operation: "application_link_request", createdAt: nowIso(), ttl: Math.floor((clock() + 30 * 86400_000) / 1000), result };
+    const previous = await store.getIdempotency?.(idempotency.keyHash);
+    if (previous?.result) return previous.result;
+
+    // The hidden field and minimum elapsed time absorb simple automated submissions without revealing the trap.
+    const startedAt = Number(body.startedAt || 0);
+    if (safeText(body.website, 500) || (startedAt > 0 && clock() - startedAt < 500)) return result;
+
+    const { parentGuardianName, firstName, lastName } = requestNameParts(body.parentGuardianName);
+    const recipientEmail = normalizeEmail(body.email);
+    if (recipientEmail.length > 254 || !/^\S+@\S+\.\S+$/.test(recipientEmail)) throw appError(422, "INVALID_EMAIL", "Enter a valid email address.");
+
+    const now = clock();
+    const requestedAt = iso(now);
+    const emailHash = sha256(recipientEmail);
+    const fingerprint = networkFingerprint(event);
+    for (const [key, limit, seconds] of [
+      [`application-request-network-hour:${fingerprint}`, 10, 3600],
+      [`application-request-network-day:${fingerprint}`, 30, 86400],
+      [`application-request-email-hour:${emailHash}`, 3, 3600],
+      [`application-request-email-day:${emailHash}`, 5, 86400]
+    ]) {
+      if (!await store.checkRateLimit(key, limit, seconds)) throw appError(429, "APPLICATION_REQUEST_RATE_LIMIT", "Please wait before requesting another link, or contact enrolment@ffe.org.au for help.");
+    }
+
+    const requestId = id("request");
+    const applicationRequestContext = { requestId, parentGuardianName, emailHash, requestedAt, networkFingerprint: fingerprint, idempotency };
+    const existingIndex = await store.getApplicationRequestByEmailHash?.(emailHash);
+    let existingInvitation = existingIndex
+      ? await store.getInvitationById(existingIndex.invitationId)
+      : await store.findInvitationByRecipientEmail?.(recipientEmail);
+    let recoveredMissingInvitation = false;
+
+    // Invitation indexes expire after their links do. Recover only through the permanent,
+    // email-bound request index and application so a repeat request cannot duplicate a family.
+    if (existingIndex && !existingInvitation) {
+      const indexedApplication = await store.getApplication(existingIndex.applicationId);
+      if (indexedApplication) {
+        if (normalizeEmail(indexedApplication.recipientEmail) !== recipientEmail || indexedApplication.invitationId !== existingIndex.invitationId) {
+          throw appError(409, "APPLICATION_REQUEST_CONFLICT", "The existing family invitation could not be safely matched. Contact enrolment@ffe.org.au for help.");
+        }
+        const relatedApplications = store.listApplicationsByInvitationId
+          ? await store.listApplicationsByInvitationId(existingIndex.invitationId)
+          : [indexedApplication];
+        const applicationIds = [...new Set((relatedApplications.length ? relatedApplications : [indexedApplication]).map(item => item.id).filter(Boolean))];
+        existingInvitation = {
+          id: existingIndex.invitationId,
+          applicationId: indexedApplication.id,
+          applicationIds,
+          familyRevision: 0,
+          contactId: indexedApplication.contactId,
+          studentId: indexedApplication.studentId,
+          recipientEmail,
+          firstName: indexedApplication.values?.app_guardian_0_first || firstName,
+          lastName: indexedApplication.values?.app_guardian_0_last || lastName,
+          sourceEoiId: indexedApplication.sourceEoiId || "",
+          invitationSource: indexedApplication.invitationSource || "public_application_request",
+          status: "expired",
+          createdAt: indexedApplication.createdAt || requestedAt,
+          firstSentAt: existingIndex.firstRequestedAt || indexedApplication.createdAt || requestedAt,
+          sendCount: Number(existingIndex.requestCount || 0),
+          tokenHash: "",
+          ...recordFormReference(indexedApplication, "application")
+        };
+        recoveredMissingInvitation = true;
+      }
+    }
+
+    if (!existingInvitation) {
+      await createApplicationInvitation({ store, recipientEmail, firstName, lastName, createdBy: "public_application_request", applicationUrl: applicationPageUrl, clock, invitationSource: "public_application_request", applicationRequestContext });
+      await dispatchOutbox(50);
+      return result;
+    }
+
+    if (normalizeEmail(existingInvitation.recipientEmail) !== recipientEmail) throw appError(409, "APPLICATION_REQUEST_CONFLICT", "The existing family invitation could not be safely matched. Contact enrolment@ffe.org.au for help.");
+    const applications = await getInvitationApplications(store, existingInvitation);
+    const application = applications.find(item => item.id === existingInvitation.applicationId) || applications[0];
+    if (!application) throw appError(409, "APPLICATION_REQUEST_RECOVERY_REQUIRED", "The existing family invitation needs staff review. Contact enrolment@ffe.org.au for help.");
+
+    const rawToken = token();
+    const tokenHash = sha256(rawToken);
+    const expiresAt = now + INVITATION_LIFETIME_MS;
+    const invitation = {
+      ...existingInvitation,
+      status: "active",
+      tokenHash,
+      expiresAt,
+      lastSentAt: requestedAt,
+      sendCount: Number(existingInvitation.sendCount || 0) + 1,
+      invitationSource: existingInvitation.invitationSource || (existingInvitation.sourceEoiId ? "staff_eoi_linked" : "staff_direct"),
+      lastRequestSource: "public_application_request"
+    };
+    const invitationUrl = `${applicationPageUrl}${applicationPageUrl.includes("?") ? "&" : "?"}workflow=application&invite=${encodeURIComponent(rawToken)}`;
+    const greeting = existingInvitation.firstName || firstName;
+    const message = applicationInvitation({ firstName: greeting, studentName: "", entryLevel: "", entryYear: "", invitationUrl, expiresAt: invitationDate(expiresAt), linked: false, requested: true });
+    const applicationRequest = { id: requestId, parentGuardianName, recipientEmail, emailHash, status: "invitation_queued", outcome: "reissued", invitationId: invitation.id, applicationId: application.id, contactId: invitation.contactId, requestedAt, networkFingerprint: fingerprint, formVersion: APPLICATION_REQUEST_CONTRACT.formVersion, formDefinitionHash: APPLICATION_REQUEST_CONTRACT.definitionHash, schemaVersion: APPLICATION_REQUEST_CONTRACT.schemaVersion };
+    const requestEmailIndex = { emailHash, invitationId: invitation.id, applicationId: application.id, contactId: invitation.contactId, firstRequestId: existingIndex?.firstRequestId || requestId, latestRequestId: requestId, firstRequestedAt: existingIndex?.firstRequestedAt || requestedAt, lastRequestedAt: requestedAt, requestCount: Number(existingIndex?.requestCount || 0) + 1 };
+    const audit = createAuditEvent({ workflow: "operations", recordId: requestId, type: "application.request_link_invitation_reissued", at: requestedAt, actorType: "public", actorId: invitation.contactId, details: { invitationId: invitation.id, applicationId: application.id, priorSource: invitation.invitationSource } });
+    const operations = [
+      sheetOperation("operations", "Application Link Requests", { request_id: requestId, requested_at: requestedAt, parent_guardian_name: parentGuardianName, recipient_email: recipientEmail, status: applicationRequest.status, outcome: applicationRequest.outcome, invitation_id: invitation.id, application_id: application.id, form_version: applicationRequest.formVersion, form_definition_hash: applicationRequest.formDefinitionHash, schema_version: applicationRequest.schemaVersion }, ["request_id"]),
+      sheetOperation("operations", "Application Invitations", { invitation_id: invitation.id, application_id: invitation.applicationId, application_ids_json: invitationApplicationIds(invitation), recipient_contact_id: invitation.contactId, recipient_email: invitation.recipientEmail, student_id: invitation.studentId, source_eoi_id: invitation.sourceEoiId || "", invitation_source: invitation.invitationSource, status: invitation.status, created_at: invitation.createdAt, expires_at: iso(expiresAt), first_sent_at: invitation.firstSentAt, last_sent_at: requestedAt, send_count: invitation.sendCount, ...projectionVersion(application, "application") }, ["invitation_id"]),
+      auditSheetOperation(audit),
+      emailEvent({ messageType: "application_link_requested", workflow: "application_link_request", recordId: requestId, recipientEmail, at: requestedAt })
+    ];
+    await store.reissueInvitationForApplicationRequest({ invitation, previousTokenHash: existingInvitation.tokenHash || "", previousInvitationExists: !recoveredMissingInvitation, tokenHash, applicationRequest, requestEmailIndex, idempotency, outboxEvents: [emailOutbox({ to: recipientEmail, ...message, tags: { workflow: "application_link_request", message_type: "application_link_requested", record_id: requestId } }, now), ...operations.map(operation => sheetOutbox(operation, now))], auditEvents: [audit] });
+    await dispatchOutbox(50);
     return result;
   }
 
@@ -1675,7 +1832,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
   }
 
   const routes = new Map([
-    ["GET /v6/health", async () => ({ status: "ok", schemaVersion: SCHEMA_VERSION, formVersions: { eoi: currentFormDefinition("eoi").formVersion, application: currentFormDefinition("application").formVersion } })],
+    ["GET /v6/health", async () => ({ status: "ok", schemaVersion: SCHEMA_VERSION, formVersions: { eoi: currentFormDefinition("eoi").formVersion, application: currentFormDefinition("application").formVersion, applicationLinkRequest: APPLICATION_REQUEST_CONTRACT.formVersion } })],
     ["POST /v6/session/logout", logoutSession],
     ["POST /v6/staff/access/request-code", requestStaffCode],
     ["POST /v6/staff/access/verify-code", verifyStaffCode],
@@ -1688,6 +1845,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     ["POST /v6/staff/applications/contact-permission", changeStaffContactPermission],
     ["GET /v6/eoi/config", getEoiConfig],
     ["POST /v6/eoi", submitEoi],
+    ["POST /v6/application-link-requests", submitApplicationLinkRequest],
     ["POST /v6/application/access/request-code", requestApplicationCode],
     ["POST /v6/application/access/verify-code", verifyApplicationCode],
     ["GET /v6/application/family", getFamilyContext],

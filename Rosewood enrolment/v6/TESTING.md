@@ -1259,3 +1259,35 @@ the Lambda runtime role allowed `dynamodb:TransactWriteItems` but not the distin
 - The hotfix did not retry the family operation automatically. Staff must deliberately
   select **Renew access** again so that an email is never sent merely because an
   infrastructure recovery completed.
+
+## V6.18 Public Application-Link Request Verification
+
+Implemented locally on 26 August 2026. Production release evidence is recorded only
+after the reviewed deployment completes.
+
+- The promoted home-page card and standalone no-index page ask only for
+  parent/guardian name and email. They do not ask for email confirmation, child details,
+  year level, address or EOI answers.
+- The dedicated `rosewood-application-link-request-2026.1` contract pins the three
+  standalone assets and declares `explicit_staff_link_only` for EOI relationships.
+- A first synthetic request creates one direct family invitation and one initial blank
+  Application. An exact retry creates no record or email. A later request rotates the
+  private token while preserving invitation and Application IDs.
+- Tests also remove the expiring invitation index and confirm a repeat request rebuilds
+  access from the durable email-bound request index and retained Application without a
+  duplicate.
+- An existing direct staff invitation is reused instead of creating another family
+  Application. No test performs automatic EOI linking.
+- Honeypot, minimum elapsed time, network limits, hashed-email limits, generic public
+  success, request-level idempotency and no browser answer storage are covered.
+- The staff portal receives a distinct Link requests list and retains invitation source
+  information operationally; families do not see direct-invitation source labels.
+- The EOI `rosewood-eoi-2026.17` and Application
+  `rosewood-application-2026.18` definitions preserve every preceding question,
+  required rule, answer key, projection and signature behavior while pinning the new
+  public/staff assets.
+- All 120 Node tests pass locally, including the new minimal-interface and duplicate-
+  recovery cases plus existing EOI, OTP, draft, upload, submission, contact-permission,
+  signing, SES, Sheets, Slack and canary regressions.
+- No real family request, invitation, OTP, application, email or Slack notification was
+  created by local automated verification.

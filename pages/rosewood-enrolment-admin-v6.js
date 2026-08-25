@@ -249,15 +249,18 @@
     const data = state.dashboard;
     byId("dashboard-updated").textContent = `Updated ${formatDate(data.generatedAt, true)} · signed in as ${data.staff.email} · ${data.staff.role}`;
     byId("metric-eois").textContent = data.stats.expressionsOfInterest;
+    byId("metric-requests").textContent = data.stats.applicationLinkRequests || 0;
     byId("metric-active").textContent = data.stats.inProgress;
     byId("metric-signatures").textContent = data.stats.pendingSignatures;
     byId("metric-submitted").textContent = data.stats.submitted;
     byId("nav-app-count").textContent = data.applications.length;
+    byId("nav-request-count").textContent = (data.applicationRequests || []).length;
     byId("nav-eoi-count").textContent = data.eois.length;
     byId("nav-email-count").textContent = data.recentEmails.length;
     const canManage = ["admin", "admissions"].includes(data.staff.role);
     byId("open-invite-button").hidden = !canManage;
     renderApplications();
+    renderApplicationRequests();
     renderEois();
     renderEmails();
     renderEoiPicker();
@@ -274,6 +277,10 @@
     return element("span", `status-badge status-${["invited", "in_progress", "pending_signatures", "staff_review_required", "submitted"].includes(status) ? status : "default"}`, statusLabel(status));
   }
 
+  function invitationSourceLabel(source) {
+    return ({ public_application_request: "Public link request", staff_eoi_linked: "EOI-linked invitation", staff_direct: "Direct staff invitation" })[source] || "Direct invitation";
+  }
+
   function renderApplications() {
     const list = byId("application-list");
     const query = byId("application-search").value.trim().toLowerCase();
@@ -286,7 +293,7 @@
     records.forEach(record => {
       const card = element("article", "record-card");
       const primary = element("div", "record-primary");
-      primary.append(element("strong", "", record.studentName || "Student name not yet provided"), element("small", "", record.recipientEmail));
+      primary.append(element("strong", "", record.studentName || "Student name not yet provided"), element("small", "", `${record.recipientEmail} · ${invitationSourceLabel(record.invitationSource)}`));
       card.append(primary);
       addRecordCell(card, "Progress", `${record.percentComplete}% complete`, stageLabel(record.currentStage));
       const progress = document.createElement("progress");
@@ -320,6 +327,33 @@
       list.append(card);
     });
     byId("application-empty").hidden = records.length > 0;
+  }
+
+  function renderApplicationRequests() {
+    const list = byId("request-list");
+    const query = byId("request-search").value.trim().toLowerCase();
+    const records = (state.dashboard?.applicationRequests || []).filter(record => [record.parentGuardianName, record.recipientEmail, record.requestId].join(" ").toLowerCase().includes(query));
+    clear(list);
+    records.forEach(record => {
+      const card = element("article", "record-card request-record-card");
+      const primary = element("div", "record-primary");
+      primary.append(element("strong", "", record.parentGuardianName || "Parent/guardian"), element("small", "", record.recipientEmail));
+      card.append(primary);
+      addRecordCell(card, "Requested", formatDate(record.requestedAt, true));
+      addRecordCell(card, "Invitation", record.outcome === "reissued" ? "Existing family link reissued" : "New family invitation", record.invitationId);
+      card.append(element("span", "status-badge status-invited", record.status === "invitation_queued" ? "Invitation queued" : statusLabel(record.status)));
+      const actions = element("div", "record-actions");
+      const linkedApplication = (state.dashboard?.applications || []).find(application => application.applicationId === record.applicationId);
+      if (linkedApplication) {
+        const review = element("button", "small-button", "Open application");
+        review.type = "button";
+        review.addEventListener("click", () => openApplicationDetail(linkedApplication));
+        actions.append(review);
+      }
+      card.append(actions);
+      list.append(card);
+    });
+    byId("request-empty").hidden = records.length > 0;
   }
 
   function renderEois() {
@@ -742,6 +776,7 @@
   byId("direct-mode-button").addEventListener("click", () => setInviteMode("direct"));
   byId("eoi-mode-button").addEventListener("click", () => setInviteMode("eoi"));
   byId("application-search").addEventListener("input", renderApplications);
+  byId("request-search").addEventListener("input", renderApplicationRequests);
   byId("application-status").addEventListener("change", renderApplications);
   byId("eoi-search").addEventListener("input", renderEois);
   byId("invite-eoi-search").addEventListener("input", renderEoiPicker);

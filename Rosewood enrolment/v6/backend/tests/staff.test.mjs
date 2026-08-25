@@ -159,6 +159,7 @@ test("staff dashboard exposes operational summaries but not sensitive columns", 
   const store = new StaffStore();
   store.records = [
     { entity: "eoi", data: { id: "eoi-1", reference: "EOI-1", submittedAt: "2026-08-01", status: "submitted", values: { eoi_first: "Alex", eoi_last: "Example", eoi_email: "family@example.com", eoi_student_first: "Avery", eoi_student_last: "Example", eoi_dob: "2020-01-01" } } },
+    { entity: "application_request", data: { id: "request-1", requestedAt: "2026-08-02", parentGuardianName: "Alex Example", recipientEmail: "family@example.com", emailHash: "restricted-email-hash", networkFingerprint: "restricted-network-fingerprint", status: "invitation_queued", outcome: "created", invitationId: "invite-1", applicationId: "app-1" } },
     { entity: "application", data: { id: "app-1", invitationId: "invite-1", sourceEoiId: "eoi-1", status: "in_progress", recipientEmail: "family@example.com", values: { student_first: "Avery", student_last: "Example", student_dob: "2020-01-01" }, createdAt: "2026-08-02", updatedAt: "2026-08-03", currentStage: "student", percentComplete: 22 } },
     { entity: "invitation_index", data: { id: "invite-1", applicationId: "app-1", lastSentAt: "2026-08-02", sendCount: 1 } }
   ];
@@ -168,10 +169,13 @@ test("staff dashboard exposes operational summaries but not sensitive columns", 
   assert.equal(response.statusCode, 200);
   const dashboard = JSON.parse(response.body);
   assert.equal(dashboard.stats.inProgress, 1);
+  assert.equal(dashboard.stats.applicationLinkRequests, 1);
+  assert.equal(dashboard.applicationRequests[0].parentGuardianName, "Alex Example");
   assert.equal(dashboard.eois[0].linkedApplicationId, "app-1");
   assert.equal(dashboard.applications[0].percentComplete, 22);
   assert.equal("dateOfBirth" in dashboard.eois[0], false);
   assert.doesNotMatch(response.body, /2020-01-01/);
+  assert.doesNotMatch(response.body, /restricted-email-hash|restricted-network-fingerprint/);
 });
 
 test("viewer staff can see summaries but cannot create invitations", async () => {
@@ -383,7 +387,7 @@ test("an active older draft is upgraded once with every saved answer preserved",
   assert.ok(store.audit.some(eventRecord => eventRecord.type === "application.form_definition_upgraded"));
 });
 
-test("an active V14 draft adopts the current V15 wording without transforming its family answers", async () => {
+test("an active V14 draft adopts the current contract without transforming its family answers", async () => {
   const { service, store } = staffService();
   const created = await createApplicationInvitation({ store, recipientEmail: "family@example.com", firstName: "Alex", applicationUrl: "https://ffe.org.au/form", clock });
   const v14 = getFormDefinition("application", "rosewood-application-2026.14");
@@ -395,7 +399,7 @@ test("an active V14 draft adopts the current V15 wording without transforming it
   await service(event("/v6/application/access/verify-code", "POST", { invitationToken, challengeId: requested.challengeId, code: "123456" }));
   const upgraded = store.applications.get(created.applicationId);
 
-  assert.equal(upgraded.formVersion, "rosewood-application-2026.17");
+  assert.equal(upgraded.formVersion, "rosewood-application-2026.18");
   assert.deepEqual(upgraded.values, values);
   assert.deepEqual(store.audit.find(eventRecord => eventRecord.type === "application.form_definition_upgraded").details.normalizedFields, []);
 });

@@ -14,6 +14,8 @@ St Lawrence evidence.
 ## URLs
 
 ```text
+https://ffe.org.au/#application-link-request
+https://ffe.org.au/pages/rosewood-application-link-request.html
 https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=eoi
 https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=application
 https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=acceptance
@@ -28,9 +30,12 @@ https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=application&policy=
 Add `&review=1` to reveal the internal frame selector. The normal family-facing URLs
 do not show workflow-switching or direct frame navigation.
 
-The EOI URL is live. Application is invitation-only and requires the unique token sent
-by staff; the generic Application URL cannot open a family record. Acceptance, signing
-review and decline remain non-writing previews.
+The public application-link card is the promoted current entry point. It asks only for
+the parent/guardian name and email, then automatically issues the same private family
+Application invitation used by staff. The longer EOI remains live for a later intake
+but is not promoted. Application remains invitation-only and requires the unique token
+sent by email; the generic Application URL cannot open a family record. Acceptance,
+signing review and decline remain non-writing previews.
 
 The last URL is the no-index staff operations portal. Access is restricted by an
 allowlisted email OTP and currently covers EOI and Application for Enrolment only.
@@ -38,6 +43,7 @@ allowlisted email OTP and currently covers EOI and Application for Enrolment onl
 ## Scope
 
 - one-page Expression of Interest
+- minimal public request card that creates a direct family Application invitation
 - invited application gateway, OTP frame and record selector for EOI-linked and direct
   staff invitations
 - family-level record selection that keeps each child's application, progress,
@@ -127,9 +133,11 @@ request. Google Sheets show the record's actual form version but remain replacea
 reports. `SCHEMA-EVOLUTION.md` defines the mandatory process for adding, removing,
 renaming or changing questions and for migrating existing records.
 
-The current EOI `2026.16` and Application `2026.17` releases preserve their preceding
-question and data contracts while adding the staff-only invitation-access recovery
-interface. Application V6.16 fixed the guardian signing page's read-only date to use
+The current EOI `2026.17` and Application `2026.18` releases preserve their preceding
+question and data contracts while pinning the public application-link request and staff
+request-list interfaces. The separate request contract is
+`rosewood-application-link-request-2026.1`; it contains only parent/guardian name and
+email. Application V6.16 fixed the guardian signing page's read-only date to use
 the Melbourne calendar day. V6.15 clarifies the other-children question and targets the exact
 incomplete family control from server validation. V6.14 contains the preceding family-feedback field changes, V6.13 corrects
 document-upload recovery and V6.12 contains the revised immunisation guidance and
@@ -166,6 +174,11 @@ Admin/admissions staff can change a pending guardian's contact permission only a
 exact explicit confirmation; the change is conditional, rate-limited and audited.
 Direct invitation staff fields are parent/guardian first name, optional surname and
 email only. The invitation lasts 14 days and the family supplies each child after OTP.
+Public requests use the same 14-day family invitation and do not collect child details.
+They never search for or link an EOI by email. A repeated request reissues access to the
+same family invitation/application, rotates the private token and does not create a
+duplicate application. Request records are visible to authorised staff; the public
+success response remains generic.
 Additional-guardian signing emails explain why the recipient was contacted before the
 private action button and contain no student, family, medical or application details.
 The private link still requires the invited email and OTP before the frozen application

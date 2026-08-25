@@ -92,7 +92,7 @@ button:disabled { cursor: not-allowed; opacity: .5; transform: none !important; 
 .dashboard-intro > div > p:last-child { margin: 0; color: var(--ink-soft); }
 .dashboard-actions { display: flex; gap: .75rem; flex: none; }
 
-.metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+.metric-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
 .metric-card { min-height: 165px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; padding: 1.3rem; background: var(--surface); border: 1px solid var(--line); border-radius: 1rem; }
 .metric-card::after { content: ""; position: absolute; right: -2rem; bottom: -2rem; width: 7rem; height: 7rem; border-radius: 50%; background: var(--metric-colour, var(--blue-soft)); opacity: .85; }
 .metric-label { max-width: 10rem; font-size: .83rem; font-weight: 800; line-height: 1.3; }

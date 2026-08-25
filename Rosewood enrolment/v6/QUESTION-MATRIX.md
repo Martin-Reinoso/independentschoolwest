@@ -114,9 +114,20 @@ their original immutable definition.
 
 # Current EOI And Application Question Matrix
 
-`rosewood-eoi-2026.16` and `rosewood-application-2026.17` are the current contracts.
+`rosewood-eoi-2026.17` and `rosewood-application-2026.18` are the current contracts.
 These releases preserve the V6.15 questions and rules; earlier definitions remain
 immutable for submitted records.
+
+The separate `rosewood-application-link-request-2026.1` public gateway has this complete
+question contract:
+
+| Field | Required | Maximum | Purpose |
+|---|---:|---:|---|
+| Parent/guardian name | Yes | 120 characters | Address the invitation and prefill the first guardian name |
+| Email address | Yes | 254 characters | Deliver the private invitation and later OTP |
+
+There is no confirmation-email, child, year-level, address or EOI question. Matching an
+email never links an EOI; only a staff-selected EOI-linked invitation can do that.
 
 | Area | V6.15 question or rule | Required/condition | Storage and downstream rule |
 | --- | --- | --- | --- |

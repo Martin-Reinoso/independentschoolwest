@@ -6,6 +6,9 @@ const SITE = "https://ffe.org.au";
 const API = "https://synthetic.lambda-url.ap-southeast-2.on.aws";
 
 const publicBodies = new Map([
+  ["/", "application-link-request Request Application Link pages/rosewood-application-link-request.js"],
+  ["/pages/rosewood-application-link-request.html", "Rosewood College application-link-form rosewood-application-link-request.js"],
+  ["/pages/rosewood-application-link-request.js", "/v6/application-link-requests Idempotency-Key startedAt"],
   ["/pages/rosewood-enrolment-v6.html", "Rosewood College rosewood-enrolment-v6.css rosewood-enrolment-v6.js"],
   ["/pages/rosewood-enrolment-v6.js", "eoi-address-search /v6/eoi/config google_places"],
   ["/pages/rosewood-enrolment-v6.css", ".address-lookup .address-lookup-widget"],
@@ -35,8 +38,9 @@ function healthyFetch({ breakPublicAsset = false, omitAddressKey = false } = {})
       return response({
         status: "ok",
         formVersions: {
-          eoi: "rosewood-eoi-2026.16",
-          application: "rosewood-application-2026.17"
+          eoi: "rosewood-eoi-2026.17",
+          application: "rosewood-application-2026.18",
+          applicationLinkRequest: "rosewood-application-link-request-2026.1"
         }
       });
     }

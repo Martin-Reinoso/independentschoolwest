@@ -8,7 +8,8 @@ preview-only workflows.
 
 AWS in `ap-southeast-2` is authoritative for operational records:
 
-- DynamoDB stores EOI, application, invitation, draft, session and outbox records.
+- DynamoDB stores application-link request, EOI, application, invitation, draft,
+  session and outbox records.
 - A separate DynamoDB table stores append-only application and staff audit events.
 - Both tables use customer-managed KMS encryption, deletion protection and point-in-
   time recovery.
@@ -36,7 +37,7 @@ server-acknowledged application create, start, save and submission also writes a
 append-only DynamoDB revision. Staff can inspect a selected historical revision through
 an authorised, audited endpoint. See `../SCHEMA-EVOLUTION.md` before changing fields,
 options, validation or required status.
-The current EOI `2026.16` and Application `2026.17` contracts pin the family, staff and signing HTML/JavaScript/CSS,
+The current EOI `2026.17` and Application `2026.18` contracts pin the family, staff and signing HTML/JavaScript/CSS,
 policy projection and all original Word/PDF policy assets. Policy viewing is frontend-
 only and does not create an application answer, acknowledgement or audit event.
 EOI `2026.15` preserves its earlier data contract. Application `2026.15` preserves the
@@ -45,7 +46,10 @@ targeting the exact incomplete field from validation guidance. Earlier versions 
 their pinned display data. Application `2026.16` preserves that contract and corrects
 only the guardian signing page's displayed date to the Melbourne calendar day. EOI
 `2026.16` and Application `2026.17` preserve the preceding question/data contracts and
-pin the staff-only expired-access renewal interface. Manual address entry remains available and no Place ID,
+pin the staff-only expired-access renewal interface. V18 also pins the public
+application-link request and staff request-list interfaces without changing any EOI or
+Application answer. The minimal request has its own immutable
+`rosewood-application-link-request-2026.1` contract. Manual address entry remains available and no Place ID,
 coordinates or search history is stored.
 
 `GOOGLE_MAPS_BROWSER_API_KEY` is read from the existing Secrets Manager configuration.
@@ -56,6 +60,15 @@ API and Places API (New). Never commit the key or print it in logs.
 
 ## Invitations And Staff Access
 
+- The public application-link request asks only for parent/guardian name and email. It
+  creates a direct family invitation, does not collect child information and never
+  links an EOI by matching email.
+- Request submission is idempotent, protected by honeypot, minimum-elapsed-time,
+  network and hashed-email limits, and returns a generic success response. Repeated
+  requests rotate the private link on the same family invitation/application.
+- The durable email-bound request index survives expiring invitation indexes. If a
+  family asks again after expiry, the service conditionally restores the same
+  invitation ID from the permanent application rather than creating another record.
 - A direct invitation requires the parent/guardian first name and email; surname is
   optional and no child name is collected by staff.
 - An EOI is linked only when staff explicitly select the matching record and email.
@@ -167,6 +180,7 @@ POST /v6/staff/invitations/resend
 POST /v6/staff/invitations/renew-access
 POST /v6/staff/applications/contact-permission
 POST /v6/eoi
+POST /v6/application-link-requests
 POST /v6/application/access/request-code
 POST /v6/application/access/verify-code
 GET  /v6/application/family

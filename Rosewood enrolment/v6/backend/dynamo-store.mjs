@@ -42,6 +42,8 @@ export class DynamoStore {
   getIdempotency(keyHash) { return this.get(`IDEMPOTENCY#${keyHash}`); }
   getEmailMessage(messageId) { return this.get(`EMAIL_MESSAGE#${messageId}`); }
   getUpload(id) { return this.get(`UPLOAD#${id}`); }
+  getApplicationRequest(id) { return this.get(`APP_REQUEST#${id}`); }
+  getApplicationRequestByEmailHash(emailHash) { return this.get(`APP_REQUEST_EMAIL#${emailHash}`); }
 
   auditActions(events = []) {
     return events.map(event => ({ Put: {
@@ -133,16 +135,66 @@ export class DynamoStore {
     }
   }
 
-  async createInvitation({ invitation, tokenHash, application, revisionRecord, outboxEvents, auditEvents = [] }) {
-    await this.client.send(new TransactWriteCommand({ TransactItems: [
+  async createInvitation({ invitation, tokenHash, application, revisionRecord, outboxEvents, auditEvents = [], applicationRequest = null, requestEmailIndex = null, idempotency = null }) {
+    const actions = [
       { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE#${tokenHash}`), entity: "invitation", ttl: Math.floor(invitation.expiresAt / 1000) + 86400, data: invitation }, ConditionExpression: "attribute_not_exists(PK)" } },
       { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE_ID#${invitation.id}`), entity: "invitation_index", ttl: Math.floor(invitation.expiresAt / 1000) + 86400, data: invitation }, ConditionExpression: "attribute_not_exists(PK)" } },
       { Put: { TableName: this.tableName, Item: { ...this.key(`APP#${application.id}`, "CURRENT"), entity: "application", data: application }, ConditionExpression: "attribute_not_exists(PK)" } },
-      this.revisionAction(application.id, revisionRecord),
+      this.revisionAction(application.id, revisionRecord)
+    ];
+    if (applicationRequest) actions.push({ Put: { TableName: this.tableName, Item: { ...this.key(`APP_REQUEST#${applicationRequest.id}`), entity: "application_request", data: applicationRequest }, ConditionExpression: "attribute_not_exists(PK)" } });
+    if (requestEmailIndex) actions.push({ Put: { TableName: this.tableName, Item: { ...this.key(`APP_REQUEST_EMAIL#${requestEmailIndex.emailHash}`), entity: "application_request_email_index", data: requestEmailIndex }, ConditionExpression: "attribute_not_exists(PK)" } });
+    if (idempotency) actions.push({ Put: { TableName: this.tableName, Item: { ...this.key(`IDEMPOTENCY#${idempotency.keyHash}`), entity: "idempotency", ttl: idempotency.ttl, data: idempotency }, ConditionExpression: "attribute_not_exists(PK)" } });
+    actions.push(...this.outboxActions(outboxEvents), ...this.auditActions(auditEvents));
+    try {
+      await this.client.send(new TransactWriteCommand({ TransactItems: actions }));
+      return { invitation, application, result: idempotency?.result, deduplicated: false };
+    } catch (error) {
+      if (!conditional(error) || !idempotency) throw error;
+      const existing = await this.getIdempotency(idempotency.keyHash);
+      if (existing?.result) return { invitation: null, application: null, result: existing.result, deduplicated: true };
+      const claimed = requestEmailIndex ? await this.getApplicationRequestByEmailHash(requestEmailIndex.emailHash) : null;
+      if (claimed) return { invitation: null, application: null, result: { accepted: true }, deduplicated: true, claimed };
+      throw conflict("This application-link request changed before it could be recorded. Please try again.");
+    }
+  }
+
+  async reissueInvitationForApplicationRequest({ invitation, previousTokenHash, previousInvitationExists = true, tokenHash, applicationRequest, requestEmailIndex, idempotency, outboxEvents, auditEvents = [] }) {
+    const ttl = Math.floor(invitation.expiresAt / 1000) + 86400;
+    const indexCondition = previousInvitationExists
+      ? previousTokenHash
+        ? {
+            ConditionExpression: "#data.#id = :invitationId AND #data.#tokenHash = :previousTokenHash",
+            ExpressionAttributeNames: { "#data": "data", "#id": "id", "#tokenHash": "tokenHash" },
+            ExpressionAttributeValues: { ":invitationId": invitation.id, ":previousTokenHash": previousTokenHash }
+          }
+        : {
+            ConditionExpression: "#data.#id = :invitationId",
+            ExpressionAttributeNames: { "#data": "data", "#id": "id" },
+            ExpressionAttributeValues: { ":invitationId": invitation.id }
+          }
+      : { ConditionExpression: "attribute_not_exists(PK)" };
+    const actions = [
+      ...(previousTokenHash ? [{ Delete: { TableName: this.tableName, Key: this.key(`INVITE#${previousTokenHash}`) } }] : []),
+      { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE#${tokenHash}`), entity: "invitation", ttl, data: invitation }, ConditionExpression: "attribute_not_exists(PK)" } },
+      { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE_ID#${invitation.id}`), entity: "invitation_index", ttl, data: invitation }, ...indexCondition } },
+      { Put: { TableName: this.tableName, Item: { ...this.key(`APP_REQUEST#${applicationRequest.id}`), entity: "application_request", data: applicationRequest }, ConditionExpression: "attribute_not_exists(PK)" } },
+      { Put: { TableName: this.tableName, Item: { ...this.key(`APP_REQUEST_EMAIL#${requestEmailIndex.emailHash}`), entity: "application_request_email_index", data: requestEmailIndex }, ConditionExpression: "attribute_not_exists(PK) OR #data.#invitationId = :invitationId", ExpressionAttributeNames: { "#data": "data", "#invitationId": "invitationId" }, ExpressionAttributeValues: { ":invitationId": invitation.id } } },
+      { Put: { TableName: this.tableName, Item: { ...this.key(`IDEMPOTENCY#${idempotency.keyHash}`), entity: "idempotency", ttl: idempotency.ttl, data: idempotency }, ConditionExpression: "attribute_not_exists(PK)" } },
       ...this.outboxActions(outboxEvents),
       ...this.auditActions(auditEvents)
-    ] }));
-    return { invitation, application };
+    ];
+    try {
+      await this.client.send(new TransactWriteCommand({ TransactItems: actions }));
+      return { invitation, result: idempotency.result, deduplicated: false };
+    } catch (error) {
+      if (!conditional(error)) throw error;
+      const existing = await this.getIdempotency(idempotency.keyHash);
+      if (existing?.result) return { invitation: null, result: existing.result, deduplicated: true };
+      const claimed = await this.getApplicationRequestByEmailHash(requestEmailIndex.emailHash);
+      if (claimed?.invitationId === invitation.id) return { invitation: null, result: idempotency.result, deduplicated: true, claimed };
+      throw conflict("This family invitation changed while the new private link was being created. Please try again.");
+    }
   }
 
   async rotateInvitation({ invitation, previousTokenHash, tokenHash, outboxEvents, auditEvents = [] }) {
@@ -558,7 +610,12 @@ export class DynamoStore {
   }
 
   async listOperationalRecords() {
-    return this.scanEntities(["eoi", "application", "invitation_index", "outbox_receipt"]);
+    return this.scanEntities(["eoi", "application", "application_request", "invitation_index", "outbox_receipt"]);
+  }
+
+  async findInvitationByRecipientEmail(recipientEmail) {
+    const invitations = await this.scanEntities(["invitation_index"]);
+    return invitations.map(item => item.data).filter(invitation => invitation.recipientEmail === recipientEmail).sort((left, right) => String(right.lastSentAt || right.createdAt).localeCompare(String(left.lastSentAt || left.createdAt)))[0] || null;
   }
 
   async listApplicationsByInvitationId(invitationId) {

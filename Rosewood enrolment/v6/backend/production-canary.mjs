@@ -1,12 +1,25 @@
 import { CloudWatchClient, PutMetricDataCommand } from "@aws-sdk/client-cloudwatch";
 import { DynamoStore } from "./dynamo-store.mjs";
 import { currentFormDefinition } from "./form-definitions.mjs";
+import { APPLICATION_REQUEST_CONTRACT } from "./application-request-contract.mjs";
 
 const METRIC_NAMESPACE = "Rosewood/Enrolment";
 const REQUEST_TIMEOUT_MS = 10_000;
 const OUTBOX_STALE_AFTER_MS = 15 * 60_000;
 
 const PUBLIC_ASSETS = [
+  {
+    path: "/",
+    markers: ["application-link-request", "Request Application Link", "pages/rosewood-application-link-request.js"]
+  },
+  {
+    path: "/pages/rosewood-application-link-request.html",
+    markers: ["Rosewood College", "application-link-form", "rosewood-application-link-request.js"]
+  },
+  {
+    path: "/pages/rosewood-application-link-request.js",
+    markers: ["/v6/application-link-requests", "Idempotency-Key", "startedAt"]
+  },
   {
     path: "/pages/rosewood-enrolment-v6.html?workflow=eoi",
     markers: ["Rosewood College", "rosewood-enrolment-v6.css", "rosewood-enrolment-v6.js"]
@@ -88,8 +101,9 @@ async function checkBackendHealth({ fetchImpl, apiBaseUrl }) {
   const payload = await response.json();
   const expectedEoi = currentFormDefinition("eoi").formVersion;
   const expectedApplication = currentFormDefinition("application").formVersion;
+  const expectedApplicationRequest = APPLICATION_REQUEST_CONTRACT.formVersion;
   if (payload?.status !== "ok") throw new Error("The health endpoint did not report ok.");
-  if (payload?.formVersions?.eoi !== expectedEoi || payload?.formVersions?.application !== expectedApplication) {
+  if (payload?.formVersions?.eoi !== expectedEoi || payload?.formVersions?.application !== expectedApplication || payload?.formVersions?.applicationLinkRequest !== expectedApplicationRequest) {
     throw new Error("The backend form versions do not match the deployed canary release.");
   }
 }
