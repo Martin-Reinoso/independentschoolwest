@@ -541,6 +541,7 @@ Resources:
           SENDER_EMAIL: !Ref SenderEmail
           SENDER_NAME: !Ref SenderName
           REPLY_TO_EMAIL: !Ref ReplyToEmail
+          COMMUNITY_ENQUIRY_NOTIFICATION_EMAIL: !Ref SecurityNotificationEmail
           SES_CONFIGURATION_SET_MANAGED: !Ref RosewoodSesConfigurationSet
           GOOGLE_EOI_FOLDER_ID: !Ref GoogleEoiFolderId
           GOOGLE_APPLICATION_FOLDER_ID: !Ref GoogleApplicationFolderId

@@ -32,7 +32,15 @@ Current launch contracts:
 EOI:                      rosewood-eoi-2026.17
 Application:              rosewood-application-2026.18
 Application-link request: rosewood-application-link-request-2026.1
+Community enquiry:       rosewood-community-enquiry-2026.1
 ```
+
+Community enquiries are independent public records rather than EOI/Application answer
+maps. Each record still carries `schemaVersion`, `formVersion` and
+`formDefinitionHash`. The immutable contract is in
+`backend/community-enquiry-contract.mjs`. Adding, removing or reinterpreting its fields
+or options requires a new community-enquiry version; older records retain their
+original values and definition hash. These records have no Google Sheets projection.
 
 The original `2026.1`, `2026.2`, `2026.3` and `2026.4` contracts and validators remain
 addressable for existing records.

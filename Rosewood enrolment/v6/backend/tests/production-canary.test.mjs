@@ -9,6 +9,8 @@ const publicBodies = new Map([
   ["/", "https://tinyurl.com/FamiliesEdEOI Register Your Child Join Our Community"],
   ["/pages/rosewood-application-link-request-review.html", "Rosewood College Design review rosewood-application-link-request-review.js"],
   ["/pages/rosewood-application-link-request-review.js", "application-link-form preventDefault successEmail"],
+  ["/discover-rosewood.html", "Connect with Rosewood College pages/discover-rosewood-forms.js application-link-form community-contact-form"],
+  ["/pages/discover-rosewood-forms.js", "/v6/application-link-requests /v6/community-enquiries idempotency-key"],
   ["/pages/rosewood-enrolment-v6.html", "Rosewood College rosewood-enrolment-v6.css rosewood-enrolment-v6.js"],
   ["/pages/rosewood-enrolment-v6.js", "eoi-address-search /v6/eoi/config google_places"],
   ["/pages/rosewood-enrolment-v6.css", ".address-lookup .address-lookup-widget"],
@@ -40,8 +42,10 @@ function healthyFetch({ breakPublicAsset = false, omitAddressKey = false } = {})
         formVersions: {
           eoi: "rosewood-eoi-2026.17",
           application: "rosewood-application-2026.18",
-          applicationLinkRequest: "rosewood-application-link-request-2026.1"
-        }
+          applicationLinkRequest: "rosewood-application-link-request-2026.1",
+          communityEnquiry: "rosewood-community-enquiry-2026.1"
+        },
+        features: { communityEnquiries: true }
       });
     }
     if (url.origin === API && ["/v6/application/context", "/v6/application/status", "/v6/staff/dashboard"].includes(url.pathname)) {

@@ -161,6 +161,23 @@ expired token is also rejected by the access endpoint's expiry check.
 The public success response is deliberately generic and is not delivery evidence.
 Authoritative success requires the request transaction plus outbox/SES status.
 
+## Recover A Community Enquiry Notification
+
+1. Treat the `COMMUNITY_ENQUIRY#enquiry-id` DynamoDB item as authoritative. The email
+   received by `info@ffe.org.au` is a notification, not the only copy of the enquiry.
+2. Find the record by its `ENQ-...` reference using an authorised, projection-limited
+   DynamoDB operation. Do not print all enquiries, email addresses or messages into
+   logs, terminal transcripts or tickets.
+3. Check the related email outbox receipt and SES delivery status using the enquiry ID
+   or reference. If work remains pending, allow the one-minute outbox worker to retry.
+4. If the outbox reaches terminal failure, resolve the SES/configuration issue before
+   an authorised idempotent replay. Never create a second enquiry record to compensate.
+5. If the mailbox message was deleted after successful delivery, the encrypted record
+   remains covered by point-in-time recovery and locked same-region backups. Restore to
+   a separate recovery table for investigation rather than changing production.
+6. Community enquiries have no Google Sheet projection and never create an EOI,
+   invitation or Application during recovery.
+
 ## Recover SES Delivery Feedback Or Failed Outbox Work
 
 1. For a signer-delivery issue, inspect the authorised application status and the

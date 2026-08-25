@@ -44,6 +44,7 @@ export class DynamoStore {
   getUpload(id) { return this.get(`UPLOAD#${id}`); }
   getApplicationRequest(id) { return this.get(`APP_REQUEST#${id}`); }
   getApplicationRequestByEmailHash(emailHash) { return this.get(`APP_REQUEST_EMAIL#${emailHash}`); }
+  getCommunityEnquiry(id) { return this.get(`COMMUNITY_ENQUIRY#${id}`); }
 
   auditActions(events = []) {
     return events.map(event => ({ Put: {
@@ -132,6 +133,21 @@ export class DynamoStore {
       const existing = await this.getIdempotency(idempotency.keyHash);
       if (existing?.result) return { eoi: null, result: existing.result, deduplicated: true };
       throw conflict("This Expression of Interest changed before it could be recorded. Please try again.");
+    }
+  }
+
+  async createCommunityEnquiry(enquiry, outboxEvents, auditEvents = [], idempotency = null) {
+    const actions = [{ Put: { TableName: this.tableName, Item: { ...this.key(`COMMUNITY_ENQUIRY#${enquiry.id}`), entity: "community_enquiry", data: enquiry }, ConditionExpression: "attribute_not_exists(PK)" } }];
+    if (idempotency) actions.push({ Put: { TableName: this.tableName, Item: { ...this.key(`IDEMPOTENCY#${idempotency.keyHash}`), entity: "idempotency", ttl: idempotency.ttl, data: idempotency }, ConditionExpression: "attribute_not_exists(PK)" } });
+    actions.push(...this.outboxActions(outboxEvents), ...this.auditActions(auditEvents));
+    try {
+      await this.client.send(new TransactWriteCommand({ TransactItems: actions }));
+      return { enquiry, result: idempotency?.result, deduplicated: false };
+    } catch (error) {
+      if (!conditional(error) || !idempotency) throw error;
+      const existing = await this.getIdempotency(idempotency.keyHash);
+      if (existing?.result) return { enquiry: null, result: existing.result, deduplicated: true };
+      throw conflict("This enquiry changed before it could be recorded. Please try again.");
     }
   }
 

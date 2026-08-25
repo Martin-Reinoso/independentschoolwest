@@ -2193,6 +2193,45 @@ h1, h2, h3, h4 {
   line-height: 1.4;
 }
 
+.community-contact-trap {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  white-space: nowrap !important;
+}
+
+.community-form-field .community-field-error {
+  color: #a70f28;
+}
+
+.community-form-field.is-invalid input,
+.community-form-field.is-invalid select {
+  border-color: var(--red);
+  box-shadow: 0 0 0 2px rgba(200, 16, 46, 0.12);
+}
+
+.community-form-errors,
+.community-form-submit-error {
+  padding: 0.75rem 0.85rem;
+  border: 1px solid rgba(200, 16, 46, 0.3);
+  border-left: 4px solid var(--red);
+  border-radius: 8px;
+  color: #7f1023;
+  background: #fff2f4;
+  font-size: 0.76rem;
+}
+
+.community-form-errors {
+  margin-top: 1.25rem;
+}
+
+.community-form-errors ul {
+  margin: 0.3rem 0 0;
+  padding-left: 1.1rem;
+}
+
 .community-form-submit {
   min-height: 52px;
   display: flex;
@@ -2216,6 +2255,29 @@ h1, h2, h3, h4 {
   box-shadow: 0 10px 22px rgba(200, 169, 110, 0.25);
 }
 
+.community-form-submit:disabled {
+  cursor: wait;
+  opacity: 0.78;
+}
+
+.community-submit-loader {
+  display: none;
+  width: 17px;
+  height: 17px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: var(--white);
+  border-radius: 50%;
+  animation: application-request-spin 0.7s linear infinite;
+}
+
+.community-form-submit.is-loading .community-submit-loader {
+  display: block;
+}
+
+.community-form-submit.is-loading .community-submit-arrow {
+  display: none;
+}
+
 .community-form-submit:focus-visible {
   outline: 3px solid var(--navy);
   outline-offset: 3px;
@@ -2226,6 +2288,51 @@ h1, h2, h3, h4 {
   margin: 0;
   font-size: 0.68rem;
   line-height: 1.45;
+}
+
+.community-form-success {
+  padding: 2rem 0.5rem 0.5rem;
+  text-align: center;
+}
+
+.community-form-success h3 {
+  margin-top: 0.8rem;
+  color: var(--navy);
+}
+
+.community-form-success p {
+  margin-top: 0.65rem;
+  color: var(--text-light);
+}
+
+.community-success-mark {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto;
+  border-radius: 50%;
+  color: var(--white);
+  background: #2f7a59;
+  font-size: 1.35rem;
+}
+
+.community-form-success button {
+  margin-top: 1rem;
+  border: 1px solid var(--navy);
+  border-radius: 7px;
+  padding: 0.7rem 1rem;
+  color: var(--navy);
+  background: transparent;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.community-form-success button:hover {
+  color: var(--white);
+  background: var(--navy);
 }
 
 .community-form-note {

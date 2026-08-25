@@ -14,10 +14,12 @@ export class SesMailer {
     this.client = client;
   }
 
-  async send({ to, subject, text, html, tags = {} }) {
+  async send({ to, subject, text, html, tags = {}, replyTo }) {
+    const replyToAddress = String(replyTo || this.replyTo || "").trim();
+    if (/[\r\n]/.test(replyToAddress)) throw new Error("SES Reply-To address is invalid.");
     const result = await this.client.send(new SendEmailCommand({
       FromEmailAddress: formattedMailbox(this.fromName, this.from),
-      ReplyToAddresses: this.replyTo ? [this.replyTo] : undefined,
+      ReplyToAddresses: replyToAddress ? [replyToAddress] : undefined,
       Destination: { ToAddresses: [to] },
       ConfigurationSetName: this.configurationSetName || undefined,
       EmailTags: Object.entries(tags).map(([Name, Value]) => ({ Name, Value: String(Value).replace(/[^A-Za-z0-9_-]/g, "_").slice(0, 256) })),

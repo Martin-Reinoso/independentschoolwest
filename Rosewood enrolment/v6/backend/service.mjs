@@ -1,7 +1,8 @@
 import crypto from "node:crypto";
 import { APPLICATION_REQUEST_CONTRACT } from "./application-request-contract.mjs";
+import { COMMUNITY_ENQUIRY_CONTRACT } from "./community-enquiry-contract.mjs";
 import { buildApplicationReview } from "./application-review.mjs";
-import { applicationComplete, applicationInvitation, applicationOtp, applicationSubmitted, eoiAcknowledgement, signatureInvitation, signatureOtp, staffOtp } from "./email-templates.mjs";
+import { applicationComplete, applicationInvitation, applicationOtp, applicationSubmitted, communityEnquiryNotification, eoiAcknowledgement, signatureInvitation, signatureOtp, staffOtp } from "./email-templates.mjs";
 import { currentFormDefinition, FORM_DEFINITIONS, getFormDefinition, recordFormReference } from "./form-definitions.mjs";
 import { CONTACT_PERMISSION_NO, CONTACT_PERMISSION_YES, SCHEMA_VERSION, contactPermissionAllowed, formReleaseAtLeast, normalizeEmail, safeText, sanitizeApplication, splitApplication, truthy, validateApplicationForSubmission, validateEoi } from "./schema.mjs";
 import { sheetOperation } from "./google-sheets.mjs";
@@ -17,6 +18,7 @@ const MAX_OUTBOX_ATTEMPTS = 8;
 const APPLICATION_REQUEST_NETWORK_HOURLY_LIMIT = 100;
 const APPLICATION_REQUEST_NETWORK_DAILY_LIMIT = 500;
 const APPLICATION_OTP_NETWORK_HALF_HOURLY_LIMIT = 100;
+const COMMUNITY_ENQUIRY_INTERESTS = new Set(COMMUNITY_ENQUIRY_CONTRACT.fields.find(field => field.id === "interest").options);
 const APPLICATION_VALIDATORS = new Map(Object.keys(FORM_DEFINITIONS.application).map(formVersion => [formVersion, { sanitize: sanitizeApplication, validate: validateApplicationForSubmission }]));
 const EOI_VALIDATORS = new Map(Object.keys(FORM_DEFINITIONS.eoi).map(formVersion => [formVersion, validateEoi]));
 
@@ -603,6 +605,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
   const networkSecret = env.NETWORK_HMAC_SECRET;
   const signingPageUrl = env.APPLICATION_SIGNING_PAGE_URL;
   const applicationPageUrl = env.APPLICATION_PAGE_URL;
+  const communityEnquiryNotificationEmail = normalizeEmail(env.COMMUNITY_ENQUIRY_NOTIFICATION_EMAIL || "info@ffe.org.au");
   const googleMapsBrowserApiKey = safeText(env.GOOGLE_MAPS_BROWSER_API_KEY, 500);
   if (!otpSecret || !networkSecret) throw new Error("OTP_HMAC_SECRET and NETWORK_HMAC_SECRET are required.");
 
@@ -1143,6 +1146,55 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     ];
     await store.reissueInvitationForApplicationRequest({ invitation, previousTokenHash: existingInvitation.tokenHash || "", previousInvitationExists: !recoveredMissingInvitation, tokenHash, applicationRequest, requestEmailIndex, idempotency, outboxEvents: [emailOutbox({ to: recipientEmail, ...message, tags: { workflow: "application_link_request", message_type: "application_link_requested", record_id: requestId } }, now), ...operations.map(operation => sheetOutbox(operation, now))], auditEvents: [audit] });
     await dispatchOutbox(50);
+    return result;
+  }
+
+  function acceptedCommunityEnquiry() {
+    return { accepted: true, message: "Thank you. Your enquiry has been sent to Rosewood College." };
+  }
+
+  async function submitCommunityEnquiry(event) {
+    const body = parseBody(event, 16_000);
+    const result = acceptedCommunityEnquiry();
+    const requestKey = safeText(headers(event)["idempotency-key"], 200);
+    if (!/^[A-Za-z0-9._:-]{16,200}$/.test(requestKey)) throw appError(422, "INVALID_IDEMPOTENCY_KEY", "Refresh the page and send your enquiry again.");
+    const idempotency = { keyHash: sha256(`community_enquiry:${requestKey}`), operation: "community_enquiry", createdAt: nowIso(), ttl: Math.floor((clock() + 30 * 86400_000) / 1000), result };
+    const previous = await store.getIdempotency?.(idempotency.keyHash);
+    if (previous?.result) return previous.result;
+
+    const startedAt = Number(body.startedAt || 0);
+    if (safeText(body.website, 500) || (startedAt > 0 && clock() - startedAt < 500)) return result;
+
+    const rawName = String(body.name ?? "").trim().replace(/\s+/g, " ");
+    if (rawName.length < 2 || rawName.length > 120 || /[\u0000-\u001f\u007f]/.test(rawName)) throw appError(422, "ENQUIRY_NAME_REQUIRED", "Enter your name.");
+    const email = normalizeEmail(body.email);
+    if (email.length > 254 || !/^\S+@\S+\.\S+$/.test(email)) throw appError(422, "INVALID_EMAIL", "Enter a valid email address.");
+    const interest = String(body.interest ?? "").trim();
+    if (!COMMUNITY_ENQUIRY_INTERESTS.has(interest)) throw appError(422, "ENQUIRY_INTEREST_REQUIRED", "Choose why you are getting in touch.");
+    const rawMessage = String(body.message ?? "").trim();
+    if (rawMessage.length > 4000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(rawMessage)) throw appError(422, "ENQUIRY_MESSAGE_INVALID", "Keep your message to 4,000 characters or fewer.");
+
+    const now = clock();
+    const submittedAt = iso(now);
+    const emailHash = sha256(email);
+    const fingerprint = networkFingerprint(event);
+    for (const [key, limit, seconds] of [
+      [`community-enquiry-network-hour:${fingerprint}`, 100, 3600],
+      [`community-enquiry-network-day:${fingerprint}`, 500, 86400],
+      [`community-enquiry-email-hour:${emailHash}`, 3, 3600],
+      [`community-enquiry-email-day:${emailHash}`, 5, 86400]
+    ]) {
+      if (!await store.checkRateLimit(key, limit, seconds)) throw appError(429, "COMMUNITY_ENQUIRY_RATE_LIMIT", "Please wait before sending another enquiry, or email info@ffe.org.au.");
+    }
+
+    const enquiryId = id("enquiry");
+    const reference = `ENQ-${new Date(now).getFullYear()}-${token(5).toUpperCase()}`;
+    const record = { id: enquiryId, reference, status: "received", name: rawName, email, interest, message: rawMessage, submittedAt, networkFingerprint: fingerprint, source: "discover_rosewood", schemaVersion: COMMUNITY_ENQUIRY_CONTRACT.schemaVersion, formVersion: COMMUNITY_ENQUIRY_CONTRACT.formVersion, formDefinitionHash: COMMUNITY_ENQUIRY_CONTRACT.definitionHash };
+    const audit = createAuditEvent({ workflow: "community_enquiry", recordId: enquiryId, type: "community_enquiry.received", at: submittedAt, actorType: "public", actorId: enquiryId, details: { reference, interest, source: record.source } });
+    const notification = communityEnquiryNotification({ reference, name: rawName, email, interest, message: rawMessage, submittedAt });
+    const persisted = await store.createCommunityEnquiry(record, [emailOutbox({ to: communityEnquiryNotificationEmail, replyTo: email, ...notification, tags: { workflow: "community_enquiry", message_type: "new_enquiry_notification", record_id: enquiryId } }, now)], [audit], idempotency);
+    if (persisted?.deduplicated) return persisted.result || result;
+    await dispatchOutbox(20);
     return result;
   }
 
@@ -1835,7 +1887,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
   }
 
   const routes = new Map([
-    ["GET /v6/health", async () => ({ status: "ok", schemaVersion: SCHEMA_VERSION, formVersions: { eoi: currentFormDefinition("eoi").formVersion, application: currentFormDefinition("application").formVersion, applicationLinkRequest: APPLICATION_REQUEST_CONTRACT.formVersion } })],
+    ["GET /v6/health", async () => ({ status: "ok", schemaVersion: SCHEMA_VERSION, formVersions: { eoi: currentFormDefinition("eoi").formVersion, application: currentFormDefinition("application").formVersion, applicationLinkRequest: APPLICATION_REQUEST_CONTRACT.formVersion, communityEnquiry: COMMUNITY_ENQUIRY_CONTRACT.formVersion }, features: { communityEnquiries: true } })],
     ["POST /v6/session/logout", logoutSession],
     ["POST /v6/staff/access/request-code", requestStaffCode],
     ["POST /v6/staff/access/verify-code", verifyStaffCode],
@@ -1849,6 +1901,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     ["GET /v6/eoi/config", getEoiConfig],
     ["POST /v6/eoi", submitEoi],
     ["POST /v6/application-link-requests", submitApplicationLinkRequest],
+    ["POST /v6/community-enquiries", submitCommunityEnquiry],
     ["POST /v6/application/access/request-code", requestApplicationCode],
     ["POST /v6/application/access/verify-code", verifyApplicationCode],
     ["GET /v6/application/family", getFamilyContext],

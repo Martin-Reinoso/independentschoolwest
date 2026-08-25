@@ -23,3 +23,23 @@ test("SES uses the Rosewood display name without changing the authenticated mail
   assert.deepEqual(input.ReplyToAddresses, ["enrolment@ffe.org.au"]);
   assert.deepEqual(input.Destination.ToAddresses, ["success@simulator.amazonses.com"]);
 });
+
+test("SES permits a validated message-specific Reply-To address", async () => {
+  let input;
+  const mailer = new SesMailer({
+    from: "enrolment@ffe.org.au",
+    fromName: "Rosewood College Enrolment",
+    replyTo: "enrolment@ffe.org.au",
+    client: { async send(command) { input = command.input; return { MessageId: "synthetic-message-id" }; } }
+  });
+
+  await mailer.send({
+    to: "info@ffe.org.au",
+    replyTo: "family@example.test",
+    subject: "Synthetic enquiry",
+    text: "Synthetic",
+    html: "<p>Synthetic</p>"
+  });
+
+  assert.deepEqual(input.ReplyToAddresses, ["family@example.test"]);
+});
