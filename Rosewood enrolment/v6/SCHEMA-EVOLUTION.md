@@ -29,8 +29,9 @@ deliberately creating a new version.
 Current launch contracts:
 
 ```text
-EOI:         rosewood-eoi-2026.16
-Application: rosewood-application-2026.17
+EOI:                      rosewood-eoi-2026.17
+Application:              rosewood-application-2026.18
+Application-link request: rosewood-application-link-request-2026.1
 ```
 
 The original `2026.1`, `2026.2`, `2026.3` and `2026.4` contracts and validators remain
@@ -137,6 +138,16 @@ browser adds V6.17 to its supported immutable versions; editable older drafts up
 through the existing conditional definition transaction without transforming answers.
 Submitted records and signature evidence remain pinned. Renewing access is operational
 metadata and does not create an application revision or alter its stored form version.
+
+The EOI `2026.17` and Application `2026.18` releases again preserve those complete
+question, answer, validation, projection and signature-evidence contracts. They pin the
+new public request gateway and staff request-list assets. Application-link requests are
+a separate immutable contract and entity, not a shortened EOI. Each request records its
+request ID, contract version/hash, normalized recipient email and hash, parent/guardian
+name, timestamps, outcome and retained invitation/application relationship. The
+email-hash index is a duplicate-prevention and recovery index; it must not be used to
+infer or create an EOI relationship. Existing EOI, Application, draft, submission and
+signature records are not migrated or rewritten.
 
 Acceptance, Decline and the Enrolment Agreement must receive their own independent
 version series when their backends are built. They must not reuse the Application

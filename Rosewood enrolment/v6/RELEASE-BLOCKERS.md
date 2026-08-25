@@ -22,6 +22,8 @@ real family information until the applicable blockers are closed.
 
 ## Implemented Backend And Security
 
+- minimal public application-link requests with idempotency, bot friction, throttling,
+  duplicate-safe family invitation reissue and no automatic EOI linkage
 - high-entropy, expiring, single-family invitation records
 - Rosewood-controlled transactional sender with SPF, DKIM and DMARC
 - rate-limited OTP with expiry, attempt limits and replay protection; the service allows

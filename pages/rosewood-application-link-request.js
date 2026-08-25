@@ -17,6 +17,12 @@
   const successView = document.querySelector("#success-view");
   const successEmail = document.querySelector("#success-email");
   const resetPreview = document.querySelector("#reset-preview");
+  const websiteInput = document.querySelector("#requester-website");
+  const submissionError = document.querySelector("#submission-error");
+  const submitButton = form.querySelector("button[type='submit']");
+  const apiBase = "https://6zyzo44sdb5zmmx53toktqrnuu0sikyd.lambda-url.ap-southeast-2.on.aws";
+  const startedAt = Date.now();
+  let submissionKey = "";
 
   function normalizedEmail() {
     return emailInput.value.trim().toLowerCase();
@@ -60,6 +66,24 @@
     return errors;
   }
 
+  function newSubmissionKey() {
+    if (crypto.randomUUID) return crypto.randomUUID();
+    const bytes = crypto.getRandomValues(new Uint8Array(24));
+    return Array.from(bytes, value => value.toString(16).padStart(2, "0")).join("");
+  }
+
+  function setLoading(loading) {
+    submitButton.disabled = loading;
+    submitButton.classList.toggle("is-loading", loading);
+    submitButton.setAttribute("aria-busy", String(loading));
+  }
+
+  function showSubmissionError(message) {
+    submissionError.textContent = message;
+    submissionError.hidden = !message;
+    if (message) submissionError.focus();
+  }
+
   nameInput.addEventListener("input", () => {
     if (nameField.classList.contains("is-invalid")) validate();
   });
@@ -73,7 +97,7 @@
     emailInput.select();
   });
 
-  form.addEventListener("submit", event => {
+  form.addEventListener("submit", async event => {
     event.preventDefault();
     const errors = validate();
     if (errors.length) {
@@ -81,16 +105,34 @@
       errors[0].input.focus();
       return;
     }
-    successEmail.textContent = normalizedEmail();
-    requestView.hidden = true;
-    successView.hidden = false;
-    successView.focus();
+    showSubmissionError("");
+    submissionKey ||= newSubmissionKey();
+    setLoading(true);
+    try {
+      const response = await fetch(`${apiBase}/v6/application-link-requests`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": submissionKey },
+        body: JSON.stringify({ parentGuardianName: nameInput.value.trim(), email: normalizedEmail(), website: websiteInput.value, startedAt })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.message || "The request could not be completed. Please try again.");
+      successEmail.textContent = normalizedEmail();
+      requestView.hidden = true;
+      successView.hidden = false;
+      successView.focus();
+    } catch (error) {
+      showSubmissionError(error.message === "Failed to fetch" ? "We could not connect to the enrolment service. Check your connection and try again." : error.message);
+    } finally {
+      setLoading(false);
+    }
   });
 
   resetPreview.addEventListener("click", () => {
     form.reset();
     summary.hidden = true;
+    showSubmissionError("");
     destination.hidden = true;
+    submissionKey = "";
     setError(nameField, nameError, nameInput, "");
     setError(emailField, emailError, emailInput, "");
     successView.hidden = true;

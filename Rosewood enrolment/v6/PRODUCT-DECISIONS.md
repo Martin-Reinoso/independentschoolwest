@@ -21,6 +21,26 @@ Decision date: 7 August 2026
   used only as KMS-encrypted browser-upload staging; successful objects are deleted
   after verification/move and abandoned objects expire after one day.
 
+## Public Application-Link Request
+
+- The current public acquisition path is a compact **Request application link** card
+  on the home page, with a standalone no-index fallback page.
+- It collects only parent/guardian name and one email address. Email confirmation,
+  child name, year level, address and EOI questions are intentionally excluded.
+- A valid request automatically creates a direct family invitation and initial blank
+  Application record. The family provides one or more children only after invitation
+  and OTP verification.
+- The longer EOI remains available but is not promoted for the current intake.
+- No EOI is automatically linked, even when the email matches. EOI prefill remains an
+  explicit staff decision through the EOI-linked invitation workflow.
+- A repeat request uses the same invitation and Application identifiers, rotates the
+  private token and sends a new 14-day link. It must not reopen a submitted child
+  application or create a duplicate family application.
+- Public responses are generic. Server-side idempotency, bot friction and network and
+  hashed-email throttles run before records or email are created.
+- DynamoDB is authoritative. The **Application Link Requests** Sheet tab and staff
+  portal list are reporting/operational projections only.
+
 ## Application Invitation and Record Creation
 
 - Application for enrolment is invitation-only.

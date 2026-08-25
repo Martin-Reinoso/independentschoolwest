@@ -32,6 +32,7 @@ retention schedule, legal declaration or Enrolment Agreement.
 
 | Workflow | Status | Entry point | Current outcome |
 | --- | --- | --- | --- |
+| Request application link | **Live - writing** | Home-page card or standalone no-index page | Direct family invitation and initial blank Application record |
 | Expression of Interest (EOI) | **Live - writing** | Public, hidden and `noindex` EOI URL | Independent EOI record, reference and acknowledgement email |
 | Staff operations | **Live - writing** | Hidden and `noindex` staff portal plus staff OTP | Review EOI/Application progress and issue direct or EOI-linked invitations |
 | Application for Enrolment | **Live - writing** | Private invitation URL plus family email OTP | Revisioned application, documents, primary signature and status |
@@ -108,6 +109,7 @@ checks.
 
 | Information | Authoritative location | Secondary representation | Notes |
 | --- | --- | --- | --- |
+| Application-link request and email duplicate index | Main DynamoDB table | Operations Application Link Requests tab | Request is separate from EOI; index points to the retained family invitation/application. |
 | EOI answers and status | Main DynamoDB table | EOI and Operations Sheets | A JSON snapshot is also stored in restricted Drive. |
 | Application invitation and link relationship | Main DynamoDB table | Operations Sheet | Raw invitation token is not stored; only its hash is retained. |
 | OTP challenge | Main DynamoDB table | Minimal email-event projection | Code is emailed; only an HMAC is stored. Challenge expires automatically. |
@@ -125,6 +127,7 @@ checks.
 
 ```mermaid
 stateDiagram-v2
+    [*] --> Application_Invited: Public family requests link
     [*] --> EOI_Submitted: Optional public EOI
     EOI_Submitted --> Application_Invited: Staff explicitly creates linked invitation
     [*] --> Application_Invited: Staff creates direct invitation
@@ -146,6 +149,42 @@ stateDiagram-v2
 An EOI is never converted into an application. When staff explicitly selects an EOI,
 the application receives a `sourceEoiId`, reuses the EOI contact/student identifiers and
 prefills approved values. The original EOI remains unchanged.
+
+## Workflow 0: Request Application Link
+
+```mermaid
+sequenceDiagram
+    participant Family
+    participant Page as FFE request card
+    participant API as Sydney Lambda
+    participant DB as DynamoDB
+    participant Outbox
+    participant SES
+    Family->>Page: Enter parent/guardian name and email
+    Page->>API: POST request with idempotency key
+    API->>API: Validate, bot-check and rate-limit
+    API->>DB: Find retained request index or invitation by normalized email
+    alt New family request
+        API->>DB: Atomically create request, index, invitation, blank Application, audit and outbox
+    else Repeat request
+        API->>DB: Atomically retain IDs, rotate link, record request/audit and queue email
+    end
+    Outbox->>SES: Send 14-day private Application invitation
+    API-->>Page: Generic request-received response
+```
+
+- Visible inputs are only parent/guardian name and email. There is no child, year-level,
+  address, EOI or confirmation-email field.
+- The request creates a direct invitation. An email match never links an EOI or copies
+  EOI answers; that remains an explicit staff-only action.
+- A high-entropy browser idempotency key makes a retry of one submission return the
+  first result. Network and hashed-email limits constrain repeated new operations.
+- A later legitimate request rotates the private link but preserves the invitation and
+  Application IDs. If the expiring invitation index is already gone, the permanent
+  email-bound request index and Application restore that same relationship.
+- DynamoDB is authoritative. The Operations Sheet and staff request list are
+  replaceable projections. The public response does not reveal whether an address
+  already existed.
 
 ## Common Security and Processing Controls
 
@@ -728,6 +767,7 @@ stateDiagram-v2
 
 | Trigger | Recipient | Message |
 | --- | --- | --- |
+| Public application-link request | Requested family email | Parent-addressed private Application link, no child name and 14-day expiry |
 | EOI submission | Primary EOI contact | EOI acknowledgement and reference |
 | Direct application invitation | Invited family email | Parent-addressed private link, no child name and 14-day expiry |
 | EOI-linked application invitation | Invited EOI email | Linked child/year details, prefill explanation, private link and 14-day expiry |
@@ -769,7 +809,7 @@ after success. Slack stores no application answers and cannot change workflow st
 | --- | --- | --- |
 | EOI | EOIs, EOI Audit | EOI reporting and workflow audit |
 | Application | Applications, Student, Guardians, Emergency Contacts, Documents, Conditions, Signatures, Application Audit | Normalised submitted application reporting |
-| Operations | Contacts, Students, Application Invitations, Workflow Links, Progress, Email Events, Audit | Cross-workflow administration and monitoring |
+| Operations | Contacts, Students, Application Link Requests, Application Invitations, Workflow Links, Progress, Email Events, Audit | Cross-workflow administration and monitoring |
 
 Headers are an implementation contract and are repaired before writes. A controlled
 rebuild can recreate all projection rows from DynamoDB. The rebuild is dry-run unless
@@ -779,7 +819,7 @@ an explicit apply confirmation is supplied.
 
 | Actor | EOI/Application access | Documents | Signatures | Audit/operations |
 | --- | --- | --- | --- | --- |
-| Public visitor | Can open static pages; can submit EOI | None without verified application session | None | None |
+| Public visitor | Can open static pages; can request an Application link or submit EOI | None without verified application session | None | Receives only generic request status |
 | Verified application family | Editable current application before submission; masked read-only status after submission | Can upload only before submission | Primary signature during submission; may step-up-authenticate to correct/resend a permitted pending signer | Own save/status responses only; no submitted-answer reopening |
 | Verified additional guardian | Frozen review context for its signature task | No document access | Can submit only its assigned signature | Own completion status only |
 | Viewer staff | Dashboard and detailed application review | Metadata in portal; restricted Drive only if separately authorised | Metadata only, no images | Read operational summaries; detailed view is audited |
@@ -919,6 +959,7 @@ signature revision hashes also retain the form version and definition hash. See
 | `GET /v6/health` | Service and schema health |
 | `POST /v6/session/logout` | Revoke the supplied browser session |
 | `POST /v6/eoi` | Validate and submit EOI |
+| `POST /v6/application-link-requests` | Validate, deduplicate and queue a direct family Application invitation |
 | `POST /v6/application/access/request-code` | Validate invitation/email and request OTP |
 | `POST /v6/application/access/verify-code` | Consume OTP and create family session |
 | `GET /v6/application/family` | Restore an active family selector session after a same-tab refresh |

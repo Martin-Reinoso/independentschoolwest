@@ -143,6 +143,24 @@ is idempotent for duplicate confirmation requests. Submitted applications are ne
 eligible. A retained expired token is removed when its index still exists; any already
 expired token is also rejected by the access endpoint's expiry check.
 
+## Recover A Public Application-Link Request
+
+1. Check the staff portal **Link requests**, related invitation/Application and Email
+   Events. Do not ask the family for child data and do not inspect ordinary logs for a
+   full email address.
+2. If the family submits the public card again, the service normally rotates the link
+   on the same family invitation/Application. It must not create a duplicate.
+3. If the old invitation index has expired, the backend uses the durable hashed-email
+   request index and retained Application to recreate only the same invitation access.
+4. If the portal shows a queued email, follow the outbox/SES recovery below rather than
+   submitting repeated synthetic requests.
+5. If the email/application relationship conflicts, stop automated recovery and review
+   the restricted audit history. Never repair the conflict by linking an EOI based on
+   email or manually editing a Sheet.
+
+The public success response is deliberately generic and is not delivery evidence.
+Authoritative success requires the request transaction plus outbox/SES status.
+
 ## Recover SES Delivery Feedback Or Failed Outbox Work
 
 1. For a signer-delivery issue, inspect the authorised application status and the

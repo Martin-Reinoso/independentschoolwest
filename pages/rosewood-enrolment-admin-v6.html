@@ -86,6 +86,7 @@
         <div class="notice success-notice" id="dashboard-message" role="status" hidden></div>
 
         <section class="metric-grid" aria-label="Enrolment totals">
+          <article class="metric-card metric-request"><span class="metric-label">Link requests</span><strong id="metric-requests">0</strong><small>Public requests received</small></article>
           <article class="metric-card metric-eoi"><span class="metric-label">Expressions of interest</span><strong id="metric-eois">0</strong><small>Submitted records</small></article>
           <article class="metric-card metric-active"><span class="metric-label">In progress</span><strong id="metric-active">0</strong><small>Families completing forms</small></article>
           <article class="metric-card metric-sign"><span class="metric-label">Pending signatures</span><strong id="metric-signatures">0</strong><small>Awaiting another guardian</small></article>
@@ -95,6 +96,7 @@
         <div class="workspace">
           <aside class="workspace-nav" aria-label="Portal sections">
             <button class="nav-button active" data-panel="applications" type="button"><span>Applications</span><strong id="nav-app-count">0</strong></button>
+            <button class="nav-button" data-panel="requests" type="button"><span>Link requests</span><strong id="nav-request-count">0</strong></button>
             <button class="nav-button" data-panel="eois" type="button"><span>Expressions of interest</span><strong id="nav-eoi-count">0</strong></button>
             <button class="nav-button" data-panel="emails" type="button"><span>Email activity</span><strong id="nav-email-count">0</strong></button>
             <div class="sheet-links" id="sheet-links">
@@ -113,6 +115,15 @@
             </div>
             <div class="record-list" id="application-list" aria-live="polite"></div>
             <div class="empty-state" id="application-empty" hidden><strong>No applications found</strong><p>Try changing the search or status filter.</p></div>
+          </section>
+
+          <section class="workspace-panel" id="requests-panel" data-workspace-panel hidden>
+            <div class="panel-heading">
+              <div><p class="eyebrow">Public application access</p><h2>Application-link requests</h2></div>
+              <label class="search-field"><span>Search requests</span><input id="request-search" type="search" placeholder="Parent/guardian or email"></label>
+            </div>
+            <div class="record-list" id="request-list" aria-live="polite"></div>
+            <div class="empty-state" id="request-empty" hidden><strong>No public requests found</strong><p>Requests from the website will appear here.</p></div>
           </section>
 
           <section class="workspace-panel" id="eois-panel" data-workspace-panel hidden>
@@ -174,6 +185,6 @@
     <div class="detail-content" id="detail-content" hidden></div>
   </dialog>
 
-  <script src="rosewood-enrolment-admin-v6.js?v=7"></script>
+  <script src="rosewood-enrolment-admin-v6.js?v=8"></script>
 </body>
 </html>

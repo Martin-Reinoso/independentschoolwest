@@ -44,6 +44,21 @@ and the backend gives each child a separate application record under the invitat
 The initial record has no `source_eoi_id`; matching an existing EOI email never creates
 a link by itself.
 
+## Public Application-Link Requests
+
+The **Link requests** panel lists requests submitted through the home-page or standalone
+public card, including request time, outcome and the retained application relationship.
+
+- **Created** means the first direct family invitation/Application relationship was
+  created.
+- **Reissued** means a replacement private link was sent for the same relationship.
+- A public request never links or prefills an EOI, even when the email matches one.
+- Do not create another direct invitation to compensate for a delayed request email.
+  Check the request, invitation and Email Events status first; use the existing resend
+  or renewal path only when operationally required.
+- Google Sheets are reports. Do not edit the Application Link Requests tab to change,
+  resend or remove the authoritative DynamoDB record.
+
 ## EOI-Linked Invitation
 
 Use this path only when the specific EOI should prepopulate the new application.
