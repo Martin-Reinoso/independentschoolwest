@@ -46,6 +46,14 @@ export function applicationOtp({ code }) {
   return { subject, text, html: frame(`<h1 style="font:700 28px Georgia,serif">Verification code</h1><p>Enter this code to continue your Application for Enrolment:</p><p style="font:700 36px 'Courier New',monospace;letter-spacing:.16em">${code}</p><p>This code expires in 10 minutes. Do not share it.</p>`) };
 }
 
+export function communityEnquiryNotification({ reference, name, email, interest, message, submittedAt }) {
+  const subject = `New Rosewood College enquiry - ${interest}`;
+  const content = message || "No message was provided.";
+  const text = `A new enquiry was submitted through the Rosewood College website.\n\nReference: ${reference}\nReceived: ${submittedAt}\nName: ${name}\nEmail: ${email}\nReason: ${interest}\n\nMessage:\n${content}`;
+  const html = frame(`<h1 style="font:700 28px Georgia,serif">New website enquiry</h1><p>A new enquiry was submitted through the Rosewood College website.</p><table role="presentation" style="width:100%;border-collapse:collapse;margin:22px 0"><tr><td style="padding:7px 12px 7px 0;color:#566070">Reference</td><td style="padding:7px 0;font-weight:700">${htmlEscape(reference)}</td></tr><tr><td style="padding:7px 12px 7px 0;color:#566070">Received</td><td style="padding:7px 0">${htmlEscape(submittedAt)}</td></tr><tr><td style="padding:7px 12px 7px 0;color:#566070">Name</td><td style="padding:7px 0">${htmlEscape(name)}</td></tr><tr><td style="padding:7px 12px 7px 0;color:#566070">Email</td><td style="padding:7px 0"><a href="mailto:${htmlEscape(email)}" style="color:#245f45">${htmlEscape(email)}</a></td></tr><tr><td style="padding:7px 12px 7px 0;color:#566070">Reason</td><td style="padding:7px 0">${htmlEscape(interest)}</td></tr></table><h2 style="font:700 19px Georgia,serif">Message</h2><p style="white-space:pre-wrap">${htmlEscape(content)}</p>`, { privateFooter: false });
+  return { subject, text, html };
+}
+
 export function staffOtp({ code }) {
   const subject = `${code} is your Rosewood enrolment staff access code`;
   const text = `Your Rosewood enrolment staff access code is ${code}. It expires in 10 minutes. Do not share this code. If you did not request access, reply to enrolment@ffe.org.au.`;

@@ -14,6 +14,7 @@ St Lawrence evidence.
 ## URLs
 
 ```text
+https://ffe.org.au/discover-rosewood.html
 https://ffe.org.au/pages/rosewood-application-link-request-review.html
 https://ffe.org.au/homepage-application-request-review.html
 https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=eoi
@@ -30,16 +31,23 @@ https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=application&policy=
 Add `&review=1` to reveal the internal frame selector. The normal family-facing URLs
 do not show workflow-switching or direct frame navigation.
 
-The proposed public application-link card is paused and is not promoted on the home
-page. Its renamed no-index review page is a network-disabled simulation: it saves no
-information and sends no email. A second no-index review URL preserves the exact
+The application-link card is active only on the no-index Discover Rosewood page. It
+collects parent/guardian name and email, then uses the existing duplicate-safe request
+contract to send a private Application invitation. The current home page and its
+**Register Your Child** links are unchanged. The renamed review page remains a
+network-disabled simulation: it saves no information and sends no email. A second no-index review URL preserves the exact
 full-homepage composition in which that card was launched, but loads the same safe
 simulation client rather than the production request client. The home page has been restored to the preceding
-**Register Your Child** links while the request experience is revised. The implemented
-request endpoint and records remain intact but dormant; staff direct and EOI-linked
-invitations continue to work. Application remains invitation-only and requires the
+**Register Your Child** links. Staff direct and EOI-linked invitations continue to
+work. Application remains invitation-only and requires the
 unique token sent by email; the generic Application URL cannot open a family record.
 Acceptance, signing review and decline remain non-writing previews.
+
+The Discover page also submits its **Connect with Rosewood College** form to a separate
+community-enquiry endpoint. DynamoDB stores the versioned enquiry as the authoritative
+record and atomically queues an SES notification to `info@ffe.org.au`; the message uses
+the validated enquirer address as Reply-To. It does not create an EOI, invitation or
+Application and is not projected to the enrolment Google Sheets.
 
 The last URL is the no-index staff operations portal. Access is restricted by an
 allowlisted email OTP and currently covers EOI and Application for Enrolment only.
@@ -47,7 +55,9 @@ allowlisted email OTP and currently covers EOI and Application for Enrolment onl
 ## Scope
 
 - one-page Expression of Interest
-- inactive minimal request backend plus a network-disabled interface review page
+- active minimal application-link request on Discover Rosewood plus a separate
+  network-disabled interface review page
+- versioned community enquiry collection and staff email notification
 - invited application gateway, OTP frame and record selector for EOI-linked and direct
   staff invitations
 - family-level record selection that keeps each child's application, progress,
@@ -77,8 +87,8 @@ objects expire after one day; S3 is not an authoritative or staff-facing file st
 GuardDuty and long-term S3 document storage are outside the launch scope.
 
 Production availability is checked every 10 minutes without writing applicant data.
-The scheduled AWS canary verifies the restored home-page registration path, the
-network-disabled request review, public family, signing and staff assets, backend
+The scheduled AWS canary verifies the restored home-page registration path, the active
+Discover forms, the network-disabled request review, public family, signing and staff assets, backend
 health and immutable form versions, the EOI Google-address runtime configuration,
 fail-closed protection on the Application/status/staff routes and whether email,
 Sheets or Slack delivery work has remained pending for more than 15 minutes. Five

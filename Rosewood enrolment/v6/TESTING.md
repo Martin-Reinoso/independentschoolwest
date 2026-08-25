@@ -1415,3 +1415,33 @@ families.
   production alarms are `OK`.
 - GitHub repository checks and Pages deployment for the merge completed successfully.
   No valid request, OTP or email was generated during release verification.
+
+## Discover Rosewood Forms Verification
+
+Prepared on 26 August 2026. Production release evidence is recorded only after the
+reviewed Pages and AWS deployments complete.
+
+- The current `index.html` registration path remains unchanged. Only
+  `discover-rosewood.html` loads the production form client.
+- The Discover enrolment card submits the existing two-field, duplicate-safe
+  Application-link request contract. It does not infer or create an EOI link.
+- The **Connect with Rosewood College** form submits name, normalized email, one
+  approved reason and an optional message of up to 4,000 characters to the separate
+  community-enquiry endpoint.
+- Valid enquiries atomically store the versioned DynamoDB record, idempotency claim,
+  restricted audit event and email outbox item. Notifications go only to
+  `info@ffe.org.au`, with the validated enquirer address as Reply-To.
+- Tests cover field validation, approved options, payload limits, HTML escaping,
+  duplicate retries, bot traps, server-side network/email limits, atomic DynamoDB
+  writes, loading/error/success states, no browser persistence and unchanged homepage
+  registration links.
+- The non-writing production canary checks the Discover HTML, form script and backend
+  `rosewood-community-enquiry-2026.1` health contract without creating a record or
+  sending an email.
+- All 131 backend Node tests pass. The frozen-lockfile production bundle builds with
+  the community-enquiry contract included, and both repository static/reference and
+  public-data/secret checks pass.
+- Local browser verification covers desktop and mobile layouts, both empty-submit
+  validation paths, first-invalid-field focus, accessible summaries, control sizing,
+  horizontal overflow and console warnings/errors. No valid public request or enquiry
+  was transmitted during local visual verification.

@@ -167,6 +167,13 @@ network per hour, with a 500-per-day shared-network ceiling, and 100 Application
 OTP requests per shared network per 30 minutes. Existing per-email, per-invitation,
 cooldown, idempotency and honeypot controls remain stricter and unchanged.
 
+The Discover Rosewood page also uses `POST /v6/community-enquiries`. The endpoint
+validates the versioned four-field community-enquiry contract, applies bot friction,
+idempotency and network/email throttles, and atomically stores the authoritative record,
+restricted audit event and email outbox item in DynamoDB. The outbox sends one
+notification to `info@ffe.org.au` with the enquirer as Reply-To. It does not write an
+EOI, Application, invitation or Google Sheet row.
+
 Application answers use revisioned autosave. The browser debounces edits, forces a save
 after eight seconds of continuous typing, suppresses unchanged drafts and identifies
 autosave, navigation, submission and save-and-close modes in audit events. The green
@@ -189,6 +196,7 @@ POST /v6/staff/invitations/renew-access
 POST /v6/staff/applications/contact-permission
 POST /v6/eoi
 POST /v6/application-link-requests
+POST /v6/community-enquiries
 POST /v6/application/access/request-code
 POST /v6/application/access/verify-code
 GET  /v6/application/family

@@ -23,18 +23,17 @@ Decision date: 7 August 2026
 
 ## Public Application-Link Request
 
-- Public launch of the compact **Request application link** card was paused on 26
-  August 2026 for further review. The home page currently uses the preceding
-  **Register Your Child** links.
+- The compact **Request application link** card is active on
+  `discover-rosewood.html`. The current home page continues to use the preceding
+  **Register Your Child** links and is not changed by this release.
 - The proposed interface is retained only as the unlinked, no-index
   `pages/rosewood-application-link-request-review.html` page. It is a simulation with
   `connect-src 'none'`, no `fetch` call, no persistence and no email delivery.
 - The exact launched homepage composition is retained separately at
   `homepage-application-request-review.html`. It is also no-index and
   uses the simulation script, not the production request client.
-- The implemented endpoint, immutable contract and existing request records are
-  retained so later activation does not require a destructive data rollback. No public
-  page currently submits to that endpoint.
+- The Discover page submits to the implemented endpoint and immutable request contract.
+  The separate review page remains non-writing.
 - When activated, it collects only parent/guardian name and one email address. Email confirmation,
   child name, year level, address and EOI questions are intentionally excluded.
 - When activated, a valid request automatically creates a direct family invitation and initial blank
@@ -54,6 +53,25 @@ Decision date: 7 August 2026
   per-email, per-invitation and resend-cooldown protections remain unchanged.
 - DynamoDB is authoritative. The **Application Link Requests** Sheet tab and staff
   portal list are reporting/operational projections only.
+
+## Community Enquiries
+
+- **Connect with Rosewood College** is a separate public workflow. It never creates or
+  links an EOI, invitation, Application, contact or student record.
+- The collected fields are name, email, one approved reason for contact and an optional
+  message of up to 4,000 characters. Records are pinned to
+  `rosewood-community-enquiry-2026.1` and its definition hash.
+- DynamoDB is authoritative. Each accepted submission, idempotency claim, restricted
+  audit event and email outbox item is committed atomically.
+- A durable outbox notification is addressed to `info@ffe.org.au` through the existing
+  SES delivery-feedback and alarm path. The validated enquirer address is Reply-To.
+  No automatic email is sent to the enquirer.
+- Honeypot, minimum-time, idempotency, shared-network and hashed-email controls run on
+  the backend. Limits are 100 per shared network per hour, 500 per shared network per
+  day, three per email per hour and five per email per day.
+- Community enquiries are intentionally not written to the enrolment Google Sheets.
+  They remain recoverable from encrypted DynamoDB and its existing backups if email
+  notification or a mailbox is unavailable.
 
 ## Application Invitation and Record Creation
 

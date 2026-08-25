@@ -2,6 +2,7 @@ import { CloudWatchClient, PutMetricDataCommand } from "@aws-sdk/client-cloudwat
 import { DynamoStore } from "./dynamo-store.mjs";
 import { currentFormDefinition } from "./form-definitions.mjs";
 import { APPLICATION_REQUEST_CONTRACT } from "./application-request-contract.mjs";
+import { COMMUNITY_ENQUIRY_CONTRACT } from "./community-enquiry-contract.mjs";
 
 const METRIC_NAMESPACE = "Rosewood/Enrolment";
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -19,6 +20,14 @@ const PUBLIC_ASSETS = [
   {
     path: "/pages/rosewood-application-link-request-review.js",
     markers: ["application-link-form", "preventDefault", "successEmail"]
+  },
+  {
+    path: "/discover-rosewood.html",
+    markers: ["Connect with Rosewood College", "pages/discover-rosewood-forms.js", "application-link-form", "community-contact-form"]
+  },
+  {
+    path: "/pages/discover-rosewood-forms.js",
+    markers: ["/v6/application-link-requests", "/v6/community-enquiries", "idempotency-key"]
   },
   {
     path: "/pages/rosewood-enrolment-v6.html?workflow=eoi",
@@ -102,10 +111,12 @@ async function checkBackendHealth({ fetchImpl, apiBaseUrl }) {
   const expectedEoi = currentFormDefinition("eoi").formVersion;
   const expectedApplication = currentFormDefinition("application").formVersion;
   const expectedApplicationRequest = APPLICATION_REQUEST_CONTRACT.formVersion;
+  const expectedCommunityEnquiry = COMMUNITY_ENQUIRY_CONTRACT.formVersion;
   if (payload?.status !== "ok") throw new Error("The health endpoint did not report ok.");
-  if (payload?.formVersions?.eoi !== expectedEoi || payload?.formVersions?.application !== expectedApplication || payload?.formVersions?.applicationLinkRequest !== expectedApplicationRequest) {
+  if (payload?.formVersions?.eoi !== expectedEoi || payload?.formVersions?.application !== expectedApplication || payload?.formVersions?.applicationLinkRequest !== expectedApplicationRequest || payload?.formVersions?.communityEnquiry !== expectedCommunityEnquiry) {
     throw new Error("The backend form versions do not match the deployed canary release.");
   }
+  if (payload?.features?.communityEnquiries !== true) throw new Error("The community enquiry workflow is not enabled in the deployed backend.");
 }
 
 async function checkEoiAddressConfiguration({ fetchImpl, apiBaseUrl, siteBaseUrl }) {

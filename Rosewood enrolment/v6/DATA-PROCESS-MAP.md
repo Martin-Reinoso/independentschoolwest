@@ -186,6 +186,38 @@ sequenceDiagram
   replaceable projections. The public response does not reveal whether an address
   already existed.
 
+## Workflow 0B: Community Enquiry
+
+```mermaid
+sequenceDiagram
+    participant Visitor
+    participant Page as Discover Rosewood
+    participant API as Sydney Lambda
+    participant DB as DynamoDB
+    participant Outbox
+    participant SES
+    participant Staff as info@ffe.org.au
+    Visitor->>Page: Enter name, email, reason and optional message
+    Page->>API: POST with idempotency key and bot-friction fields
+    API->>API: Validate and apply network/email limits
+    API->>DB: Atomically store enquiry, idempotency, audit and outbox
+    Outbox->>SES: Send staff notification with visitor Reply-To
+    SES->>Staff: Deliver enquiry notification
+    API-->>Page: Show enquiry received
+```
+
+- The record is separate from EOI, Application, invitation, student and contact data.
+- DynamoDB stores name, normalized email, approved reason, optional message, submitted
+  time, keyed network fingerprint, source, status, schema version, form version and
+  definition hash.
+- `rosewood-community-enquiry-2026.1` defines the exact field and option meanings.
+- The email is an operational notification, not the authoritative record. SES feedback,
+  outbox retries and the permanent-failure alarm cover delivery failures.
+- The workflow has no Google Sheet projection and sends no automatic acknowledgement to
+  the visitor. Staff respond from the notification using the validated Reply-To address.
+- The scheduled production canary checks the page, form script and backend health flag
+  without submitting an enquiry or sending email.
+
 ## Common Security and Processing Controls
 
 1. The URL is hidden and marked `noindex`, but URL secrecy is not treated as access
@@ -960,6 +992,7 @@ signature revision hashes also retain the form version and definition hash. See
 | `POST /v6/session/logout` | Revoke the supplied browser session |
 | `POST /v6/eoi` | Validate and submit EOI |
 | `POST /v6/application-link-requests` | Validate, deduplicate and queue a direct family Application invitation |
+| `POST /v6/community-enquiries` | Validate and atomically store a community enquiry and queue the staff notification |
 | `POST /v6/application/access/request-code` | Validate invitation/email and request OTP |
 | `POST /v6/application/access/verify-code` | Consume OTP and create family session |
 | `GET /v6/application/family` | Restore an active family selector session after a same-tab refresh |
