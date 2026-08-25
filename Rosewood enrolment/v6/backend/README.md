@@ -60,9 +60,12 @@ API and Places API (New). Never commit the key or print it in logs.
 
 ## Invitations And Staff Access
 
-- The public application-link request asks only for parent/guardian name and email. It
-  creates a direct family invitation, does not collect child information and never
-  links an EOI by matching email.
+- The implemented application-link request asks only for parent/guardian name and
+  email. It creates a direct family invitation, does not collect child information and
+  never links an EOI by matching email. Its public launch is currently paused: the home
+  page does not call this route, and the renamed no-index review page is a
+  network-disabled simulation. The route and existing records are retained for a later
+  reviewed activation.
 - Request submission is idempotent, protected by honeypot, minimum-elapsed-time,
   network and hashed-email limits, and returns a generic success response. Repeated
   requests rotate the private link on the same family invitation/application.

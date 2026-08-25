@@ -14,8 +14,7 @@ St Lawrence evidence.
 ## URLs
 
 ```text
-https://ffe.org.au/#application-link-request
-https://ffe.org.au/pages/rosewood-application-link-request.html
+https://ffe.org.au/pages/rosewood-application-link-request-review.html
 https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=eoi
 https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=application
 https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=acceptance
@@ -30,12 +29,14 @@ https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=application&policy=
 Add `&review=1` to reveal the internal frame selector. The normal family-facing URLs
 do not show workflow-switching or direct frame navigation.
 
-The public application-link card is the promoted current entry point. It asks only for
-the parent/guardian name and email, then automatically issues the same private family
-Application invitation used by staff. The longer EOI remains live for a later intake
-but is not promoted. Application remains invitation-only and requires the unique token
-sent by email; the generic Application URL cannot open a family record. Acceptance,
-signing review and decline remain non-writing previews.
+The proposed public application-link card is paused and is not promoted on the home
+page. Its renamed no-index review page is a network-disabled simulation: it saves no
+information and sends no email. The home page has been restored to the preceding
+**Register Your Child** links while the request experience is revised. The implemented
+request endpoint and records remain intact but dormant; staff direct and EOI-linked
+invitations continue to work. Application remains invitation-only and requires the
+unique token sent by email; the generic Application URL cannot open a family record.
+Acceptance, signing review and decline remain non-writing previews.
 
 The last URL is the no-index staff operations portal. Access is restricted by an
 allowlisted email OTP and currently covers EOI and Application for Enrolment only.
@@ -43,7 +44,7 @@ allowlisted email OTP and currently covers EOI and Application for Enrolment onl
 ## Scope
 
 - one-page Expression of Interest
-- minimal public request card that creates a direct family Application invitation
+- inactive minimal request backend plus a network-disabled interface review page
 - invited application gateway, OTP frame and record selector for EOI-linked and direct
   staff invitations
 - family-level record selection that keeps each child's application, progress,
@@ -73,7 +74,8 @@ objects expire after one day; S3 is not an authoritative or staff-facing file st
 GuardDuty and long-term S3 document storage are outside the launch scope.
 
 Production availability is checked every 10 minutes without writing applicant data.
-The scheduled AWS canary verifies the public family, signing and staff assets, backend
+The scheduled AWS canary verifies the restored home-page registration path, the
+network-disabled request review, public family, signing and staff assets, backend
 health and immutable form versions, the EOI Google-address runtime configuration,
 fail-closed protection on the Application/status/staff routes and whether email,
 Sheets or Slack delivery work has remained pending for more than 15 minutes. Five
@@ -134,8 +136,9 @@ reports. `SCHEMA-EVOLUTION.md` defines the mandatory process for adding, removin
 renaming or changing questions and for migrating existing records.
 
 The current EOI `2026.17` and Application `2026.18` releases preserve their preceding
-question and data contracts while pinning the public application-link request and staff
-request-list interfaces. The separate request contract is
+question and data contracts while pinning the implemented application-link request and
+staff request-list interfaces. Public promotion of that request interface is paused;
+the separate retained backend contract is
 `rosewood-application-link-request-2026.1`; it contains only parent/guardian name and
 email. Application V6.16 fixed the guardian signing page's read-only date to use
 the Melbourne calendar day. V6.15 clarifies the other-children question and targets the exact
@@ -174,8 +177,8 @@ Admin/admissions staff can change a pending guardian's contact permission only a
 exact explicit confirmation; the change is conditional, rate-limited and audited.
 Direct invitation staff fields are parent/guardian first name, optional surname and
 email only. The invitation lasts 14 days and the family supplies each child after OTP.
-Public requests use the same 14-day family invitation and do not collect child details.
-They never search for or link an EOI by email. A repeated request reissues access to the
+When activated, public requests use the same 14-day family invitation and do not collect
+child details. They never search for or link an EOI by email. A repeated request reissues access to the
 same family invitation/application, rotates the private token and does not create a
 duplicate application. Request records are visible to authorised staff; the public
 success response remains generic.

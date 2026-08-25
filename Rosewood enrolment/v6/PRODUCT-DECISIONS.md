@@ -23,14 +23,21 @@ Decision date: 7 August 2026
 
 ## Public Application-Link Request
 
-- The current public acquisition path is a compact **Request application link** card
-  on the home page, with a standalone no-index fallback page.
-- It collects only parent/guardian name and one email address. Email confirmation,
+- Public launch of the compact **Request application link** card was paused on 26
+  August 2026 for further review. The home page currently uses the preceding
+  **Register Your Child** links.
+- The proposed interface is retained only as the unlinked, no-index
+  `pages/rosewood-application-link-request-review.html` page. It is a simulation with
+  `connect-src 'none'`, no `fetch` call, no persistence and no email delivery.
+- The implemented endpoint, immutable contract and existing request records are
+  retained so later activation does not require a destructive data rollback. No public
+  page currently submits to that endpoint.
+- When activated, it collects only parent/guardian name and one email address. Email confirmation,
   child name, year level, address and EOI questions are intentionally excluded.
-- A valid request automatically creates a direct family invitation and initial blank
+- When activated, a valid request automatically creates a direct family invitation and initial blank
   Application record. The family provides one or more children only after invitation
   and OTP verification.
-- The longer EOI remains available but is not promoted for the current intake.
+- The preceding registration path is promoted while the minimal request is reviewed.
 - No EOI is automatically linked, even when the email matches. EOI prefill remains an
   explicit staff decision through the EOI-linked invitation workflow.
 - A repeat request uses the same invitation and Application identifiers, rotates the

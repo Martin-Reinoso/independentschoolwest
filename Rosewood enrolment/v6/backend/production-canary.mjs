@@ -10,15 +10,15 @@ const OUTBOX_STALE_AFTER_MS = 15 * 60_000;
 const PUBLIC_ASSETS = [
   {
     path: "/",
-    markers: ["application-link-request", "Request Application Link", "pages/rosewood-application-link-request.js"]
+    markers: ["https://tinyurl.com/FamiliesEdEOI", "Register Your Child", "Join Our Community"]
   },
   {
-    path: "/pages/rosewood-application-link-request.html",
-    markers: ["Rosewood College", "application-link-form", "rosewood-application-link-request.js"]
+    path: "/pages/rosewood-application-link-request-review.html",
+    markers: ["Rosewood College", "Design review", "rosewood-application-link-request-review.js"]
   },
   {
-    path: "/pages/rosewood-application-link-request.js",
-    markers: ["/v6/application-link-requests", "Idempotency-Key", "startedAt"]
+    path: "/pages/rosewood-application-link-request-review.js",
+    markers: ["application-link-form", "preventDefault", "successEmail"]
   },
   {
     path: "/pages/rosewood-enrolment-v6.html?workflow=eoi",
