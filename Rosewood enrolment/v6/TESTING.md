@@ -1192,3 +1192,37 @@ or Slack notification.
   selector, revision/autosave, upload, contact-permission, guardian-signature,
   projection, SES, Slack and production-canary regressions. No real invitation, OTP,
   application, upload, signature, email or Slack message was created by these tests.
+
+## V6.17 Production Release
+
+Published and deployed in Sydney on 25 August 2026 without creating, renewing or
+resending an invitation and without creating an OTP, application, upload, signature,
+workflow email or Slack notification.
+
+- Pull request `#14` passed both repository checks and merged to `main` as commit
+  `c0da86e56a1d3ee13d9e72ef2f2bf2e64263a6e0`.
+- GitHub Pages deployment `32850935305` completed successfully. The live family
+  JavaScript hash is
+  `193e720bdc4b38629cd34b11146ac0b3dc2f7ab14e2ff88c68a0d0f79206702b`
+  and the live staff JavaScript hash is
+  `47181aa885f710f6ef87549609ef8e395721c1c52b983b24bf41a3d8510980f7`;
+  both match the release commit byte for byte.
+- Reviewed change set `rosewood-v617-renew-access-20260825-c0da86e` modified the
+  existing `RosewoodFunction` code in place with `Replacement: False`. CloudFormation
+  recalculated only the existing canary/outbox schedule permissions and SES-events
+  subscription references. It contained no DynamoDB, audit, KMS, S3 staging, backup,
+  secret, IAM-role, alarm, API URL or data-resource change.
+- CloudFormation reached `UPDATE_COMPLETE`; termination protection remains enabled and
+  Lambda is `Active` with a successful Node.js 22 update. `/v6/health` reports EOI
+  `rosewood-eoi-2026.16` and Application `rosewood-application-2026.17`.
+- The one-minute outbox and ten-minute canary schedules remain enabled. A manual
+  non-writing production canary returned HTTP 200 with all five checks available and
+  all nine production alarms are `OK`.
+- Both security-topic subscriptions remain confirmed for `info@ffe.org.au` and
+  `frjativa@gmail.com`. The SES configuration set remains enabled for send, delivery,
+  delivery delay, bounce, complaint, reject and rendering-failure events.
+- An authenticated read-only portal verification confirmed that active editable
+  invitations continue to offer **Resend**, expired/missing editable access offers
+  **Renew access**, and submitted applications offer neither. The renewal confirmation
+  states that the existing application, saved answers and revision history are
+  preserved. The final confirmation was not selected, so no family email was sent.
