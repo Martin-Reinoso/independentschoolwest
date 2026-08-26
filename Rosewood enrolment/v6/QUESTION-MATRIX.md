@@ -114,7 +114,7 @@ their original immutable definition.
 
 # Current EOI And Application Question Matrix
 
-`rosewood-eoi-2026.17` and `rosewood-application-2026.18` are the current contracts.
+`rosewood-eoi-2026.18` and `rosewood-application-2026.19` are the current contracts.
 These releases preserve the V6.15 questions and rules; earlier definitions remain
 immutable for submitted records.
 

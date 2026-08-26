@@ -108,9 +108,26 @@ application rather than reconnect the family to the existing record.
 
 ## Application Review And Documents
 
-The dashboard shows names, recipient emails, references, status, progress, timestamps,
-signature counts and recent email-operation summaries. Select **Review** to open the
-authoritative application answers. Each detailed view creates an audit event.
+The **Enrolment planning** section is the operational cohort view. It shows each child's
+name, recorded entry year and entry level, application status, signature progress, last
+activity, staff-review warning and reference. Search by student or reference, or filter
+by entry year, entry level and status. The year summary shows the current number of
+application records for each recorded entry year.
+
+- **Not provided yet** means the family has not saved that entry answer. Do not infer it
+  from the invitation date, application date, EOI for another child or a sibling.
+- **Year not provided** and **Level not provided** filters identify records needing
+  follow-up or still early in the application.
+- The planning screen deliberately omits family email and all health, document and
+  detailed application answers. Use **Review** only when the operational task requires
+  the authoritative record; opening detail is audited.
+- Filters are a live view of DynamoDB summaries and do not alter application records or
+  Google Sheets.
+
+The **Applications** section continues to show names, recipient emails, references,
+status, progress, timestamps, signature counts and recent email-operation summaries.
+Select **Review** to open the authoritative application answers. Each detailed view
+creates an audit event.
 
 - The portal lists document names and categories but does not create sharing or
   download links.

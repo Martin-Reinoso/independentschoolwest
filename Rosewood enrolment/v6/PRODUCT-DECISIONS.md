@@ -117,6 +117,12 @@ for Enrolment backend. It must:
 
 - list EOIs and applications, including the guardian-signature status held by each
   application
+- provide a separate enrolment-planning view showing student name, entry year, entry
+  level, application status, signature progress, last activity, staff-review flag and
+  reference, with search and year/level/status filters
+- keep family email, health information, documents and detailed application answers out
+  of the planning summary; those remain available only through the audited detailed
+  review where authorised
 - show each record's current progress and last successful save
 - search and filter records without exposing them publicly
 - select an EOI and issue an application invitation
@@ -132,6 +138,11 @@ for Enrolment backend. It must:
   creating public or short-lived file-sharing links
 - exclude signature images, raw invitation links and network fingerprints from portal
   responses
+
+Entry year and level remain applicant answers stored on each child application. The
+planning view is read-only and may show **Not provided yet** until the family saves
+those fields. It must not infer an entry year from invitation date, application date or
+another sibling's record.
 
 The first release is allowlisted to `info@ffe.org.au`, uses email OTP and records staff
 actions. Its ordinary session remains in memory; explicit **Remember me** stores only

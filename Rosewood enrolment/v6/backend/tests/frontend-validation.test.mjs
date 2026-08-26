@@ -87,6 +87,15 @@ test("V6.8 exposes the revised responsive application experience without retired
   assert.match(adminSource, /\/v6\/staff\/invitations\/renew-access/);
   assert.match(adminSource, /saved answers and revision history will be preserved/);
   assert.match(adminSource, /if \(!quiet\) clearNotices\("dashboard-error"\)/);
+  assert.match(adminHtml, /id="planning-panel"/);
+  assert.match(adminHtml, /id="planning-year"/);
+  assert.match(adminHtml, /id="planning-level"/);
+  assert.match(adminHtml, /id="planning-status"/);
+  assert.match(adminSource, /record\.entryYear/);
+  assert.match(adminSource, /record\.entryLevel/);
+  assert.match(adminSource, /planningSignatureLabel/);
+  assert.match(adminSource, /Staff review required/);
+  assert.doesNotMatch(adminSource.slice(adminSource.indexOf("function renderPlanning()"), adminSource.indexOf("function renderApplications()")), /recipientEmail/);
 });
 
 test("V6.14 applies the approved family feedback without weakening verification or saved-draft safety", async () => {
@@ -152,8 +161,8 @@ test("guardian signing renders the complete server-provided application review",
   assert.match(source, /formatToParts\(value\)/);
   assert.match(source, /value="\$\{melbourneDate\(\)\}"/);
   assert.doesNotMatch(source, /new Date\(\)\.toISOString\(\)\.slice\(0, 10\)/);
-  assert.match(await readFile(new URL("../../../../pages/rosewood-enrolment-v6.js", import.meta.url), "utf8"), /rosewood-application-2026\.18/);
-  assert.match(await readFile(new URL("../../../../pages/rosewood-enrolment-v6.html", import.meta.url), "utf8"), /rosewood-enrolment-v6\.js\?v=29/);
+  assert.match(await readFile(new URL("../../../../pages/rosewood-enrolment-v6.js", import.meta.url), "utf8"), /rosewood-application-2026\.19/);
+  assert.match(await readFile(new URL("../../../../pages/rosewood-enrolment-v6.html", import.meta.url), "utf8"), /rosewood-enrolment-v6\.js\?v=30/);
   assert.match(html, /rosewood-application-sign-v6\.css\?v=2/);
   assert.match(html, /rosewood-application-sign-v6\.js\?v=5/);
   assert.match(css, /\.application-review-section/);

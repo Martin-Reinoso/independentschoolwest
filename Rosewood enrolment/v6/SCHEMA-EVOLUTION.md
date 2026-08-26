@@ -29,8 +29,8 @@ deliberately creating a new version.
 Current launch contracts:
 
 ```text
-EOI:                      rosewood-eoi-2026.17
-Application:              rosewood-application-2026.18
+EOI:                      rosewood-eoi-2026.18
+Application:              rosewood-application-2026.19
 Application-link request: rosewood-application-link-request-2026.1
 Community enquiry:       rosewood-community-enquiry-2026.1
 ```
@@ -156,6 +156,14 @@ name, timestamps, outcome and retained invitation/application relationship. The
 email-hash index is a duplicate-prevention and recovery index; it must not be used to
 infer or create an EOI relationship. Existing EOI, Application, draft, submission and
 signature records are not migrated or rewritten.
+
+The EOI `2026.18` and Application `2026.19` releases preserve the complete preceding
+question, answer, validation, projection, submission and signature-evidence contracts.
+They repin the staff assets for the read-only enrolment-planning view. The dashboard
+summary now projects existing `entry_year` and `entry_level` answers alongside
+non-sensitive operational status fields; it does not add, rename, transform or infer an
+application answer. Existing records, drafts, submissions and signatures are not
+migrated or rewritten.
 
 Acceptance, Decline and the Enrolment Agreement must receive their own independent
 version series when their backends are built. They must not reuse the Application

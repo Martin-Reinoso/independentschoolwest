@@ -253,12 +253,15 @@
     byId("metric-active").textContent = data.stats.inProgress;
     byId("metric-signatures").textContent = data.stats.pendingSignatures;
     byId("metric-submitted").textContent = data.stats.submitted;
+    byId("nav-planning-count").textContent = data.applications.length;
     byId("nav-app-count").textContent = data.applications.length;
     byId("nav-request-count").textContent = (data.applicationRequests || []).length;
     byId("nav-eoi-count").textContent = data.eois.length;
     byId("nav-email-count").textContent = data.recentEmails.length;
     const canManage = ["admin", "admissions"].includes(data.staff.role);
     byId("open-invite-button").hidden = !canManage;
+    syncPlanningFilters();
+    renderPlanning();
     renderApplications();
     renderApplicationRequests();
     renderEois();
@@ -279,6 +282,101 @@
 
   function invitationSourceLabel(source) {
     return ({ public_application_request: "Public link request", staff_eoi_linked: "EOI-linked invitation", staff_direct: "Direct staff invitation" })[source] || "Direct invitation";
+  }
+
+  function syncPlanningSelect(id, values, allLabel, missingLabel) {
+    const select = byId(id);
+    const current = select.value;
+    const options = [{ value: "all", label: allLabel }, ...values.map(value => ({ value, label: value }))];
+    if ((state.dashboard?.applications || []).some(record => !record[id === "planning-year" ? "entryYear" : "entryLevel"])) {
+      options.push({ value: "missing", label: missingLabel });
+    }
+    clear(select);
+    options.forEach(({ value, label }) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      select.append(option);
+    });
+    select.value = options.some(option => option.value === current) ? current : "all";
+  }
+
+  function syncPlanningFilters() {
+    const applications = state.dashboard?.applications || [];
+    const years = [...new Set(applications.map(record => record.entryYear).filter(Boolean))].sort((left, right) => left.localeCompare(right, "en", { numeric: true }));
+    const levels = [...new Set(applications.map(record => record.entryLevel).filter(Boolean))].sort((left, right) => left.localeCompare(right));
+    syncPlanningSelect("planning-year", years, "All entry years", "Year not provided");
+    syncPlanningSelect("planning-level", levels, "All entry levels", "Level not provided");
+  }
+
+  function planningSignatureLabel(record) {
+    if (["invited", "in_progress"].includes(record.status)) return "Not requested yet";
+    const required = Number(record.requiredSignatures || 0);
+    const completed = Number(record.completedSignatures || 0);
+    if (record.status === "submitted") return "Complete";
+    return required > 0 ? `${completed} of ${required} complete` : "Staff follow-up";
+  }
+
+  function renderPlanningYearSummary(applications) {
+    const summary = byId("planning-year-summary");
+    clear(summary);
+    const counts = applications.reduce((result, record) => {
+      const year = record.entryYear || "missing";
+      result.set(year, (result.get(year) || 0) + 1);
+      return result;
+    }, new Map());
+    [...counts.entries()].sort(([left], [right]) => left === "missing" ? 1 : right === "missing" ? -1 : left.localeCompare(right, "en", { numeric: true })).forEach(([year, count]) => {
+      const button = element("button", "planning-year-chip");
+      button.type = "button";
+      button.setAttribute("aria-label", `${year === "missing" ? "Entry year not provided" : `Entry year ${year}`}: ${count} application${count === 1 ? "" : "s"}`);
+      button.append(element("span", "", year === "missing" ? "Year not provided" : year), element("strong", "", String(count)));
+      button.addEventListener("click", () => {
+        byId("planning-year").value = year;
+        renderPlanning();
+      });
+      summary.append(button);
+    });
+  }
+
+  function renderPlanning() {
+    const allApplications = state.dashboard?.applications || [];
+    const query = byId("planning-search").value.trim().toLowerCase();
+    const year = byId("planning-year").value;
+    const level = byId("planning-level").value;
+    const status = byId("planning-status").value;
+    const matchesValue = (actual, expected) => expected === "all" || (expected === "missing" ? !actual : actual === expected);
+    const records = allApplications
+      .filter(record => {
+        const haystack = [record.studentName, record.reference, record.entryYear, record.entryLevel, statusLabel(record.status)].join(" ").toLowerCase();
+        return (!query || haystack.includes(query)) && matchesValue(record.entryYear, year) && matchesValue(record.entryLevel, level) && (status === "all" || record.status === status);
+      })
+      .sort((left, right) => String(left.entryYear || "9999").localeCompare(String(right.entryYear || "9999"), "en", { numeric: true }) || String(left.entryLevel || "").localeCompare(String(right.entryLevel || "")) || String(left.studentName || "").localeCompare(String(right.studentName || "")));
+
+    const missingPlanning = allApplications.filter(record => !record.entryYear || !record.entryLevel).length;
+    byId("planning-summary").textContent = `Showing ${records.length} of ${allApplications.length} application${allApplications.length === 1 ? "" : "s"}. ${missingPlanning} ${missingPlanning === 1 ? "record is" : "records are"} still awaiting complete entry details.`;
+    renderPlanningYearSummary(allApplications);
+
+    const list = byId("planning-list");
+    clear(list);
+    records.forEach(record => {
+      const card = element("article", "record-card planning-card");
+      const primary = element("div", "record-primary");
+      primary.append(element("strong", "", record.studentName || "Student name not yet provided"), element("small", "", record.reference || "Reference not yet assigned"));
+      if (record.requiresStaffReview) primary.append(element("span", "planning-alert", "Staff review required"));
+      card.append(primary);
+      addRecordCell(card, "Entry year", record.entryYear || "Not provided yet");
+      addRecordCell(card, "Entry level", record.entryLevel || "Not provided yet");
+      addRecordCell(card, "Signatures", planningSignatureLabel(record), `Last activity ${formatDate(record.updatedAt, true)}`);
+      card.append(statusBadge(record.status));
+      const actions = element("div", "record-actions");
+      const review = element("button", "small-button", "Review");
+      review.type = "button";
+      review.addEventListener("click", () => openApplicationDetail(record));
+      actions.append(review);
+      card.append(actions);
+      list.append(card);
+    });
+    byId("planning-empty").hidden = records.length > 0;
   }
 
   function renderApplications() {
@@ -776,6 +874,10 @@
   byId("direct-mode-button").addEventListener("click", () => setInviteMode("direct"));
   byId("eoi-mode-button").addEventListener("click", () => setInviteMode("eoi"));
   byId("application-search").addEventListener("input", renderApplications);
+  byId("planning-search").addEventListener("input", renderPlanning);
+  byId("planning-year").addEventListener("change", renderPlanning);
+  byId("planning-level").addEventListener("change", renderPlanning);
+  byId("planning-status").addEventListener("change", renderPlanning);
   byId("request-search").addEventListener("input", renderApplicationRequests);
   byId("application-status").addEventListener("change", renderApplications);
   byId("eoi-search").addEventListener("input", renderEois);

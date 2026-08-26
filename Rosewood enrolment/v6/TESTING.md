@@ -173,6 +173,14 @@ Mobile viewport: 390 x 844.
 
 ## Backend Checks
 
+- the staff dashboard summary returns each application's existing entry year and entry
+  level without returning date of birth, network fingerprints or other new sensitive
+  fields
+- the staff **Enrolment planning** view shows student, entry year, entry level, status,
+  signature progress, last activity, staff-review flag and reference; it supports
+  search and year/level/status filters, identifies missing entry details and excludes
+  recipient email from the planning renderer
+
 - the complete Node test suite passes for immutable form definitions and stable hashes, approved
   policy source/asset hashes, guardian-email privacy, frontend
   submission guidance and in-browser signature continuity, Google Drive
@@ -1514,3 +1522,19 @@ Prepared on 26 August 2026.
 - No valid Application-link request or community enquiry was submitted during release
   verification, so no invitation, OTP, Application, enquiry or workflow email was
   created.
+
+## V6.19 Enrolment Planning Verification
+
+Prepared locally on 27 August 2026 with synthetic records only.
+
+- All 131 backend and interface tests pass.
+- The deployment build passes its immutable asset-hash and frozen-lockfile checks.
+- Static references, public-data scanning and `git diff --check` pass.
+- Desktop rendering shows the complete student, entry year, entry level, signature,
+  activity, status, reference, staff-review and Review controls without clipping.
+- At 390 x 844, the planning view has no horizontal overflow; entry year, entry level,
+  signature progress, last activity, status and Review remain visible.
+- Synthetic filter checks returned two 2027 records, one Foundation (Prep) record and
+  one record with entry year not provided.
+- No production record, invitation, OTP, email, upload, signature or staff session was
+  created or accessed during verification.
