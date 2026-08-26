@@ -30,7 +30,7 @@ function runAnalytics(pathname = "/pages/rosewood-fee-calculator.html") {
     Date,
     document: {
       title: "Rosewood fee calculator",
-      referrer: "https://example.com/source?private=value#fragment",
+      referrer: "https://example.com/alice@example.com/source?private=value#fragment",
       createElement: () => ({}),
       head: { append: script => appendedScripts.push(script) }
     },
@@ -65,7 +65,8 @@ test("the placeholder is inert until a real GA4 Measurement ID is supplied", () 
 
 test("page-view reporting strips URL queries, fragments and raw referrers", () => {
   assert.match(analytics, /const pageLocation = `\$\{window\.location\.origin\}\$\{window\.location\.pathname\}`/);
-  assert.match(analytics, /const pageReferrer = sanitiseUrl\(document\.referrer\)/);
+  assert.match(analytics, /const pageReferrer = sanitiseReferrer\(document\.referrer\)/);
+  assert.match(analytics, /return url\.origin;/);
   assert.match(analytics, /page_location: pageLocation/);
   assert.match(analytics, /page_path: window\.location\.pathname/);
   assert.match(analytics, /page_referrer: pageReferrer/);
@@ -137,7 +138,7 @@ test("all GA4 events inherit sanitised page context", () => {
   const config = normaliseDataLayer(window.dataLayer).find(entry => entry[0] === "config");
 
   assert.equal(config[2].page_location, "https://ffe.org.au/pages/rosewood-fee-calculator.html");
-  assert.equal(config[2].page_referrer, "https://example.com/source");
+  assert.equal(config[2].page_referrer, "https://example.com");
 });
 
 test("the GA4 release guide requires Enhanced Measurement to stay disabled", () => {

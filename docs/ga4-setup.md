@@ -31,5 +31,6 @@ other unapproved parameters are removed by the shared analytics interface.
 
 After setting the Measurement ID, use GA4 DebugView to confirm that only the
 documented page view and calculator events appear. Confirm that page locations
-and referrers contain no query strings or fragments, and that calculator events
-contain no fee totals, raw form values, names or email addresses.
+contain no query strings or fragments, referrers contain origins only, and
+calculator events contain no fee totals, raw form values, names or email
+addresses.

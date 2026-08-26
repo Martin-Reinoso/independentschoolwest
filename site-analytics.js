@@ -34,17 +34,17 @@
   if (!validMeasurementId.test(measurementId) || placeholderMeasurementId.test(measurementId)) return;
   if (!publicPaths.has(window.location.pathname)) return;
 
-  const sanitiseUrl = value => {
+  const sanitiseReferrer = value => {
     if (!value) return "";
     try {
       const url = new URL(value, window.location.origin);
-      return `${url.origin}${url.pathname}`;
+      return url.origin;
     } catch {
       return "";
     }
   };
   const pageLocation = `${window.location.origin}${window.location.pathname}`;
-  const pageReferrer = sanitiseUrl(document.referrer);
+  const pageReferrer = sanitiseReferrer(document.referrer);
 
   window.dataLayer = window.dataLayer || [];
   window.gtag = function gtag() {

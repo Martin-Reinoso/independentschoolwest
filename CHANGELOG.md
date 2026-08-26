@@ -16,7 +16,7 @@ All notable changes to this project will be documented in this file.
 - `family-evening/index.html` - Enabled the shared analytics loader.
 - `donate.html` - Enabled the shared analytics loader.
 - `pages/info-session.html` - Enabled the shared analytics loader.
-- `pages/rosewood-fee-calculator.html` - Enabled the shared analytics loader, permitted GA4 through the page CSP and marked calculator controls and follow-up links for privacy-safe measurement.
+- `pages/rosewood-fee-calculator.html` - Enabled the shared analytics loader, permitted GA4 through the page CSP, marked calculator controls and follow-up links for privacy-safe measurement, and clarified the visitor-facing analytics disclosure.
 - `pages/rosewood-fee-schedule.html` - Enabled the shared analytics loader and permitted GA4 through the page CSP.
 - `tests/rosewood-fee-calculator.test.cjs` - Added coverage for calculator event semantics, start deduplication and browser wiring.
 - `tests/site-analytics.test.cjs` - Added behavioural coverage for the public analytics interface, categorical option allowlist, sanitised event context and required stream settings.

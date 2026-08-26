@@ -197,5 +197,7 @@ assert.equal((calculatorHtml.match(/data-analytics-option="option_b_10k"/g) || [
 assert.equal((calculatorHtml.match(/data-analytics-option="option_b_20k"/g) || []).length, 1);
 assert.equal((calculatorHtml.match(/data-analytics-action="schedule"/g) || []).length, 2);
 assert.equal((calculatorHtml.match(/data-analytics-action="question"/g) || []).length, 1);
+assert.doesNotMatch(calculatorHtml, /nothing is saved or sent/i);
+assert.match(calculatorHtml, /broad option categories may be measured/i);
 
 console.log("Rosewood fee calculator tests passed.");
