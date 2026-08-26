@@ -82,6 +82,33 @@ h1, h2, h3 { color: var(--navy); font-family: Baskerville, "Iowan Old Style", Ge
 h1 { max-width: 750px; margin: 0; font-size: clamp(3.2rem, 7vw, 5.75rem); line-height: .98; }
 .hero-copy > p:not(.eyebrow) { max-width: 700px; margin: 1.2rem 0 0; color: var(--muted); font-size: 1.05rem; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: .65rem; margin-top: 1.6rem; }
+.document-download {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem .45rem;
+  align-items: baseline;
+  margin: .85rem 0 0 !important;
+  color: var(--muted);
+  font-size: .72rem !important;
+}
+.document-download a {
+  color: var(--navy);
+  font-weight: 800;
+  text-decoration-color: var(--gold);
+  text-decoration-thickness: 2px;
+  text-underline-offset: .2em;
+}
+.document-download a:hover { color: var(--terracotta-dark); }
+.document-download strong {
+  display: inline-flex;
+  margin-left: .2rem;
+  padding: .08rem .28rem;
+  border-radius: 4px;
+  color: var(--terracotta-dark);
+  background: var(--cream);
+  font-size: .58rem;
+  letter-spacing: .04em;
+}
 .button {
   min-height: 48px;
   display: inline-flex;
@@ -214,14 +241,16 @@ tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
 @media print {
   @page { margin: 14mm; }
   body { color: #000; background: white; font-size: 9pt; }
-  .skip-link, .site-header, .hero-actions, .calculator-cta { display: none !important; }
+  .skip-link, .site-header, .hero-actions, .document-download, .calculator-cta, .site-footer { display: none !important; }
   main, .site-footer { width: 100%; }
   .hero { grid-template-columns: 1fr .45fr; padding: 0 0 8mm; }
   h1 { font-size: 32pt; }
   .section { padding: 8mm 0; break-inside: auto; }
-  .fee-equation, .two-column, .choice-comparison, .bond-grid { break-inside: avoid; }
+  .fee-equation, .two-column, .choice-comparison { break-inside: avoid; }
+  .bond-grid { break-inside: auto; }
+  .bond-grid article { break-inside: avoid; }
   .content-card, .choice-comparison article, .bond-grid article { box-shadow: none; }
-  .site-footer { padding-top: 5mm; }
+  .pdf-footer-link { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
