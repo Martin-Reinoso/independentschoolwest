@@ -1489,3 +1489,28 @@ Prepared on 26 August 2026.
   throttles, idempotency and storage behaviour are unchanged.
 - Automated interface and canary tests now treat `/` as the active Discover page and
   verify the former route separately.
+
+### Production release
+
+- Pull request `#30` passed the `static-site` and `enrolment-backend` checks and merged
+  to `main` as `e4936e57dc1187d2064ca280643874ddb3e6a79f`.
+- GitHub Pages deployment `32954905159` completed successfully from that exact merge.
+  The delivered `index.html` SHA-256 is
+  `42313882aaf44008eec5967d8886affc0880066f6265f081e3bf8ee3931e226c`, matching
+  the committed source byte for byte.
+- Reviewed change set `rosewood-homepage-e4936e5-20260826` updated the existing Lambda
+  code in place and recalculated only the existing canary/outbox permissions and
+  schedules plus the SES-events subscription endpoint. It did not modify or replace
+  DynamoDB, audit, KMS, S3 staging, backups, secrets, IAM roles, alarms or the Function
+  URL.
+- CloudFormation reached `UPDATE_COMPLETE`; termination protection remains enabled and
+  the Node.js 22 Lambda is `Active` with `LastUpdateStatus: Successful`.
+- A manual non-writing canary returned HTTP 200 with all five checks available. No
+  CloudWatch alarm was in `ALARM`, and the ten-minute canary and one-minute outbox
+  schedules remain enabled.
+- Live desktop at 1280 px and mobile at 390 px rendered without horizontal overflow or
+  console warnings/errors. Both public forms are present, the mobile navigation is
+  active, and `/discover-rosewood.html` routes to `/`.
+- No valid Application-link request or community enquiry was submitted during release
+  verification, so no invitation, OTP, Application, enquiry or workflow email was
+  created.
