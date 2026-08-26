@@ -1538,3 +1538,27 @@ Prepared locally on 27 August 2026 with synthetic records only.
   one record with entry year not provided.
 - No production record, invitation, OTP, email, upload, signature or staff session was
   created or accessed during verification.
+
+### Production release
+
+- Pull request `#36` passed repository checks and merged to `main` as
+  `b2a773aca562cbd9a27ca307c1d172b365edb2cf`. GitHub Pages deployment
+  `33020920371` completed successfully from that exact merge.
+- The live family client supports Application `rosewood-application-2026.19`; the live
+  staff portal loads staff CSS `v=5` and JavaScript `v=9` and contains the
+  **Enrolment planning** workspace.
+- Reviewed change set `v619-staff-planning-b2a773a` modified the existing Lambda in
+  place and recalculated only the existing canary/outbox permissions and schedules and
+  the SES-events subscription. It did not modify or replace DynamoDB, the audit table,
+  KMS keys, document staging, backups, secrets, IAM roles, alarms or the Function URL.
+- CloudFormation reached `UPDATE_COMPLETE`; the Node.js 22 Lambda is `Active` with
+  `LastUpdateStatus: Successful`. `/v6/health` reports EOI
+  `rosewood-eoi-2026.18` and Application `rosewood-application-2026.19`.
+- The one-minute outbox and ten-minute canary schedules are enabled. A manual
+  non-writing canary returned HTTP 200 with all five checks available, and all nine
+  production alarms are `OK`.
+- Both security-topic email subscriptions remain confirmed. The enabled SES feedback
+  destination still records send, delivery, delay, bounce, complaint, reject and
+  rendering-failure events through the encrypted SNS-to-Lambda path.
+- No production family record was opened and no invitation, OTP, email, upload,
+  signature or workflow write was created during release verification.
