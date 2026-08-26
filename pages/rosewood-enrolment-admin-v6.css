@@ -122,13 +122,27 @@ button:disabled { cursor: not-allowed; opacity: .5; transform: none !important; 
 .search-field input, .select-field select { min-height: 44px; margin: 0; }
 .select-field { width: 165px; }
 .panel-note { max-width: 450px; margin: 0; color: var(--ink-soft); font-size: .8rem; line-height: 1.5; }
+.planning-heading { align-items: flex-start; }
+.planning-heading > div:first-child { max-width: 360px; }
+.planning-filters { flex-wrap: wrap; justify-content: flex-end; }
+.planning-filters .search-field { width: min(260px, 100%); }
+.planning-filters .select-field { width: 150px; }
+.planning-summary { margin: -.2rem 0 .8rem; color: var(--ink-soft); font-size: .82rem; line-height: 1.5; }
+.planning-year-summary { display: flex; gap: .55rem; margin-bottom: 1rem; overflow-x: auto; padding-bottom: .2rem; }
+.planning-year-chip { min-width: 112px; display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .6rem .75rem; color: var(--ink); background: #f4efe6; border: 1px solid var(--line); border-radius: .65rem; cursor: pointer; font-size: .74rem; font-weight: 800; white-space: nowrap; }
+.planning-year-chip:hover { border-color: var(--ink); background: #fff; }
+.planning-year-chip:focus-visible { outline: 3px solid rgba(19, 34, 59, .22); outline-offset: 2px; }
+.planning-year-chip strong { min-width: 1.7rem; padding: .15rem .35rem; color: #fff; background: var(--ink); border-radius: 999px; font-size: .7rem; text-align: center; }
 
 .record-list { display: grid; gap: .7rem; }
 .record-card { display: grid; grid-template-columns: minmax(200px, 1.4fr) minmax(160px, .9fr) minmax(150px, .8fr) minmax(130px, .7fr) auto; align-items: center; gap: 1rem; padding: 1rem 1.1rem; background: #fff; border: 1px solid #e3dbcf; border-radius: .75rem; transition: border-color .18s, box-shadow .18s; }
 .record-card:hover { border-color: #c7bcaa; box-shadow: 0 8px 20px rgba(19, 34, 59, .06); }
+.planning-card { grid-template-columns: minmax(180px, 1.25fr) 90px minmax(155px, .8fr) minmax(170px, .9fr) auto auto; }
+.planning-card .record-cell strong { white-space: normal; }
 .record-primary { min-width: 0; }
 .record-primary strong, .record-cell strong { display: block; overflow: hidden; color: var(--ink); text-overflow: ellipsis; white-space: nowrap; }
 .record-primary small, .record-cell small { display: block; overflow: hidden; margin-top: .22rem; color: var(--ink-soft); font-size: .75rem; text-overflow: ellipsis; white-space: nowrap; }
+.planning-alert { display: inline-flex; margin-top: .38rem; padding: .22rem .4rem; color: #8a5010; background: #f7edcf; border-radius: .4rem; font-size: .66rem; font-weight: 800; }
 .record-cell .cell-label { margin-bottom: .2rem; color: #788295; font-size: .64rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .status-badge { display: inline-flex; align-items: center; width: max-content; gap: .38rem; padding: .36rem .58rem; border-radius: 999px; font-size: .7rem; font-weight: 800; text-transform: capitalize; }
 .status-badge::before { content: ""; width: .42rem; height: .42rem; border-radius: 50%; background: currentColor; }
@@ -224,6 +238,9 @@ dialog::backdrop { background: rgba(10, 20, 35, .62); backdrop-filter: blur(4px)
   .sheet-links { display: none; }
   .record-card { grid-template-columns: 1.2fr .8fr .8fr auto; }
   .record-card .record-cell:nth-child(3) { display: none; }
+  .planning-card { grid-template-columns: 1.2fr .6fr .8fr auto auto; }
+  .planning-card .record-cell:nth-child(3) { display: block; }
+  .planning-card .record-cell:nth-child(4) { display: none; }
   .email-card { grid-template-columns: 1fr 1fr 1fr; }
 }
 
@@ -255,9 +272,18 @@ dialog::backdrop { background: rgba(10, 20, 35, .62); backdrop-filter: blur(4px)
   .panel-heading { align-items: stretch; flex-direction: column; gap: 1rem; }
   .panel-heading h2 { font-size: 1.7rem; }
   .panel-filters { align-items: stretch; flex-direction: column; }
+  .planning-heading > div:first-child { max-width: none; }
+  .planning-filters { width: 100%; }
+  .planning-filters .search-field, .planning-filters .select-field { width: 100%; }
   .search-field, .select-field { width: 100%; }
   .record-card, .email-card { grid-template-columns: 1fr auto; gap: .8rem; }
   .record-card .record-cell { display: none; }
+  .planning-card { grid-template-columns: 1fr 1fr; }
+  .planning-card .record-primary { grid-column: 1 / -1; }
+  .planning-card .record-cell:nth-child(2), .planning-card .record-cell:nth-child(3), .planning-card .record-cell:nth-child(4) { display: block; }
+  .planning-card .record-cell:nth-child(4) { grid-column: 1 / -1; }
+  .planning-card .status-badge { grid-column: 1; }
+  .planning-card .record-actions { grid-column: 2; grid-row: auto; }
   .record-primary small { white-space: normal; }
   .record-actions { grid-column: 2; grid-row: 1; }
   .status-badge { grid-column: 1 / -1; }

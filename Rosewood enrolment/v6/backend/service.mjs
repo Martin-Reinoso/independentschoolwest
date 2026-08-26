@@ -814,6 +814,8 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
         reference: application.reference || "",
         recipientEmail: application.recipientEmail,
         studentName: [application.values?.student_first, application.values?.student_last].filter(Boolean).join(" "),
+        entryYear: application.values?.entry_year || "",
+        entryLevel: application.values?.entry_level || "",
         createdAt: application.createdAt,
         updatedAt: application.updatedAt || application.createdAt,
         submittedAt: application.submittedAt || "",

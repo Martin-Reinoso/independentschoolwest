@@ -152,9 +152,10 @@ request. Google Sheets show the record's actual form version but remain replacea
 reports. `SCHEMA-EVOLUTION.md` defines the mandatory process for adding, removing,
 renaming or changing questions and for migrating existing records.
 
-The current EOI `2026.17` and Application `2026.18` releases preserve their preceding
-question and data contracts while pinning the implemented application-link request and
-staff request-list interfaces. Public promotion of that request interface is paused;
+The current EOI `2026.18` and Application `2026.19` releases preserve their preceding
+question and data contracts while pinning the staff enrolment-planning interface. The
+preceding releases pin the implemented application-link request and staff request-list
+interfaces. Public promotion of that request interface is paused;
 the separate retained backend contract is
 `rosewood-application-link-request-2026.1`; it contains only parent/guardian name and
 email. Application V6.16 fixed the guardian signing page's read-only date to use
@@ -183,7 +184,11 @@ browser storage and its server expiry slides to two hours after each authorised
 activity; sign-out or expiry removes it. No staff dashboard data is persisted there. It displays operational
 summaries, creates direct or EOI-linked invitations, rotates active tokens when
 resending, renews expired or missing access without replacing the application, and
-provides audited application review. It lists document metadata but does not create
+provides audited application review. Its **Enrolment planning** section shows student
+name, entry year, entry level, status, signature progress, last activity, staff-review
+flag and reference, with year, level and status filters. Blank or early applications
+remain visible as awaiting entry details; the planning view does not expose family
+email, health, document or other application answers. It lists document metadata but does not create
 document-sharing links; authorised staff access documents through the restricted
 enrolment Drive. Viewers cannot create invitations.
 The portal does not show raw invitation links, signature drawings or network

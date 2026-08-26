@@ -37,7 +37,7 @@ server-acknowledged application create, start, save and submission also writes a
 append-only DynamoDB revision. Staff can inspect a selected historical revision through
 an authorised, audited endpoint. See `../SCHEMA-EVOLUTION.md` before changing fields,
 options, validation or required status.
-The current EOI `2026.17` and Application `2026.18` contracts pin the family, staff and signing HTML/JavaScript/CSS,
+The current EOI `2026.18` and Application `2026.19` contracts pin the family, staff and signing HTML/JavaScript/CSS,
 policy projection and all original Word/PDF policy assets. Policy viewing is frontend-
 only and does not create an application answer, acknowledgement or audit event.
 EOI `2026.15` preserves its earlier data contract. Application `2026.15` preserves the
