@@ -95,7 +95,7 @@
 
             <label class="student-count-field" for="student-count">
               <span>Children attending at the same time</span>
-              <select id="student-count" name="student-count">
+              <select id="student-count" name="student-count" data-analytics-step="family">
                 <option value="1" selected>1 child</option>
                 <option value="2">2 children</option>
                 <option value="3">3 children</option>
@@ -133,7 +133,7 @@
             <fieldset class="choice-grid">
               <legend class="sr-only">Payment plan</legend>
               <label class="choice-card">
-                <input type="radio" name="payment" value="term" checked>
+                <input type="radio" name="payment" value="term" data-analytics-step="payment" checked>
                 <span class="choice-content">
                   <span class="choice-check" aria-hidden="true"></span>
                   <strong>Pay by term</strong>
@@ -141,7 +141,7 @@
                 </span>
               </label>
               <label class="choice-card">
-                <input type="radio" name="payment" value="annual">
+                <input type="radio" name="payment" value="annual" data-analytics-step="payment">
                 <span class="choice-content">
                   <span class="choice-check" aria-hidden="true"></span>
                   <strong>Pay annually</strong>
@@ -168,7 +168,7 @@
             <fieldset class="choice-grid choice-grid-three">
               <legend class="sr-only">Bond arrangement</legend>
               <label class="choice-card">
-                <input type="radio" name="bond" value="a" checked>
+                <input type="radio" name="bond" value="a" data-analytics-step="bond" checked>
                 <span class="choice-content">
                   <span class="choice-check" aria-hidden="true"></span>
                   <span class="choice-label">Option A</span>
@@ -177,7 +177,7 @@
                 </span>
               </label>
               <label class="choice-card">
-                <input type="radio" name="bond" value="b10">
+                <input type="radio" name="bond" value="b10" data-analytics-step="bond">
                 <span class="choice-content">
                   <span class="choice-check" aria-hidden="true"></span>
                   <span class="choice-label">Option B</span>
@@ -186,7 +186,7 @@
                 </span>
               </label>
               <label class="choice-card" id="bond-b20-card">
-                <input type="radio" name="bond" value="b20" id="bond-b20" aria-describedby="bond-b20-help">
+                <input type="radio" name="bond" value="b20" id="bond-b20" data-analytics-step="bond" aria-describedby="bond-b20-help">
                 <span class="choice-content">
                   <span class="choice-check" aria-hidden="true"></span>
                   <span class="choice-label">Option B</span>
@@ -198,7 +198,7 @@
             <p class="field-help" id="bond-b20-help">The $20,000 option becomes available when two or more children are selected and is the maximum bond amount regardless of family size.</p>
             <label class="bond-paid-field" for="bond-paid">
               <span>How much of this selected bond arrangement has already been paid?</span>
-              <select id="bond-paid" name="bond-paid" aria-describedby="bond-paid-help">
+              <select id="bond-paid" name="bond-paid" data-analytics-step="bond" aria-describedby="bond-paid-help">
                 <option value="0" selected>Nothing yet</option>
                 <option value="200000">The full selected bond</option>
               </select>
@@ -342,7 +342,7 @@
 
           <div class="estimate-disclaimer">
             <strong>This is an estimate, not an invoice or enrolment offer.</strong>
-            <p>Read the <a href="rosewood-fee-schedule.html">complete 2027 fee schedule</a> for fees, inclusions, payment timing and bond refunds. Opening in 2027 is subject to approval by the Victorian Registration and Qualifications Authority.</p>
+            <p>Read the <a href="rosewood-fee-schedule.html" data-analytics-action="schedule">complete 2027 fee schedule</a> for fees, inclusions, payment timing and bond refunds. Opening in 2027 is subject to approval by the Victorian Registration and Qualifications Authority.</p>
           </div>
         </section>
 
@@ -352,13 +352,13 @@
             <h2 id="contact-heading">Talk with the Rosewood team.</h2>
             <p>We can help you understand the fee schedule and bond options for your family.</p>
           </div>
-          <a class="button button-primary" href="mailto:info@ffe.org.au?subject=Rosewood%20College%202027%20fees">Email info@ffe.org.au</a>
+          <a class="button button-primary" href="mailto:info@ffe.org.au?subject=Rosewood%20College%202027%20fees" data-analytics-action="question">Email info@ffe.org.au</a>
         </section>
       </div>
 
       <footer class="calculator-footer">
         <span>Families for Education Ltd is the governing authority for Rosewood College</span>
-        <span><a href="rosewood-fee-schedule.html">2027 Fee Schedule</a> · <a href="../index.html">Return to ffe.org.au</a></span>
+        <span><a href="rosewood-fee-schedule.html" data-analytics-action="schedule">2027 Fee Schedule</a> · <a href="../index.html">Return to ffe.org.au</a></span>
       </footer>
     </main>
   </div>

@@ -153,13 +153,46 @@
     });
   }
 
-  const api = Object.freeze({ CONFIG, allocateEvenly, calculateFamily, calculateStudent, roundRate });
+  function createAnalyticsTracker(analytics) {
+    const steps = new Set(["family", "payment", "bond"]);
+    let started = false;
+
+    function track(eventName, parameters) {
+      if (typeof analytics?.track === "function") analytics.track(eventName, parameters);
+    }
+
+    return Object.freeze({
+      completeStep(step) {
+        if (!steps.has(step)) return;
+        if (!started) {
+          started = true;
+          track("fee_calculator_started");
+        }
+        track("fee_calculator_step_completed", { step });
+        track("fee_estimate_updated");
+      },
+      reset: () => track("fee_calculator_reset"),
+      print: () => track("fee_estimate_printed"),
+      openSchedule: () => track("fee_schedule_opened"),
+      askQuestion: () => track("fee_question_clicked")
+    });
+  }
+
+  const api = Object.freeze({
+    CONFIG,
+    allocateEvenly,
+    calculateFamily,
+    calculateStudent,
+    createAnalyticsTracker,
+    roundRate
+  });
   global.RosewoodFeeCalculator = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 
   function startBrowserCalculator() {
     const form = document.querySelector("#fee-form");
     if (!form) return;
+    const analyticsTracker = createAnalyticsTracker(global.ffeAnalytics);
 
     const currency = new Intl.NumberFormat("en-AU", {
       style: "currency",
@@ -360,14 +393,27 @@
     }
 
     form.addEventListener("submit", (event) => event.preventDefault());
-    form.addEventListener("change", render);
+    form.addEventListener("change", (event) => {
+      render();
+      analyticsTracker.completeStep(event.target.dataset.analyticsStep);
+    });
     elements.reset.addEventListener("click", () => {
       form.reset();
       elements.selectionMessage.textContent = "";
       render();
+      analyticsTracker.reset();
       elements.studentCount.focus();
     });
-    elements.print.addEventListener("click", () => window.print());
+    elements.print.addEventListener("click", () => {
+      analyticsTracker.print();
+      window.print();
+    });
+    document.querySelectorAll('[data-analytics-action="schedule"]').forEach((link) => {
+      link.addEventListener("click", () => analyticsTracker.openSchedule());
+    });
+    document.querySelectorAll('[data-analytics-action="question"]').forEach((link) => {
+      link.addEventListener("click", () => analyticsTracker.askQuestion());
+    });
 
     render();
   }

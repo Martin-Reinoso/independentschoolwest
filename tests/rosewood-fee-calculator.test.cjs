@@ -1,7 +1,36 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const calculator = require("../pages/rosewood-fee-calculator.js");
+
+const trackedAnalyticsEvents = [];
+const analyticsTracker = calculator.createAnalyticsTracker({
+  track(eventName, parameters) {
+    trackedAnalyticsEvents.push([eventName, parameters]);
+  }
+});
+
+analyticsTracker.completeStep("family");
+analyticsTracker.completeStep("payment");
+analyticsTracker.completeStep("not-a-step");
+analyticsTracker.reset();
+analyticsTracker.print();
+analyticsTracker.openSchedule();
+analyticsTracker.askQuestion();
+
+assert.deepEqual(trackedAnalyticsEvents, [
+  ["fee_calculator_started", undefined],
+  ["fee_calculator_step_completed", { step: "family" }],
+  ["fee_estimate_updated", undefined],
+  ["fee_calculator_step_completed", { step: "payment" }],
+  ["fee_estimate_updated", undefined],
+  ["fee_calculator_reset", undefined],
+  ["fee_estimate_printed", undefined],
+  ["fee_schedule_opened", undefined],
+  ["fee_question_clicked", undefined]
+], "Calculator analytics should report intent without selections or calculated values");
 
 const expectedFamilyTotals = {
   a: {
@@ -141,5 +170,20 @@ assert.throws(
   () => calculator.calculateFamily({ children: 0, bond: "a", payment: "term" }),
   /Children must be an integer/
 );
+
+const calculatorSource = fs.readFileSync(path.join(__dirname, "../pages/rosewood-fee-calculator.js"), "utf8");
+const calculatorHtml = fs.readFileSync(path.join(__dirname, "../pages/rosewood-fee-calculator.html"), "utf8");
+
+assert.match(calculatorSource, /createAnalyticsTracker\(global\.ffeAnalytics\)/);
+assert.match(calculatorSource, /analyticsTracker\.completeStep\(event\.target\.dataset\.analyticsStep\)/);
+assert.match(calculatorSource, /analyticsTracker\.reset\(\)/);
+assert.match(calculatorSource, /analyticsTracker\.print\(\)/);
+assert.match(calculatorSource, /\[data-analytics-action="schedule"\]/);
+assert.match(calculatorSource, /\[data-analytics-action="question"\]/);
+assert.equal((calculatorHtml.match(/data-analytics-step="family"/g) || []).length, 1);
+assert.equal((calculatorHtml.match(/data-analytics-step="payment"/g) || []).length, 2);
+assert.equal((calculatorHtml.match(/data-analytics-step="bond"/g) || []).length, 4);
+assert.equal((calculatorHtml.match(/data-analytics-action="schedule"/g) || []).length, 2);
+assert.equal((calculatorHtml.match(/data-analytics-action="question"/g) || []).length, 1);
 
 console.log("Rosewood fee calculator tests passed.");

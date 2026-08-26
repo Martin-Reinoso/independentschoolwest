@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const vm = require("node:vm");
 
 const root = path.resolve(__dirname, "..");
 const analytics = fs.readFileSync(path.join(root, "site-analytics.js"), "utf8");
@@ -20,6 +21,30 @@ const sensitivePages = [
   "pages/rosewood-sign-v2.html",
   "pages/rosewood-receipt-v2.html"
 ];
+
+function runAnalytics(pathname = "/pages/rosewood-fee-calculator.html") {
+  const executableAnalytics = analytics.replace("G-XXXXXXXXXX", "G-TEST12345");
+  const appendedScripts = [];
+  const context = {
+    URL,
+    Date,
+    document: {
+      title: "Rosewood fee calculator",
+      referrer: "https://example.com/source?private=value#fragment",
+      createElement: () => ({}),
+      head: { append: script => appendedScripts.push(script) }
+    },
+    window: {
+      location: { origin: "https://ffe.org.au", pathname }
+    }
+  };
+  vm.runInNewContext(executableAnalytics, context);
+  return { window: context.window, appendedScripts };
+}
+
+function normaliseDataLayer(dataLayer) {
+  return dataLayer.map(entry => JSON.parse(JSON.stringify(Array.from(entry))));
+}
 
 test("GA4 is installed only on the public sitemap pages", () => {
   for (const file of publicPages) {
@@ -56,4 +81,33 @@ test("strict public-page CSPs permit only the GA4 script and collection hosts", 
     assert.match(csp, /connect-src [^;]*https:\/\/www\.google-analytics\.com/);
     assert.match(csp, /connect-src [^;]*https:\/\/\*\.google-analytics\.com/);
   }
+});
+
+test("the public analytics interface accepts only approved calculator events", () => {
+  const { window } = runAnalytics();
+
+  assert.equal(typeof window.ffeAnalytics.track, "function");
+  window.ffeAnalytics.track("fee_calculator_started");
+  window.ffeAnalytics.track("not_an_approved_event", { fee: 6900 });
+
+  const events = normaliseDataLayer(window.dataLayer);
+  assert.deepEqual(events.at(-1), ["event", "fee_calculator_started", {}]);
+  assert.equal(events.some(entry => entry[1] === "not_an_approved_event"), false);
+});
+
+test("calculator analytics strips selections and permits only a safe step label", () => {
+  const { window } = runAnalytics();
+
+  window.ffeAnalytics.track("fee_calculator_step_completed", {
+    step: "payment",
+    children: 3,
+    payment: "annual",
+    bond: "b20",
+    fee: 17240.78
+  });
+  window.ffeAnalytics.track("fee_calculator_step_completed", { step: "private-value" });
+
+  const events = normaliseDataLayer(window.dataLayer);
+  assert.deepEqual(events.at(-1), ["event", "fee_calculator_step_completed", { step: "payment" }]);
+  assert.equal(events.filter(entry => entry[1] === "fee_calculator_step_completed").length, 1);
 });
