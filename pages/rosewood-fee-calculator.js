@@ -153,6 +153,13 @@
     });
   }
 
+  function analyticsOptionForControl(control) {
+    if (control.id !== "student-count") return control.dataset.analyticsOption;
+
+    const children = Number(control.value);
+    return ["one", "two", "three", "four"][children - 1] || "five_plus";
+  }
+
   function createAnalyticsTracker(analytics) {
     const steps = new Set(["family", "payment", "bond"]);
     let started = false;
@@ -162,13 +169,13 @@
     }
 
     return Object.freeze({
-      completeStep(step) {
+      completeStep(step, option) {
         if (!steps.has(step)) return;
         if (!started) {
           started = true;
           track("fee_calculator_started");
         }
-        track("fee_calculator_step_completed", { step });
+        track("fee_calculator_step_completed", option ? { step, option } : { step });
         track("fee_estimate_updated");
       },
       reset: () => track("fee_calculator_reset"),
@@ -181,6 +188,7 @@
   const api = Object.freeze({
     CONFIG,
     allocateEvenly,
+    analyticsOptionForControl,
     calculateFamily,
     calculateStudent,
     createAnalyticsTracker,
@@ -395,7 +403,10 @@
     form.addEventListener("submit", (event) => event.preventDefault());
     form.addEventListener("change", (event) => {
       render();
-      analyticsTracker.completeStep(event.target.dataset.analyticsStep);
+      analyticsTracker.completeStep(
+        event.target.dataset.analyticsStep,
+        analyticsOptionForControl(event.target)
+      );
     });
     elements.reset.addEventListener("click", () => {
       form.reset();

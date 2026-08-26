@@ -43,7 +43,7 @@ function runAnalytics(pathname = "/pages/rosewood-fee-calculator.html") {
 }
 
 function normaliseDataLayer(dataLayer) {
-  return dataLayer.map(entry => JSON.parse(JSON.stringify(Array.from(entry))));
+  return Array.from(dataLayer, entry => JSON.parse(JSON.stringify(Array.from(entry))));
 }
 
 test("GA4 is installed only on the public sitemap pages", () => {
@@ -64,9 +64,11 @@ test("the placeholder is inert until a real GA4 Measurement ID is supplied", () 
 });
 
 test("page-view reporting strips URL queries, fragments and raw referrers", () => {
-  assert.match(analytics, /page_location: `\$\{window\.location\.origin\}\$\{window\.location\.pathname\}`/);
+  assert.match(analytics, /const pageLocation = `\$\{window\.location\.origin\}\$\{window\.location\.pathname\}`/);
+  assert.match(analytics, /const pageReferrer = sanitiseUrl\(document\.referrer\)/);
+  assert.match(analytics, /page_location: pageLocation/);
   assert.match(analytics, /page_path: window\.location\.pathname/);
-  assert.match(analytics, /page_referrer: sanitiseUrl\(document\.referrer\)/);
+  assert.match(analytics, /page_referrer: pageReferrer/);
   assert.doesNotMatch(analytics, /window\.location\.href/);
   assert.match(analytics, /send_page_view: false/);
   assert.match(analytics, /allow_google_signals: false/);
@@ -95,11 +97,12 @@ test("the public analytics interface accepts only approved calculator events", (
   assert.equal(events.some(entry => entry[1] === "not_an_approved_event"), false);
 });
 
-test("calculator analytics strips selections and permits only a safe step label", () => {
+test("calculator analytics strips raw selections and permits only safe categorical labels", () => {
   const { window } = runAnalytics();
 
   window.ffeAnalytics.track("fee_calculator_step_completed", {
     step: "payment",
+    option: "annual",
     children: 3,
     payment: "annual",
     bond: "b20",
@@ -108,6 +111,39 @@ test("calculator analytics strips selections and permits only a safe step label"
   window.ffeAnalytics.track("fee_calculator_step_completed", { step: "private-value" });
 
   const events = normaliseDataLayer(window.dataLayer);
-  assert.deepEqual(events.at(-1), ["event", "fee_calculator_step_completed", { step: "payment" }]);
+  assert.deepEqual(events.at(-1), ["event", "fee_calculator_step_completed", {
+    step: "payment",
+    option: "annual"
+  }]);
   assert.equal(events.filter(entry => entry[1] === "fee_calculator_step_completed").length, 1);
+});
+
+test("calculator option reporting accepts only predefined categorical labels", () => {
+  const { window } = runAnalytics();
+
+  window.ffeAnalytics.track("fee_calculator_step_completed", { step: "family", option: "five_plus" });
+  window.ffeAnalytics.track("fee_calculator_step_completed", { step: "bond", option: "private-value" });
+
+  const events = normaliseDataLayer(window.dataLayer)
+    .filter(entry => entry[1] === "fee_calculator_step_completed");
+  assert.deepEqual(events, [
+    ["event", "fee_calculator_step_completed", { step: "family", option: "five_plus" }],
+    ["event", "fee_calculator_step_completed", { step: "bond" }]
+  ]);
+});
+
+test("all GA4 events inherit sanitised page context", () => {
+  const { window } = runAnalytics();
+  const config = normaliseDataLayer(window.dataLayer).find(entry => entry[0] === "config");
+
+  assert.equal(config[2].page_location, "https://ffe.org.au/pages/rosewood-fee-calculator.html");
+  assert.equal(config[2].page_referrer, "https://example.com/source");
+});
+
+test("the GA4 release guide requires Enhanced Measurement to stay disabled", () => {
+  const guidePath = path.join(root, "docs/ga4-setup.md");
+  assert.equal(fs.existsSync(guidePath), true, "docs/ga4-setup.md must exist");
+  const guide = fs.readFileSync(guidePath, "utf8");
+  assert.match(guide, /Enhanced Measurement[^\n]+disabled/i);
+  assert.match(guide, /outbound[^\n]+URL/i);
 });

@@ -12,8 +12,8 @@ const analyticsTracker = calculator.createAnalyticsTracker({
   }
 });
 
-analyticsTracker.completeStep("family");
-analyticsTracker.completeStep("payment");
+analyticsTracker.completeStep("family", "two");
+analyticsTracker.completeStep("payment", "annual");
 analyticsTracker.completeStep("not-a-step");
 analyticsTracker.reset();
 analyticsTracker.print();
@@ -22,15 +22,22 @@ analyticsTracker.askQuestion();
 
 assert.deepEqual(trackedAnalyticsEvents, [
   ["fee_calculator_started", undefined],
-  ["fee_calculator_step_completed", { step: "family" }],
+  ["fee_calculator_step_completed", { step: "family", option: "two" }],
   ["fee_estimate_updated", undefined],
-  ["fee_calculator_step_completed", { step: "payment" }],
+  ["fee_calculator_step_completed", { step: "payment", option: "annual" }],
   ["fee_estimate_updated", undefined],
   ["fee_calculator_reset", undefined],
   ["fee_estimate_printed", undefined],
   ["fee_schedule_opened", undefined],
   ["fee_question_clicked", undefined]
 ], "Calculator analytics should report intent without selections or calculated values");
+
+assert.equal(calculator.analyticsOptionForControl({ id: "student-count", value: "1", dataset: {} }), "one");
+assert.equal(calculator.analyticsOptionForControl({ id: "student-count", value: "4", dataset: {} }), "four");
+assert.equal(calculator.analyticsOptionForControl({ id: "student-count", value: "5", dataset: {} }), "five_plus");
+assert.equal(calculator.analyticsOptionForControl({ id: "student-count", value: "20", dataset: {} }), "five_plus");
+assert.equal(calculator.analyticsOptionForControl({ id: "payment-annual", dataset: { analyticsOption: "annual" } }), "annual");
+assert.equal(calculator.analyticsOptionForControl({ id: "bond-paid", dataset: {} }), undefined);
 
 const expectedFamilyTotals = {
   a: {
@@ -175,7 +182,7 @@ const calculatorSource = fs.readFileSync(path.join(__dirname, "../pages/rosewood
 const calculatorHtml = fs.readFileSync(path.join(__dirname, "../pages/rosewood-fee-calculator.html"), "utf8");
 
 assert.match(calculatorSource, /createAnalyticsTracker\(global\.ffeAnalytics\)/);
-assert.match(calculatorSource, /analyticsTracker\.completeStep\(event\.target\.dataset\.analyticsStep\)/);
+assert.match(calculatorSource, /analyticsTracker\.completeStep\([\s\S]+event\.target\.dataset\.analyticsStep,[\s\S]+analyticsOptionForControl\(event\.target\)/);
 assert.match(calculatorSource, /analyticsTracker\.reset\(\)/);
 assert.match(calculatorSource, /analyticsTracker\.print\(\)/);
 assert.match(calculatorSource, /\[data-analytics-action="schedule"\]/);
@@ -183,6 +190,11 @@ assert.match(calculatorSource, /\[data-analytics-action="question"\]/);
 assert.equal((calculatorHtml.match(/data-analytics-step="family"/g) || []).length, 1);
 assert.equal((calculatorHtml.match(/data-analytics-step="payment"/g) || []).length, 2);
 assert.equal((calculatorHtml.match(/data-analytics-step="bond"/g) || []).length, 4);
+assert.equal((calculatorHtml.match(/data-analytics-option="term"/g) || []).length, 1);
+assert.equal((calculatorHtml.match(/data-analytics-option="annual"/g) || []).length, 1);
+assert.equal((calculatorHtml.match(/data-analytics-option="option_a"/g) || []).length, 1);
+assert.equal((calculatorHtml.match(/data-analytics-option="option_b_10k"/g) || []).length, 1);
+assert.equal((calculatorHtml.match(/data-analytics-option="option_b_20k"/g) || []).length, 1);
 assert.equal((calculatorHtml.match(/data-analytics-action="schedule"/g) || []).length, 2);
 assert.equal((calculatorHtml.match(/data-analytics-action="question"/g) || []).length, 1);
 
