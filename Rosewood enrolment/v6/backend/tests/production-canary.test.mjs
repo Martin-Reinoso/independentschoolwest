@@ -6,10 +6,10 @@ const SITE = "https://ffe.org.au";
 const API = "https://synthetic.lambda-url.ap-southeast-2.on.aws";
 
 const publicBodies = new Map([
-  ["/", "https://tinyurl.com/FamiliesEdEOI Register Your Child Join Our Community"],
   ["/pages/rosewood-application-link-request-review.html", "Rosewood College Design review rosewood-application-link-request-review.js"],
   ["/pages/rosewood-application-link-request-review.js", "application-link-form preventDefault successEmail"],
-  ["/discover-rosewood.html", "Connect with Rosewood College pages/discover-rosewood-forms.js application-link-form community-contact-form"],
+  ["/", "Connect with Rosewood College pages/discover-rosewood-forms.js application-link-form community-contact-form"],
+  ["/discover-rosewood.html", "url=/ Continue to Rosewood College https://ffe.org.au/"],
   ["/pages/discover-rosewood-forms.js", "/v6/application-link-requests /v6/community-enquiries idempotency-key"],
   ["/pages/rosewood-enrolment-v6.html", "Rosewood College rosewood-enrolment-v6.css rosewood-enrolment-v6.js"],
   ["/pages/rosewood-enrolment-v6.js", "eoi-address-search /v6/eoi/config google_places"],

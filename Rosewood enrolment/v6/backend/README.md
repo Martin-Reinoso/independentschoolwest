@@ -167,7 +167,7 @@ network per hour, with a 500-per-day shared-network ceiling, and 100 Application
 OTP requests per shared network per 30 minutes. Existing per-email, per-invitation,
 cooldown, idempotency and honeypot controls remain stricter and unchanged.
 
-The Discover Rosewood page also uses `POST /v6/community-enquiries`. The endpoint
+The Discover Rosewood home page also uses `POST /v6/community-enquiries`. The endpoint
 validates the versioned four-field community-enquiry contract, applies bot friction,
 idempotency and network/email throttles, and atomically stores the authoritative record,
 restricted audit event and email outbox item in DynamoDB. The outbox sends one

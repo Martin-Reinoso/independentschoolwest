@@ -23,13 +23,14 @@ Decision date: 7 August 2026
 
 ## Public Application-Link Request
 
-- The compact **Request application link** card is active on
-  `discover-rosewood.html`. The current home page continues to use the preceding
-  **Register Your Child** links and is not changed by this release.
+- The compact **Request application link** card is active on the indexed home page,
+  `index.html`. The former `/discover-rosewood.html` URL routes visitors to the home
+  page, and the preceding home page is retained as the no-index
+  `homepage-before-discover-rosewood.html` rollback reference.
 - The proposed interface is retained only as the unlinked, no-index
   `pages/rosewood-application-link-request-review.html` page. It is a simulation with
   `connect-src 'none'`, no `fetch` call, no persistence and no email delivery.
-- The exact launched homepage composition is retained separately at
+- An earlier application-link homepage composition is retained separately at
   `homepage-application-request-review.html`. It is also no-index and
   uses the simulation script, not the production request client.
 - The Discover page submits to the implemented endpoint and immutable request contract.

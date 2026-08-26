@@ -11,7 +11,7 @@ const OUTBOX_STALE_AFTER_MS = 15 * 60_000;
 const PUBLIC_ASSETS = [
   {
     path: "/",
-    markers: ["https://tinyurl.com/FamiliesEdEOI", "Register Your Child", "Join Our Community"]
+    markers: ["Connect with Rosewood College", "pages/discover-rosewood-forms.js", "application-link-form", "community-contact-form"]
   },
   {
     path: "/pages/rosewood-application-link-request-review.html",
@@ -23,7 +23,7 @@ const PUBLIC_ASSETS = [
   },
   {
     path: "/discover-rosewood.html",
-    markers: ["Connect with Rosewood College", "pages/discover-rosewood-forms.js", "application-link-form", "community-contact-form"]
+    markers: ["url=/", "Continue to Rosewood College", "https://ffe.org.au/"]
   },
   {
     path: "/pages/discover-rosewood-forms.js",
