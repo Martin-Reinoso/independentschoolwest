@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 - `site-analytics.js` - Added a centrally configured, public-page-only GA4 loader with an inert Measurement ID placeholder and sanitised page-view URLs.
 - `tests/site-analytics.test.cjs` - Added coverage for analytics scope, privacy controls, placeholder behaviour and CSP requirements.
 - `site-analytics.js` - Added an allowlisted calculator event interface that accepts only approved categorical choices and removes fee amounts and other unapproved parameters before dispatch.
-- `pages/rosewood-fee-calculator.js` - Added deduplicated engagement tracking for calculator starts, categorical choices, estimate updates, reset, print, fee-schedule and fee-question actions.
+- `pages/rosewood-fee-calculator.js` - Added deduplicated engagement tracking for calculator starts, categorical choices, estimate updates, reset, print, fee-schedule and fee-question actions, including activation of an already-selected default option.
 - `docs/ga4-setup.md` - Documented the privacy-critical GA4 stream settings, custom dimensions and release checks.
 
 ### Modified

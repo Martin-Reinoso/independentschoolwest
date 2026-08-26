@@ -182,7 +182,10 @@ const calculatorSource = fs.readFileSync(path.join(__dirname, "../pages/rosewood
 const calculatorHtml = fs.readFileSync(path.join(__dirname, "../pages/rosewood-fee-calculator.html"), "utf8");
 
 assert.match(calculatorSource, /createAnalyticsTracker\(global\.ffeAnalytics\)/);
-assert.match(calculatorSource, /analyticsTracker\.completeStep\([\s\S]+event\.target\.dataset\.analyticsStep,[\s\S]+analyticsOptionForControl\(event\.target\)/);
+assert.match(calculatorSource, /analyticsTracker\.completeStep\([\s\S]+control\.dataset\.analyticsStep,[\s\S]+analyticsOptionForControl\(control\)/);
+assert.match(calculatorSource, /form\.addEventListener\("click"/);
+assert.match(calculatorSource, /input\[type="radio"\]\[data-analytics-step\]/);
+assert.match(calculatorSource, /select\[data-analytics-step\]/);
 assert.match(calculatorSource, /analyticsTracker\.reset\(\)/);
 assert.match(calculatorSource, /analyticsTracker\.print\(\)/);
 assert.match(calculatorSource, /\[data-analytics-action="schedule"\]/);

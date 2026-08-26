@@ -400,13 +400,22 @@
       renderStudents(result);
     }
 
+    function trackControlSelection(control) {
+      analyticsTracker.completeStep(
+        control.dataset.analyticsStep,
+        analyticsOptionForControl(control)
+      );
+    }
+
     form.addEventListener("submit", (event) => event.preventDefault());
     form.addEventListener("change", (event) => {
       render();
-      analyticsTracker.completeStep(
-        event.target.dataset.analyticsStep,
-        analyticsOptionForControl(event.target)
-      );
+      if (event.target.matches('select[data-analytics-step]')) trackControlSelection(event.target);
+    });
+    form.addEventListener("click", (event) => {
+      if (event.target.matches('input[type="radio"][data-analytics-step]')) {
+        trackControlSelection(event.target);
+      }
     });
     elements.reset.addEventListener("click", () => {
       form.reset();
