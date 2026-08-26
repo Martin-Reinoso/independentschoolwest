@@ -45,12 +45,14 @@ test("enrolment, signing, staff, receipt and review pages remain tag-free", () =
   }
 });
 
-test("the loader requires consent and strips query strings from page reporting", () => {
-  assert.match(source, /analyticsState\.choice !== "granted"/);
+test("the loader starts automatically and strips query strings from page reporting", () => {
+  assert.match(source, /analytics_storage: "granted"/);
+  assert.match(source, /loadAnalytics\(\);/);
   assert.match(source, /page_location: `\$\{window\.location\.origin\}\$\{window\.location\.pathname\}`/);
   assert.match(source, /allow_google_signals: false/);
   assert.match(source, /allow_ad_personalization_signals: false/);
-  assert.doesNotMatch(source, /location\.href|document\.forms|FormData|input\.value/);
+  assert.doesNotMatch(source, /localStorage|Analytics choices|Allow analytics|location\.href|document\.forms|FormData|input\.value/);
+  assert.equal(fs.existsSync(path.join(root, "site-analytics.css")), false);
 });
 
 test("the loader defensively blocks sensitive routes", () => {
