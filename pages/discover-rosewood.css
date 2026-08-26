@@ -1897,6 +1897,8 @@ h1, h2, h3, h4 {
 .application-request-success h3 { margin-top: .7rem; }
 .application-request-success p { margin: .55rem 0 !important; color: var(--text-light); }
 .application-request-success strong { color: var(--navy); overflow-wrap: anywhere; }
+.application-request-success .application-request-success-email { margin: .3rem 0 .15rem !important; }
+.application-request-success-email strong { font-size: .9rem; }
 .application-request-success-mark { width: 50px; height: 50px; display: grid; place-items: center; margin: 0 auto; border-radius: 50%; color: #fff; background: #2f7a59; font-size: 1.3rem; }
 .application-request-reset { margin-top: .8rem; border: 1px solid var(--navy); border-radius: 6px; padding: .65rem 1rem; color: var(--navy); background: transparent; font: inherit; font-size: .78rem; font-weight: 700; cursor: pointer; }
 .application-request-reset:hover { color: var(--white); background: var(--navy); }

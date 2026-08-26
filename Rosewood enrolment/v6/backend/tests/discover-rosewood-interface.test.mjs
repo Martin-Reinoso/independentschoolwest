@@ -40,6 +40,11 @@ test("Discover Rosewood provides accessible validation, loading, success and ret
 
   assert.match(page, /role="alert" tabindex="-1" hidden/);
   assert.match(page, /role="status" aria-live="polite"/);
+  assert.match(page, /<h3 id="success-title">Check your email<\/h3>/);
+  assert.match(page, /class="application-request-success-email"><strong id="success-email"><\/strong><\/p>/);
+  assert.match(page, /Your application link will arrive shortly\./);
+  assert.match(page, /Please check your inbox and junk folder\./);
+  assert.doesNotMatch(page, /If <strong id="success-email"><\/strong> can receive an application link/);
   assert.match(page, /aria-describedby="community-name-error"/);
   assert.match(page, /aria-describedby="community-email-error"/);
   assert.match(page, /aria-describedby="community-interest-error"/);
