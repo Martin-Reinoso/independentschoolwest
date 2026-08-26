@@ -15,6 +15,8 @@ St Lawrence evidence.
 
 ```text
 https://ffe.org.au/discover-rosewood.html
+https://ffe.org.au/
+https://ffe.org.au/homepage-before-discover-rosewood.html
 https://ffe.org.au/pages/rosewood-application-link-request-review.html
 https://ffe.org.au/homepage-application-request-review.html
 https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=eoi
@@ -31,10 +33,12 @@ https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=application&policy=
 Add `&review=1` to reveal the internal frame selector. The normal family-facing URLs
 do not show workflow-switching or direct frame navigation.
 
-The application-link card is active only on the no-index Discover Rosewood page. It
+The application-link card is active on the indexed Discover Rosewood home page. It
 collects parent/guardian name and email, then uses the existing duplicate-safe request
-contract to send a private Application invitation. The current home page and its
-**Register Your Child** links are unchanged. The renamed review page remains a
+contract to send a private Application invitation. The former
+`/discover-rosewood.html` route returns visitors to `/`, while the preceding homepage
+is retained at the no-index `homepage-before-discover-rosewood.html` rollback URL.
+The renamed review page remains a
 network-disabled simulation: it saves no information and sends no email. A second no-index review URL preserves the exact
 full-homepage composition in which that card was launched, but loads the same safe
 simulation client rather than the production request client. The home page has been restored to the preceding
@@ -87,8 +91,8 @@ objects expire after one day; S3 is not an authoritative or staff-facing file st
 GuardDuty and long-term S3 document storage are outside the launch scope.
 
 Production availability is checked every 10 minutes without writing applicant data.
-The scheduled AWS canary verifies the restored home-page registration path, the active
-Discover forms, the network-disabled request review, public family, signing and staff assets, backend
+The scheduled AWS canary verifies the indexed Discover home page and its active forms,
+the former Discover route, the network-disabled request review, public family, signing and staff assets, backend
 health and immutable form versions, the EOI Google-address runtime configuration,
 fail-closed protection on the Application/status/staff routes and whether email,
 Sheets or Slack delivery work has remained pending for more than 15 minutes. Five

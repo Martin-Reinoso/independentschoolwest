@@ -1473,3 +1473,19 @@ Released and verified on 26 August 2026.
   DynamoDB transaction, durable email outbox and SES feedback path. SES recorded both
   acceptance and delivery for the `new_enquiry_notification`; the test did not create
   an EOI or Application.
+
+## Discover Rosewood Homepage Promotion
+
+Prepared on 26 August 2026.
+
+- The complete Discover Rosewood experience is now the indexed `index.html` home page.
+  Its canonical, Open Graph and structured-data page URLs point to `https://ffe.org.au/`.
+- The preceding home page is retained at the no-index
+  `homepage-before-discover-rosewood.html` rollback URL.
+- The former `/discover-rosewood.html` URL contains a no-index immediate route and a
+  normal fallback link to `/`, preserving previously shared links without duplicating
+  the indexed page.
+- The Application-link request and community-enquiry contracts, API endpoints,
+  throttles, idempotency and storage behaviour are unchanged.
+- Automated interface and canary tests now treat `/` as the active Discover page and
+  verify the former route separately.

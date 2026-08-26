@@ -8,10 +8,11 @@ const backendDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(backendDirectory, "../../../..");
 const read = relativePath => fs.readFileSync(path.join(repositoryRoot, relativePath), "utf8");
 
-test("Discover Rosewood activates both forms without changing the current homepage registration path", () => {
-  const page = read("discover-rosewood.html");
+test("Discover Rosewood is the indexed homepage and activates both forms", () => {
+  const page = read("index.html");
   const script = read("pages/discover-rosewood-forms.js");
-  const homepage = read("index.html");
+  const previousHomepage = read("homepage-before-discover-rosewood.html");
+  const previousDiscoverRoute = read("discover-rosewood.html");
 
   assert.match(page, /id="application-link-form"/);
   assert.match(page, /Parent\/guardian name/);
@@ -29,12 +30,16 @@ test("Discover Rosewood activates both forms without changing the current homepa
   assert.match(script, /startedAt/);
   assert.match(script, /website/);
   assert.doesNotMatch(script, /localStorage|sessionStorage/);
-  assert.match(homepage, /https:\/\/tinyurl\.com\/FamiliesEdEOI/);
-  assert.doesNotMatch(homepage, /id="application-link-request"|discover-rosewood-forms\.js/);
+  assert.match(page, /<meta name="robots" content="index, follow, max-image-preview:large">/);
+  assert.match(page, /<link rel="canonical" href="https:\/\/ffe\.org\.au\/">/);
+  assert.match(previousHomepage, /https:\/\/tinyurl\.com\/FamiliesEdEOI/);
+  assert.match(previousHomepage, /<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">/);
+  assert.match(previousDiscoverRoute, /http-equiv="refresh" content="0; url=\/"/);
+  assert.match(previousDiscoverRoute, /Continue to Rosewood College/);
 });
 
 test("Discover Rosewood provides accessible validation, loading, success and retry states", () => {
-  const page = read("discover-rosewood.html");
+  const page = read("index.html");
   const script = read("pages/discover-rosewood-forms.js");
   const styles = read("pages/discover-rosewood.css");
 

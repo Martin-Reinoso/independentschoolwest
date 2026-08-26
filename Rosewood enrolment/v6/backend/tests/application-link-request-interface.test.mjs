@@ -10,7 +10,7 @@ const backendDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(backendDirectory, "../../../..");
 const read = relativePath => fs.readFileSync(path.join(repositoryRoot, relativePath), "utf8");
 
-test("the unlinked review page simulates the minimal request without sending data", () => {
+test("the unlinked review simulates the request while the homepage uses the production form", () => {
   const page = read("pages/rosewood-application-link-request-review.html");
   const script = read("pages/rosewood-application-link-request-review.js");
   const homepage = read("index.html");
@@ -26,9 +26,10 @@ test("the unlinked review page simulates the minimal request without sending dat
   assert.doesNotMatch(script, /\/v6\/application-link-requests/);
   assert.doesNotMatch(script, /fetch\s*\(/);
   assert.doesNotMatch(script, /localStorage|sessionStorage/);
-  assert.doesNotMatch(homepage, /id="application-link-request"/);
-  assert.doesNotMatch(homepage, /Request Application Link/);
-  assert.match(homepage, /https:\/\/tinyurl\.com\/FamiliesEdEOI/);
+  assert.match(homepage, /id="application-link-request"/);
+  assert.match(homepage, /Request Application Link/);
+  assert.match(homepage, /pages\/discover-rosewood-forms\.js/);
+  assert.doesNotMatch(homepage, /https:\/\/tinyurl\.com\/FamiliesEdEOI/);
   assert.doesNotMatch(homepage, /tinyurl\.com\/RosewoodCollegeEOI/);
 });
 
