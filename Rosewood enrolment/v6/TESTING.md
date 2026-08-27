@@ -1587,5 +1587,28 @@ Prepared locally on 27 August 2026 with synthetic records only.
 
 ### Production release
 
-Production release evidence is recorded after the reviewed static and CloudFormation
-deployments complete.
+Production release and verification completed on 27 August 2026 without opening or
+changing a production family record.
+
+- Pull request `#37` passed the static-site and enrolment-backend checks and merged as
+  commit `017457ebc5bfdfeea8fa4bf0ffe0e650e832ec8e`.
+- GitHub Pages deployment run `33026859254` completed successfully. The five V6 family
+  and staff assets matched the reviewed release byte-for-byte, and the live staff page
+  exposed the Admissions overview and V6.20 client markers.
+- The reproducible Lambda bundle was packaged to the existing private artifact bucket.
+  Named CloudFormation change set `v620-admissions-overview-017457e` contained only the
+  Lambda code update plus conditional schedule/permission/subscription recalculation;
+  it proposed no retained data, audit, KMS, staging-bucket, backup, secret or IAM-role
+  replacement. Execution updated only the Lambda function and the stack returned to
+  `UPDATE_COMPLETE` with termination protection enabled.
+- The Lambda is `Active` with `LastUpdateStatus: Successful`. `/v6/health` reports EOI
+  `rosewood-eoi-2026.19` and Application `rosewood-application-2026.20`.
+- The one-minute outbox and ten-minute production-canary schedules are enabled. A
+  manual non-writing canary returned HTTP 200 with Public form, backend health, EOI
+  address, Application workflow and operational pipeline all available; all nine
+  production alarms are `OK`.
+- Both security-topic email subscriptions remain confirmed. The enabled encrypted SES
+  feedback path still records send, delivery, delay, bounce, complaint, reject and
+  rendering-failure events through its confirmed Lambda subscription.
+- No production invitation, OTP, email, application, upload, signature or workflow
+  write was created for release verification.
