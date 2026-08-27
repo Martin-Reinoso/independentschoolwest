@@ -1636,5 +1636,26 @@ Prepared locally on 27 August 2026 using synthetic records only.
 
 ### Production release
 
-Production evidence is recorded after reviewed static and CloudFormation deployments
-complete.
+Released and verified in production on 27 August 2026 without opening a family record
+or creating an invitation, OTP, email, application, upload, signature or workflow
+write.
+
+- Pull request `#39` passed both repository checks and merged as
+  `05a0fa639dd44570c23ed69f915cc1c4e7b52a4e`. GitHub Pages run `33037444097`
+  completed successfully, and the five changed browser assets served from
+  `ffe.org.au` matched the committed SHA-256 hashes exactly.
+- Reviewed CloudFormation change set `v621-planning-contact-05a0fa6` modified the
+  existing Lambda code plus conditional EventBridge permission/target and SES
+  subscription recalculation. It proposed no retained data, audit, KMS, staging
+  bucket, backup, secret or IAM-role replacement.
+- The stack returned to `UPDATE_COMPLETE` with termination protection enabled. Lambda
+  `rosewood-enrolment-v6-production-service` is `Active` with
+  `LastUpdateStatus: Successful`; `/v6/health` reports EOI
+  `rosewood-eoi-2026.20` and Application `rosewood-application-2026.21`.
+- The one-minute outbox and ten-minute production-canary schedules are enabled. A
+  manual non-writing canary returned HTTP 200 with Public form, backend health, EOI
+  address, Application workflow and operational pipeline all available; all nine
+  production alarms are `OK`.
+- Both security-topic email subscriptions remain confirmed. The enabled SES feedback
+  destination retains send, delivery, delay, bounce, complaint, reject and
+  rendering-failure events through its confirmed Lambda subscription.
