@@ -95,6 +95,10 @@
     return ({ invited: "Invited", in_progress: "In progress", pending_signatures: "Pending signatures", staff_review_required: "Staff review required", submitted: "Submitted" })[status] || String(status || "Unknown").replaceAll("_", " ");
   }
 
+  function planningStageLabel(stage) {
+    return ({ not_started: "Not started", in_progress: "In progress", awaiting_signatures: "Awaiting signatures", staff_review: "Staff review", complete: "Application complete" })[stage] || String(stage || "Unknown").replaceAll("_", " ");
+  }
+
   function stageLabel(stage) {
     const labels = { gateway: "Access gateway", student: "Student", guardian: "Parent / guardian", emergency: "Emergency contacts", documents: "Documents", conditions: "Conditions", review: "Review", signature: "Primary signature", guardian_signatures: "Guardian signatures", complete: "Complete" };
     return labels[stage] || String(stage || "Access gateway").replaceAll("_", " ");
@@ -253,6 +257,7 @@
     byId("metric-active").textContent = data.stats.inProgress;
     byId("metric-signatures").textContent = data.stats.pendingSignatures;
     byId("metric-submitted").textContent = data.stats.submitted;
+    byId("nav-overview-count").textContent = data.planningSummary?.attention?.total || 0;
     byId("nav-planning-count").textContent = data.applications.length;
     byId("nav-app-count").textContent = data.applications.length;
     byId("nav-request-count").textContent = (data.applicationRequests || []).length;
@@ -260,6 +265,8 @@
     byId("nav-email-count").textContent = data.recentEmails.length;
     const canManage = ["admin", "admissions"].includes(data.staff.role);
     byId("open-invite-button").hidden = !canManage;
+    syncOverviewFilters();
+    renderOverview();
     syncPlanningFilters();
     renderPlanning();
     renderApplications();
@@ -282,6 +289,166 @@
 
   function invitationSourceLabel(source) {
     return ({ public_application_request: "Public link request", staff_eoi_linked: "EOI-linked invitation", staff_direct: "Direct staff invitation" })[source] || "Direct invitation";
+  }
+
+  function syncOverviewSelect(id, values, allLabel, missingLabel) {
+    const select = byId(id);
+    const current = select.value;
+    const options = [{ value: "all", label: allLabel }, ...values.map(value => ({ value, label: value }))];
+    if ((state.dashboard?.applications || []).some(record => !record[id === "overview-year" ? "entryYear" : "entryLevel"])) options.push({ value: "missing", label: missingLabel });
+    clear(select);
+    options.forEach(({ value, label }) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      select.append(option);
+    });
+    select.value = options.some(option => option.value === current) ? current : "all";
+  }
+
+  function syncOverviewFilters() {
+    const applications = state.dashboard?.applications || [];
+    const years = [...new Set(applications.map(record => record.entryYear).filter(Boolean))].sort((left, right) => left.localeCompare(right, "en", { numeric: true }));
+    const levels = [...new Set(applications.map(record => record.entryLevel).filter(Boolean))].sort((left, right) => left.localeCompare(right));
+    syncOverviewSelect("overview-year", years, "All entry years", "Year not provided");
+    syncOverviewSelect("overview-level", levels, "All entry levels", "Level not provided");
+  }
+
+  function filteredOverviewApplications() {
+    const query = byId("overview-search").value.trim().toLowerCase();
+    const year = byId("overview-year").value;
+    const level = byId("overview-level").value;
+    const stage = byId("overview-stage").value;
+    const matchesValue = (actual, expected) => expected === "all" || (expected === "missing" ? !actual : actual === expected);
+    return (state.dashboard?.applications || []).filter(record => {
+      const haystack = [record.studentName, record.reference, record.entryYear, record.entryLevel, planningStageLabel(record.planningStage)].join(" ").toLowerCase();
+      return (!query || haystack.includes(query)) && matchesValue(record.entryYear, year) && matchesValue(record.entryLevel, level) && (stage === "all" || record.planningStage === stage);
+    });
+  }
+
+  function overviewStageDefinitions() {
+    return state.dashboard?.planningSummary?.stages || [
+      { id: "not_started", label: "Not started" },
+      { id: "in_progress", label: "In progress" },
+      { id: "awaiting_signatures", label: "Awaiting signatures" },
+      { id: "staff_review", label: "Staff review" },
+      { id: "complete", label: "Application complete" }
+    ];
+  }
+
+  function renderOverviewStageCards(records) {
+    const container = byId("overview-stage-grid");
+    const selectedStage = byId("overview-stage").value;
+    const counts = records.reduce((result, record) => result.set(record.planningStage, (result.get(record.planningStage) || 0) + 1), new Map());
+    clear(container);
+    overviewStageDefinitions().forEach(stage => {
+      const count = counts.get(stage.id) || 0;
+      const card = element("button", `overview-stage-card overview-stage-${stage.id}`);
+      card.type = "button";
+      card.setAttribute("role", "listitem");
+      card.setAttribute("aria-pressed", String(selectedStage === stage.id));
+      card.setAttribute("aria-label", `${stage.label}: ${count} application${count === 1 ? "" : "s"}. ${selectedStage === stage.id ? "Clear this stage filter" : "Filter to this stage"}.`);
+      card.append(element("span", "", stage.label), element("strong", "", String(count)), element("small", "", count === 1 ? "student application" : "student applications"));
+      card.addEventListener("click", () => {
+        byId("overview-stage").value = selectedStage === stage.id ? "all" : stage.id;
+        renderOverview();
+      });
+      container.append(card);
+    });
+  }
+
+  function renderStageDistribution(records) {
+    const list = byId("stage-distribution-list");
+    const counts = records.reduce((result, record) => result.set(record.planningStage, (result.get(record.planningStage) || 0) + 1), new Map());
+    clear(list);
+    overviewStageDefinitions().forEach(stage => {
+      const count = counts.get(stage.id) || 0;
+      const row = element("div", "distribution-row");
+      row.setAttribute("role", "listitem");
+      const heading = element("div", "distribution-label");
+      heading.append(element("span", "", stage.label), element("strong", "", String(count)));
+      const progress = document.createElement("progress");
+      progress.max = Math.max(records.length, 1);
+      progress.value = count;
+      progress.setAttribute("aria-label", `${stage.label}: ${count} of ${records.length} applications`);
+      row.append(heading, progress);
+      list.append(row);
+    });
+    byId("stage-distribution-total").textContent = `${records.length} application${records.length === 1 ? "" : "s"}`;
+  }
+
+  function renderEntryMix(records) {
+    const list = byId("entry-mix-list");
+    const counts = records.reduce((result, record) => {
+      const key = `${record.entryYear || "missing"}\u0000${record.entryLevel || "missing"}`;
+      result.set(key, (result.get(key) || 0) + 1);
+      return result;
+    }, new Map());
+    const combinations = [...counts.entries()].map(([key, count]) => {
+      const [year, level] = key.split("\u0000");
+      return { year, level, count };
+    }).sort((left, right) => (left.year === "missing" ? 1 : right.year === "missing" ? -1 : left.year.localeCompare(right.year, "en", { numeric: true })) || left.level.localeCompare(right.level));
+    clear(list);
+    combinations.forEach(item => {
+      const row = element("div", "entry-mix-row");
+      row.setAttribute("role", "listitem");
+      const label = item.year === "missing" && item.level === "missing" ? "Entry details not provided" : `${item.year === "missing" ? "Year not provided" : item.year} · ${item.level === "missing" ? "Level not provided" : item.level}`;
+      const heading = element("div", "entry-mix-label");
+      heading.append(element("span", "", label), element("strong", "", String(item.count)));
+      const progress = document.createElement("progress");
+      progress.max = Math.max(records.length, 1);
+      progress.value = item.count;
+      progress.setAttribute("aria-label", `${label}: ${item.count} of ${records.length} applications`);
+      row.append(heading, progress);
+      list.append(row);
+    });
+    if (!combinations.length) list.append(element("p", "overview-empty-copy", "No entry information in this view."));
+    byId("entry-mix-total").textContent = `${records.length} application${records.length === 1 ? "" : "s"}`;
+  }
+
+  function renderAttentionQueue(records) {
+    const attentionRecords = records.filter(record => record.attention?.length).sort((left, right) => {
+      const rank = reason => ({ critical: 0, warning: 1, notice: 2 })[reason.severity] ?? 3;
+      return Math.min(...left.attention.map(rank)) - Math.min(...right.attention.map(rank)) || String(left.updatedAt || "").localeCompare(String(right.updatedAt || ""));
+    });
+    const list = byId("attention-list");
+    clear(list);
+    attentionRecords.forEach(record => {
+      const card = element("article", "attention-card");
+      const primary = element("div", "attention-primary");
+      primary.append(element("strong", "", record.studentName || "Student name not yet provided"), element("small", "", record.reference || "Reference not yet assigned"));
+      const reasons = element("div", "attention-reasons");
+      record.attention.forEach(reason => {
+        const badge = element("span", `attention-reason attention-${reason.severity}`, reason.label);
+        badge.title = reason.detail;
+        reasons.append(badge);
+      });
+      primary.append(reasons);
+      card.append(primary);
+      addRecordCell(card, "Entry", [record.entryLevel, record.entryYear].filter(Boolean).join(" · ") || "Not provided yet");
+      addRecordCell(card, "Last activity", formatDate(record.updatedAt, true));
+      card.append(element("span", `overview-stage-badge overview-stage-${record.planningStage}`, planningStageLabel(record.planningStage)));
+      const actions = element("div", "record-actions");
+      const review = element("button", "small-button", "Review");
+      review.type = "button";
+      review.addEventListener("click", () => openApplicationDetail(record));
+      actions.append(review);
+      card.append(actions);
+      list.append(card);
+    });
+    byId("attention-count").textContent = String(attentionRecords.length);
+    byId("attention-empty").hidden = attentionRecords.length > 0;
+  }
+
+  function renderOverview() {
+    const records = filteredOverviewApplications();
+    const total = state.dashboard?.applications?.length || 0;
+    const attentionCount = records.filter(record => record.attention?.length).length;
+    byId("overview-summary").textContent = `Showing ${records.length} of ${total} student application${total === 1 ? "" : "s"}. ${attentionCount} in this view ${attentionCount === 1 ? "needs" : "need"} staff attention.`;
+    renderOverviewStageCards(records);
+    renderStageDistribution(records);
+    renderEntryMix(records);
+    renderAttentionQueue(records);
   }
 
   function syncPlanningSelect(id, values, allLabel, missingLabel) {
@@ -397,8 +564,9 @@
       const progress = document.createElement("progress");
       progress.className = "progress-line";
       progress.max = 100;
-      progress.value = record.percentComplete;
-      progress.setAttribute("aria-label", `${record.percentComplete}% complete`);
+      const percentComplete = Number.isFinite(Number(record.percentComplete)) ? Math.max(0, Math.min(100, Number(record.percentComplete))) : 0;
+      progress.value = percentComplete;
+      progress.setAttribute("aria-label", `${percentComplete}% complete`);
       card.lastElementChild.append(progress);
       addRecordCell(card, "Last activity", formatDate(record.updatedAt, true), record.reference || record.applicationId);
       card.append(statusBadge(record.status));
@@ -873,6 +1041,10 @@
   byId("open-invite-button").addEventListener("click", () => openInvite("direct"));
   byId("direct-mode-button").addEventListener("click", () => setInviteMode("direct"));
   byId("eoi-mode-button").addEventListener("click", () => setInviteMode("eoi"));
+  byId("overview-search").addEventListener("input", renderOverview);
+  byId("overview-year").addEventListener("change", renderOverview);
+  byId("overview-level").addEventListener("change", renderOverview);
+  byId("overview-stage").addEventListener("change", renderOverview);
   byId("application-search").addEventListener("input", renderApplications);
   byId("planning-search").addEventListener("input", renderPlanning);
   byId("planning-year").addEventListener("change", renderPlanning);

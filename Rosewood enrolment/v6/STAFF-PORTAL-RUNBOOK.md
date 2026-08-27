@@ -108,6 +108,29 @@ application rather than reconnect the family to the existing record.
 
 ## Application Review And Documents
 
+The portal opens on **Admissions overview**. The five cards are application-progress
+stages, not admission decisions:
+
+- **Not started**: the private application exists but no application section has been
+  started
+- **In progress**: the family has saved application work
+- **Awaiting signatures**: the primary submission is complete but one or more required
+  permitted signatures remain
+- **Staff review**: the stored workflow requires authorised staff follow-up
+- **Application complete**: every required application signature is recorded; this
+  does not mean a place has been offered or the student is enrolled
+
+Counts refer to child applications. One verified family may therefore contribute more
+than one application. Use the year, level, stage and student/reference filters to
+narrow the cards, distributions, entry mix and attention queue together.
+
+The **Needs attention** queue currently identifies failed/delayed workflow email,
+expired or missing application access, an in-progress draft with no saved activity for
+seven days, a signature outstanding for three days, staff-review status and incomplete
+entry details. These are derived prompts. They do not send a message, change a status,
+reopen an application or make an admissions decision. Select **Review** only when
+follow-up requires the authoritative detail; opening detail is audited.
+
 The **Enrolment planning** section is the operational cohort view. It shows each child's
 name, recorded entry year and entry level, application status, signature progress, last
 activity, staff-review warning and reference. Search by student or reference, or filter

@@ -9,7 +9,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src https://6zyzo44sdb5zmmx53toktqrnuu0sikyd.lambda-url.ap-southeast-2.on.aws; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'">
   <title>Enrolment Operations | Rosewood College</title>
   <link rel="icon" href="../img/favicon.ico" type="image/x-icon">
-  <link rel="stylesheet" href="rosewood-enrolment-admin-v6.css?v=5">
+  <link rel="stylesheet" href="rosewood-enrolment-admin-v6.css?v=6">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to operations</a>
@@ -95,7 +95,8 @@
 
         <div class="workspace">
           <aside class="workspace-nav" aria-label="Portal sections">
-            <button class="nav-button active" data-panel="planning" type="button"><span>Enrolment planning</span><strong id="nav-planning-count">0</strong></button>
+            <button class="nav-button active" data-panel="overview" type="button"><span>Admissions overview</span><strong id="nav-overview-count">0</strong></button>
+            <button class="nav-button" data-panel="planning" type="button"><span>Enrolment planning</span><strong id="nav-planning-count">0</strong></button>
             <button class="nav-button" data-panel="applications" type="button"><span>Applications</span><strong id="nav-app-count">0</strong></button>
             <button class="nav-button" data-panel="requests" type="button"><span>Link requests</span><strong id="nav-request-count">0</strong></button>
             <button class="nav-button" data-panel="eois" type="button"><span>Expressions of interest</span><strong id="nav-eoi-count">0</strong></button>
@@ -106,7 +107,36 @@
             </div>
           </aside>
 
-          <section class="workspace-panel" id="planning-panel" data-workspace-panel>
+          <section class="workspace-panel overview-panel" id="overview-panel" data-workspace-panel>
+            <div class="panel-heading overview-heading">
+              <div><p class="eyebrow">Student application stages</p><h2>Admissions overview</h2><p class="panel-note">See the current application pipeline and records that may need staff attention. Counts refer to student applications, not families or enrolment decisions.</p></div>
+              <div class="panel-filters overview-filters">
+                <label class="search-field"><span>Search admissions overview</span><input id="overview-search" type="search" placeholder="Student or reference"></label>
+                <label class="select-field"><span>Entry year</span><select id="overview-year"><option value="all">All entry years</option></select></label>
+                <label class="select-field"><span>Entry level</span><select id="overview-level"><option value="all">All entry levels</option></select></label>
+                <label class="select-field"><span>Application stage</span><select id="overview-stage"><option value="all">All stages</option><option value="not_started">Not started</option><option value="in_progress">In progress</option><option value="awaiting_signatures">Awaiting signatures</option><option value="staff_review">Staff review</option><option value="complete">Application complete</option></select></label>
+              </div>
+            </div>
+            <p class="overview-summary" id="overview-summary" aria-live="polite"></p>
+            <div class="overview-stage-grid" id="overview-stage-grid" role="list" aria-label="Applications by stage"></div>
+            <div class="overview-insights">
+              <section class="overview-insight" aria-labelledby="stage-distribution-title">
+                <div class="insight-heading"><div><p class="eyebrow">Pipeline</p><h3 id="stage-distribution-title">Stage distribution</h3></div><span id="stage-distribution-total">0 applications</span></div>
+                <div class="distribution-list" id="stage-distribution-list" role="list"></div>
+              </section>
+              <section class="overview-insight" aria-labelledby="entry-mix-title">
+                <div class="insight-heading"><div><p class="eyebrow">Cohorts</p><h3 id="entry-mix-title">Entry mix</h3></div><span id="entry-mix-total">0 applications</span></div>
+                <div class="entry-mix-list" id="entry-mix-list" role="list"></div>
+              </section>
+            </div>
+            <section class="attention-section" aria-labelledby="attention-title">
+              <div class="attention-heading"><div><p class="eyebrow">Follow-up</p><h3 id="attention-title">Needs attention</h3><p>Operational flags only. They do not change the application or make an admissions decision.</p></div><strong id="attention-count" aria-label="Applications needing attention">0</strong></div>
+              <div class="attention-list" id="attention-list" aria-live="polite"></div>
+              <div class="empty-state attention-empty" id="attention-empty" hidden><strong>No follow-up identified</strong><p>No records in the current view meet the staff-attention rules.</p></div>
+            </section>
+          </section>
+
+          <section class="workspace-panel" id="planning-panel" data-workspace-panel hidden>
             <div class="panel-heading planning-heading">
               <div><p class="eyebrow">Cohort visibility</p><h2>Enrolment planning</h2><p class="panel-note">Plan future cohorts using each child’s recorded year and year level of entry.</p></div>
               <div class="panel-filters planning-filters">
@@ -202,6 +232,6 @@
     <div class="detail-content" id="detail-content" hidden></div>
   </dialog>
 
-  <script src="rosewood-enrolment-admin-v6.js?v=9"></script>
+  <script src="rosewood-enrolment-admin-v6.js?v=10"></script>
 </body>
 </html>

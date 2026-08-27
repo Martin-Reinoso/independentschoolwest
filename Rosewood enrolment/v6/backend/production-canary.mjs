@@ -51,11 +51,11 @@ const PUBLIC_ASSETS = [
   },
   {
     path: "/pages/rosewood-enrolment-admin-v6.html",
-    markers: ["Rosewood College", "rosewood-enrolment-admin-v6.js"]
+    markers: ["Rosewood College", "Admissions overview", "rosewood-enrolment-admin-v6.js"]
   },
   {
     path: "/pages/rosewood-enrolment-admin-v6.js",
-    markers: ["staff/access/request-code", "staff/dashboard", "staff/invitations/renew-access"]
+    markers: ["staff/access/request-code", "staff/dashboard", "planningSummary", "renderAttentionQueue", "staff/invitations/renew-access"]
   }
 ];
 

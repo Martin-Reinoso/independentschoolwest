@@ -753,6 +753,33 @@ The dashboard reads authoritative DynamoDB entities and returns:
 The dashboard does not return medical answers, full application answers, documents,
 signature images, network fingerprints or raw invitation links.
 
+### Admissions Overview Projection
+
+The staff landing view is calculated when `GET /v6/staff/dashboard` reads the
+authoritative records:
+
+```mermaid
+flowchart LR
+    Apps["Application records"] --> Summary["Calculate five application stages"]
+    Invitations["Invitation access metadata"] --> Attention["Calculate staff-attention reasons"]
+    SES["Encrypted SES feedback events"] --> Attention
+    Apps --> Attention
+    Summary --> Portal["Read-only Admissions overview"]
+    Attention --> Portal
+    Portal --> Review["Optional audited Review action"]
+```
+
+The five stages are Not started, In progress, Awaiting signatures, Staff review and
+Application complete. They describe child-application progress, not an offer or
+enrolment decision. Counts therefore use application records rather than families.
+
+The attention queue derives failed/delayed workflow email, unavailable invitation
+access, seven-day draft inactivity, three-day outstanding signatures, staff-review
+status and missing entry details. Calculating, filtering or viewing the queue performs
+no write and sends no message. The aggregate projection omits recipient email, date of
+birth, health/document answers, raw SES identifiers, signature images, invitation
+tokens and network metadata. Google Sheets are not read to create this view.
+
 ### Detailed Review
 
 An authorised staff member can request one application detail view. The backend returns

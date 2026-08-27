@@ -54,7 +54,10 @@ the validated enquirer address as Reply-To. It does not create an EOI, invitatio
 Application and is not projected to the enrolment Google Sheets.
 
 The last URL is the no-index staff operations portal. Access is restricted by an
-allowlisted email OTP and currently covers EOI and Application for Enrolment only.
+allowlisted email OTP and currently covers EOI and Application for Enrolment only. Its
+default **Admissions overview** groups student applications into Not started, In
+progress, Awaiting signatures, Staff review and Application complete, and provides a
+read-only attention queue for operational follow-up.
 
 ## Scope
 
@@ -191,6 +194,12 @@ remain visible as awaiting entry details; the planning view does not expose fami
 email, health, document or other application answers. It lists document metadata but does not create
 document-sharing links; authorised staff access documents through the restricted
 enrolment Drive. Viewers cannot create invitations.
+The default **Admissions overview** counts child applications rather than families and
+uses five application-progress stages; Application complete is not an offer or
+enrolment decision. Its read-only attention queue derives unavailable access,
+failed/delayed workflow email, seven-day draft inactivity, three-day outstanding
+signatures, staff review and missing entry details from authoritative operational
+metadata. It stores no new family answer and performs no write action.
 The portal does not show raw invitation links, signature drawings or network
 fingerprints and does not link staff directly into editable Sheets. It does show
 restricted signer controls, current and previous application email history, request
@@ -244,4 +253,5 @@ live/preview boundaries. See these records together with
 `V6.11-CHANGE-MAP.md`, `V6.12-CHANGE-MAP.md`, `V6.13-CHANGE-MAP.md` and
 `V6.14-CHANGE-MAP.md`, `V6.15-CHANGE-MAP.md` and `V6.16-CHANGE-MAP.md` record the current interface,
 immunisation-guidance, upload-recovery, family-feedback and family-question clarity
-releases.
+releases. `V6.19-CHANGE-MAP.md` records enrolment planning and
+`V6.20-CHANGE-MAP.md` records the Phase 1 Admissions overview.

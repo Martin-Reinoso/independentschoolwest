@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { currentFormDefinition, getFormDefinition } from "../form-definitions.mjs";
-import { createApplicationInvitation, createService, renewApplicationInvitationAccess, resendApplicationInvitation } from "../service.mjs";
+import { createApplicationInvitation, createService, renewApplicationInvitationAccess, resendApplicationInvitation, staffApplicationAttention, staffPlanningSummary } from "../service.mjs";
 
 const clock = () => Date.parse("2026-08-05T12:00:00.000Z");
 
@@ -179,9 +179,72 @@ test("staff dashboard exposes operational summaries but not sensitive columns", 
   assert.equal(dashboard.applications[0].percentComplete, 22);
   assert.equal(dashboard.applications[0].entryYear, "2027");
   assert.equal(dashboard.applications[0].entryLevel, "Foundation (Prep)");
+  assert.equal(dashboard.applications[0].planningStage, "in_progress");
+  assert.equal(dashboard.planningSummary.unit, "student_application");
+  assert.deepEqual(dashboard.planningSummary.stages.map(stage => [stage.id, stage.count]), [["not_started", 0], ["in_progress", 1], ["awaiting_signatures", 0], ["staff_review", 0], ["complete", 0]]);
+  assert.equal("recipientEmail" in dashboard.planningSummary, false);
+  assert.doesNotMatch(JSON.stringify(dashboard.planningSummary), /family@example\.com|2020-01-01/);
   assert.equal("dateOfBirth" in dashboard.eois[0], false);
   assert.doesNotMatch(response.body, /2020-01-01/);
   assert.doesNotMatch(response.body, /restricted-email-hash|restricted-network-fingerprint/);
+});
+
+test("staff planning summary uses application stages and privacy-conscious cohort counts", () => {
+  const applications = [
+    { applicationId: "app-1", studentName: "Avery Example", reference: "APP-1", status: "invited", planningStage: "not_started", entryYear: "", entryLevel: "", updatedAt: "2026-08-05T10:00:00.000Z", attention: [] },
+    { applicationId: "app-2", studentName: "Jordan Example", reference: "APP-2", status: "in_progress", planningStage: "in_progress", entryYear: "2027", entryLevel: "Foundation (Prep)", updatedAt: "2026-08-04T10:00:00.000Z", attention: [] },
+    { applicationId: "app-3", studentName: "Morgan Example", reference: "APP-3", status: "pending_signatures", planningStage: "awaiting_signatures", entryYear: "2027", entryLevel: "Foundation (Prep)", updatedAt: "2026-08-03T10:00:00.000Z", attention: [{ id: "signature_outstanding", severity: "warning", label: "Signature still outstanding", detail: "3 days since submission." }] },
+    { applicationId: "app-4", studentName: "Casey Example", reference: "APP-4", status: "staff_review_required", planningStage: "staff_review", entryYear: "2028", entryLevel: "Year 1", updatedAt: "2026-08-02T10:00:00.000Z", attention: [{ id: "staff_review_required", severity: "critical", label: "Staff review required", detail: "Staff follow-up." }] },
+    { applicationId: "app-5", studentName: "Riley Example", reference: "APP-5", status: "submitted", planningStage: "complete", entryYear: "2027", entryLevel: "Year 1", updatedAt: "2026-08-01T10:00:00.000Z", attention: [] }
+  ];
+  const summary = staffPlanningSummary(applications, "2026-08-05T12:00:00.000Z");
+  assert.equal(summary.totalApplications, 5);
+  assert.deepEqual(summary.stages.map(stage => [stage.id, stage.count]), [["not_started", 1], ["in_progress", 1], ["awaiting_signatures", 1], ["staff_review", 1], ["complete", 1]]);
+  assert.deepEqual(summary.entryMix, [
+    { entryYear: "2027", entryLevel: "Foundation (Prep)", count: 2 },
+    { entryYear: "2027", entryLevel: "Year 1", count: 1 },
+    { entryYear: "2028", entryLevel: "Year 1", count: 1 },
+    { entryYear: "", entryLevel: "", count: 1 }
+  ]);
+  assert.equal(summary.attention.total, 2);
+  assert.equal(summary.attention.items[0].applicationId, "app-4");
+  assert.equal("recipientEmail" in summary.attention.items[0], false);
+});
+
+test("staff attention flags actionable access, activity, signature, delivery and review conditions", () => {
+  const inactive = staffApplicationAttention({ status: "in_progress", updatedAt: "2026-07-20T12:00:00.000Z", values: { entry_year: "2027", entry_level: "Year 1" } }, { invitationAccessStatus: "expired", invitationDeliveryStatus: "bounced", now: clock() });
+  assert.deepEqual(inactive.map(reason => reason.id), ["email_delivery_failed", "application_access_unavailable", "application_inactive"]);
+
+  const pending = staffApplicationAttention({ status: "pending_signatures", submittedAt: "2026-08-01T12:00:00.000Z", values: { entry_year: "2027" }, signerControls: [{ contactPermission: true, signatureRequired: true, signatureStatus: "pending", deliveryStatus: "delayed" }] }, { now: clock() });
+  assert.deepEqual(pending.map(reason => reason.id), ["email_delivery_delayed", "signature_outstanding", "entry_details_missing"]);
+
+  const review = staffApplicationAttention({ status: "staff_review_required", requiresStaffReview: true, updatedAt: "2026-08-05T10:00:00.000Z", values: { entry_year: "2027", entry_level: "Foundation (Prep)" } }, { now: clock() });
+  assert.deepEqual(review.map(reason => reason.id), ["staff_review_required"]);
+
+  const complete = staffApplicationAttention({ status: "submitted", updatedAt: "2026-08-05T10:00:00.000Z", values: { entry_year: "2027", entry_level: "Foundation (Prep)" } }, { now: clock() });
+  assert.deepEqual(complete, []);
+
+  const completeWithHistoricalBounce = staffApplicationAttention({ status: "submitted", updatedAt: "2026-08-05T10:00:00.000Z", values: { entry_year: "2027", entry_level: "Foundation (Prep)" }, signerControls: [{ contactPermission: true, signatureRequired: true, signatureStatus: "complete", deliveryStatus: "bounced" }] }, { invitationDeliveryStatus: "bounced", now: clock() });
+  assert.deepEqual(completeWithHistoricalBounce, []);
+
+  const suppressedWithHistoricalBounce = staffApplicationAttention({ status: "staff_review_required", requiresStaffReview: true, updatedAt: "2026-08-05T10:00:00.000Z", values: { entry_year: "2027", entry_level: "Foundation (Prep)" }, signerControls: [{ contactPermission: false, signatureRequired: true, signatureStatus: "pending", deliveryStatus: "bounced" }] }, { now: clock() });
+  assert.deepEqual(suppressedWithHistoricalBounce.map(reason => reason.id), ["staff_review_required"]);
+});
+
+test("staff dashboard correlates the latest invitation feedback without exposing delivery identifiers", async () => {
+  const store = new StaffStore();
+  store.records = [
+    { entity: "application", data: { id: "app-delivery", invitationId: "invite-delivery", status: "invited", recipientEmail: "private@example.test", values: {}, createdAt: "2026-08-01T10:00:00.000Z", updatedAt: "2026-08-01T10:00:00.000Z" } },
+    { entity: "invitation_index", data: { id: "invite-delivery", applicationId: "app-delivery", status: "active", expiresAt: clock() + 86400_000, lastSentAt: "2026-08-05T10:00:00.000Z" } },
+    { entity: "ses_event", data: { eventId: "restricted-event", messageId: "restricted-message", messageType: "invitation", recordId: "app-delivery", occurredAt: "2026-08-05T10:01:00.000Z", deliveryStatus: "delivered" } },
+    { entity: "ses_event", data: { eventId: "restricted-event-latest", messageId: "restricted-message-latest", messageType: "invitation", recordId: "app-delivery", occurredAt: "2026-08-05T10:02:00.000Z", deliveryStatus: "bounced" } }
+  ];
+  const { service } = staffService({ store });
+  const sessionToken = await staffSession(service);
+  const dashboard = JSON.parse((await service(event("/v6/staff/dashboard", "GET", null, sessionToken))).body);
+  assert.equal(dashboard.applications[0].invitationDeliveryStatus, "bounced");
+  assert.equal(dashboard.applications[0].attention[0].id, "email_delivery_failed");
+  assert.doesNotMatch(JSON.stringify(dashboard.planningSummary), /private@example\.test|restricted-event|restricted-message/);
 });
 
 test("viewer staff can see summaries but cannot create invitations", async () => {
@@ -412,7 +475,7 @@ test("an active V14 draft adopts the current contract without transforming its f
   await service(event("/v6/application/access/verify-code", "POST", { invitationToken, challengeId: requested.challengeId, code: "123456" }));
   const upgraded = store.applications.get(created.applicationId);
 
-  assert.equal(upgraded.formVersion, "rosewood-application-2026.19");
+  assert.equal(upgraded.formVersion, "rosewood-application-2026.20");
   assert.deepEqual(upgraded.values, values);
   assert.deepEqual(store.audit.find(eventRecord => eventRecord.type === "application.form_definition_upgraded").details.normalizedFields, []);
 });

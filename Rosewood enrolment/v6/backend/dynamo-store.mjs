@@ -626,7 +626,7 @@ export class DynamoStore {
   }
 
   async listOperationalRecords() {
-    return this.scanEntities(["eoi", "application", "application_request", "invitation_index", "outbox_receipt"]);
+    return this.scanEntities(["eoi", "application", "application_request", "invitation_index", "outbox_receipt", "ses_event"]);
   }
 
   async findInvitationByRecipientEmail(recipientEmail) {
