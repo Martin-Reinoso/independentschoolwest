@@ -132,17 +132,24 @@ reopen an application or make an admissions decision. Select **Review** only whe
 follow-up requires the authoritative detail; opening detail is audited.
 
 The **Enrolment planning** section is the operational cohort view. It shows each child's
-name, recorded entry year and entry level, application status, signature progress, last
-activity, staff-review warning and reference. Search by student or reference, or filter
-by entry year, entry level and status. The year summary shows the current number of
-application records for each recorded entry year.
+name, primary parent/guardian name, invitation email, recorded entry year and entry
+level, application status, signature progress, last activity, staff-review warning and
+reference. Search by student, parent/guardian, email or reference, or filter by entry
+year, entry level and status. The year summary shows the current number of application
+records for each recorded entry year.
+
+- Before a family enters child details, the parent/guardian name is the row title and
+  **Parent/guardian · child details not started** explains why no student name appears.
+- The displayed email is the current invitation/Application contact address. It is for
+  authorised operational identification and must not be copied into general reports.
 
 - **Not provided yet** means the family has not saved that entry answer. Do not infer it
   from the invitation date, application date, EOI for another child or a sibling.
 - **Year not provided** and **Level not provided** filters identify records needing
   follow-up or still early in the application.
-- The planning screen deliberately omits family email and all health, document and
-  detailed application answers. Use **Review** only when the operational task requires
+- The planning screen deliberately omits all health, document and detailed application
+  answers. The aggregate Admissions overview and attention summary continue to omit
+  contact details. Use **Review** only when the operational task requires
   the authoritative record; opening detail is audited.
 - Filters are a live view of DynamoDB summaries and do not alter application records or
   Google Sheets.

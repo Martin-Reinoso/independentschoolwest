@@ -921,6 +921,10 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
       const requestRecord = applicationRequestByApplication.get(application.id);
       const invitationFeedback = invitationFeedbackByRecord.get(requestRecord?.id || application.id);
       const attention = staffApplicationAttention(application, { invitationAccessStatus, invitationDeliveryStatus: invitationFeedback?.deliveryStatus || "", now: clock() });
+      const parentGuardianName = [application.values?.app_guardian_0_first, application.values?.app_guardian_0_last].filter(Boolean).join(" ")
+        || [invitation.firstName, invitation.lastName].filter(Boolean).join(" ")
+        || requestRecord?.parentGuardianName
+        || "";
       return {
         applicationId: application.id,
         invitationId: application.invitationId,
@@ -929,6 +933,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
         status: application.status || "invited",
         reference: application.reference || "",
         recipientEmail: application.recipientEmail,
+        parentGuardianName,
         studentName: [application.values?.student_first, application.values?.student_last].filter(Boolean).join(" "),
         entryYear: application.values?.entry_year || "",
         entryLevel: application.values?.entry_level || "",

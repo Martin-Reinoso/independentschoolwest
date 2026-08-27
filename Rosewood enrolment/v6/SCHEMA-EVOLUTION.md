@@ -29,8 +29,8 @@ deliberately creating a new version.
 Current launch contracts:
 
 ```text
-EOI:                      rosewood-eoi-2026.19
-Application:              rosewood-application-2026.20
+EOI:                      rosewood-eoi-2026.20
+Application:              rosewood-application-2026.21
 Application-link request: rosewood-application-link-request-2026.1
 Community enquiry:       rosewood-community-enquiry-2026.1
 ```
@@ -173,6 +173,14 @@ backend derives `planningStage`, `attention`, invitation-delivery status and agg
 values are response projections, not application answer keys, are not written to
 Google Sheets and do not create a migration. Existing drafts retain every answer;
 submitted applications and signature evidence remain pinned and unchanged.
+
+The EOI `2026.20` and Application `2026.21` releases preserve the complete V6.20
+question, answer, validation, projection, submission and signature-evidence contracts.
+They repin the staff assets after adding a response-only `parentGuardianName` to each
+authorised application dashboard row and displaying it with the existing invitation
+email in Enrolment planning. No answer key, DynamoDB entity, Google Sheet column or
+submitted record is migrated. The aggregate `planningSummary` and Admissions overview
+continue to omit contact details.
 
 Acceptance, Decline and the Enrolment Agreement must receive their own independent
 version series when their backends are built. They must not reuse the Application

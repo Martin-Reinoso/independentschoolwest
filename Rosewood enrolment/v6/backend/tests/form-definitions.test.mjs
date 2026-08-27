@@ -48,7 +48,7 @@ test("legacy records resolve to the current workflow contract without changing a
   assert.equal(reference.schemaVersion, "legacy-schema");
 });
 
-test("V20 keeps earlier contracts addressable and changes only pinned release interfaces", () => {
+test("V21 keeps earlier contracts addressable and changes only pinned release interfaces", () => {
   const previous = getFormDefinition("application", "rosewood-application-2026.10");
   const v11 = getFormDefinition("application", "rosewood-application-2026.11");
   const v12 = getFormDefinition("application", "rosewood-application-2026.12");
@@ -59,6 +59,7 @@ test("V20 keeps earlier contracts addressable and changes only pinned release in
   const v17 = getFormDefinition("application", "rosewood-application-2026.17");
   const v18 = getFormDefinition("application", "rosewood-application-2026.18");
   const v19 = getFormDefinition("application", "rosewood-application-2026.19");
+  const v20 = getFormDefinition("application", "rosewood-application-2026.20");
   const current = currentFormDefinition("application");
   const previousEoi = getFormDefinition("eoi", "rosewood-eoi-2026.10");
   const v11Eoi = getFormDefinition("eoi", "rosewood-eoi-2026.11");
@@ -69,6 +70,7 @@ test("V20 keeps earlier contracts addressable and changes only pinned release in
   const v16Eoi = getFormDefinition("eoi", "rosewood-eoi-2026.16");
   const v17Eoi = getFormDefinition("eoi", "rosewood-eoi-2026.17");
   const v18Eoi = getFormDefinition("eoi", "rosewood-eoi-2026.18");
+  const v19Eoi = getFormDefinition("eoi", "rosewood-eoi-2026.19");
   const currentEoi = currentFormDefinition("eoi");
   assert.equal(previous.formVersion, "rosewood-application-2026.10");
   assert.equal(v11.formVersion, "rosewood-application-2026.11");
@@ -80,7 +82,8 @@ test("V20 keeps earlier contracts addressable and changes only pinned release in
   assert.equal(v17.formVersion, "rosewood-application-2026.17");
   assert.equal(v18.formVersion, "rosewood-application-2026.18");
   assert.equal(v19.formVersion, "rosewood-application-2026.19");
-  assert.equal(current.formVersion, "rosewood-application-2026.20");
+  assert.equal(v20.formVersion, "rosewood-application-2026.20");
+  assert.equal(current.formVersion, "rosewood-application-2026.21");
   assert.deepEqual(v13.contract, previous.contract);
   assert.deepEqual(v13.contract, v11.contract);
   assert.deepEqual(v13.contract, v12.contract);
@@ -91,7 +94,8 @@ test("V20 keeps earlier contracts addressable and changes only pinned release in
   assert.deepEqual(v17.contract, v16.contract);
   assert.deepEqual(v18.contract, v17.contract);
   assert.deepEqual(v19.contract, v18.contract);
-  assert.deepEqual(current.contract, v19.contract);
+  assert.deepEqual(v20.contract, v19.contract);
+  assert.deepEqual(current.contract, v20.contract);
   assert.ok(current.contract.requiredFields.includes("medicare_expiry"));
   assert.ok(!v13.contract.requiredFields.includes("medicare_expiry"));
   assert.equal(v11Eoi.formVersion, "rosewood-eoi-2026.11");
@@ -102,7 +106,8 @@ test("V20 keeps earlier contracts addressable and changes only pinned release in
   assert.equal(v16Eoi.formVersion, "rosewood-eoi-2026.16");
   assert.equal(v17Eoi.formVersion, "rosewood-eoi-2026.17");
   assert.equal(v18Eoi.formVersion, "rosewood-eoi-2026.18");
-  assert.equal(currentEoi.formVersion, "rosewood-eoi-2026.19");
+  assert.equal(v19Eoi.formVersion, "rosewood-eoi-2026.19");
+  assert.equal(currentEoi.formVersion, "rosewood-eoi-2026.20");
   assert.deepEqual(currentEoi.contract, previousEoi.contract);
   assert.deepEqual(currentEoi.contract, v11Eoi.contract);
   assert.deepEqual(currentEoi.contract, v12Eoi.contract);
@@ -111,6 +116,7 @@ test("V20 keeps earlier contracts addressable and changes only pinned release in
   assert.deepEqual(currentEoi.contract, v15Eoi.contract);
   assert.deepEqual(currentEoi.contract, v17Eoi.contract);
   assert.deepEqual(currentEoi.contract, v18Eoi.contract);
+  assert.deepEqual(currentEoi.contract, v19Eoi.contract);
   assert.ok(!current.contract.requiredFields.includes("previous_school_attended"));
   assert.deepEqual(current.contract.retiredInterfaceFields, ["previous_school_attended", "previous_school_name", "previous_school_year_level"]);
   assert.equal(current.contract.optionalSurveyFields.length, 11);

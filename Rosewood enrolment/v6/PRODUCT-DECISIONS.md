@@ -117,9 +117,10 @@ for Enrolment backend. It must:
 
 - list EOIs and applications, including the guardian-signature status held by each
   application
-- provide a separate enrolment-planning view showing student name, entry year, entry
-  level, application status, signature progress, last activity, staff-review flag and
-  reference, with search and year/level/status filters
+- provide a separate enrolment-planning view showing student name, primary
+  parent/guardian name, invitation email, entry year, entry level, application status,
+  signature progress, last activity, staff-review flag and reference, with contact-aware
+  search and year/level/status filters
 - open on a read-only Admissions overview that uses exactly five application-progress
   stages: Not started, In progress, Awaiting signatures, Staff review and Application
   complete
@@ -130,9 +131,12 @@ for Enrolment backend. It must:
   outstanding signature, staff review and missing entry details
 - treat every attention item as an operational prompt only; it must not modify the
   application, send a message, infer an admissions outcome or create a decision
-- keep family email, health information, documents and detailed application answers out
-  of the planning summary; those remain available only through the audited detailed
-  review where authorised
+- keep contact details out of the aggregate Admissions overview and attention summary;
+  the authorised Enrolment planning rows may show the primary parent/guardian name and
+  invitation email already present in the Applications workspace so an unstarted child
+  record can be identified
+- keep health information, documents and detailed application answers out of planning;
+  those remain available only through the audited detailed review where authorised
 - show each record's current progress and last successful save
 - search and filter records without exposing them publicly
 - select an EOI and issue an application invitation

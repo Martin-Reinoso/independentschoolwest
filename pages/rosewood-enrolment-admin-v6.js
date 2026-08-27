@@ -514,7 +514,7 @@
     const matchesValue = (actual, expected) => expected === "all" || (expected === "missing" ? !actual : actual === expected);
     const records = allApplications
       .filter(record => {
-        const haystack = [record.studentName, record.reference, record.entryYear, record.entryLevel, statusLabel(record.status)].join(" ").toLowerCase();
+        const haystack = [record.studentName, record.parentGuardianName, record.recipientEmail, record.reference, record.entryYear, record.entryLevel, statusLabel(record.status)].join(" ").toLowerCase();
         return (!query || haystack.includes(query)) && matchesValue(record.entryYear, year) && matchesValue(record.entryLevel, level) && (status === "all" || record.status === status);
       })
       .sort((left, right) => String(left.entryYear || "9999").localeCompare(String(right.entryYear || "9999"), "en", { numeric: true }) || String(left.entryLevel || "").localeCompare(String(right.entryLevel || "")) || String(left.studentName || "").localeCompare(String(right.studentName || "")));
@@ -528,7 +528,12 @@
     records.forEach(record => {
       const card = element("article", "record-card planning-card");
       const primary = element("div", "record-primary");
-      primary.append(element("strong", "", record.studentName || "Student name not yet provided"), element("small", "", record.reference || "Reference not yet assigned"));
+      const parentGuardianName = record.parentGuardianName || "Parent/guardian name not provided";
+      const primaryTitle = record.studentName || record.parentGuardianName || record.recipientEmail || "Family details not yet provided";
+      primary.append(element("strong", "", primaryTitle));
+      primary.append(element("small", "planning-family-context", record.studentName ? `Parent/guardian: ${parentGuardianName}` : "Parent/guardian · child details not started"));
+      primary.append(element("small", "planning-contact-email", record.recipientEmail || "Email address not provided"));
+      if (record.reference) primary.append(element("small", "planning-reference", record.reference));
       if (record.requiresStaffReview) primary.append(element("span", "planning-alert", "Staff review required"));
       card.append(primary);
       addRecordCell(card, "Entry year", record.entryYear || "Not provided yet");

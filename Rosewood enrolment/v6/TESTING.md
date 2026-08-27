@@ -1612,3 +1612,29 @@ changing a production family record.
   rendering-failure events through its confirmed Lambda subscription.
 - No production invitation, OTP, email, application, upload, signature or workflow
   write was created for release verification.
+
+## V6.21 Planning Contact Context Verification
+
+Prepared locally on 27 August 2026 using synthetic records only.
+
+- Backend tests verify the primary parent/guardian name is derived from saved
+  application answers and falls back to invitation or public-request contact context
+  before child details are entered.
+- The authorised application row continues to reuse its existing invitation email; no
+  contact field, answer key, entity, Sheet column or stored projection was added.
+- Tests confirm `parentGuardianName` and recipient email remain absent from aggregate
+  `planningSummary` and Admissions-overview attention items, together with the existing
+  health, document, network and raw SES exclusions.
+- Interface tests cover the parent/guardian-led empty-child state, contact-aware search,
+  compact planning cards and reduced planning-panel side padding.
+- Synthetic Playwright verification passed at 1440 x 1050 and 390 x 844. The planning
+  list showed the long parent/guardian identity and email without horizontal overflow;
+  mobile retained a full-width identity block and readable two-column details.
+- All 136 backend and interface tests pass. JavaScript syntax, immutable asset hashes,
+  the reproducible deployment build, `git diff --check`, all 89 tracked HTML/CSS local
+  references and the 409-file public-data/secret scan pass.
+
+### Production release
+
+Production evidence is recorded after reviewed static and CloudFormation deployments
+complete.
