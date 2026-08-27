@@ -780,6 +780,12 @@ no write and sends no message. The aggregate projection omits recipient email, d
 birth, health/document answers, raw SES identifiers, signature images, invitation
 tokens and network metadata. Google Sheets are not read to create this view.
 
+The separate authorised **Enrolment planning** list reuses the primary
+parent/guardian name and invitation email already returned for the Applications
+workspace. This gives an unstarted child record a meaningful operational identity. It
+does not add those fields to `planningSummary`, the Admissions overview or its attention
+items, and it does not create a new stored value or projection column.
+
 ### Detailed Review
 
 An authorised staff member can request one application detail view. The backend returns

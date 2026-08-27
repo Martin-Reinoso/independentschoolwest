@@ -155,10 +155,11 @@ request. Google Sheets show the record's actual form version but remain replacea
 reports. `SCHEMA-EVOLUTION.md` defines the mandatory process for adding, removing,
 renaming or changing questions and for migrating existing records.
 
-The current EOI `2026.18` and Application `2026.19` releases preserve their preceding
-question and data contracts while pinning the staff enrolment-planning interface. The
-preceding releases pin the implemented application-link request and staff request-list
-interfaces. Public promotion of that request interface is paused;
+The current EOI `2026.20` and Application `2026.21` releases preserve their preceding
+question and data contracts while pinning the staff planning-contact interface. The
+preceding releases pin the Admissions overview, enrolment-planning, implemented
+application-link request and staff request-list interfaces. Public promotion of that
+request interface is paused;
 the separate retained backend contract is
 `rosewood-application-link-request-2026.1`; it contains only parent/guardian name and
 email. Application V6.16 fixed the guardian signing page's read-only date to use
@@ -188,10 +189,12 @@ activity; sign-out or expiry removes it. No staff dashboard data is persisted th
 summaries, creates direct or EOI-linked invitations, rotates active tokens when
 resending, renews expired or missing access without replacing the application, and
 provides audited application review. Its **Enrolment planning** section shows student
-name, entry year, entry level, status, signature progress, last activity, staff-review
-flag and reference, with year, level and status filters. Blank or early applications
-remain visible as awaiting entry details; the planning view does not expose family
-email, health, document or other application answers. It lists document metadata but does not create
+name, primary parent/guardian name and invitation email, entry year, entry level,
+status, signature progress, last activity, staff-review flag and reference, with
+contact-aware search and year, level and status filters. Before child details exist,
+the primary parent/guardian becomes the row title and the row is labelled **child
+details not started**. Health, document and other application answers remain excluded
+from planning. It lists document metadata but does not create
 document-sharing links; authorised staff access documents through the restricted
 enrolment Drive. Viewers cannot create invitations.
 The default **Admissions overview** counts child applications rather than families and
@@ -254,4 +257,5 @@ live/preview boundaries. See these records together with
 `V6.14-CHANGE-MAP.md`, `V6.15-CHANGE-MAP.md` and `V6.16-CHANGE-MAP.md` record the current interface,
 immunisation-guidance, upload-recovery, family-feedback and family-question clarity
 releases. `V6.19-CHANGE-MAP.md` records enrolment planning and
-`V6.20-CHANGE-MAP.md` records the Phase 1 Admissions overview.
+`V6.20-CHANGE-MAP.md` records the Phase 1 Admissions overview and
+`V6.21-CHANGE-MAP.md` records the planning identity and density refinement.

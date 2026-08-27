@@ -164,7 +164,7 @@ test("staff dashboard exposes operational summaries but not sensitive columns", 
   store.records = [
     { entity: "eoi", data: { id: "eoi-1", reference: "EOI-1", submittedAt: "2026-08-01", status: "submitted", values: { eoi_first: "Alex", eoi_last: "Example", eoi_email: "family@example.com", eoi_student_first: "Avery", eoi_student_last: "Example", eoi_dob: "2020-01-01" } } },
     { entity: "application_request", data: { id: "request-1", requestedAt: "2026-08-02", parentGuardianName: "Alex Example", recipientEmail: "family@example.com", emailHash: "restricted-email-hash", networkFingerprint: "restricted-network-fingerprint", status: "invitation_queued", outcome: "created", invitationId: "invite-1", applicationId: "app-1" } },
-    { entity: "application", data: { id: "app-1", invitationId: "invite-1", sourceEoiId: "eoi-1", status: "in_progress", recipientEmail: "family@example.com", values: { student_first: "Avery", student_last: "Example", student_dob: "2020-01-01", entry_year: "2027", entry_level: "Foundation (Prep)" }, createdAt: "2026-08-02", updatedAt: "2026-08-03", currentStage: "student", percentComplete: 22 } },
+    { entity: "application", data: { id: "app-1", invitationId: "invite-1", sourceEoiId: "eoi-1", status: "in_progress", recipientEmail: "family@example.com", values: { app_guardian_0_first: "Alex", app_guardian_0_last: "Example", student_first: "Avery", student_last: "Example", student_dob: "2020-01-01", entry_year: "2027", entry_level: "Foundation (Prep)" }, createdAt: "2026-08-02", updatedAt: "2026-08-03", currentStage: "student", percentComplete: 22 } },
     { entity: "invitation_index", data: { id: "invite-1", applicationId: "app-1", lastSentAt: "2026-08-02", sendCount: 1 } }
   ];
   const { service } = staffService({ store });
@@ -179,6 +179,7 @@ test("staff dashboard exposes operational summaries but not sensitive columns", 
   assert.equal(dashboard.applications[0].percentComplete, 22);
   assert.equal(dashboard.applications[0].entryYear, "2027");
   assert.equal(dashboard.applications[0].entryLevel, "Foundation (Prep)");
+  assert.equal(dashboard.applications[0].parentGuardianName, "Alex Example");
   assert.equal(dashboard.applications[0].planningStage, "in_progress");
   assert.equal(dashboard.planningSummary.unit, "student_application");
   assert.deepEqual(dashboard.planningSummary.stages.map(stage => [stage.id, stage.count]), [["not_started", 0], ["in_progress", 1], ["awaiting_signatures", 0], ["staff_review", 0], ["complete", 0]]);
@@ -187,6 +188,23 @@ test("staff dashboard exposes operational summaries but not sensitive columns", 
   assert.equal("dateOfBirth" in dashboard.eois[0], false);
   assert.doesNotMatch(response.body, /2020-01-01/);
   assert.doesNotMatch(response.body, /restricted-email-hash|restricted-network-fingerprint/);
+});
+
+test("staff planning identity falls back to invitation or request contact before child details start", async () => {
+  const store = new StaffStore();
+  store.records = [
+    { entity: "application_request", data: { id: "request-identity", parentGuardianName: "Alex Request", recipientEmail: "family@example.test", applicationId: "app-identity" } },
+    { entity: "application", data: { id: "app-identity", invitationId: "invite-identity", status: "invited", recipientEmail: "family@example.test", values: {}, createdAt: "2026-08-02", updatedAt: "2026-08-02" } },
+    { entity: "invitation_index", data: { id: "invite-identity", applicationId: "app-identity", firstName: "Alex", lastName: "Invitation", status: "active", expiresAt: clock() + 86400_000 } }
+  ];
+  const { service } = staffService({ store });
+  const sessionToken = await staffSession(service);
+  const dashboard = JSON.parse((await service(event("/v6/staff/dashboard", "GET", null, sessionToken))).body);
+  assert.equal(dashboard.applications[0].parentGuardianName, "Alex Invitation");
+  assert.equal(dashboard.applications[0].studentName, "");
+  assert.equal(dashboard.applications[0].recipientEmail, "family@example.test");
+  assert.equal("parentGuardianName" in dashboard.planningSummary, false);
+  assert.doesNotMatch(JSON.stringify(dashboard.planningSummary), /family@example\.test|Alex Invitation/);
 });
 
 test("staff planning summary uses application stages and privacy-conscious cohort counts", () => {
@@ -475,7 +493,7 @@ test("an active V14 draft adopts the current contract without transforming its f
   await service(event("/v6/application/access/verify-code", "POST", { invitationToken, challengeId: requested.challengeId, code: "123456" }));
   const upgraded = store.applications.get(created.applicationId);
 
-  assert.equal(upgraded.formVersion, "rosewood-application-2026.20");
+  assert.equal(upgraded.formVersion, "rosewood-application-2026.21");
   assert.deepEqual(upgraded.values, values);
   assert.deepEqual(store.audit.find(eventRecord => eventRecord.type === "application.form_definition_upgraded").details.normalizedFields, []);
 });

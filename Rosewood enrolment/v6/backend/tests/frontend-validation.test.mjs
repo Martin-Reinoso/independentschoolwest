@@ -29,12 +29,13 @@ test("submission validation identifies the section and preserves an in-browser s
 });
 
 test("V6.8 exposes the revised responsive application experience without retired conditions", async () => {
-  const [source, html, css, adminSource, adminHtml] = await Promise.all([
+  const [source, html, css, adminSource, adminHtml, adminCss] = await Promise.all([
     readFile(new URL("../../../../pages/rosewood-enrolment-v6.js", import.meta.url), "utf8"),
     readFile(new URL("../../../../pages/rosewood-enrolment-v6.html", import.meta.url), "utf8"),
     readFile(new URL("../../../../pages/rosewood-enrolment-v6.css", import.meta.url), "utf8"),
     readFile(new URL("../../../../pages/rosewood-enrolment-admin-v6.js", import.meta.url), "utf8"),
-    readFile(new URL("../../../../pages/rosewood-enrolment-admin-v6.html", import.meta.url), "utf8")
+    readFile(new URL("../../../../pages/rosewood-enrolment-admin-v6.html", import.meta.url), "utf8"),
+    readFile(new URL("../../../../pages/rosewood-enrolment-admin-v6.css", import.meta.url), "utf8")
   ]);
   assert.match(source, /child-application-card/);
   assert.match(css, /\.child-application-card/);
@@ -94,8 +95,14 @@ test("V6.8 exposes the revised responsive application experience without retired
   assert.match(adminSource, /record\.entryYear/);
   assert.match(adminSource, /record\.entryLevel/);
   assert.match(adminSource, /planningSignatureLabel/);
+  assert.match(adminSource, /record\.parentGuardianName/);
+  assert.match(adminSource, /record\.recipientEmail/);
+  assert.match(adminSource, /Parent\/guardian · child details not started/);
+  assert.match(adminHtml, /Student, parent\/guardian or email/);
   assert.match(adminSource, /Staff review required/);
-  assert.doesNotMatch(adminSource.slice(adminSource.indexOf("function renderPlanning()"), adminSource.indexOf("function renderApplications()")), /recipientEmail/);
+  assert.doesNotMatch(adminSource.slice(adminSource.indexOf("function renderPlanning()"), adminSource.indexOf("function renderApplications()")), /mobile|dateOfBirth|health|documents/);
+  assert.match(adminCss, /\.planning-card \.planning-contact-email/);
+  assert.match(adminCss, /#planning-panel \{ padding-inline:/);
 });
 
 test("staff admissions overview presents the canonical pipeline and privacy-conscious follow-up queue", async () => {
@@ -194,8 +201,8 @@ test("guardian signing renders the complete server-provided application review",
   assert.match(source, /formatToParts\(value\)/);
   assert.match(source, /value="\$\{melbourneDate\(\)\}"/);
   assert.doesNotMatch(source, /new Date\(\)\.toISOString\(\)\.slice\(0, 10\)/);
-  assert.match(await readFile(new URL("../../../../pages/rosewood-enrolment-v6.js", import.meta.url), "utf8"), /rosewood-application-2026\.20/);
-  assert.match(await readFile(new URL("../../../../pages/rosewood-enrolment-v6.html", import.meta.url), "utf8"), /rosewood-enrolment-v6\.js\?v=31/);
+  assert.match(await readFile(new URL("../../../../pages/rosewood-enrolment-v6.js", import.meta.url), "utf8"), /rosewood-application-2026\.21/);
+  assert.match(await readFile(new URL("../../../../pages/rosewood-enrolment-v6.html", import.meta.url), "utf8"), /rosewood-enrolment-v6\.js\?v=32/);
   assert.match(html, /rosewood-application-sign-v6\.css\?v=2/);
   assert.match(html, /rosewood-application-sign-v6\.js\?v=5/);
   assert.match(css, /\.application-review-section/);
