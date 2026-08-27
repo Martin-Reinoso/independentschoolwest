@@ -786,6 +786,13 @@ workspace. This gives an unstarted child record a meaningful operational identit
 does not add those fields to `planningSummary`, the Admissions overview or its attention
 items, and it does not create a new stored value or projection column.
 
+For staff presentation only, the service derives `recordCategory: family|test` from an
+explicit test marker or conservative synthetic/test name and email patterns. The portal
+defaults Enrolment planning to Family applications but retains Test applications and
+All records filters. The value is not persisted and does not affect workflow status,
+attention, application answers or admissions decisions. Date sorting uses the existing
+authoritative application `createdAt`; it performs no write.
+
 ### Detailed Review
 
 An authorised staff member can request one application detail view. The backend returns

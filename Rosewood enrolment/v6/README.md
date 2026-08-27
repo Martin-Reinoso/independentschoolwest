@@ -155,9 +155,9 @@ request. Google Sheets show the record's actual form version but remain replacea
 reports. `SCHEMA-EVOLUTION.md` defines the mandatory process for adding, removing,
 renaming or changing questions and for migrating existing records.
 
-The current EOI `2026.20` and Application `2026.21` releases preserve their preceding
-question and data contracts while pinning the staff planning-contact interface. The
-preceding releases pin the Admissions overview, enrolment-planning, implemented
+The current EOI `2026.21` and Application `2026.22` releases preserve their preceding
+question and data contracts while pinning the staff planning record-type and date-sort
+interface. The preceding releases pin the Admissions overview, enrolment-planning, implemented
 application-link request and staff request-list interfaces. Public promotion of that
 request interface is paused;
 the separate retained backend contract is
@@ -191,7 +191,10 @@ resending, renews expired or missing access without replacing the application, a
 provides audited application review. Its **Enrolment planning** section shows student
 name, primary parent/guardian name and invitation email, entry year, entry level,
 status, signature progress, last activity, staff-review flag and reference, with
-contact-aware search and year, level and status filters. Before child details exist,
+contact-aware search and year, level, status and record-type filters, plus application-
+created-date and cohort sorting. Family applications are shown by default. Conservatively
+identified synthetic/test names and test-address markers are available under **Test
+applications** or **All records** and remain retained for audit. Before child details exist,
 the primary parent/guardian becomes the row title and the row is labelled **child
 details not started**. Health, document and other application answers remain excluded
 from planning. It lists document metadata but does not create

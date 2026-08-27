@@ -180,6 +180,7 @@ test("staff dashboard exposes operational summaries but not sensitive columns", 
   assert.equal(dashboard.applications[0].entryYear, "2027");
   assert.equal(dashboard.applications[0].entryLevel, "Foundation (Prep)");
   assert.equal(dashboard.applications[0].parentGuardianName, "Alex Example");
+  assert.equal(dashboard.applications[0].recordCategory, "family");
   assert.equal(dashboard.applications[0].planningStage, "in_progress");
   assert.equal(dashboard.planningSummary.unit, "student_application");
   assert.deepEqual(dashboard.planningSummary.stages.map(stage => [stage.id, stage.count]), [["not_started", 0], ["in_progress", 1], ["awaiting_signatures", 0], ["staff_review", 0], ["complete", 0]]);
@@ -203,8 +204,30 @@ test("staff planning identity falls back to invitation or request contact before
   assert.equal(dashboard.applications[0].parentGuardianName, "Alex Invitation");
   assert.equal(dashboard.applications[0].studentName, "");
   assert.equal(dashboard.applications[0].recipientEmail, "family@example.test");
+  assert.equal(dashboard.applications[0].recordCategory, "test");
   assert.equal("parentGuardianName" in dashboard.planningSummary, false);
   assert.doesNotMatch(JSON.stringify(dashboard.planningSummary), /family@example\.test|Alex Invitation/);
+});
+
+test("staff planning classifies synthetic identities and test email markers without changing stored applications", async () => {
+  const store = new StaffStore();
+  store.records = [
+    { entity: "application", data: { id: "app-synthetic-name", invitationId: "invite-synthetic-name", status: "in_progress", recipientEmail: "operator@ffe.org.au", values: { student_first: "Synthetic", student_last: "Address V69" }, createdAt: "2026-08-03", updatedAt: "2026-08-04" } },
+    { entity: "application", data: { id: "app-test-email", invitationId: "invite-test-email", status: "invited", recipientEmail: "operator+canary@ffe.org.au", values: {}, createdAt: "2026-08-02", updatedAt: "2026-08-02" } },
+    { entity: "application", data: { id: "app-family", invitationId: "invite-family", status: "invited", recipientEmail: "family@ffe.org.au", values: {}, createdAt: "2026-08-01", updatedAt: "2026-08-01" } },
+    { entity: "invitation_index", data: { id: "invite-synthetic-name", applicationId: "app-synthetic-name", firstName: "QA", lastName: "Operator" } },
+    { entity: "invitation_index", data: { id: "invite-test-email", applicationId: "app-test-email", firstName: "Monitoring", lastName: "Account" } },
+    { entity: "invitation_index", data: { id: "invite-family", applicationId: "app-family", firstName: "Family", lastName: "Applicant" } }
+  ];
+  const { service } = staffService({ store });
+  const sessionToken = await staffSession(service);
+  const dashboard = JSON.parse((await service(event("/v6/staff/dashboard", "GET", null, sessionToken))).body);
+  assert.deepEqual(Object.fromEntries(dashboard.applications.map(application => [application.applicationId, application.recordCategory])), {
+    "app-synthetic-name": "test",
+    "app-test-email": "test",
+    "app-family": "family"
+  });
+  assert.equal("recordCategory" in store.records.find(record => record.data.id === "app-synthetic-name").data, false);
 });
 
 test("staff planning summary uses application stages and privacy-conscious cohort counts", () => {
@@ -493,7 +516,7 @@ test("an active V14 draft adopts the current contract without transforming its f
   await service(event("/v6/application/access/verify-code", "POST", { invitationToken, challengeId: requested.challengeId, code: "123456" }));
   const upgraded = store.applications.get(created.applicationId);
 
-  assert.equal(upgraded.formVersion, "rosewood-application-2026.21");
+  assert.equal(upgraded.formVersion, "rosewood-application-2026.22");
   assert.deepEqual(upgraded.values, values);
   assert.deepEqual(store.audit.find(eventRecord => eventRecord.type === "application.form_definition_upgraded").details.normalizedFields, []);
 });

@@ -97,6 +97,15 @@ function planningStage(status) {
   return ({ invited: "not_started", in_progress: "in_progress", pending_signatures: "awaiting_signatures", staff_review_required: "staff_review", submitted: "complete" })[status] || "in_progress";
 }
 
+function staffRecordCategory({ studentName = "", parentGuardianName = "", recipientEmail = "", recordCategory = "" } = {}) {
+  if (recordCategory === "test") return "test";
+  const syntheticName = [studentName, parentGuardianName].some(value => /^\s*(?:synthetic|test)(?:\b|[-_])/i.test(String(value || "")));
+  const email = String(recipientEmail || "").trim().toLowerCase();
+  const [localPart = "", domain = ""] = email.split("@");
+  const testEmail = domain === "example.test" || /(?:^|[+._-])(?:synthetic|canary|test)(?:$|[+._-])/.test(localPart);
+  return syntheticName || testEmail ? "test" : "family";
+}
+
 function elapsedDays(value, now) {
   const timestamp = Date.parse(value || "");
   if (!Number.isFinite(timestamp)) return 0;
@@ -925,6 +934,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
         || [invitation.firstName, invitation.lastName].filter(Boolean).join(" ")
         || requestRecord?.parentGuardianName
         || "";
+      const studentName = [application.values?.student_first, application.values?.student_last].filter(Boolean).join(" ");
       return {
         applicationId: application.id,
         invitationId: application.invitationId,
@@ -934,7 +944,8 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
         reference: application.reference || "",
         recipientEmail: application.recipientEmail,
         parentGuardianName,
-        studentName: [application.values?.student_first, application.values?.student_last].filter(Boolean).join(" "),
+        studentName,
+        recordCategory: staffRecordCategory({ studentName, parentGuardianName, recipientEmail: application.recipientEmail, recordCategory: application.recordCategory }),
         entryYear: application.values?.entry_year || "",
         entryLevel: application.values?.entry_level || "",
         planningStage: planningStage(application.status),

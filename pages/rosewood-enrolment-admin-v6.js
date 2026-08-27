@@ -511,17 +511,33 @@
     const year = byId("planning-year").value;
     const level = byId("planning-level").value;
     const status = byId("planning-status").value;
+    const category = byId("planning-category").value;
+    const sort = byId("planning-sort").value;
     const matchesValue = (actual, expected) => expected === "all" || (expected === "missing" ? !actual : actual === expected);
-    const records = allApplications
+    const categoryApplications = allApplications.filter(record => category === "all" || (record.recordCategory || "family") === category);
+    const compareIdentity = (left, right) => String(left.studentName || left.parentGuardianName || left.recipientEmail || "").localeCompare(String(right.studentName || right.parentGuardianName || right.recipientEmail || ""));
+    const compareCreated = (left, right, direction) => {
+      if (!left.createdAt && !right.createdAt) return compareIdentity(left, right);
+      if (!left.createdAt) return 1;
+      if (!right.createdAt) return -1;
+      return direction * String(left.createdAt).localeCompare(String(right.createdAt)) || compareIdentity(left, right);
+    };
+    const records = categoryApplications
       .filter(record => {
         const haystack = [record.studentName, record.parentGuardianName, record.recipientEmail, record.reference, record.entryYear, record.entryLevel, statusLabel(record.status)].join(" ").toLowerCase();
         return (!query || haystack.includes(query)) && matchesValue(record.entryYear, year) && matchesValue(record.entryLevel, level) && (status === "all" || record.status === status);
       })
-      .sort((left, right) => String(left.entryYear || "9999").localeCompare(String(right.entryYear || "9999"), "en", { numeric: true }) || String(left.entryLevel || "").localeCompare(String(right.entryLevel || "")) || String(left.studentName || "").localeCompare(String(right.studentName || "")));
+      .sort((left, right) => sort === "created_desc"
+        ? compareCreated(left, right, -1)
+        : sort === "created_asc"
+          ? compareCreated(left, right, 1)
+          : String(left.entryYear || "9999").localeCompare(String(right.entryYear || "9999"), "en", { numeric: true }) || String(left.entryLevel || "").localeCompare(String(right.entryLevel || "")) || compareIdentity(left, right));
 
-    const missingPlanning = allApplications.filter(record => !record.entryYear || !record.entryLevel).length;
-    byId("planning-summary").textContent = `Showing ${records.length} of ${allApplications.length} application${allApplications.length === 1 ? "" : "s"}. ${missingPlanning} ${missingPlanning === 1 ? "record is" : "records are"} still awaiting complete entry details.`;
-    renderPlanningYearSummary(allApplications);
+    const missingPlanning = categoryApplications.filter(record => !record.entryYear || !record.entryLevel).length;
+    const categoryLabel = category === "family" ? "family application" : category === "test" ? "test application" : "application";
+    const hiddenTests = category === "family" ? allApplications.filter(record => record.recordCategory === "test").length : 0;
+    byId("planning-summary").textContent = `Showing ${records.length} of ${categoryApplications.length} ${categoryLabel}${categoryApplications.length === 1 ? "" : "s"}. ${missingPlanning} ${missingPlanning === 1 ? "record is" : "records are"} still awaiting complete entry details.${hiddenTests ? ` ${hiddenTests} test ${hiddenTests === 1 ? "record is" : "records are"} hidden.` : ""}`;
+    renderPlanningYearSummary(categoryApplications);
 
     const list = byId("planning-list");
     clear(list);
@@ -534,6 +550,8 @@
       primary.append(element("small", "planning-family-context", record.studentName ? `Parent/guardian: ${parentGuardianName}` : "Parent/guardian · child details not started"));
       primary.append(element("small", "planning-contact-email", record.recipientEmail || "Email address not provided"));
       if (record.reference) primary.append(element("small", "planning-reference", record.reference));
+      primary.append(element("small", "planning-created-at", record.createdAt ? `Application created ${formatDate(record.createdAt, true)}` : "Application date not available"));
+      if (record.recordCategory === "test") primary.append(element("span", "planning-test-label", "Test record"));
       if (record.requiresStaffReview) primary.append(element("span", "planning-alert", "Staff review required"));
       card.append(primary);
       addRecordCell(card, "Entry year", record.entryYear || "Not provided yet");
@@ -1055,6 +1073,8 @@
   byId("planning-year").addEventListener("change", renderPlanning);
   byId("planning-level").addEventListener("change", renderPlanning);
   byId("planning-status").addEventListener("change", renderPlanning);
+  byId("planning-category").addEventListener("change", renderPlanning);
+  byId("planning-sort").addEventListener("change", renderPlanning);
   byId("request-search").addEventListener("input", renderApplicationRequests);
   byId("application-status").addEventListener("change", renderApplications);
   byId("eoi-search").addEventListener("input", renderEois);

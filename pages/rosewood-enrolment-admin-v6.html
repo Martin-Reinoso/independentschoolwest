@@ -9,7 +9,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src https://6zyzo44sdb5zmmx53toktqrnuu0sikyd.lambda-url.ap-southeast-2.on.aws; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'">
   <title>Enrolment Operations | Rosewood College</title>
   <link rel="icon" href="../img/favicon.ico" type="image/x-icon">
-  <link rel="stylesheet" href="rosewood-enrolment-admin-v6.css?v=7">
+  <link rel="stylesheet" href="rosewood-enrolment-admin-v6.css?v=8">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to operations</a>
@@ -144,12 +144,14 @@
                 <label class="select-field"><span>Entry year</span><select id="planning-year"><option value="all">All entry years</option></select></label>
                 <label class="select-field"><span>Entry level</span><select id="planning-level"><option value="all">All entry levels</option></select></label>
                 <label class="select-field"><span>Status</span><select id="planning-status"><option value="all">All statuses</option><option value="invited">Invited</option><option value="in_progress">In progress</option><option value="pending_signatures">Pending signatures</option><option value="staff_review_required">Staff review required</option><option value="submitted">Submitted</option></select></label>
+                <label class="select-field planning-category-field"><span>Record type</span><select id="planning-category"><option value="family">Family applications</option><option value="test">Test applications</option><option value="all">All records</option></select></label>
+                <label class="select-field planning-sort-field"><span>Sort by</span><select id="planning-sort"><option value="created_desc">Application date · newest</option><option value="created_asc">Application date · oldest</option><option value="cohort">Entry year and level</option></select></label>
               </div>
             </div>
             <div class="planning-summary" id="planning-summary" aria-live="polite"></div>
             <div class="planning-year-summary" id="planning-year-summary" aria-label="Applications by entry year"></div>
             <div class="record-list" id="planning-list" aria-live="polite"></div>
-            <div class="empty-state" id="planning-empty" hidden><strong>No applications found</strong><p>Try changing the search, entry year, entry level or status filter.</p></div>
+            <div class="empty-state" id="planning-empty" hidden><strong>No applications found</strong><p>Try changing the search, record type, entry year, entry level or status filter.</p></div>
           </section>
 
           <section class="workspace-panel" id="applications-panel" data-workspace-panel hidden>
@@ -232,6 +234,6 @@
     <div class="detail-content" id="detail-content" hidden></div>
   </dialog>
 
-  <script src="rosewood-enrolment-admin-v6.js?v=11"></script>
+  <script src="rosewood-enrolment-admin-v6.js?v=12"></script>
 </body>
 </html>

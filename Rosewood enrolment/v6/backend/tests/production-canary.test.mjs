@@ -40,8 +40,8 @@ function healthyFetch({ breakPublicAsset = false, omitAddressKey = false } = {})
       return response({
         status: "ok",
         formVersions: {
-          eoi: "rosewood-eoi-2026.20",
-          application: "rosewood-application-2026.21",
+          eoi: "rosewood-eoi-2026.21",
+          application: "rosewood-application-2026.22",
           applicationLinkRequest: "rosewood-application-link-request-2026.1",
           communityEnquiry: "rosewood-community-enquiry-2026.1"
         },

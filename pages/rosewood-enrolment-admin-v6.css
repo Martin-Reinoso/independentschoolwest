@@ -183,6 +183,8 @@ button:disabled { cursor: not-allowed; opacity: .5; transform: none !important; 
 .planning-filters { flex-wrap: wrap; justify-content: flex-end; }
 .planning-filters .search-field { width: min(300px, 100%); }
 .planning-filters .select-field { width: 145px; }
+.planning-filters .planning-category-field { width: 180px; }
+.planning-filters .planning-sort-field { width: 220px; }
 .planning-summary { margin: -.2rem 0 .8rem; color: var(--ink-soft); font-size: .82rem; line-height: 1.5; }
 .planning-year-summary { display: flex; gap: .55rem; margin-bottom: 1rem; overflow-x: auto; padding-bottom: .2rem; }
 .planning-year-chip { min-width: 112px; display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .6rem .75rem; color: var(--ink); background: #f4efe6; border: 1px solid var(--line); border-radius: .65rem; cursor: pointer; font-size: .74rem; font-weight: 800; white-space: nowrap; }
@@ -199,6 +201,8 @@ button:disabled { cursor: not-allowed; opacity: .5; transform: none !important; 
 .planning-card .planning-family-context { color: #43536c; font-weight: 700; }
 .planning-card .planning-contact-email { overflow-wrap: anywhere; white-space: normal; }
 .planning-card .planning-reference { color: #7a8494; font-size: .66rem; }
+.planning-card .planning-created-at { color: #7a8494; font-size: .66rem; }
+.planning-test-label { display: inline-flex; width: fit-content; margin-top: .2rem; padding: .2rem .42rem; color: #4d5360; background: #eceef2; border-radius: 999px; font-size: .64rem; font-weight: 800; }
 .record-primary { min-width: 0; }
 .record-primary strong, .record-cell strong { display: block; overflow: hidden; color: var(--ink); text-overflow: ellipsis; white-space: nowrap; }
 .record-primary small, .record-cell small { display: block; overflow: hidden; margin-top: .22rem; color: var(--ink-soft); font-size: .75rem; text-overflow: ellipsis; white-space: nowrap; }
