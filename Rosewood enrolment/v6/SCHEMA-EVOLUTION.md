@@ -29,8 +29,8 @@ deliberately creating a new version.
 Current launch contracts:
 
 ```text
-EOI:                      rosewood-eoi-2026.20
-Application:              rosewood-application-2026.21
+EOI:                      rosewood-eoi-2026.21
+Application:              rosewood-application-2026.22
 Application-link request: rosewood-application-link-request-2026.1
 Community enquiry:       rosewood-community-enquiry-2026.1
 ```
@@ -181,6 +181,15 @@ authorised application dashboard row and displaying it with the existing invitat
 email in Enrolment planning. No answer key, DynamoDB entity, Google Sheet column or
 submitted record is migrated. The aggregate `planningSummary` and Admissions overview
 continue to omit contact details.
+
+The EOI `2026.21` and Application `2026.22` releases preserve the complete V6.21
+question, answer, validation, projection, submission and signature-evidence contracts.
+They repin the browser/staff assets for response-only planning record categories and
+application-created-date sorting. `recordCategory` is derived only for the authorised
+dashboard response from an explicit stored test category, a synthetic/test identity
+prefix, an `example.test` domain or a `+test`, `+synthetic` or `+canary`-style email
+marker. It is not stored, projected to Sheets or used for admissions. Existing records,
+drafts, submissions and signatures are not migrated or rewritten.
 
 Acceptance, Decline and the Enrolment Agreement must receive their own independent
 version series when their backends are built. They must not reuse the Application

@@ -136,7 +136,17 @@ name, primary parent/guardian name, invitation email, recorded entry year and en
 level, application status, signature progress, last activity, staff-review warning and
 reference. Search by student, parent/guardian, email or reference, or filter by entry
 year, entry level and status. The year summary shows the current number of application
-records for each recorded entry year.
+records for each recorded entry year within the selected record type.
+
+- **Family applications** is the default record type and excludes records carrying
+  conservative synthetic/test identity or test-email markers.
+- **Test applications** keeps monitoring and verification records available without
+  mixing them into normal cohort planning. **All records** displays both categories.
+  For future verification, use an obvious Synthetic/Test name or a `+test`,
+  `+synthetic` or `+canary` email alias. Do not use a real family's identity for tests.
+- **Application date · newest/oldest** sorts by the application record's creation time.
+  **Entry year and level** restores cohort ordering. The row displays the creation date;
+  last activity remains a separate operational timestamp.
 
 - Before a family enters child details, the parent/guardian name is the row title and
   **Parent/guardian · child details not started** explains why no student name appears.

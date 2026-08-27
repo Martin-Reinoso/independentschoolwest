@@ -135,6 +135,11 @@ for Enrolment backend. It must:
   the authorised Enrolment planning rows may show the primary parent/guardian name and
   invitation email already present in the Applications workspace so an unstarted child
   record can be identified
+- default Enrolment planning to Family applications while retaining conservatively
+  identified synthetic/test records under a separate Test applications filter; this is
+  a response-only operational category, not deletion or an admissions classification
+- allow newest/oldest application-created-date sorting and retain entry-year/level
+  sorting; use authoritative `createdAt` rather than invitation email or last activity
 - keep health information, documents and detailed application answers out of planning;
   those remain available only through the audited detailed review where authorised
 - show each record's current progress and last successful save

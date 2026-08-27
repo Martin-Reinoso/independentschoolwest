@@ -37,7 +37,7 @@ server-acknowledged application create, start, save and submission also writes a
 append-only DynamoDB revision. Staff can inspect a selected historical revision through
 an authorised, audited endpoint. See `../SCHEMA-EVOLUTION.md` before changing fields,
 options, validation or required status.
-The current EOI `2026.20` and Application `2026.21` contracts pin the family, staff and signing HTML/JavaScript/CSS,
+The current EOI `2026.21` and Application `2026.22` contracts pin the family, staff and signing HTML/JavaScript/CSS,
 policy projection and all original Word/PDF policy assets. Policy viewing is frontend-
 only and does not create an application answer, acknowledgement or audit event.
 EOI `2026.15` preserves its earlier data contract. Application `2026.15` preserves the
@@ -60,7 +60,11 @@ decision or return recipient email inside the overview summary. The thresholds a
 seven days without saved draft activity and three days with an outstanding signature.
 The separate authorised Enrolment planning rows reuse the primary parent/guardian name
 and invitation email already returned in each application summary. These identifiers
-remain outside the aggregate `planningSummary` and attention items.
+remain outside the aggregate `planningSummary` and attention items. A response-only
+`recordCategory` classifies conservatively marked synthetic/test identities and test
+email aliases for staff filtering; it is not written to the application, Sheets or an
+admissions decision. `createdAt` remains the authoritative application-created date for
+the staff sort.
 
 `GOOGLE_MAPS_BROWSER_API_KEY` is read from the existing Secrets Manager configuration.
 It is returned through the no-store EOI runtime-config route and an OTP-verified

@@ -1659,3 +1659,31 @@ write.
 - Both security-topic email subscriptions remain confirmed. The enabled SES feedback
   destination retains send, delivery, delay, bounce, complaint, reject and
   rendering-failure events through its confirmed Lambda subscription.
+
+## V6.22 Planning Record Type And Date Sort Verification
+
+Prepared locally on 27 August 2026 using synthetic records only.
+
+- The staff dashboard classifies clearly marked synthetic records as `test` in its
+  authorised response without writing a new field or changing the application record.
+  Ordinary records remain `family`; missing category values are treated as family for
+  compatibility with an older browser response.
+- Enrolment planning defaults to Family applications and can switch to Test
+  applications or All records. The selected category scopes the list, year chips,
+  count and missing-entry-detail summary.
+- Sorting covers Application date · newest, Application date · oldest, and the
+  existing Entry year and level order. Records without a creation timestamp remain
+  visible and sort after dated records.
+- Each planning row displays its application-created date. Test records also display
+  a staff-only Test record badge; no family-facing workflow or application data was
+  changed.
+- Synthetic Playwright verification passed at 1440 x 1050 and 390 x 844. All filter
+  labels remained visible on desktop, all controls became full-width on mobile, and
+  neither layout introduced horizontal overflow.
+- All 137 backend and interface tests pass. The immutable V6.22 asset hashes,
+  reproducible deployment build, `git diff --check`, all 89 tracked HTML/CSS local
+  references and the 410-file public-data/secret scan pass.
+
+### Production release
+
+Pending deployment and production verification.
