@@ -1562,3 +1562,30 @@ Prepared locally on 27 August 2026 with synthetic records only.
   rendering-failure events through the encrypted SNS-to-Lambda path.
 - No production family record was opened and no invitation, OTP, email, upload,
   signature or workflow write was created during release verification.
+
+## V6.20 Admissions Overview Verification
+
+- Backend tests cover all five canonical application stages, entry-year/level cohort
+  counts, attention ordering, inactivity/signature thresholds, invitation-access
+  state, SES invitation-feedback correlation and privacy exclusions.
+- The attention summary contains no recipient email, date of birth, network
+  fingerprint, raw SES event/message identifier, health answer or document metadata.
+- Frontend tests cover the Admissions overview navigation, filters, five stage cards,
+  stage distribution, entry mix, attention queue, visible keyboard focus and mobile
+  layout. The overview renderer is statically guarded from recipient email, mobile and
+  date-of-birth fields.
+- Synthetic Playwright data exercised failed email, inactive draft, pending signature,
+  staff review, completed application and missing entry-detail scenarios at 1440 x
+  1050 and 390 x 844. Both layouts had no horizontal overflow; mobile attention cards
+  use a readable single-column order.
+- A defensive planning-progress check treats a missing or non-numeric historical
+  percentage as zero rather than breaking the staff dashboard.
+- The complete backend suite passed 135 tests and the reproducible deployment build
+  verified the immutable V6.20 asset hashes.
+- No real invitation, OTP, application, email, file, signature or production record
+  was created during pre-release verification.
+
+### Production release
+
+Production release evidence is recorded after the reviewed static and CloudFormation
+deployments complete.

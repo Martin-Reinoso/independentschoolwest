@@ -37,7 +37,7 @@ server-acknowledged application create, start, save and submission also writes a
 append-only DynamoDB revision. Staff can inspect a selected historical revision through
 an authorised, audited endpoint. See `../SCHEMA-EVOLUTION.md` before changing fields,
 options, validation or required status.
-The current EOI `2026.18` and Application `2026.19` contracts pin the family, staff and signing HTML/JavaScript/CSS,
+The current EOI `2026.19` and Application `2026.20` contracts pin the family, staff and signing HTML/JavaScript/CSS,
 policy projection and all original Word/PDF policy assets. Policy viewing is frontend-
 only and does not create an application answer, acknowledgement or audit event.
 EOI `2026.15` preserves its earlier data contract. Application `2026.15` preserves the
@@ -51,6 +51,13 @@ application-link request and staff request-list interfaces without changing any 
 Application answer. The minimal request has its own immutable
 `rosewood-application-link-request-2026.1` contract. Manual address entry remains available and no Place ID,
 coordinates or search history is stored.
+
+The staff dashboard derives a privacy-conscious Admissions overview from DynamoDB
+application/invitation records and encrypted SES feedback. It returns five canonical
+application stages, entry-year/level counts and operational attention reasons. It does
+not store another summary record, use Google Sheets as a source, make an admissions
+decision or return recipient email inside the overview summary. The thresholds are
+seven days without saved draft activity and three days with an outstanding signature.
 
 `GOOGLE_MAPS_BROWSER_API_KEY` is read from the existing Secrets Manager configuration.
 It is returned through the no-store EOI runtime-config route and an OTP-verified

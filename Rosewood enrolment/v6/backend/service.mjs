@@ -52,6 +52,16 @@ const SES_FEEDBACK_STATUS = Object.freeze({
 });
 const SES_FEEDBACK_RANK = Object.freeze({ accepted_by_ses: 10, delayed: 20, delivered: 30, bounced: 40, complained: 40, rejected: 40, rendering_failed: 40 });
 const SIGNATURE_EMAIL_TYPES = new Set(["signature_invitation", "signature_invitation_resent", "signature_email_corrected"]);
+const INVITATION_EMAIL_TYPES = new Set(["application_link_requested", "invitation", "invitation_resend", "invitation_access_renewed"]);
+const DELIVERY_FAILURES = new Set(["bounced", "complained", "rejected", "rendering_failed"]);
+const STAFF_PLANNING_STAGES = Object.freeze([
+  { id: "not_started", label: "Not started" },
+  { id: "in_progress", label: "In progress" },
+  { id: "awaiting_signatures", label: "Awaiting signatures" },
+  { id: "staff_review", label: "Staff review" },
+  { id: "complete", label: "Application complete" }
+]);
+const STAFF_ATTENTION_THRESHOLDS = Object.freeze({ inactiveApplicationDays: 7, pendingSignatureDays: 3 });
 
 function sesTag(tags, name) {
   const value = tags?.[name];
@@ -81,6 +91,103 @@ function signatureRequestLabel(control) {
   if (control.deliveryStatus === "delayed") return "Delivery delayed";
   if (control.deliveryStatus === "delivered") return "Delivered";
   return ({ pending: "Signature request pending", sent: "Sent", opened: "Opened", verified: "Verified" })[control.requestStatus] || "Signature request pending";
+}
+
+function planningStage(status) {
+  return ({ invited: "not_started", in_progress: "in_progress", pending_signatures: "awaiting_signatures", staff_review_required: "staff_review", submitted: "complete" })[status] || "in_progress";
+}
+
+function elapsedDays(value, now) {
+  const timestamp = Date.parse(value || "");
+  if (!Number.isFinite(timestamp)) return 0;
+  return Math.max(0, Math.floor((now - timestamp) / 86400_000));
+}
+
+function attentionReason(id, severity, label, detail) {
+  return { id, severity, label, detail };
+}
+
+export function staffApplicationAttention(application, { invitationAccessStatus = "not_applicable", invitationDeliveryStatus = "", now = Date.now() } = {}) {
+  const reasons = [];
+  const status = application.status || "invited";
+  const controls = application.signerControls || [];
+  const invitationDeliveryRelevant = ["invited", "in_progress"].includes(status);
+  const signatureDeliveryRelevant = ["pending_signatures", "staff_review_required"].includes(status);
+  const pendingPermittedControls = signatureDeliveryRelevant
+    ? controls.filter(control => control.contactPermission === true && control.signatureRequired !== false && control.signatureStatus !== "complete")
+    : [];
+  const signatureDeliveryFailed = pendingPermittedControls.some(control => DELIVERY_FAILURES.has(control.deliveryStatus));
+  const signatureDeliveryDelayed = pendingPermittedControls.some(control => control.deliveryStatus === "delayed");
+  if ((invitationDeliveryRelevant && DELIVERY_FAILURES.has(invitationDeliveryStatus)) || signatureDeliveryFailed) {
+    reasons.push(attentionReason("email_delivery_failed", "critical", "Email delivery failed", "A current invitation or signature request could not be delivered."));
+  } else if ((invitationDeliveryRelevant && invitationDeliveryStatus === "delayed") || signatureDeliveryDelayed) {
+    reasons.push(attentionReason("email_delivery_delayed", "warning", "Email delivery delayed", "A current invitation or signature request has been delayed by the receiving service."));
+  }
+  if (["invited", "in_progress"].includes(status) && invitationAccessStatus !== "active") {
+    reasons.push(attentionReason("application_access_unavailable", "critical", invitationAccessStatus === "expired" ? "Application access expired" : "Application access unavailable", "The family needs renewed private access before it can continue."));
+  }
+  if (status === "in_progress") {
+    const inactiveDays = elapsedDays(application.updatedAt || application.createdAt, now);
+    if (inactiveDays >= STAFF_ATTENTION_THRESHOLDS.inactiveApplicationDays) {
+      reasons.push(attentionReason("application_inactive", "warning", "No recent application activity", `${inactiveDays} days since the last saved activity.`));
+    }
+  }
+  if (status === "pending_signatures") {
+    const pendingDays = elapsedDays(application.submittedAt || application.updatedAt || application.createdAt, now);
+    if (pendingDays >= STAFF_ATTENTION_THRESHOLDS.pendingSignatureDays) {
+      reasons.push(attentionReason("signature_outstanding", "warning", "Signature still outstanding", `${pendingDays} days since the application was submitted for signatures.`));
+    }
+  }
+  if (status === "staff_review_required" || application.requiresStaffReview) {
+    reasons.push(attentionReason("staff_review_required", "critical", "Staff review required", "The application cannot complete its ordinary signature path without staff review."));
+  }
+  if (status !== "invited" && (!application.values?.entry_year || !application.values?.entry_level)) {
+    reasons.push(attentionReason("entry_details_missing", "notice", "Entry details incomplete", "Year of entry or entry level has not yet been provided."));
+  }
+  return reasons;
+}
+
+export function staffPlanningSummary(applications, generatedAt = new Date().toISOString()) {
+  const stageCounts = new Map(STAFF_PLANNING_STAGES.map(stage => [stage.id, 0]));
+  const entryMix = new Map();
+  const attentionItems = [];
+  for (const application of applications) {
+    const stage = application.planningStage || planningStage(application.status);
+    stageCounts.set(stage, (stageCounts.get(stage) || 0) + 1);
+    const entryKey = `${application.entryYear || "missing"}\u0000${application.entryLevel || "missing"}`;
+    entryMix.set(entryKey, (entryMix.get(entryKey) || 0) + 1);
+    if (application.attention?.length) {
+      attentionItems.push({
+        applicationId: application.applicationId,
+        studentName: application.studentName,
+        reference: application.reference,
+        entryYear: application.entryYear,
+        entryLevel: application.entryLevel,
+        status: application.status,
+        planningStage: stage,
+        updatedAt: application.updatedAt,
+        reasons: application.attention
+      });
+    }
+  }
+  const severityRank = { critical: 0, warning: 1, notice: 2 };
+  attentionItems.sort((left, right) => {
+    const leftRank = Math.min(...left.reasons.map(reason => severityRank[reason.severity] ?? 3));
+    const rightRank = Math.min(...right.reasons.map(reason => severityRank[reason.severity] ?? 3));
+    return leftRank - rightRank || String(left.updatedAt || "").localeCompare(String(right.updatedAt || ""));
+  });
+  return {
+    generatedAt,
+    unit: "student_application",
+    totalApplications: applications.length,
+    stages: STAFF_PLANNING_STAGES.map(stage => ({ ...stage, count: stageCounts.get(stage.id) || 0 })),
+    entryMix: [...entryMix.entries()].map(([key, count]) => {
+      const [entryYear, entryLevel] = key.split("\u0000");
+      return { entryYear: entryYear === "missing" ? "" : entryYear, entryLevel: entryLevel === "missing" ? "" : entryLevel, count };
+    }).sort((left, right) => String(left.entryYear || "9999").localeCompare(String(right.entryYear || "9999"), "en", { numeric: true }) || String(left.entryLevel || "").localeCompare(String(right.entryLevel || ""))),
+    attention: { total: attentionItems.length, items: attentionItems },
+    thresholds: STAFF_ATTENTION_THRESHOLDS
+  };
 }
 
 function signerControl(app, guardianId, task = null) {
@@ -792,8 +899,14 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     const applicationRecords = records.filter(item => item.entity === "application").map(item => item.data);
     const invitationRecords = records.filter(item => item.entity === "invitation_index").map(item => item.data);
     const emailReceipts = records.filter(item => item.entity === "outbox_receipt" && item.data?.kind === "email").map(item => item.data);
+    const invitationFeedbackByRecord = records.filter(item => item.entity === "ses_event" && INVITATION_EMAIL_TYPES.has(item.data?.messageType)).map(item => item.data).reduce((result, feedback) => {
+      const current = result.get(feedback.recordId);
+      if (!current || String(feedback.occurredAt).localeCompare(String(current.occurredAt)) > 0) result.set(feedback.recordId, feedback);
+      return result;
+    }, new Map());
     const invitationByApplication = new Map(invitationRecords.flatMap(invitation => invitationApplicationIds(invitation).map(applicationId => [applicationId, invitation])));
     const applicationByEoi = new Map(applicationRecords.filter(application => application.sourceEoiId).map(application => [application.sourceEoiId, application]));
+    const applicationRequestByApplication = new Map(applicationRequestRecords.filter(record => record.applicationId).map(record => [record.applicationId, record]));
     const applications = applicationRecords.map(application => {
       const invitation = invitationByApplication.get(application.id) || {};
       const editable = ["invited", "in_progress"].includes(application.status || "invited");
@@ -805,6 +918,9 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
           : invitation.id
             ? invitation.status === "active" && invitationExpiryMs(invitation) <= clock() ? "expired" : "inactive"
             : "missing";
+      const requestRecord = applicationRequestByApplication.get(application.id);
+      const invitationFeedback = invitationFeedbackByRecord.get(requestRecord?.id || application.id);
+      const attention = staffApplicationAttention(application, { invitationAccessStatus, invitationDeliveryStatus: invitationFeedback?.deliveryStatus || "", now: clock() });
       return {
         applicationId: application.id,
         invitationId: application.invitationId,
@@ -816,6 +932,8 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
         studentName: [application.values?.student_first, application.values?.student_last].filter(Boolean).join(" "),
         entryYear: application.values?.entry_year || "",
         entryLevel: application.values?.entry_level || "",
+        planningStage: planningStage(application.status),
+        attention,
         createdAt: application.createdAt,
         updatedAt: application.updatedAt || application.createdAt,
         submittedAt: application.submittedAt || "",
@@ -827,6 +945,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
         lastSentAt: invitation.lastSentAt || "",
         sendCount: Number(invitation.sendCount || 0),
         expiresAt: invitation.expiresAt ? iso(invitation.expiresAt) : "",
+        invitationDeliveryStatus: invitationFeedback?.deliveryStatus || "",
         invitationAccessStatus,
         canResend: editable && accessActive,
         canRenewAccess: editable && !accessActive
@@ -858,10 +977,12 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
       invitationId: record.invitationId,
       applicationId: record.applicationId
     })).sort((left, right) => String(right.requestedAt).localeCompare(String(left.requestedAt)));
+    const generatedAt = nowIso();
     return {
-      generatedAt: nowIso(),
+      generatedAt,
       staff: { email: session.email, role: session.role },
       stats: { expressionsOfInterest: eois.length, applicationLinkRequests: applicationRequests.length, applications: applications.length, invited: counts.invited || 0, inProgress: counts.in_progress || 0, pendingSignatures: counts.pending_signatures || 0, submitted: counts.submitted || 0 },
+      planningSummary: staffPlanningSummary(applications, generatedAt),
       eois,
       applicationRequests,
       applications,

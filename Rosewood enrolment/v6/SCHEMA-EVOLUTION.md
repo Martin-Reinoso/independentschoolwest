@@ -29,8 +29,8 @@ deliberately creating a new version.
 Current launch contracts:
 
 ```text
-EOI:                      rosewood-eoi-2026.18
-Application:              rosewood-application-2026.19
+EOI:                      rosewood-eoi-2026.19
+Application:              rosewood-application-2026.20
 Application-link request: rosewood-application-link-request-2026.1
 Community enquiry:       rosewood-community-enquiry-2026.1
 ```
@@ -164,6 +164,15 @@ summary now projects existing `entry_year` and `entry_level` answers alongside
 non-sensitive operational status fields; it does not add, rename, transform or infer an
 application answer. Existing records, drafts, submissions and signatures are not
 migrated or rewritten.
+
+The EOI `2026.19` and Application `2026.20` releases preserve the complete V6.19
+question, answer, validation, projection, submission and signature-evidence contracts.
+They repin the browser and staff assets for the read-only Admissions overview. The
+backend derives `planningStage`, `attention`, invitation-delivery status and aggregate
+`planningSummary` values at request time from existing authoritative records. These
+values are response projections, not application answer keys, are not written to
+Google Sheets and do not create a migration. Existing drafts retain every answer;
+submitted applications and signature evidence remain pinned and unchanged.
 
 Acceptance, Decline and the Enrolment Agreement must receive their own independent
 version series when their backends are built. They must not reuse the Application

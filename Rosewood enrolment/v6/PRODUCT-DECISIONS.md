@@ -120,6 +120,16 @@ for Enrolment backend. It must:
 - provide a separate enrolment-planning view showing student name, entry year, entry
   level, application status, signature progress, last activity, staff-review flag and
   reference, with search and year/level/status filters
+- open on a read-only Admissions overview that uses exactly five application-progress
+  stages: Not started, In progress, Awaiting signatures, Staff review and Application
+  complete
+- count child application records, not families, contacts or prospective places; the
+  overview must not describe Application complete as enrolled, accepted or offered
+- derive a staff-attention queue from operational metadata for failed/delayed email,
+  unavailable invitation access, seven days without draft activity, three days with an
+  outstanding signature, staff review and missing entry details
+- treat every attention item as an operational prompt only; it must not modify the
+  application, send a message, infer an admissions outcome or create a decision
 - keep family email, health information, documents and detailed application answers out
   of the planning summary; those remain available only through the audited detailed
   review where authorised
@@ -143,6 +153,13 @@ Entry year and level remain applicant answers stored on each child application. 
 planning view is read-only and may show **Not provided yet** until the family saves
 those fields. It must not infer an entry year from invitation date, application date or
 another sibling's record.
+
+The overview summary is calculated by the backend from the same authoritative
+DynamoDB application, invitation and SES-feedback records already used by operations.
+It is not stored as another family record and does not rely on Google Sheets. The
+ordinary overview response excludes full family email, health answers, documents,
+date of birth, raw SES identifiers and network metadata. Opening **Review** uses the
+existing authorised and audited application-detail path.
 
 The first release is allowlisted to `info@ffe.org.au`, uses email OTP and records staff
 actions. Its ordinary session remains in memory; explicit **Remember me** stores only

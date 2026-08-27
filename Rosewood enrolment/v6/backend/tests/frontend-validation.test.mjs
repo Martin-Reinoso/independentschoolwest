@@ -98,6 +98,39 @@ test("V6.8 exposes the revised responsive application experience without retired
   assert.doesNotMatch(adminSource.slice(adminSource.indexOf("function renderPlanning()"), adminSource.indexOf("function renderApplications()")), /recipientEmail/);
 });
 
+test("staff admissions overview presents the canonical pipeline and privacy-conscious follow-up queue", async () => {
+  const [source, html, css] = await Promise.all([
+    readFile(new URL("../../../../pages/rosewood-enrolment-admin-v6.js", import.meta.url), "utf8"),
+    readFile(new URL("../../../../pages/rosewood-enrolment-admin-v6.html", import.meta.url), "utf8"),
+    readFile(new URL("../../../../pages/rosewood-enrolment-admin-v6.css", import.meta.url), "utf8")
+  ]);
+  const overviewSource = source.slice(source.indexOf("function syncOverviewSelect"), source.indexOf("function syncPlanningSelect"));
+
+  assert.match(html, /data-panel="overview"[^>]*>\s*<span>Admissions overview<\/span>/);
+  assert.match(html, /id="overview-panel"/);
+  assert.match(html, /Counts refer to student applications, not families or enrolment decisions/);
+  assert.match(html, /id="overview-search"/);
+  assert.match(html, /id="overview-year"/);
+  assert.match(html, /id="overview-level"/);
+  assert.match(html, /id="overview-stage"/);
+  assert.match(html, /value="not_started">Not started/);
+  assert.match(html, /value="in_progress">In progress/);
+  assert.match(html, /value="awaiting_signatures">Awaiting signatures/);
+  assert.match(html, /value="staff_review">Staff review/);
+  assert.match(html, /value="complete">Application complete/);
+  assert.match(html, /Operational flags only\. They do not change the application or make an admissions decision/);
+  assert.match(overviewSource, /function renderOverviewStageCards/);
+  assert.match(overviewSource, /function renderStageDistribution/);
+  assert.match(overviewSource, /function renderEntryMix/);
+  assert.match(overviewSource, /function renderAttentionQueue/);
+  assert.match(overviewSource, /openApplicationDetail\(record\)/);
+  assert.doesNotMatch(overviewSource, /recipientEmail|guardian|mobile|dateOfBirth/);
+  assert.match(css, /\.overview-stage-grid \{[^}]*grid-template-columns: repeat\(5/);
+  assert.match(css, /@media \(max-width: 700px\)[\s\S]*\.overview-stage-grid \{ grid-template-columns: repeat\(2/);
+  assert.match(css, /\.attention-card/);
+  assert.match(css, /\.overview-stage-card:focus-visible/);
+});
+
 test("V6.14 applies the approved family feedback without weakening verification or saved-draft safety", async () => {
   const [source, html] = await Promise.all([
     readFile(new URL("../../../../pages/rosewood-enrolment-v6.js", import.meta.url), "utf8"),
@@ -161,8 +194,8 @@ test("guardian signing renders the complete server-provided application review",
   assert.match(source, /formatToParts\(value\)/);
   assert.match(source, /value="\$\{melbourneDate\(\)\}"/);
   assert.doesNotMatch(source, /new Date\(\)\.toISOString\(\)\.slice\(0, 10\)/);
-  assert.match(await readFile(new URL("../../../../pages/rosewood-enrolment-v6.js", import.meta.url), "utf8"), /rosewood-application-2026\.19/);
-  assert.match(await readFile(new URL("../../../../pages/rosewood-enrolment-v6.html", import.meta.url), "utf8"), /rosewood-enrolment-v6\.js\?v=30/);
+  assert.match(await readFile(new URL("../../../../pages/rosewood-enrolment-v6.js", import.meta.url), "utf8"), /rosewood-application-2026\.20/);
+  assert.match(await readFile(new URL("../../../../pages/rosewood-enrolment-v6.html", import.meta.url), "utf8"), /rosewood-enrolment-v6\.js\?v=31/);
   assert.match(html, /rosewood-application-sign-v6\.css\?v=2/);
   assert.match(html, /rosewood-application-sign-v6\.js\?v=5/);
   assert.match(css, /\.application-review-section/);
