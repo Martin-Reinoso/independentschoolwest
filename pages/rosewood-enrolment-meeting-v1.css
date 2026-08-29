@@ -1,4 +1,3 @@
-@import url('../fonts/fonts.css');
 :root { --ink:#14213a; --soft:#5f6d82; --paper:#f5f0e6; --white:#fff; --clay:#b24832; --green:#2f7e5c; --line:#ddd2c2; --display:"Libre Baskerville",Georgia,serif; --body:"Avenir Next",sans-serif; }
 * { box-sizing:border-box; }
 body { margin:0; color:var(--ink); background:radial-gradient(circle at 10% 15%,#eadfcd 0,transparent 28%),linear-gradient(145deg,#f8f4ec,#eee5d6); font-family:var(--body); }
