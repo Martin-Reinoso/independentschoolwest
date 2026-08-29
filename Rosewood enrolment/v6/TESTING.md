@@ -1713,3 +1713,35 @@ write.
 - Both security-topic email subscriptions remain confirmed. The enabled encrypted SES
   feedback destination retains send, delivery, delay, bounce, complaint, reject and
   rendering-failure events through its confirmed Lambda subscription.
+
+## V6.23 Staff Case Management And Principal Meetings Verification
+
+Released and verified in production on 30 August 2026 using synthetic test data only.
+No production family record was opened or changed, and no invitation, OTP, email,
+upload, signature, case message or meeting booking was created during release
+verification.
+
+- The complete backend suite passed 140 tests, including immutable staff review state,
+  human-reviewed draft/test/send correspondence, backend enforcement of guardian
+  contact permission, private meeting invitations and conditional single-slot booking.
+- Repository static-reference and public-data gates passed. GitHub repository checks
+  and Pages deployment run `33278504003` completed successfully at commit
+  `292e7ea20047fffd05df1ce73d8b506c70f98d8c`; the live staff, meeting and family
+  assets matched the committed SHA-256 hashes.
+- Reviewed CloudFormation change set `case-management-292e7ea` changed only the
+  existing Lambda code/environment and conditional schedule, permission and SES
+  subscription recalculation. It proposed no DynamoDB, audit, KMS, staging-bucket,
+  backup-vault, secret, Google configuration or IAM-role change.
+- The stack returned to `UPDATE_COMPLETE` with termination protection enabled. Lambda
+  `rosewood-enrolment-v6-production-service` is `Active` with
+  `LastUpdateStatus: Successful`; `/v6/health` reports EOI
+  `rosewood-eoi-2026.22` and Application `rosewood-application-2026.23`.
+- Unauthenticated staff-dashboard and meeting-context requests returned
+  `401 SESSION_REQUIRED`. The one-minute outbox and ten-minute canary schedules remain
+  enabled.
+- A manual non-writing canary reported Public form, backend health, EOI address,
+  Application workflow and operational pipeline all available. All nine production
+  alarms are `OK`.
+- Both security-topic email subscriptions remain confirmed. The enabled encrypted SES
+  feedback destination retains all seven send, delivery, delay, bounce, complaint,
+  reject and rendering-failure event types through its confirmed Lambda subscription.
