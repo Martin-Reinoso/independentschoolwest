@@ -985,7 +985,7 @@ const v23FrontendAssetHashes = freeze({
   "pages/rosewood-enrolment-admin-v6.css": "604ec269fe7654f182a0d9210cee956816a78acab9a9bba3b5a3b46eaa9f76a5",
   "pages/rosewood-enrolment-meeting-v1.html": "47aa2281f6de018dd6c0a20290e84ff5bce13e45671e808e513e7e0535d51867",
   "pages/rosewood-enrolment-meeting-v1.js": "d0a3d2f7ca292a48a75b032382898f0fd0365273088eebb1899dfd8aaebd8457",
-  "pages/rosewood-enrolment-meeting-v1.css": "1ceffe6a043378b352773dfb902d0a943fdcccdf7c1c0e4f44e0849469cf6b91"
+  "pages/rosewood-enrolment-meeting-v1.css": "58d8fdc518dbdda892fab56dbd93322b8879ec145481d1719381235f78342ab8"
 });
 
 const eoi2026v22 = complete({
