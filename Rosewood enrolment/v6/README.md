@@ -1,5 +1,13 @@
 # Rosewood Enrolment V6
 
+## Staff case management (2026-08-30)
+
+Authenticated admissions staff can review a submitted application through the same frozen, human-readable section projection used for guardian review. Review state, internal notes, correspondence and principal-meeting bookings are separate DynamoDB entities; they never rewrite submitted answers, documents, signatures or application revisions.
+
+Family correspondence is deliberately human-reviewed. Staff may save a draft, send a test to their own authorised staff address, and explicitly send the reviewed message. A purpose classifies the record but never triggers an automatic family email. Backend recipient checks preserve explicit guardian contact permission.
+
+Principal meetings use staff-created schedules and atomic availability slots. A family receives a private application-linked invitation, verifies the invited email by OTP, and books one available time. The booking workflow does not reopen the Application for Enrolment.
+
 V6 is the Rosewood College enrolment interface at:
 
 ```text

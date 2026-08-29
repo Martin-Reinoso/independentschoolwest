@@ -45,6 +45,147 @@ export class DynamoStore {
   getApplicationRequest(id) { return this.get(`APP_REQUEST#${id}`); }
   getApplicationRequestByEmailHash(emailHash) { return this.get(`APP_REQUEST_EMAIL#${emailHash}`); }
   getCommunityEnquiry(id) { return this.get(`COMMUNITY_ENQUIRY#${id}`); }
+  getCaseReview(applicationId) { return this.get(`APP#${applicationId}`, "CASE#REVIEW"); }
+  getCaseMessage(applicationId, messageId) { return this.get(`APP#${applicationId}`, `CASE_MESSAGE#${messageId}`); }
+  getMeetingSeries(id) { return this.get(`MEETING_SERIES#${id}`); }
+  getMeetingInvitation(tokenHash) { return this.get(`MEETING_INVITE#${tokenHash}`); }
+  getMeetingInvitationById(id) { return this.get(`MEETING_INVITE_ID#${id}`); }
+
+  async listCaseMessages(applicationId, limit = 200) {
+    const response = await this.client.send(new QueryCommand({
+      TableName: this.tableName,
+      KeyConditionExpression: "PK = :pk AND begins_with(SK, :prefix)",
+      ExpressionAttributeValues: { ":pk": `APP#${applicationId}`, ":prefix": "CASE_MESSAGE#" },
+      ScanIndexForward: false,
+      Limit: Math.max(1, Math.min(500, Number(limit) || 200)),
+      ConsistentRead: true
+    }));
+    return (response.Items || []).map(item => item.data);
+  }
+
+  async saveCaseReview({ applicationId, review, expectedVersion, auditEvents = [] }) {
+    const condition = Number(expectedVersion || 0) === 0
+      ? { ConditionExpression: "attribute_not_exists(PK)" }
+      : {
+          ConditionExpression: "#data.#version = :expectedVersion",
+          ExpressionAttributeNames: { "#data": "data", "#version": "version" },
+          ExpressionAttributeValues: { ":expectedVersion": Number(expectedVersion) }
+        };
+    try {
+      await this.client.send(new TransactWriteCommand({ TransactItems: [
+        { Put: { TableName: this.tableName, Item: { ...this.key(`APP#${applicationId}`, "CASE#REVIEW"), entity: "case_review", data: review }, ...condition } },
+        ...this.auditActions(auditEvents)
+      ] }));
+      return review;
+    } catch (error) { if (conditional(error)) throw conflict("The case review changed before it could be saved."); throw error; }
+  }
+
+  async saveCaseMessage({ applicationId, message, expectedStatus = "", outboxEvents = [], auditEvents = [] }) {
+    const key = this.key(`APP#${applicationId}`, `CASE_MESSAGE#${message.id}`);
+    const condition = expectedStatus
+      ? {
+          ConditionExpression: "#data.#status = :expectedStatus",
+          ExpressionAttributeNames: { "#data": "data", "#status": "status" },
+          ExpressionAttributeValues: { ":expectedStatus": expectedStatus }
+        }
+      : { ConditionExpression: "attribute_not_exists(PK)" };
+    try {
+      await this.client.send(new TransactWriteCommand({ TransactItems: [
+        { Put: { TableName: this.tableName, Item: { ...key, entity: "case_message", data: message }, ...condition } },
+        ...this.outboxActions(outboxEvents),
+        ...this.auditActions(auditEvents)
+      ] }));
+      return message;
+    } catch (error) { if (conditional(error)) throw conflict("The email draft changed before it could be saved or sent."); throw error; }
+  }
+
+  async recordCaseMessageDelivery({ applicationId, messageId, deliveryStatus, deliveryRank = 0, at, messageIdFromProvider = "" }) {
+    try { await this.client.send(new UpdateCommand({
+      TableName: this.tableName,
+      Key: this.key(`APP#${applicationId}`, `CASE_MESSAGE#${messageId}`),
+      UpdateExpression: "SET #data.#deliveryStatus = :deliveryStatus, #data.#deliveryRank = :deliveryRank, #data.#deliveryAt = :at, #data.#providerMessageId = :providerMessageId",
+      ConditionExpression: "#data.#status = :sent AND (attribute_not_exists(#data.#deliveryRank) OR #data.#deliveryRank <= :deliveryRank)",
+      ExpressionAttributeNames: { "#data": "data", "#deliveryStatus": "deliveryStatus", "#deliveryRank": "deliveryRank", "#deliveryAt": "deliveryAt", "#providerMessageId": "providerMessageId", "#status": "status" },
+      ExpressionAttributeValues: { ":deliveryStatus": deliveryStatus, ":deliveryRank": Number(deliveryRank), ":at": at, ":providerMessageId": messageIdFromProvider, ":sent": "sent" }
+    })); return true; }
+    catch (error) { if (conditional(error)) return false; throw error; }
+  }
+
+  async createMeetingSeries(series, auditEvents = []) {
+    await this.client.send(new TransactWriteCommand({ TransactItems: [
+      { Put: { TableName: this.tableName, Item: { ...this.key(`MEETING_SERIES#${series.id}`), entity: "meeting_series", data: series }, ConditionExpression: "attribute_not_exists(PK)" } },
+      ...this.auditActions(auditEvents)
+    ] }));
+    return series;
+  }
+
+  async createMeetingSlot(slot, auditEvents = []) {
+    await this.client.send(new TransactWriteCommand({ TransactItems: [
+      { Put: { TableName: this.tableName, Item: { ...this.key(`MEETING_SERIES#${slot.seriesId}`, `SLOT#${slot.startsAt}#${slot.id}`), entity: "meeting_slot", data: slot }, ConditionExpression: "attribute_not_exists(PK)" } },
+      ...this.auditActions(auditEvents)
+    ] }));
+    return slot;
+  }
+
+  async listMeetingSeries() {
+    return (await this.scanEntities(["meeting_series"])).map(item => item.data).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  }
+
+  async listMeetingSlots(seriesId) {
+    const response = await this.client.send(new QueryCommand({
+      TableName: this.tableName,
+      KeyConditionExpression: "PK = :pk AND begins_with(SK, :prefix)",
+      ExpressionAttributeValues: { ":pk": `MEETING_SERIES#${seriesId}`, ":prefix": "SLOT#" },
+      ScanIndexForward: true,
+      ConsistentRead: true
+    }));
+    return (response.Items || []).filter(item => item.entity === "meeting_slot").map(item => item.data);
+  }
+
+  async createMeetingInvitation({ invitation, tokenHash, outboxEvents = [], auditEvents = [] }) {
+    const ttl = Math.floor(invitation.expiresAt / 1000) + 86400;
+    const storedInvitation = { ...invitation, tokenHash };
+    await this.client.send(new TransactWriteCommand({ TransactItems: [
+      { Put: { TableName: this.tableName, Item: { ...this.key(`MEETING_INVITE#${tokenHash}`), entity: "meeting_invitation", ttl, data: storedInvitation }, ConditionExpression: "attribute_not_exists(PK)" } },
+      { Put: { TableName: this.tableName, Item: { ...this.key(`MEETING_INVITE_ID#${invitation.id}`), entity: "meeting_invitation_index", ttl, data: storedInvitation }, ConditionExpression: "attribute_not_exists(PK)" } },
+      ...this.outboxActions(outboxEvents),
+      ...this.auditActions(auditEvents)
+    ] }));
+    return invitation;
+  }
+
+  async bookMeetingSlot({ seriesId, slot, invitation, booking, outboxEvents = [], auditEvents = [] }) {
+    const slotKey = this.key(`MEETING_SERIES#${seriesId}`, `SLOT#${slot.startsAt}#${slot.id}`);
+    try {
+      await this.client.send(new TransactWriteCommand({ TransactItems: [
+        { Put: {
+          TableName: this.tableName,
+          Item: { ...slotKey, entity: "meeting_slot", data: { ...slot, status: "booked", bookingId: booking.id, bookedAt: booking.createdAt } },
+          ConditionExpression: "#data.#status = :available",
+          ExpressionAttributeNames: { "#data": "data", "#status": "status" },
+          ExpressionAttributeValues: { ":available": "available" }
+        } },
+        { Put: { TableName: this.tableName, Item: { ...this.key(`MEETING_SERIES#${seriesId}`, `BOOKING#${booking.id}`), entity: "meeting_booking", data: booking }, ConditionExpression: "attribute_not_exists(PK)" } },
+        { Put: {
+          TableName: this.tableName,
+          Item: { ...this.key(`MEETING_INVITE_ID#${invitation.id}`), entity: "meeting_invitation_index", ttl: Math.floor(invitation.expiresAt / 1000) + 86400, data: { ...invitation, status: "booked", bookingId: booking.id, bookedAt: booking.createdAt } },
+          ConditionExpression: "#data.#status = :pending",
+          ExpressionAttributeNames: { "#data": "data", "#status": "status" },
+          ExpressionAttributeValues: { ":pending": "pending" }
+        } },
+        { Put: {
+          TableName: this.tableName,
+          Item: { ...this.key(`MEETING_INVITE#${invitation.tokenHash}`), entity: "meeting_invitation", ttl: Math.floor(invitation.expiresAt / 1000) + 86400, data: { ...invitation, status: "booked", bookingId: booking.id, bookedAt: booking.createdAt } },
+          ConditionExpression: "#data.#status = :pending",
+          ExpressionAttributeNames: { "#data": "data", "#status": "status" },
+          ExpressionAttributeValues: { ":pending": "pending" }
+        } },
+        ...this.outboxActions(outboxEvents),
+        ...this.auditActions(auditEvents)
+      ] }));
+      return booking;
+    } catch (error) { if (conditional(error)) throw conflict("This meeting time is no longer available. Choose another time."); throw error; }
+  }
 
   auditActions(events = []) {
     return events.map(event => ({ Put: {

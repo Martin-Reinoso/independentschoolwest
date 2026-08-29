@@ -1,5 +1,14 @@
 # V6 Recovery Runbook
 
+## Case correspondence and meetings
+
+- A failed email remains in the durable outbox and follows the existing bounded retry and terminal-failure alarms. Do not create a duplicate application to retry correspondence.
+- A draft case email can be edited only while its status remains `draft`. Sending changes it to `sent` and creates the outbox item atomically.
+- SES feedback updates only the linked case-message delivery projection; it cannot alter the application.
+- If a meeting invitation expires, create a new invitation for the same application and schedule. Do not expose or reuse the old token.
+- If a booking reports that the time is unavailable, refresh available slots. Never overwrite a booked slot.
+- Case and meeting entities are covered by the retained table's existing point-in-time recovery boundary.
+
 ## Safety Rules
 
 - Use only `ap-southeast-2` and verify the AWS account before any restore.

@@ -28,6 +28,13 @@ class StaffStore {
     this.revisions = new Map();
     this.renewals = [];
     this.rateLimitChecks = [];
+    this.caseReviews = new Map();
+    this.caseMessages = new Map();
+    this.meetingSeries = new Map();
+    this.meetingSlots = new Map();
+    this.meetingInvitations = new Map();
+    this.meetingInvitationTokens = new Map();
+    this.outboxEvents = [];
   }
   async checkRateLimit(key, limit, seconds) {
     this.rateLimitChecks.push({ key, limit, seconds });
@@ -79,6 +86,21 @@ class StaffStore {
   async getInvitation(tokenHash) { return this.invitations.get(tokenHash) || null; }
   async getInvitationById(id) { return this.invitationIds.get(id) || null; }
   async getApplication(id) { return this.applications.get(id) || null; }
+  async getCaseReview(applicationId) { return this.caseReviews.get(applicationId) || null; }
+  async listCaseMessages(applicationId) { return [...this.caseMessages.values()].filter(message => message.applicationId === applicationId); }
+  async getCaseMessage(applicationId, messageId) { const message = this.caseMessages.get(messageId); return message?.applicationId === applicationId ? message : null; }
+  async saveCaseReview({ applicationId, review, expectedVersion, auditEvents = [] }) { assert.equal(Number(this.caseReviews.get(applicationId)?.version || 0), Number(expectedVersion)); this.caseReviews.set(applicationId, structuredClone(review)); this.audit.push(...auditEvents); return review; }
+  async saveCaseMessage({ message, expectedStatus = "", outboxEvents = [], auditEvents = [] }) { const current = this.caseMessages.get(message.id); if (expectedStatus) assert.equal(current?.status, expectedStatus); else assert.equal(current, undefined); this.caseMessages.set(message.id, structuredClone(message)); this.outboxEvents.push(...outboxEvents); this.audit.push(...auditEvents); return message; }
+  async recordCaseMessageDelivery({ messageId, deliveryStatus, at, messageIdFromProvider }) { const current = this.caseMessages.get(messageId); this.caseMessages.set(messageId, { ...current, deliveryStatus, deliveryAt: at, providerMessageId: messageIdFromProvider }); }
+  async listMeetingSeries() { return [...this.meetingSeries.values()]; }
+  async getMeetingSeries(id) { return this.meetingSeries.get(id) || null; }
+  async createMeetingSeries(series, auditEvents = []) { this.meetingSeries.set(series.id, structuredClone(series)); this.audit.push(...auditEvents); return series; }
+  async createMeetingSlot(slot, auditEvents = []) { const slots = this.meetingSlots.get(slot.seriesId) || []; slots.push(structuredClone(slot)); this.meetingSlots.set(slot.seriesId, slots); this.audit.push(...auditEvents); return slot; }
+  async listMeetingSlots(seriesId) { return structuredClone(this.meetingSlots.get(seriesId) || []); }
+  async createMeetingInvitation({ invitation, tokenHash, outboxEvents = [], auditEvents = [] }) { const stored = { ...invitation, tokenHash }; this.meetingInvitations.set(invitation.id, structuredClone(stored)); this.meetingInvitationTokens.set(tokenHash, structuredClone(stored)); this.outboxEvents.push(...outboxEvents); this.audit.push(...auditEvents); return invitation; }
+  async getMeetingInvitation(tokenHash) { return this.meetingInvitationTokens.get(tokenHash) || null; }
+  async getMeetingInvitationById(id) { return this.meetingInvitations.get(id) || null; }
+  async bookMeetingSlot({ seriesId, slot, invitation, booking, outboxEvents = [], auditEvents = [] }) { const slots = this.meetingSlots.get(seriesId); const index = slots.findIndex(item => item.id === slot.id); assert.equal(slots[index].status, "available"); slots[index] = { ...slots[index], status: "booked", bookingId: booking.id }; const booked = { ...invitation, status: "booked", bookingId: booking.id }; this.meetingInvitations.set(invitation.id, booked); this.meetingInvitationTokens.set(invitation.tokenHash, booked); this.outboxEvents.push(...outboxEvents); this.audit.push(...auditEvents); return booking; }
   async listApplicationsByInvitationId(invitationId) { return [...this.applications.values()].filter(application => application.invitationId === invitationId); }
   async renewInvitationAccess(value) {
     this.renewals.push(structuredClone(value));
@@ -516,7 +538,7 @@ test("an active V14 draft adopts the current contract without transforming its f
   await service(event("/v6/application/access/verify-code", "POST", { invitationToken, challengeId: requested.challengeId, code: "123456" }));
   const upgraded = store.applications.get(created.applicationId);
 
-  assert.equal(upgraded.formVersion, "rosewood-application-2026.22");
+  assert.equal(upgraded.formVersion, "rosewood-application-2026.23");
   assert.deepEqual(upgraded.values, values);
   assert.deepEqual(store.audit.find(eventRecord => eventRecord.type === "application.form_definition_upgraded").details.normalizedFields, []);
 });
@@ -675,4 +697,66 @@ test("staff renewal endpoint recovers one existing application without creating 
   assert.equal(duplicate.statusCode, 200);
   assert.equal(store.applications.size, applicationCount);
   assert.equal(store.renewals.length, 1);
+});
+
+test("staff review and reviewed correspondence remain separate from the submitted application", async () => {
+  const { service, store } = staffService();
+  const created = await createApplicationInvitation({ store, recipientEmail: "family@example.com", firstName: "Alex", applicationUrl: "https://ffe.org.au/form", clock });
+  const original = structuredClone(store.applications.get(created.applicationId));
+  const sessionToken = await staffSession(service);
+
+  const reviewed = await service(event("/v6/staff/applications/review", "POST", { applicationId: created.applicationId, expectedVersion: 0, status: "in_progress", checklist: { identity_reviewed: true }, note: "Synthetic review note" }, sessionToken));
+  assert.equal(reviewed.statusCode, 200);
+  assert.equal(store.caseReviews.get(created.applicationId).version, 1);
+
+  const draftResponse = await service(event("/v6/staff/applications/messages/draft", "POST", { applicationId: created.applicationId, recipientEmail: "family@example.com", purpose: "clarification", subject: "A question about your application", body: "Please clarify the synthetic test response." }, sessionToken));
+  const draft = JSON.parse(draftResponse.body).message;
+  assert.equal(draft.status, "draft");
+  assert.equal(store.outboxEvents.length, 0);
+
+  const sent = await service(event("/v6/staff/applications/messages/send", "POST", { applicationId: created.applicationId, messageId: draft.id, confirmation: "Send reviewed email" }, sessionToken));
+  assert.equal(sent.statusCode, 200);
+  assert.equal(store.caseMessages.get(draft.id).status, "sent");
+  assert.equal(store.outboxEvents.filter(item => item.kind === "email").length, 1);
+  assert.deepEqual(store.applications.get(created.applicationId), original);
+
+  const detail = JSON.parse((await service(event("/v6/staff/applications/detail", "POST", { applicationId: created.applicationId }, sessionToken))).body).application;
+  assert.ok(detail.review.sections.length > 5);
+  assert.equal(detail.caseReview.status, "in_progress");
+  assert.equal(detail.communications.length, 1);
+});
+
+test("do-not-contact blocks reviewed staff correspondence on the backend", async () => {
+  const { service, store } = staffService();
+  const created = await createApplicationInvitation({ store, recipientEmail: "primary@example.com", firstName: "Alex", applicationUrl: "https://ffe.org.au/form", clock });
+  const app = store.applications.get(created.applicationId);
+  store.applications.set(app.id, { ...app, signerControls: [{ guardianId: "guardian-1", name: "Other Parent", currentEmail: "blocked@example.com", contactPermission: false }] });
+  const sessionToken = await staffSession(service);
+  const response = await service(event("/v6/staff/applications/messages/draft", "POST", { applicationId: app.id, recipientEmail: "blocked@example.com", purpose: "clarification", subject: "Synthetic", body: "This must not be stored or sent." }, sessionToken));
+  assert.equal(response.statusCode, 403);
+  assert.equal(store.caseMessages.size, 0);
+  assert.equal(store.outboxEvents.length, 0);
+});
+
+test("principal meeting schedules use private invitations and atomically reserve one slot", async () => {
+  const { service, store } = staffService();
+  const created = await createApplicationInvitation({ store, recipientEmail: "family@example.com", firstName: "Alex", applicationUrl: "https://ffe.org.au/form", clock });
+  const sessionToken = await staffSession(service);
+  const series = JSON.parse((await service(event("/v6/staff/meetings/series", "POST", { title: "Principal meeting", hostName: "Principal", location: "Rosewood College", durationMinutes: 30 }, sessionToken))).body).series;
+  const startsAt = new Date(clock() + 86400_000).toISOString();
+  const slot = JSON.parse((await service(event("/v6/staff/meetings/slots", "POST", { seriesId: series.id, startsAt }, sessionToken))).body).slot;
+  const invited = await service(event("/v6/staff/applications/meeting-invitations", "POST", { applicationId: created.applicationId, seriesId: series.id, recipientEmail: "family@example.com", confirmation: "Send meeting invitation" }, sessionToken));
+  assert.equal(invited.statusCode, 200);
+  const invitation = [...store.meetingInvitations.values()][0];
+  assert.equal(invitation.status, "pending");
+  assert.equal(store.outboxEvents.filter(item => item.kind === "email").length, 1);
+
+  const familyToken = "synthetic-meeting-session";
+  store.sessions.set((await import("node:crypto")).createHash("sha256").update(familyToken).digest("hex"), { scope: "meeting_booking", meetingInvitationId: invitation.id, expiresAt: clock() + 1800000 });
+  const context = JSON.parse((await service(event("/v6/meetings/context", "GET", null, familyToken))).body);
+  assert.equal(context.slots.length, 1);
+  const booked = await service(event("/v6/meetings/book", "POST", { slotId: slot.id }, familyToken));
+  assert.equal(booked.statusCode, 200);
+  assert.equal((await store.listMeetingSlots(series.id))[0].status, "booked");
+  assert.equal(store.applications.get(created.applicationId).status, "invited");
 });

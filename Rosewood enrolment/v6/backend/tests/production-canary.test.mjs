@@ -17,7 +17,9 @@ const publicBodies = new Map([
   ["/pages/rosewood-application-sign-v6.html", "Rosewood College rosewood-application-sign-v6.js"],
   ["/pages/rosewood-application-sign-v6.js", "signatures/request-code signatures/submit"],
   ["/pages/rosewood-enrolment-admin-v6.html", "Rosewood College Admissions overview rosewood-enrolment-admin-v6.js"],
-  ["/pages/rosewood-enrolment-admin-v6.js", "staff/access/request-code staff/dashboard planningSummary renderAttentionQueue staff/invitations/renew-access"]
+  ["/pages/rosewood-enrolment-admin-v6.js", "staff/access/request-code staff/dashboard planningSummary renderAttentionQueue staff/invitations/renew-access staff/applications/messages/send"]
+  ,["/pages/rosewood-enrolment-meeting-v1.html", "Rosewood College rosewood-enrolment-meeting-v1.js"]
+  ,["/pages/rosewood-enrolment-meeting-v1.js", "/v6/meetings/request-code /v6/meetings/book"]
 ]);
 
 function response(body, { status = 200, headers = {} } = {}) {
@@ -40,8 +42,8 @@ function healthyFetch({ breakPublicAsset = false, omitAddressKey = false } = {})
       return response({
         status: "ok",
         formVersions: {
-          eoi: "rosewood-eoi-2026.21",
-          application: "rosewood-application-2026.22",
+          eoi: "rosewood-eoi-2026.22",
+          application: "rosewood-application-2026.23",
           applicationLinkRequest: "rosewood-application-link-request-2026.1",
           communityEnquiry: "rosewood-community-enquiry-2026.1"
         },

@@ -1,5 +1,20 @@
 # Rosewood V6 Staff Portal Runbook
 
+## Reviewing and following up an application
+
+1. Open **Applications** or **Enrolment planning**, then choose **Review**.
+2. Read the section navigation and complete application projection. Opening a record is audited.
+3. Use **Staff review** to save operational status, checklist and a bounded internal note. This does not alter the family submission.
+4. Use **Write to the family** to select an authorised recipient, write the email, save a draft, optionally send a test to yourself, then explicitly send the reviewed email.
+5. Never use email to transmit sensitive application answers or documents.
+
+## Principal meetings
+
+1. Open **Principal meetings**, create a schedule, then add future available times.
+2. Return to the application review and select **Invite to a principal meeting**.
+3. Confirm the permitted recipient and schedule before sending.
+4. The family verifies the invited address before seeing times. Booking is conditional; an already-booked time cannot be claimed again.
+
 ## Scope
 
 The V6 staff portal covers only Expression of Interest and Application for Enrolment:

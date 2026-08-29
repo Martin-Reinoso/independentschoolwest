@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src https://6zyzo44sdb5zmmx53toktqrnuu0sikyd.lambda-url.ap-southeast-2.on.aws; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'">
+  <title>Book a Principal Meeting | Rosewood College</title>
+  <link rel="stylesheet" href="rosewood-enrolment-meeting-v1.css?v=1">
+</head>
+<body>
+  <main class="booking-shell">
+    <aside class="booking-story">
+      <img src="../img/rosewood-emblem-corrected-transparent.png" alt="">
+      <p class="eyebrow">Rosewood College</p>
+      <h1>Choose a time to meet.</h1>
+      <p>Your invitation is private. We will verify the email address that received it before showing available meeting times.</p>
+    </aside>
+    <section class="booking-card" aria-labelledby="booking-title">
+      <div id="notice" class="notice" role="alert" tabindex="-1" hidden></div>
+      <div id="email-step">
+        <p class="step">Step 1 of 3</p><h2 id="booking-title">Verify your invitation</h2>
+        <form id="email-form"><label>Email address<input id="email" type="email" autocomplete="email" required></label><button type="submit">Send verification code</button></form>
+      </div>
+      <div id="code-step" hidden>
+        <p class="step">Step 2 of 3</p><h2>Enter your code</h2><p>Use the six-digit code sent to your invited email address.</p>
+        <form id="code-form"><label>Verification code<input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required></label><button type="submit">View meeting times</button></form>
+      </div>
+      <div id="slots-step" hidden>
+        <p class="step">Step 3 of 3</p><h2 id="series-title">Available meeting times</h2><p id="meeting-context"></p>
+        <form id="slots-form"><fieldset><legend>Choose one available time</legend><div id="slot-list"></div></fieldset><button id="book-button" type="submit">Confirm meeting</button></form>
+      </div>
+      <div id="complete-step" hidden>
+        <div class="success-mark" aria-hidden="true">✓</div><h2>Meeting confirmed</h2><p id="confirmation"></p><p>A confirmation has also been sent to your email address.</p>
+      </div>
+    </section>
+  </main>
+  <script src="rosewood-enrolment-meeting-v1.js?v=1"></script>
+</body>
+</html>

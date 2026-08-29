@@ -555,6 +555,7 @@ Resources:
           STAFF_ROLES: !Ref StaffRoles
           APPLICATION_PAGE_URL: https://ffe.org.au/pages/rosewood-enrolment-v6.html
           APPLICATION_SIGNING_PAGE_URL: https://ffe.org.au/pages/rosewood-application-sign-v6.html
+          MEETING_BOOKING_PAGE_URL: https://ffe.org.au/pages/rosewood-enrolment-meeting-v1.html
           STAFF_PORTAL_URL: https://ffe.org.au/pages/rosewood-enrolment-admin-v6.html
           PUBLIC_SITE_BASE_URL: !Ref PublicSiteBaseUrl
           PUBLIC_API_BASE_URL: !Ref PublicApiBaseUrl

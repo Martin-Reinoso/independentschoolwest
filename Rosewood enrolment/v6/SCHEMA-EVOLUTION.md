@@ -1,5 +1,16 @@
 # V6 Form And Data Evolution
 
+## Case-management records (2026-08-30)
+
+- `APP#{applicationId} / CASE#REVIEW`: optimistic-versioned staff review status, bounded checklist and internal note.
+- `APP#{applicationId} / CASE_MESSAGE#{messageId}`: draft/sent state, permitted recipient, purpose, reviewed content, staff actors and SES delivery state.
+- `MEETING_SERIES#{seriesId}`: staff-created title, host, location, duration and open/closed state.
+- `MEETING_SERIES#{seriesId} / SLOT#{startsAt}#{slotId}`: available/booked slot; booking uses a conditional transaction.
+- `MEETING_INVITE#{tokenHash}` and `MEETING_INVITE_ID#{invitationId}`: expiring private invitation and restricted index.
+- `MEETING_SERIES#{seriesId} / BOOKING#{bookingId}`: confirmed booking linked to the unchanged application identifier.
+
+These records are append-only or independently versioned. No case operation updates `APP#{applicationId} / CURRENT`.
+
 ## Purpose
 
 This is the operating contract for changing Rosewood enrolment questions without

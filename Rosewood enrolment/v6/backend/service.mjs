@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { APPLICATION_REQUEST_CONTRACT } from "./application-request-contract.mjs";
 import { COMMUNITY_ENQUIRY_CONTRACT } from "./community-enquiry-contract.mjs";
 import { buildApplicationReview } from "./application-review.mjs";
-import { applicationComplete, applicationInvitation, applicationOtp, applicationSubmitted, communityEnquiryNotification, eoiAcknowledgement, signatureInvitation, signatureOtp, staffOtp } from "./email-templates.mjs";
+import { applicationComplete, applicationInvitation, applicationOtp, applicationSubmitted, communityEnquiryNotification, eoiAcknowledgement, meetingBookingConfirmation, meetingBookingInvitation, signatureInvitation, signatureOtp, staffCaseEmail, staffOtp } from "./email-templates.mjs";
 import { currentFormDefinition, FORM_DEFINITIONS, getFormDefinition, recordFormReference } from "./form-definitions.mjs";
 import { CONTACT_PERMISSION_NO, CONTACT_PERMISSION_YES, SCHEMA_VERSION, contactPermissionAllowed, formReleaseAtLeast, normalizeEmail, safeText, sanitizeApplication, splitApplication, truthy, validateApplicationForSubmission, validateEoi } from "./schema.mjs";
 import { sheetOperation } from "./google-sheets.mjs";
@@ -18,6 +18,9 @@ const MAX_OUTBOX_ATTEMPTS = 8;
 const APPLICATION_REQUEST_NETWORK_HOURLY_LIMIT = 100;
 const APPLICATION_REQUEST_NETWORK_DAILY_LIMIT = 500;
 const APPLICATION_OTP_NETWORK_HALF_HOURLY_LIMIT = 100;
+const CASE_REVIEW_STATUSES = new Set(["not_started", "in_progress", "further_information_required", "ready_for_principal", "on_hold", "review_complete"]);
+const CASE_MESSAGE_PURPOSES = new Set(["missing_document", "replacement_document", "clarification", "additional_information", "principal_meeting", "general_update"]);
+const MEETING_INVITATION_LIFETIME_MS = 14 * 86400_000;
 const COMMUNITY_ENQUIRY_INTERESTS = new Set(COMMUNITY_ENQUIRY_CONTRACT.fields.find(field => field.id === "interest").options);
 const APPLICATION_VALIDATORS = new Map(Object.keys(FORM_DEFINITIONS.application).map(formVersion => [formVersion, { sanitize: sanitizeApplication, validate: validateApplicationForSubmission }]));
 const EOI_VALIDATORS = new Map(Object.keys(FORM_DEFINITIONS.eoi).map(formVersion => [formVersion, validateEoi]));
@@ -721,6 +724,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
   const networkSecret = env.NETWORK_HMAC_SECRET;
   const signingPageUrl = env.APPLICATION_SIGNING_PAGE_URL;
   const applicationPageUrl = env.APPLICATION_PAGE_URL;
+  const meetingPageUrl = env.MEETING_BOOKING_PAGE_URL || "https://ffe.org.au/pages/rosewood-enrolment-meeting-v1.html";
   const communityEnquiryNotificationEmail = normalizeEmail(env.COMMUNITY_ENQUIRY_NOTIFICATION_EMAIL || "info@ffe.org.au");
   const googleMapsBrowserApiKey = safeText(env.GOOGLE_MAPS_BROWSER_API_KEY, 500);
   if (!otpSecret || !networkSecret) throw new Error("OTP_HMAC_SECRET and NETWORK_HMAC_SECRET are required.");
@@ -771,6 +775,9 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
           at: feedback.occurredAt
         });
         if (updated) signatureUpdates += 1;
+      }
+      if (tracking?.kind === "case_message") {
+        await store.recordCaseMessageDelivery?.({ applicationId: tracking.applicationId, messageId: tracking.messageId, deliveryStatus: feedback.deliveryStatus, deliveryRank: feedback.deliveryRank, at: feedback.occurredAt, messageIdFromProvider: feedback.messageId });
       }
       const audit = {
         eventId: `ses-${feedback.eventId}`,
@@ -1013,7 +1020,12 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     const applicationId = safeText(body.applicationId, 200);
     const app = await store.getApplication(applicationId);
     if (!app) throw appError(404, "APPLICATION_NOT_FOUND", "The application was not found.");
-    const [revisions, signatureTasks] = await Promise.all([store.listApplicationRevisions ? store.listApplicationRevisions(app.id, 100) : [], store.listSignatureTasksForApplication ? store.listSignatureTasksForApplication(app.id) : []]);
+    const [revisions, signatureTasks, caseReview, caseMessages] = await Promise.all([
+      store.listApplicationRevisions ? store.listApplicationRevisions(app.id, 100) : [],
+      store.listSignatureTasksForApplication ? store.listSignatureTasksForApplication(app.id) : [],
+      store.getCaseReview ? store.getCaseReview(app.id) : null,
+      store.listCaseMessages ? store.listCaseMessages(app.id, 200) : []
+    ]);
     await recordAudit(createAuditEvent({ workflow: "application", recordId: app.id, invitationId: app.invitationId, type: "staff.application_viewed", at: nowIso(), actorType: "staff", actorId: session.email, details: { role: session.role } }));
     const formReference = recordFormReference(app, "application");
     return {
@@ -1037,6 +1049,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
         oneSignatureExplanation: app.oneSignatureExplanation || app.values?.application_one_signature_reason || "",
         signatureControlRevision: app.signatureControlRevision || 0,
         ...formReference,
+        review: buildApplicationReview(app),
         values: app.values || {},
         documents: Object.values(app.documents || {}).flat().map(document => ({
           documentId: document.id || document.documentId,
@@ -1053,9 +1066,207 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
           const task = signatureTasks.find(item => item.guardianId === control.guardianId && item.tokenHash === control.taskTokenHash) || signatureTasks.filter(item => item.guardianId === control.guardianId).sort((a, b) => Number(b.generation || 0) - Number(a.generation || 0))[0];
           return { guardianId: control.guardianId, guardianIndex: control.guardianIndex, name: control.name, contactPermission: contactPermissionLabel(control.contactPermission), contactPermissionChangedAt: control.contactPermissionChangedAt || "", contactPermissionChangedBy: control.contactPermissionChangedBy || "", currentEmail: control.currentEmail, previousEmails: control.previousEmails || [], emailCorrectedAt: control.emailCorrectedAt || "", emailCorrectionRequestedBy: control.emailCorrectionRequestedBy || "", signatureRequired: Boolean(control.signatureRequired), requestGenerated: Boolean(control.requestGenerated), requestSent: Boolean(control.requestSent), requestStatus: signatureRequestLabel(control), requestSentAt: control.requestSentAt || "", deliveryStatus: control.deliveryStatus || (control.requestSent ? "accepted_by_ses" : "not_sent"), deliveryAt: control.deliveryAt || control.requestSentAt || "", openedAt: control.openedAt || "", emailVerifiedAt: control.emailVerifiedAt || "", signatureStatus: control.signatureStatus === "complete" ? "Complete" : control.signatureStatus, completedAt: control.completedAt || "", signedDocumentRevision: control.signedDocumentRevision || "", previousLinkRevokedAt: control.previousLinkRevokedAt || "", activeTaskStatus: task?.status || "not_generated", activeTaskGeneration: task?.generation || control.requestGeneration || 0 };
         }),
-        revisions: revisions.map(revision => ({ revisionKey: revision.revisionKey, revision: revision.revision, kind: revision.kind, status: revision.status, stage: revision.stage, savedAt: revision.savedAt, saveMode: revision.saveMode, changedFields: revision.changedFields || [], formVersion: revision.formVersion, formDefinitionHash: revision.formDefinitionHash, schemaVersion: revision.schemaVersion }))
+        revisions: revisions.map(revision => ({ revisionKey: revision.revisionKey, revision: revision.revision, kind: revision.kind, status: revision.status, stage: revision.stage, savedAt: revision.savedAt, saveMode: revision.saveMode, changedFields: revision.changedFields || [], formVersion: revision.formVersion, formDefinitionHash: revision.formDefinitionHash, schemaVersion: revision.schemaVersion })),
+        caseReview: caseReview || { status: "not_started", checklist: {}, note: "", version: 0 },
+        communications: caseMessages.map(message => ({ id: message.id, purpose: message.purpose, subject: message.subject, body: message.body, recipientEmail: message.recipientEmail, recipientName: message.recipientName || "", status: message.status, createdAt: message.createdAt, updatedAt: message.updatedAt, sentAt: message.sentAt || "", deliveryStatus: message.deliveryStatus || (message.status === "sent" ? "queued" : "not_sent"), createdBy: message.createdBy, sentBy: message.sentBy || "" }))
       }
     };
+  }
+
+  function permittedCaseRecipients(app) {
+    const recipients = new Map();
+    const primaryEmail = normalizeEmail(app.recipientEmail);
+    if (primaryEmail) recipients.set(primaryEmail, { email: primaryEmail, name: [app.values?.app_guardian_0_first, app.values?.app_guardian_0_last].filter(Boolean).join(" ") || "Parent/Guardian", kind: "submitting_applicant" });
+    for (const control of app.signerControls || []) {
+      const email = normalizeEmail(control.currentEmail);
+      if (email && control.contactPermission === true) recipients.set(email, { email, name: control.name || "Parent/Guardian", kind: "permitted_guardian" });
+    }
+    return recipients;
+  }
+
+  async function saveStaffCaseReview(event) {
+    const session = await requireStaffSession(event, ["admin", "admissions"]);
+    const body = parseBody(event, 30_000);
+    const applicationId = safeText(body.applicationId, 200);
+    const app = await store.getApplication(applicationId);
+    if (!app) throw appError(404, "APPLICATION_NOT_FOUND", "The application was not found.");
+    const status = safeText(body.status, 80);
+    if (!CASE_REVIEW_STATUSES.has(status)) throw appError(422, "INVALID_REVIEW_STATUS", "Select a valid review status.");
+    const checklist = Object.fromEntries(Object.entries(body.checklist || {}).filter(([key]) => /^[a-z][a-z0-9_]{0,60}$/.test(key)).slice(0, 30).map(([key, value]) => [key, value === true]));
+    const note = safeText(body.note, 4000);
+    const expectedVersion = Math.max(0, Number(body.expectedVersion) || 0);
+    const savedAt = nowIso();
+    const review = { applicationId, status, checklist, note, version: expectedVersion + 1, updatedAt: savedAt, updatedBy: session.email };
+    const audit = createAuditEvent({ workflow: "application", recordId: applicationId, invitationId: app.invitationId, type: "staff.case_review_saved", at: savedAt, actorType: "staff", actorId: session.email, details: { status, checklist } });
+    await store.saveCaseReview({ applicationId, review, expectedVersion, auditEvents: [audit] });
+    return { review };
+  }
+
+  async function saveStaffCaseMessageDraft(event) {
+    const session = await requireStaffSession(event, ["admin", "admissions"]);
+    const body = parseBody(event, 40_000);
+    const applicationId = safeText(body.applicationId, 200);
+    const app = await store.getApplication(applicationId);
+    if (!app) throw appError(404, "APPLICATION_NOT_FOUND", "The application was not found.");
+    const recipientEmail = normalizeEmail(body.recipientEmail);
+    const recipient = permittedCaseRecipients(app).get(recipientEmail);
+    if (!recipient) throw appError(403, "RECIPIENT_NOT_PERMITTED", "This person is not authorised to receive application correspondence.");
+    const purpose = safeText(body.purpose, 80);
+    const subject = safeText(body.subject, 180);
+    const messageBody = safeText(body.body, 20_000);
+    if (!CASE_MESSAGE_PURPOSES.has(purpose) || !subject || !messageBody) throw appError(422, "MESSAGE_INCOMPLETE", "Choose a purpose and complete the subject and message.");
+    const messageId = safeText(body.messageId, 200) || id("case-message");
+    const existing = body.messageId ? await store.getCaseMessage(applicationId, messageId) : null;
+    if (body.messageId && (!existing || existing.status !== "draft")) throw appError(409, "DRAFT_UNAVAILABLE", "This draft is no longer available to edit.");
+    const updatedAt = nowIso();
+    const message = { ...(existing || {}), id: messageId, applicationId, purpose, subject, body: messageBody, recipientEmail, recipientName: recipient.name, recipientKind: recipient.kind, status: "draft", createdAt: existing?.createdAt || updatedAt, createdBy: existing?.createdBy || session.email, updatedAt, updatedBy: session.email };
+    const audit = createAuditEvent({ workflow: "application", recordId: applicationId, invitationId: app.invitationId, type: existing ? "staff.case_email_draft_updated" : "staff.case_email_draft_created", at: updatedAt, actorType: "staff", actorId: session.email, details: { messageId, purpose } });
+    await store.saveCaseMessage({ applicationId, message, expectedStatus: existing ? "draft" : "", auditEvents: [audit] });
+    return { message };
+  }
+
+  async function testStaffCaseMessage(event) {
+    const session = await requireStaffSession(event, ["admin", "admissions"]);
+    const body = parseBody(event, 40_000);
+    const subject = safeText(body.subject, 180);
+    const messageBody = safeText(body.body, 20_000);
+    if (!subject || !messageBody) throw appError(422, "MESSAGE_INCOMPLETE", "Complete the subject and message before sending a test.");
+    await mailer.send({ to: session.email, ...staffCaseEmail({ subject: `[TEST] ${subject}`, body: messageBody }), tags: { workflow: "application_case", message_type: "staff_case_email_test", record_id: safeText(body.applicationId, 200) } });
+    await recordAudit(createAuditEvent({ workflow: "application", recordId: safeText(body.applicationId, 200), type: "staff.case_email_test_sent", at: nowIso(), actorType: "staff", actorId: session.email, details: {} }));
+    return { sentTo: session.email };
+  }
+
+  async function sendStaffCaseMessage(event) {
+    const session = await requireStaffSession(event, ["admin", "admissions"]);
+    const body = parseBody(event, 20_000);
+    if (body.confirmation !== "Send reviewed email") throw appError(422, "SEND_CONFIRMATION_REQUIRED", "Confirm that the email has been reviewed before sending.");
+    const applicationId = safeText(body.applicationId, 200);
+    const messageId = safeText(body.messageId, 200);
+    const [app, draft] = await Promise.all([store.getApplication(applicationId), store.getCaseMessage(applicationId, messageId)]);
+    if (!app || !draft || draft.status !== "draft") throw appError(409, "DRAFT_UNAVAILABLE", "This email draft is no longer available to send.");
+    if (!permittedCaseRecipients(app).has(normalizeEmail(draft.recipientEmail))) throw appError(403, "RECIPIENT_NOT_PERMITTED", "Contact permission no longer allows this email to be sent.");
+    const sentAt = nowIso();
+    const message = { ...draft, status: "sent", sentAt, sentBy: session.email, updatedAt: sentAt, deliveryStatus: "queued" };
+    const audit = createAuditEvent({ workflow: "application", recordId: applicationId, invitationId: app.invitationId, type: "staff.case_email_queued", at: sentAt, actorType: "staff", actorId: session.email, details: { messageId, purpose: draft.purpose } });
+    const payload = { to: draft.recipientEmail, ...staffCaseEmail({ subject: draft.subject, body: draft.body }), tags: { workflow: "application_case", message_type: "staff_case_email", record_id: applicationId, case_message_id: messageId }, _tracking: { kind: "case_message", applicationId, messageId } };
+    await store.saveCaseMessage({ applicationId, message, expectedStatus: "draft", outboxEvents: [emailOutbox(payload, clock())], auditEvents: [audit] });
+    await dispatchOutbox(20);
+    return { message };
+  }
+
+  async function listStaffMeetings(event) {
+    await requireStaffSession(event);
+    const series = await store.listMeetingSeries();
+    return { series: await Promise.all(series.map(async item => ({ ...item, slots: await store.listMeetingSlots(item.id) }))) };
+  }
+
+  async function createStaffMeetingSeries(event) {
+    const session = await requireStaffSession(event, ["admin", "admissions"]);
+    const body = parseBody(event, 20_000);
+    const title = safeText(body.title, 160);
+    const hostName = safeText(body.hostName, 160);
+    const location = safeText(body.location, 300);
+    const durationMinutes = Math.max(10, Math.min(180, Number(body.durationMinutes) || 30));
+    if (!title || !hostName || !location) throw appError(422, "MEETING_SERIES_INCOMPLETE", "Complete the meeting title, host and location.");
+    const createdAt = nowIso();
+    const series = { id: id("meeting-series"), title, hostName, location, durationMinutes, status: "open", createdAt, createdBy: session.email };
+    const audit = createAuditEvent({ workflow: "meetings", recordId: series.id, type: "meeting.series_created", at: createdAt, actorType: "staff", actorId: session.email, details: { durationMinutes } });
+    await store.createMeetingSeries(series, [audit]);
+    return { series };
+  }
+
+  async function createStaffMeetingSlot(event) {
+    const session = await requireStaffSession(event, ["admin", "admissions"]);
+    const body = parseBody(event, 20_000);
+    const seriesId = safeText(body.seriesId, 200);
+    const series = await store.getMeetingSeries(seriesId);
+    const startsAtMs = Date.parse(body.startsAt || "");
+    if (!series || series.status !== "open") throw appError(404, "MEETING_SERIES_NOT_FOUND", "Select an open meeting schedule.");
+    if (!Number.isFinite(startsAtMs) || startsAtMs <= clock()) throw appError(422, "INVALID_MEETING_TIME", "Choose a future meeting time.");
+    const createdAt = nowIso();
+    const slot = { id: id("meeting-slot"), seriesId, startsAt: iso(startsAtMs), endsAt: iso(startsAtMs + Number(series.durationMinutes) * 60_000), status: "available", createdAt, createdBy: session.email };
+    const audit = createAuditEvent({ workflow: "meetings", recordId: slot.id, type: "meeting.slot_created", at: createdAt, actorType: "staff", actorId: session.email, details: { seriesId, startsAt: slot.startsAt } });
+    await store.createMeetingSlot(slot, [audit]);
+    return { slot };
+  }
+
+  async function inviteApplicationToMeeting(event) {
+    const session = await requireStaffSession(event, ["admin", "admissions"]);
+    const body = parseBody(event, 20_000);
+    if (body.confirmation !== "Send meeting invitation") throw appError(422, "SEND_CONFIRMATION_REQUIRED", "Confirm the reviewed meeting invitation before sending.");
+    const applicationId = safeText(body.applicationId, 200);
+    const seriesId = safeText(body.seriesId, 200);
+    const recipientEmail = normalizeEmail(body.recipientEmail);
+    const [app, series] = await Promise.all([store.getApplication(applicationId), store.getMeetingSeries(seriesId)]);
+    const recipient = app && permittedCaseRecipients(app).get(recipientEmail);
+    if (!app || !series || series.status !== "open") throw appError(404, "MEETING_CONTEXT_NOT_FOUND", "The application or meeting schedule was not found.");
+    if (!recipient) throw appError(403, "RECIPIENT_NOT_PERMITTED", "This person is not authorised to receive a meeting invitation.");
+    const rawToken = token();
+    const createdAt = nowIso();
+    const expiresAt = clock() + MEETING_INVITATION_LIFETIME_MS;
+    const invitation = { id: id("meeting-invite"), applicationId, seriesId, recipientEmail, recipientName: recipient.name, status: "pending", createdAt, createdBy: session.email, expiresAt };
+    const bookingUrl = `${meetingPageUrl}?invite=${encodeURIComponent(rawToken)}`;
+    const studentName = [app.values?.student_first, app.values?.student_last].filter(Boolean).join(" ") || "your child";
+    const email = meetingBookingInvitation({ firstName: recipient.name.split(/\s+/)[0] || "Parent/Guardian", studentName, seriesTitle: series.title, bookingUrl, expiresAt: invitationDate(expiresAt) });
+    const audit = createAuditEvent({ workflow: "meetings", recordId: invitation.id, type: "meeting.invitation_queued", at: createdAt, actorType: "staff", actorId: session.email, details: { applicationId, seriesId } });
+    await store.createMeetingInvitation({ invitation, tokenHash: sha256(rawToken), outboxEvents: [emailOutbox({ to: recipientEmail, ...email, tags: { workflow: "meetings", message_type: "meeting_invitation", record_id: invitation.id } }, clock())], auditEvents: [audit] });
+    await dispatchOutbox(20);
+    return { invitation: { id: invitation.id, status: invitation.status, createdAt, expiresAt: iso(expiresAt), recipientEmail } };
+  }
+
+  async function requestMeetingCode(event) {
+    const body = parseBody(event, 20_000);
+    const tokenHash = sha256(safeText(body.invite, 1000));
+    const email = normalizeEmail(body.email);
+    for (const [key, limit, seconds] of [[`meeting-cooldown:${tokenHash}:${sha256(email)}`, 1, 30], [`meeting-invite:${tokenHash}`, 5, 1800], [`meeting-email:${sha256(email)}`, 5, 1800]]) if (!await store.checkRateLimit(key, limit, seconds)) throw appError(429, "OTP_RATE_LIMIT", "Please wait before requesting another verification code.");
+    const invitation = await store.getMeetingInvitation(tokenHash);
+    const challengeId = id("challenge");
+    if (invitation?.status === "pending" && invitation.expiresAt > clock() && invitation.recipientEmail === email) {
+      const verificationCode = code();
+      await store.putChallenge({ id: challengeId, purpose: "meeting_booking", subjectHash: tokenHash, email, meetingInvitationId: invitation.id, codeHmac: hmac(otpSecret, `${challengeId}:${verificationCode}`), attempts: 0, maxAttempts: 5, createdAt: clock(), expiresAt: clock() + 600_000, ttl: Math.floor((clock() + 86400_000) / 1000) });
+      await mailer.send({ to: email, ...applicationOtp({ code: verificationCode }), tags: { workflow: "meetings", message_type: "meeting_otp", record_id: invitation.id } });
+    }
+    return { challengeId, expiresInSeconds: 600, resendAfterSeconds: 30, message: "If the invitation and email address match, a verification code has been sent." };
+  }
+
+  async function verifyMeetingCode(event) {
+    const body = parseBody(event, 20_000);
+    const tokenHash = sha256(safeText(body.invite, 1000));
+    const challengeId = safeText(body.challengeId, 200);
+    const [challenge, invitation] = await Promise.all([store.getChallenge(challengeId), store.getMeetingInvitation(tokenHash)]);
+    if (!challenge || challenge.purpose !== "meeting_booking" || challenge.subjectHash !== tokenHash || !invitation || invitation.id !== challenge.meetingInvitationId || invitation.status !== "pending" || invitation.expiresAt <= clock()) throw appError(401, "OTP_INVALID", "The code is invalid or expired. Request a new code.");
+    const consumed = await store.consumeChallenge(challengeId, hmac(otpSecret, `${challengeId}:${safeText(body.code, 12)}`), clock());
+    if (!consumed) { await store.failChallenge(challengeId); throw appError(401, "OTP_INVALID", "The code is invalid or expired. Request a new code."); }
+    const rawSession = token();
+    await store.putSession({ tokenHash: sha256(rawSession), scope: "meeting_booking", meetingInvitationId: invitation.id, createdAt: clock(), expiresAt: clock() + 30 * 60_000, ttl: Math.floor((clock() + 86400_000) / 1000) });
+    return { sessionToken: rawSession, expiresInSeconds: 1800 };
+  }
+
+  async function getMeetingContext(event) {
+    const session = await requireSession(event, "meeting_booking");
+    const invitation = await store.getMeetingInvitationById(session.meetingInvitationId);
+    if (!invitation || invitation.status !== "pending" || invitation.expiresAt <= clock()) throw appError(409, "MEETING_INVITATION_UNAVAILABLE", "This meeting invitation is no longer available.");
+    const [series, app, slots] = await Promise.all([store.getMeetingSeries(invitation.seriesId), store.getApplication(invitation.applicationId), store.listMeetingSlots(invitation.seriesId)]);
+    return { invitation: { id: invitation.id, recipientName: invitation.recipientName }, series: { id: series.id, title: series.title, hostName: series.hostName, location: series.location, durationMinutes: series.durationMinutes }, studentName: [app.values?.student_first, app.values?.student_last].filter(Boolean).join(" "), slots: slots.filter(slot => slot.status === "available" && Date.parse(slot.startsAt) > clock()).map(slot => ({ id: slot.id, startsAt: slot.startsAt, endsAt: slot.endsAt })) };
+  }
+
+  async function bookMeeting(event) {
+    const session = await requireSession(event, "meeting_booking");
+    const body = parseBody(event, 20_000);
+    const invitation = await store.getMeetingInvitationById(session.meetingInvitationId);
+    if (!invitation || invitation.status !== "pending" || invitation.expiresAt <= clock()) throw appError(409, "MEETING_INVITATION_UNAVAILABLE", "This meeting invitation is no longer available.");
+    const [series, app, slots] = await Promise.all([store.getMeetingSeries(invitation.seriesId), store.getApplication(invitation.applicationId), store.listMeetingSlots(invitation.seriesId)]);
+    const slot = slots.find(item => item.id === safeText(body.slotId, 200));
+    if (!slot || slot.status !== "available" || Date.parse(slot.startsAt) <= clock()) throw appError(409, "MEETING_SLOT_UNAVAILABLE", "This meeting time is no longer available.");
+    const createdAt = nowIso();
+    const booking = { id: id("meeting-booking"), applicationId: app.id, invitationId: invitation.id, seriesId: series.id, slotId: slot.id, startsAt: slot.startsAt, endsAt: slot.endsAt, status: "confirmed", createdAt };
+    const studentName = [app.values?.student_first, app.values?.student_last].filter(Boolean).join(" ") || "your child";
+    const startsAt = new Date(slot.startsAt).toLocaleString("en-AU", { dateStyle: "full", timeStyle: "short", timeZone: "Australia/Melbourne" });
+    const email = meetingBookingConfirmation({ firstName: invitation.recipientName.split(/\s+/)[0] || "Parent/Guardian", studentName, seriesTitle: series.title, startsAt, location: series.location });
+    const audit = createAuditEvent({ workflow: "meetings", recordId: booking.id, type: "meeting.booked", at: createdAt, actorType: "family", actorId: maskEmail(invitation.recipientEmail), details: { applicationId: app.id, seriesId: series.id, slotId: slot.id } });
+    await store.bookMeetingSlot({ seriesId: series.id, slot, invitation, booking, outboxEvents: [emailOutbox({ to: invitation.recipientEmail, ...email, tags: { workflow: "meetings", message_type: "meeting_confirmation", record_id: booking.id } }, clock())], auditEvents: [audit] });
+    await dispatchOutbox(20);
+    return { booking: { id: booking.id, startsAt: booking.startsAt, endsAt: booking.endsAt, title: series.title, location: series.location } };
   }
 
   async function getStaffApplicationRevision(event) {
@@ -2003,6 +2214,9 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
         if (tracking?.kind === "signature_request") {
           await store.recordSignatureProgress?.({ applicationId: tracking.applicationId, guardianIndex: tracking.guardianIndex, taskTokenHash: tracking.taskTokenHash, requestStatus: "sent", at: nowIso(), messageId: result?.messageId || "" });
         }
+        if (tracking?.kind === "case_message") {
+          await store.recordCaseMessageDelivery?.({ applicationId: tracking.applicationId, messageId: tracking.messageId, deliveryStatus: "accepted_by_ses", at: nowIso(), messageIdFromProvider: result?.messageId || "" });
+        }
         await store.completeOutbox(item, result || { completed: true });
         completed += 1;
       } catch (error) {
@@ -2033,6 +2247,14 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     ["GET /v6/staff/dashboard", getStaffDashboard],
     ["POST /v6/staff/applications/detail", getStaffApplicationDetail],
     ["POST /v6/staff/applications/revision", getStaffApplicationRevision],
+    ["POST /v6/staff/applications/review", saveStaffCaseReview],
+    ["POST /v6/staff/applications/messages/draft", saveStaffCaseMessageDraft],
+    ["POST /v6/staff/applications/messages/test", testStaffCaseMessage],
+    ["POST /v6/staff/applications/messages/send", sendStaffCaseMessage],
+    ["GET /v6/staff/meetings", listStaffMeetings],
+    ["POST /v6/staff/meetings/series", createStaffMeetingSeries],
+    ["POST /v6/staff/meetings/slots", createStaffMeetingSlot],
+    ["POST /v6/staff/applications/meeting-invitations", inviteApplicationToMeeting],
     ["POST /v6/staff/invitations", createStaffInvitation],
     ["POST /v6/staff/invitations/resend", resendStaffInvitation],
     ["POST /v6/staff/invitations/renew-access", renewStaffInvitationAccess],
@@ -2061,6 +2283,10 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     ["POST /v6/application/signatures/opened", markSignatureOpened],
     ["POST /v6/application/signatures/verify-code", verifySignatureCode],
     ["POST /v6/application/signatures/submit", submitSignature]
+    ,["POST /v6/meetings/request-code", requestMeetingCode]
+    ,["POST /v6/meetings/verify-code", verifyMeetingCode]
+    ,["GET /v6/meetings/context", getMeetingContext]
+    ,["POST /v6/meetings/book", bookMeeting]
   ]);
 
   async function handler(event) {

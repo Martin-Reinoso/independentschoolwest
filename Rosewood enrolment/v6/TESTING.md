@@ -1,5 +1,9 @@
 # V6 Testing
 
+## Staff case management (2026-08-30)
+
+Automated coverage verifies complete review projection, separate/versioned staff review, draft-before-send behavior, explicit reviewed-send confirmation, backend contact-permission enforcement, private meeting invitations, available-slot listing, atomic slot reservation and unchanged Application records. The full backend suite passes 140 tests.
+
 Test date: 8 August 2026
 
 ## Static Checks

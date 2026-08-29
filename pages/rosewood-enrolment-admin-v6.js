@@ -18,6 +18,7 @@
     invitationOperationId: "",
     resendTimer: null,
     refreshTimer: null
+    ,meetings: []
   };
 
   const byId = id => document.getElementById(id);
@@ -688,6 +689,32 @@
     byId("email-empty").hidden = records.length > 0;
   }
 
+  async function loadMeetings() {
+    try {
+      const result = await api("/v6/staff/meetings");
+      state.meetings = result.series || [];
+      byId("nav-meeting-count").textContent = state.meetings.length;
+      const select = byId("meeting-slot-series");
+      const selected = select.value;
+      clear(select); select.add(new Option("Select a schedule", ""));
+      state.meetings.filter(item => item.status === "open").forEach(item => select.add(new Option(item.title, item.id, false, item.id === selected)));
+      renderMeetings();
+    } catch (error) { setNotice("meeting-error", error.message); }
+  }
+
+  function renderMeetings() {
+    const list = byId("meeting-series-list"); clear(list);
+    state.meetings.forEach(series => {
+      const card = element("article", "meeting-series-card");
+      card.append(element("h3", "", series.title), element("p", "", `${series.hostName} · ${series.location} · ${series.durationMinutes} minutes`));
+      const slots = element("div", "slot-list");
+      (series.slots || []).forEach(slot => slots.append(element("span", `slot-chip ${slot.status}`, `${formatDate(slot.startsAt, true)} · ${fieldLabel(slot.status)}`)));
+      if (!slots.children.length) slots.append(element("span", "panel-note", "No times added yet."));
+      card.append(slots); list.append(card);
+    });
+    if (!state.meetings.length) list.append(element("p", "panel-note", "No principal meeting schedules have been created."));
+  }
+
   function showPanel(name) {
     document.querySelectorAll("[data-workspace-panel]").forEach(panel => { panel.hidden = panel.id !== `${name}-panel`; });
     document.querySelectorAll(".nav-button").forEach(button => {
@@ -695,6 +722,7 @@
       button.classList.toggle("active", active);
       button.setAttribute("aria-current", active ? "page" : "false");
     });
+    if (name === "meetings") loadMeetings();
   }
 
   function fieldLabel(key) {
@@ -787,25 +815,6 @@
     state.currentApplicationDetail = application;
     const content = byId("detail-content");
     clear(content);
-    const values = Object.entries(application.values || {}).filter(([, value]) => value !== "" && value != null && (!Array.isArray(value) || value.length));
-    const guardianGroups = new Map();
-    const emergencyGroups = new Map();
-    const general = [];
-    for (const entry of values) {
-      const guardian = entry[0].match(/^app_guardian_(\d+)_/);
-      const emergency = entry[0].match(/^emergency_(\d+)_/);
-      if (guardian) {
-        const group = guardianGroups.get(guardian[1]) || [];
-        group.push(entry);
-        guardianGroups.set(guardian[1], group);
-      } else if (emergency) {
-        const group = emergencyGroups.get(emergency[1]) || [];
-        group.push(entry);
-        emergencyGroups.set(emergency[1], group);
-      } else if (!entry[0].startsWith("application_signature_")) {
-        general.push(entry);
-      }
-    }
     const overview = detailSection("Record overview", [
       ["status", statusLabel(application.status)],
       ["reference", application.reference || application.applicationId],
@@ -819,16 +828,42 @@
       ["schema_version", application.schemaVersion || "Legacy record"]
     ]);
     if (overview) content.append(overview);
-    const answers = detailSection("Application answers", general);
-    if (answers) content.append(answers);
-    [...guardianGroups.entries()].sort(([a], [b]) => Number(a) - Number(b)).forEach(([index, entries]) => {
-      const section = detailSection(`Parent / guardian ${Number(index) + 1}`, entries);
-      if (section) content.append(section);
-    });
-    [...emergencyGroups.entries()].sort(([a], [b]) => Number(a) - Number(b)).forEach(([index, entries]) => {
-      const section = detailSection(`Emergency contact ${Number(index) + 1}`, entries);
-      if (section) content.append(section);
-    });
+    const review = application.review;
+    if (review?.sections?.length) {
+      const navigation = element("nav", "case-section-nav");
+      navigation.setAttribute("aria-label", "Application sections");
+      review.sections.forEach(section => {
+        const link = element("a", "", section.title);
+        link.href = `#case-section-${section.id}`;
+        navigation.append(link);
+      });
+      content.append(navigation);
+      review.sections.forEach(section => {
+        const wrapper = element("section", "detail-section readable-section");
+        wrapper.id = `case-section-${section.id}`;
+        wrapper.append(element("h3", "", section.title));
+        if (section.note) wrapper.append(element("p", "section-note", section.note));
+        (section.groups || []).forEach(group => {
+          const groupElement = element("div", "review-group");
+          const heading = element("h4", "", group.title || section.title);
+          groupElement.append(heading);
+          const list = element("dl", "detail-grid");
+          (group.items || []).forEach(item => {
+            const value = displayValue(item.value);
+            if (!value) return;
+            const row = element("div", "detail-item");
+            row.append(element("dt", "", item.label), element("dd", "", value));
+            list.append(row);
+          });
+          groupElement.append(list);
+          wrapper.append(groupElement);
+        });
+        content.append(wrapper);
+      });
+    } else {
+      const fallback = detailSection("Recorded application answers", Object.entries(application.values || {}).filter(([, value]) => value !== "" && value != null));
+      if (fallback) content.append(fallback);
+    }
     if (application.documents?.length) {
       const section = element("section", "detail-section");
       section.append(element("h3", "", "Documents"));
@@ -888,8 +923,95 @@
     });
     const history = renderRevisionHistory(application);
     if (history) content.append(history);
+    if (["admin", "admissions"].includes(state.dashboard?.staff?.role)) {
+      content.append(renderCaseReviewControls(application), renderCaseEmailComposer(application), renderMeetingInvitation(application));
+    }
+    content.append(renderCaseTimeline(application));
     byId("detail-loading").hidden = true;
     content.hidden = false;
+  }
+
+  function formField(label, control) {
+    const wrapper = element("label", "staff-tool-field");
+    wrapper.append(element("span", "", label), control);
+    return wrapper;
+  }
+
+  function renderCaseReviewControls(application) {
+    const current = application.caseReview || { status: "not_started", checklist: {}, note: "", version: 0 };
+    const section = element("section", "detail-section staff-tool-section");
+    section.append(element("h3", "", "Staff review"));
+    const form = element("form", "staff-tool-form");
+    const status = document.createElement("select");
+    [["not_started", "Not started"], ["in_progress", "In progress"], ["further_information_required", "Further information required"], ["ready_for_principal", "Ready for principal"], ["on_hold", "On hold"], ["review_complete", "Review complete"]].forEach(([value, label]) => { const option = new Option(label, value, false, current.status === value); status.add(option); });
+    const checks = element("div", "review-checklist");
+    [["identity_reviewed", "Identity and family details reviewed"], ["documents_reviewed", "Documents reviewed"], ["signatures_reviewed", "Signatures reviewed"], ["follow_up_resolved", "Follow-up resolved"]].forEach(([key, label]) => {
+      const input = document.createElement("input"); input.type = "checkbox"; input.checked = current.checklist?.[key] === true;
+      const item = element("label", "check-row"); item.append(input, element("span", "", label)); checks.append(item); input.dataset.checkKey = key;
+    });
+    const note = document.createElement("textarea"); note.rows = 4; note.value = current.note || ""; note.placeholder = "Internal review note (staff only)";
+    const button = element("button", "primary-button", "Save review"); button.type = "submit";
+    form.append(formField("Review status", status), checks, formField("Internal note", note), button);
+    form.addEventListener("submit", async event => {
+      event.preventDefault(); setLoading(button, true); clearNotices("detail-error");
+      try {
+        const checklist = Object.fromEntries([...checks.querySelectorAll("input")].map(input => [input.dataset.checkKey, input.checked]));
+        const result = await api("/v6/staff/applications/review", { method: "POST", body: { applicationId: application.applicationId, expectedVersion: current.version || 0, status: status.value, checklist, note: note.value } });
+        application.caseReview = result.review; renderApplicationDetail(application);
+      } catch (error) { setNotice("detail-error", error.message); setLoading(button, false); }
+    });
+    section.append(form); return section;
+  }
+
+  function caseRecipients(application) {
+    const values = [{ email: application.recipientEmail, name: "Submitting applicant" }];
+    (application.signerControls || []).forEach(control => { if (control.contactPermission === "Contact permitted" && control.currentEmail && !values.some(item => item.email === control.currentEmail)) values.push({ email: control.currentEmail, name: control.name || "Parent/guardian" }); });
+    return values;
+  }
+
+  function renderCaseEmailComposer(application) {
+    const section = element("section", "detail-section staff-tool-section"); section.append(element("h3", "", "Write to the family"));
+    const form = element("form", "staff-tool-form");
+    const recipient = document.createElement("select"); caseRecipients(application).forEach(item => recipient.add(new Option(`${item.name} · ${item.email}`, item.email)));
+    const purpose = document.createElement("select"); [["missing_document", "Missing document"], ["replacement_document", "Replacement document"], ["clarification", "Question about the application"], ["additional_information", "Additional information"], ["principal_meeting", "Principal meeting"], ["general_update", "General update"]].forEach(([value, label]) => purpose.add(new Option(label, value)));
+    const subject = document.createElement("input"); subject.maxLength = 180;
+    const body = document.createElement("textarea"); body.rows = 9; body.maxLength = 20000;
+    const actions = element("div", "composer-actions");
+    const save = element("button", "secondary-button", "Save draft"); save.type = "button";
+    const test = element("button", "secondary-button", "Send test to me"); test.type = "button";
+    const send = element("button", "primary-button", "Send reviewed email"); send.type = "button"; send.disabled = true;
+    let messageId = "";
+    async function saveDraft() {
+      const result = await api("/v6/staff/applications/messages/draft", { method: "POST", body: { applicationId: application.applicationId, messageId, recipientEmail: recipient.value, purpose: purpose.value, subject: subject.value, body: body.value } });
+      messageId = result.message.id; send.disabled = false; return result.message;
+    }
+    save.addEventListener("click", async () => { setLoading(save, true); try { await saveDraft(); setNotice("dashboard-message", "Email draft saved. Nothing has been sent."); } catch (error) { setNotice("detail-error", error.message); } finally { setLoading(save, false); } });
+    test.addEventListener("click", async () => { setLoading(test, true); try { await api("/v6/staff/applications/messages/test", { method: "POST", body: { applicationId: application.applicationId, subject: subject.value, body: body.value } }); setNotice("dashboard-message", "Test email sent to your staff address."); } catch (error) { setNotice("detail-error", error.message); } finally { setLoading(test, false); } });
+    send.addEventListener("click", async () => {
+      if (!window.confirm("Send this reviewed email to the selected family recipient?")) return;
+      setLoading(send, true);
+      try { if (!messageId) await saveDraft(); await api("/v6/staff/applications/messages/send", { method: "POST", body: { applicationId: application.applicationId, messageId, confirmation: "Send reviewed email" } }); const result = await api("/v6/staff/applications/detail", { method: "POST", body: { applicationId: application.applicationId } }); renderApplicationDetail(result.application); }
+      catch (error) { setNotice("detail-error", error.message); setLoading(send, false); }
+    });
+    actions.append(save, test, send); form.append(element("p", "panel-note", "Every message is written and reviewed by staff. Choosing a purpose never sends an email."), formField("Recipient", recipient), formField("Purpose", purpose), formField("Subject", subject), formField("Message", body), actions); section.append(form); return section;
+  }
+
+  function renderCaseTimeline(application) {
+    const section = element("section", "detail-section staff-tool-section"); section.append(element("h3", "", "Communication history"));
+    const list = element("div", "case-timeline");
+    (application.communications || []).forEach(message => { const item = element("article", "timeline-item"); item.append(element("strong", "", message.subject), element("span", "", `${fieldLabel(message.purpose)} · ${message.status === "draft" ? "Draft, not sent" : fieldLabel(message.deliveryStatus)} · ${formatDate(message.updatedAt, true)}`), element("p", "", message.body)); list.append(item); });
+    if (!list.children.length) list.append(element("p", "panel-note", "No case correspondence has been recorded.")); section.append(list); return section;
+  }
+
+  function renderMeetingInvitation(application) {
+    const section = element("section", "detail-section staff-tool-section"); section.append(element("h3", "", "Invite to a principal meeting"));
+    const form = element("form", "staff-tool-form");
+    const schedule = document.createElement("select"); schedule.add(new Option("Select a meeting schedule", "")); state.meetings.forEach(item => schedule.add(new Option(item.title, item.id)));
+    const recipient = document.createElement("select"); caseRecipients(application).forEach(item => recipient.add(new Option(`${item.name} · ${item.email}`, item.email)));
+    const button = element("button", "primary-button", "Send private booking invitation"); button.type = "submit";
+    form.append(element("p", "panel-note", "The family will verify their invited email before seeing available times."), formField("Schedule", schedule), formField("Recipient", recipient), button);
+    form.addEventListener("submit", async event => { event.preventDefault(); if (!schedule.value) return setNotice("detail-error", "Select a meeting schedule."); if (!window.confirm("Send this private meeting invitation?")) return; setLoading(button, true); try { await api("/v6/staff/applications/meeting-invitations", { method: "POST", body: { applicationId: application.applicationId, seriesId: schedule.value, recipientEmail: recipient.value, confirmation: "Send meeting invitation" } }); setNotice("dashboard-message", "Private meeting invitation queued."); } catch (error) { setNotice("detail-error", error.message); } finally { setLoading(button, false); } });
+    section.append(form); return section;
   }
 
   async function changeContactPermission(application, control, enable, button) {
@@ -921,6 +1043,7 @@
     clearNotices("detail-error");
     detailDialog.showModal();
     try {
+      if (!state.meetings.length) await loadMeetings();
       const result = await api("/v6/staff/applications/detail", { method: "POST", body: { applicationId: record.applicationId } });
       renderApplicationDetail(result.application);
     } catch (error) {
@@ -1080,6 +1203,22 @@
   byId("eoi-search").addEventListener("input", renderEois);
   byId("invite-eoi-search").addEventListener("input", renderEoiPicker);
   document.querySelectorAll(".nav-button").forEach(button => button.addEventListener("click", () => showPanel(button.dataset.panel)));
+  byId("meeting-series-form").addEventListener("submit", async event => {
+    event.preventDefault(); clearNotices("meeting-error", "meeting-message");
+    const button = event.submitter; setLoading(button, true);
+    try {
+      await api("/v6/staff/meetings/series", { method: "POST", body: { title: byId("meeting-series-title").value, hostName: byId("meeting-series-host").value, location: byId("meeting-series-location").value, durationMinutes: Number(byId("meeting-series-duration").value) } });
+      event.target.reset(); byId("meeting-series-duration").value = "30"; setNotice("meeting-message", "Meeting schedule created."); await loadMeetings();
+    } catch (error) { setNotice("meeting-error", error.message); } finally { setLoading(button, false); }
+  });
+  byId("meeting-slot-form").addEventListener("submit", async event => {
+    event.preventDefault(); clearNotices("meeting-error", "meeting-message");
+    const button = event.submitter; setLoading(button, true);
+    try {
+      await api("/v6/staff/meetings/slots", { method: "POST", body: { seriesId: byId("meeting-slot-series").value, startsAt: new Date(byId("meeting-slot-start").value).toISOString() } });
+      byId("meeting-slot-start").value = ""; setNotice("meeting-message", "Available meeting time added."); await loadMeetings();
+    } catch (error) { setNotice("meeting-error", error.message); } finally { setLoading(button, false); }
+  });
   byId("direct-invite-form").addEventListener("submit", event => {
     event.preventDefault();
     const email = byId("invite-email").value.trim().toLowerCase();

@@ -1,5 +1,14 @@
 # V6 Product and Backend Decisions
 
+## 2026-08-30: staff review, correspondence and meetings
+
+- Keep the Application for Enrolment immutable after submission. Store staff review, email drafts/sends and meetings as linked case records.
+- Show staff the complete human-readable application, not a second editable form and not raw storage keys.
+- Do not create standardised automatic follow-up triggers. Email purpose is metadata only; every family email requires staff-authored content and an explicit reviewed-send action.
+- Permit case correspondence only to the submitting applicant or a guardian whose explicit contact permission remains enabled. Enforce this again at send time.
+- Use private application-linked meeting invitations with OTP rather than a shared public event code.
+- Keep meeting schedules, slots, invitations and bookings separate from applications so calendar operations cannot change enrolment evidence.
+
 This register records Rosewood decisions that must survive future frontend and backend
 rebuilds. These decisions override earlier V6 assumptions where they conflict.
 

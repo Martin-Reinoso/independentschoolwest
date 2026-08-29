@@ -84,3 +84,33 @@ export function applicationComplete({ firstName, studentName, reference }) {
   const text = `Dear ${firstName},\n\nAll required signatures for ${studentName}'s Application for Enrolment have been received. Reference: ${reference}.\n\nRosewood College`;
   return { subject, text, html: frame(`<h1 style="font:700 28px Georgia,serif">Application complete</h1><p>Dear ${firstName},</p><p>All required signatures for <strong>${studentName}</strong>'s Application for Enrolment have been received.</p><p>Reference: <strong>${reference}</strong></p>`) };
 }
+
+export function staffCaseEmail({ subject, body, actionUrl = "", actionLabel = "View request" }) {
+  const safeSubject = String(subject || "").trim();
+  const safeBody = String(body || "").trim();
+  const actionText = actionUrl ? `\n\n${actionLabel.toUpperCase()}\n${actionUrl}` : "";
+  const text = `${safeBody}${actionText}\n\nKind regards,\n\nRosewood College Enrolment Team`;
+  const paragraphs = safeBody.split(/\n{2,}/).map(value => `<p style="white-space:pre-wrap">${htmlEscape(value)}</p>`).join("");
+  const action = actionUrl ? `${button(actionLabel, actionUrl)}${fallbackLink(actionUrl)}` : "";
+  const html = frame(`<h1 style="font:700 28px Georgia,serif">${htmlEscape(safeSubject)}</h1>${paragraphs}${action}<p>Kind regards,</p><p>Rosewood College Enrolment Team</p>`);
+  return { subject: safeSubject, text, html };
+}
+
+export function meetingBookingInvitation({ firstName, studentName, seriesTitle, bookingUrl, expiresAt }) {
+  const greeting = firstName || "Parent/Guardian";
+  const subject = `Choose a meeting time with Rosewood College`;
+  const context = studentName ? ` regarding ${studentName}'s Application for Enrolment` : "";
+  const text = `Dear ${greeting},\n\nRosewood College invites you to choose a time for ${seriesTitle}${context}.\n\nCHOOSE A TIME\n${bookingUrl}\n\nThis private link expires on ${expiresAt}.\n\nKind regards,\n\nRosewood College Enrolment Team`;
+  const html = frame(`<h1 style="font:700 28px Georgia,serif">Choose a meeting time</h1><p>Dear ${htmlEscape(greeting)},</p><p>Rosewood College invites you to choose a time for <strong>${htmlEscape(seriesTitle)}</strong>${htmlEscape(context)}.</p>${button("Choose a time", bookingUrl)}${fallbackLink(bookingUrl)}<p style="font-size:14px;color:#566070">This private link expires on ${htmlEscape(expiresAt)}.</p><p>Kind regards,</p><p>Rosewood College Enrolment Team</p>`);
+  return { subject, text, html };
+}
+
+export function meetingBookingConfirmation({ firstName, studentName, seriesTitle, startsAt, location }) {
+  const greeting = firstName || "Parent/Guardian";
+  const subject = `Rosewood College meeting confirmed`;
+  const student = studentName ? ` for ${studentName}` : "";
+  const where = location ? `\nLocation: ${location}` : "";
+  const text = `Dear ${greeting},\n\nYour ${seriesTitle}${student} is confirmed.\n\nTime: ${startsAt}${where}\n\nIf you need to change this booking, contact enrolment@ffe.org.au.\n\nKind regards,\n\nRosewood College Enrolment Team`;
+  const html = frame(`<h1 style="font:700 28px Georgia,serif">Meeting confirmed</h1><p>Dear ${htmlEscape(greeting)},</p><p>Your <strong>${htmlEscape(seriesTitle)}</strong>${htmlEscape(student)} is confirmed.</p><div style="margin:22px 0;padding:16px;background:#f4f1e9;border-radius:8px"><p style="margin:0 0 6px"><strong>${htmlEscape(startsAt)}</strong></p>${location ? `<p style="margin:0">${htmlEscape(location)}</p>` : ""}</div><p>If you need to change this booking, contact enrolment@ffe.org.au.</p>`);
+  return { subject, text, html };
+}

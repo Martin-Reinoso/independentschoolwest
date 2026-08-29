@@ -101,6 +101,7 @@
             <button class="nav-button" data-panel="requests" type="button"><span>Link requests</span><strong id="nav-request-count">0</strong></button>
             <button class="nav-button" data-panel="eois" type="button"><span>Expressions of interest</span><strong id="nav-eoi-count">0</strong></button>
             <button class="nav-button" data-panel="emails" type="button"><span>Email activity</span><strong id="nav-email-count">0</strong></button>
+            <button class="nav-button" data-panel="meetings" type="button"><span>Principal meetings</span><strong id="nav-meeting-count">0</strong></button>
             <div class="sheet-links" id="sheet-links">
               <p>Record source</p>
               <span>DynamoDB is authoritative. Google Sheets are replaceable reporting copies.</span>
@@ -189,6 +190,29 @@
             <div class="record-list" id="email-list" aria-live="polite"></div>
             <div class="empty-state" id="email-empty" hidden><strong>No email events yet</strong><p>Invitation and verification activity will appear here.</p></div>
           </section>
+
+          <section class="workspace-panel" id="meetings-panel" data-workspace-panel hidden>
+            <div class="panel-heading"><div><p class="eyebrow">Private family bookings</p><h2>Principal meetings</h2><p class="panel-note">Create a schedule and its available times here. Send a private booking invitation from an application review.</p></div></div>
+            <div class="meeting-admin-grid">
+              <form class="staff-tool-card" id="meeting-series-form">
+                <h3>Create a meeting schedule</h3>
+                <label>Schedule title<input id="meeting-series-title" required placeholder="Principal enrolment meetings"></label>
+                <label>Host<input id="meeting-series-host" required placeholder="Principal"></label>
+                <label>Location<input id="meeting-series-location" required placeholder="Rosewood College"></label>
+                <label>Duration in minutes<input id="meeting-series-duration" type="number" min="10" max="180" value="30" required></label>
+                <button class="primary-button" type="submit">Create schedule</button>
+              </form>
+              <form class="staff-tool-card" id="meeting-slot-form">
+                <h3>Add an available time</h3>
+                <label>Schedule<select id="meeting-slot-series" required><option value="">Select a schedule</option></select></label>
+                <label>Date and time<input id="meeting-slot-start" type="datetime-local" required></label>
+                <button class="primary-button" type="submit">Add time</button>
+              </form>
+            </div>
+            <div class="notice error-notice" id="meeting-error" role="alert" hidden></div>
+            <div class="notice success-notice" id="meeting-message" role="status" hidden></div>
+            <div class="meeting-series-list" id="meeting-series-list"></div>
+          </section>
         </div>
       </section>
     </main>
@@ -234,6 +258,6 @@
     <div class="detail-content" id="detail-content" hidden></div>
   </dialog>
 
-  <script src="rosewood-enrolment-admin-v6.js?v=12"></script>
+  <script src="rosewood-enrolment-admin-v6.js?v=13"></script>
 </body>
 </html>
