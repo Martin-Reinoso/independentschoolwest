@@ -56,14 +56,7 @@
     if (selections.payment !== "term" && selections.payment !== "annual") {
       throw new TypeError("Unknown payment plan.");
     }
-    const bondAlreadyPaidCents = Number(selections.bondAlreadyPaidCents ?? 0);
-    const allowedPaidAmounts = selections.bond === "b20"
-      ? [0, 1000000, 2000000]
-      : [0, CONFIG.bondAmounts[selections.bond]];
-    if (!Number.isInteger(bondAlreadyPaidCents) || !allowedPaidAmounts.includes(bondAlreadyPaidCents)) {
-      throw new RangeError("The recorded bond payment is not valid for this arrangement.");
-    }
-    return { children, bond: selections.bond, payment: selections.payment, bondAlreadyPaidCents };
+    return { children, bond: selections.bond, payment: selections.payment, bondAlreadyPaidCents: 0 };
   }
 
   function calculateStudent(position, bond, payment) {
@@ -126,7 +119,7 @@
     const resourceLevyCents = sum(students, "resourceLevyCents");
     const annualFeeCents = sum(students, "annualFeeCents");
     const bondAmountCents = CONFIG.bondAmounts[selections.bond];
-    const bondDueCents = bondAmountCents - selections.bondAlreadyPaidCents;
+    const bondDueCents = bondAmountCents;
     const firstYearCommitmentCents = annualFeeCents + bondDueCents;
 
     const tuitionByTermCents = allocateEvenly(netTuitionCents, CONFIG.terms);
@@ -170,8 +163,6 @@
 
     const elements = {
       studentCount: document.querySelector("#student-count"),
-      bondPaid: document.querySelector("#bond-paid"),
-      bondPaidHelp: document.querySelector("#bond-paid-help"),
       bondB20: document.querySelector("#bond-b20"),
       bondB20Card: document.querySelector("#bond-b20-card"),
       selectionMessage: document.querySelector("#selection-message"),
@@ -210,28 +201,8 @@
       return {
         children: Number(elements.studentCount.value),
         payment: form.elements.namedItem("payment").value,
-        bond: form.elements.namedItem("bond").value,
-        bondAlreadyPaidCents: Number(elements.bondPaid.value)
+        bond: form.elements.namedItem("bond").value
       };
-    }
-
-    function updateBondPaidOptions(bond) {
-      const previousValue = Number(elements.bondPaid.value || 0);
-      const bondAmountCents = CONFIG.bondAmounts[bond];
-      const allowedAmounts = bond === "b20" ? [0, 1000000, 2000000] : [0, bondAmountCents];
-      const options = allowedAmounts.map((amountCents) => {
-        const option = document.createElement("option");
-        option.value = String(amountCents);
-        if (amountCents === 0) option.textContent = "Nothing yet";
-        else if (bond === "b20" && amountCents === 1000000) option.textContent = "The first $10,000 Option B bond";
-        else option.textContent = "The full selected bond";
-        return option;
-      });
-      elements.bondPaid.replaceChildren(...options);
-      elements.bondPaid.value = String(allowedAmounts.includes(previousValue) ? previousValue : 0);
-      elements.bondPaidHelp.textContent = bond === "b20"
-        ? "Choose the first $10,000 only if your family has already paid the first Option B bond and is adding the second $10,000 described in the fee schedule. Changes from Option A, refunds and other adjustments are not modelled; contact the College."
-        : "This changes only the bond payment included in this estimate. Changes from Option A to Option B, refunds and other bond adjustments are not modelled; contact the College.";
     }
 
     function makeScheduleRow(label, detail, cents) {
@@ -249,13 +220,18 @@
 
     function renderSchedule(result) {
       elements.paymentSchedule.replaceChildren();
+      elements.paymentSchedule.append(makeScheduleRow(
+        "Refundable family bond",
+        "Due at enrolment / start of 2027",
+        result.bondDueCents
+      ));
       if (result.payment === "annual") {
         elements.paymentSchedule.append(makeScheduleRow(
           "Full-year payment",
           "Due at the start of Term 1",
           result.annualFeeCents
         ));
-        elements.scheduleNote.textContent = "This includes the 5% annual-payment tuition discount and the full Student Resource Levy. The fee schedule allows 14 days for payment.";
+        elements.scheduleNote.textContent = "The refundable family bond is shown separately from annual school fees. The full-year payment includes the 5% annual-payment tuition discount and the full Student Resource Levy.";
         return;
       }
 
@@ -265,7 +241,7 @@
           : "Estimated tuition instalment";
         elements.paymentSchedule.append(makeScheduleRow(`Term ${index + 1}`, detail, amountCents));
       });
-      elements.scheduleNote.textContent = "Tuition is divided across four indicative term invoices. The full resource levy is added to Term 1. Invoices allow 14 days for payment.";
+      elements.scheduleNote.textContent = "The refundable family bond is shown as a separate initial payment. Tuition is divided across four indicative term invoices, with the full Student Resource Levy added to Term 1.";
     }
 
     function tableCell(text, className) {
@@ -307,14 +283,11 @@
     function render() {
       const requestedChildren = Number(elements.studentCount.value);
       updateBondAvailability(requestedChildren);
-      const selectedBond = form.elements.namedItem("bond").value;
-      updateBondPaidOptions(selectedBond);
       const result = calculateFamily(currentSelections());
       const comparison = calculateFamily({
         children: result.children,
         bond: result.bond,
-        payment: result.payment === "annual" ? "term" : "annual",
-        bondAlreadyPaidCents: result.bondAlreadyPaidCents
+        payment: result.payment === "annual" ? "term" : "annual"
       });
       const childLabel = result.children === 1 ? "1 child" : `${result.children} children`;
       const paymentLabel = result.payment === "annual" ? "paying annually" : "paying by term";
@@ -322,14 +295,8 @@
       elements.annualTotalLive.textContent = format(result.annualFeeCents);
       elements.estimateSummary.textContent = `For ${childLabel}, ${paymentLabel} with ${BOND_LABELS[result.bond]}.`;
       elements.annualFees.textContent = format(result.annualFeeCents);
-      elements.bondAmount.textContent = format(result.bondDueCents);
-      if (result.bondAlreadyPaidCents === 0) {
-        elements.bondSummary.textContent = `${format(result.bondAmountCents)} selected; nothing recorded as paid`;
-      } else if (result.bondDueCents === 0) {
-        elements.bondSummary.textContent = `${format(result.bondAmountCents)} selected; full bond already paid`;
-      } else {
-        elements.bondSummary.textContent = `${format(result.bondAmountCents)} selected; ${format(result.bondAlreadyPaidCents)} already paid`;
-      }
+      elements.bondAmount.textContent = format(result.bondAmountCents);
+      elements.bondSummary.textContent = `${BOND_LABELS[result.bond]}; refundable family bond`;
       elements.firstYearTotal.textContent = format(result.firstYearCommitmentCents);
 
       elements.baseTuition.textContent = format(result.baseTuitionCents);
