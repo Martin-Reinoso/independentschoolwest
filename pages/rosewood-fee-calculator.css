@@ -291,20 +291,17 @@ summary:focus-visible,
   color: var(--navy);
   font: 600 clamp(1.35rem, 2.4vw, 1.75rem)/1.08 Baskerville, "Iowan Old Style", Georgia, serif;
 }
-.student-count-field,
-.bond-paid-field {
+.student-count-field {
   max-width: 480px;
   display: grid;
   gap: .4rem;
 }
-.student-count-field > span,
-.bond-paid-field > span {
+.student-count-field > span {
   color: var(--navy);
   font-size: .82rem;
   font-weight: 800;
 }
-.student-count-field select,
-.bond-paid-field select {
+.student-count-field select {
   width: 100%;
   min-height: 50px;
   padding: .75rem 2.4rem .75rem .85rem;
@@ -313,9 +310,7 @@ summary:focus-visible,
   color: var(--ink);
   background: white;
 }
-.student-count-field select:focus,
-.bond-paid-field select:focus { border-color: #3c8eb8; box-shadow: 0 0 0 4px rgba(120, 201, 238, .17); outline: 0; }
-.bond-paid-field { margin-top: 1rem; }
+.student-count-field select:focus { border-color: #3c8eb8; box-shadow: 0 0 0 4px rgba(120, 201, 238, .17); outline: 0; }
 .field-help {
   max-width: 850px;
   margin: .7rem 0 0;

@@ -1,6 +1,8 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const calculator = require("../pages/rosewood-fee-calculator.js");
 
 const expectedFamilyTotals = {
@@ -85,28 +87,15 @@ const optionBTwentyFirstYear = calculator.calculateFamily({ children: 2, bond: "
 assert.equal(optionBTwentyFirstYear.firstYearCommitmentCents, 3182106);
 assert.equal(optionBTwentyFirstYear.bondDueCents, 2000000);
 
-const optionBTwentyUpgrade = calculator.calculateFamily({
+const legacyPaymentHistoryInput = calculator.calculateFamily({
   children: 2,
   bond: "b20",
   payment: "annual",
   bondAlreadyPaidCents: 1000000
 });
-assert.equal(optionBTwentyUpgrade.bondDueCents, 1000000);
-assert.equal(optionBTwentyUpgrade.firstYearCommitmentCents, 2182106);
-
-const fullyPaidBond = calculator.calculateFamily({
-  children: 2,
-  bond: "b20",
-  payment: "annual",
-  bondAlreadyPaidCents: 2000000
-});
-assert.equal(fullyPaidBond.bondDueCents, 0);
-assert.equal(fullyPaidBond.firstYearCommitmentCents, fullyPaidBond.annualFeeCents);
-
-assert.throws(
-  () => calculator.calculateFamily({ children: 2, bond: "b20", payment: "term", bondAlreadyPaidCents: 200000 }),
-  /recorded bond payment is not valid/
-);
+assert.equal(legacyPaymentHistoryInput.bondAlreadyPaidCents, 0, "The 2027 calculator must not use payment-history input");
+assert.equal(legacyPaymentHistoryInput.bondDueCents, 2000000);
+assert.equal(legacyPaymentHistoryInput.firstYearCommitmentCents, 3182106);
 
 const fiveChildren = calculator.calculateFamily({ children: 5, bond: "a", payment: "annual" });
 assert.equal(fiveChildren.students[4].netTuitionCents, 0, "Fifth-child tuition must remain zero");
@@ -128,6 +117,11 @@ assert.ok(twentyChildren.students.slice(4).every((student) => student.annualFeeC
 const twoChildrenByTerm = calculator.calculateFamily({ children: 2, bond: "a", payment: "term" });
 assert.deepEqual(twoChildrenByTerm.termPaymentsCents, [459038, 277038, 277037, 277037]);
 assert.equal(
+  twoChildrenByTerm.bondDueCents + twoChildrenByTerm.termPaymentsCents[0],
+  659038,
+  "The initial payment view must show the $2,000 bond alongside the first term amount"
+);
+assert.equal(
   twoChildrenByTerm.termPaymentsCents.reduce((total, amount) => total + amount, 0),
   twoChildrenByTerm.annualFeeCents,
   "Term payments must reconcile exactly"
@@ -141,5 +135,12 @@ assert.throws(
   () => calculator.calculateFamily({ children: 0, bond: "a", payment: "term" }),
   /Children must be an integer/
 );
+
+const html = fs.readFileSync(path.join(__dirname, "../pages/rosewood-fee-calculator.html"), "utf8");
+const css = fs.readFileSync(path.join(__dirname, "../pages/rosewood-fee-calculator.css"), "utf8");
+const browserJs = fs.readFileSync(path.join(__dirname, "../pages/rosewood-fee-calculator.js"), "utf8");
+assert.doesNotMatch(html, /already (?:been )?paid|id="bond-paid"|bond-paid-help/i);
+assert.doesNotMatch(css, /bond-paid-field/);
+assert.match(browserJs, /"Refundable family bond",\s*"Due at enrolment \/ start of 2027",\s*result\.bondDueCents/);
 
 console.log("Rosewood fee calculator tests passed.");
