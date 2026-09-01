@@ -104,6 +104,23 @@ repairing canonical headers. Record only counts, not family values.
 - If a file cannot be safely recovered, record the incident and request a replacement
   from the family rather than copying from an unknown source.
 
+### Diagnose staff document preview
+
+1. Confirm the staff session is current and the application detail still lists the
+   document. Do not copy a Drive ID or presigned URL into a ticket or log.
+2. A five-minute preview expiry is expected. Close and reopen Preview once before
+   treating it as an incident.
+3. `DOCUMENT_NOT_FOUND` means the requested identifier is not attached to that
+   application. `DOCUMENT_MISMATCH` means Drive folder, application/category metadata,
+   MIME/size or file signature validation failed. Do not bypass either result by
+   creating a public Drive link.
+4. Confirm the Lambda role retains only `GetObject`, `PutObject` and `DeleteObject` for
+   `pending/*`, the staging bucket remains private and KMS-encrypted, and its one-day
+   lifecycle is enabled. Do not make the bucket public or convert it to permanent
+   document storage.
+5. Use the restricted `staff.document_previewed` audit event to confirm authorised
+   access without recording URL tokens or storage identifiers in incident notes.
+
 ## Recover A Missing Signature Request
 
 1. Confirm the application is submitted and the signer is still pending.

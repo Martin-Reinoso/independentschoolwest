@@ -1,8 +1,13 @@
+import crypto from "node:crypto";
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
+function safeDownloadName(value) {
+  return String(value || "application-document").normalize("NFKD").replace(/[^A-Za-z0-9._-]+/g, "-").replace(/-+/g, "-").replace(/^[-.]+|[-.]+$/g, "").slice(0, 160) || "application-document";
+}
+
 export class StagedGoogleDriveStore {
-  constructor({ drive, bucketName, kmsKeyId, s3 = new S3Client({}), presign = getSignedUrl }) {
+  constructor({ drive, bucketName, kmsKeyId, s3 = new S3Client({}), presign = getSignedUrl, clock = () => Date.now() }) {
     if (!bucketName || !kmsKeyId) throw new Error("Document staging requires an S3 bucket and KMS key.");
     this.storageProvider = "google_drive_via_s3";
     this.drive = drive;
@@ -10,6 +15,7 @@ export class StagedGoogleDriveStore {
     this.kmsKeyId = kmsKeyId;
     this.s3 = s3;
     this.presign = presign;
+    this.clock = clock;
   }
 
   storeEoiSnapshot(input) {
@@ -81,5 +87,34 @@ export class StagedGoogleDriveStore {
     const document = await this.drive.uploadDocument({ ...driveUpload, data });
     await this.s3.send(new DeleteObjectCommand({ Bucket: this.bucketName, Key: upload.storageKey })).catch(() => {});
     return document;
+  }
+
+  async createStaffPreview({ applicationId, documentId, fileName, mimeType, size, data }) {
+    const storageKey = `pending/staff-preview/${crypto.createHash("sha256").update(`${applicationId}\0${documentId}`).digest("hex")}`;
+    await this.s3.send(new PutObjectCommand({
+      Bucket: this.bucketName,
+      Key: storageKey,
+      Body: data,
+      ContentType: mimeType,
+      ContentLength: size,
+      CacheControl: "private, no-store, max-age=0",
+      ServerSideEncryption: "aws:kms",
+      SSEKMSKeyId: this.kmsKeyId
+    }));
+
+    const safeName = safeDownloadName(fileName);
+    const expiresIn = 5 * 60;
+    const command = disposition => new GetObjectCommand({
+      Bucket: this.bucketName,
+      Key: storageKey,
+      ResponseContentType: mimeType,
+      ResponseCacheControl: "private, no-store, max-age=0",
+      ResponseContentDisposition: `${disposition}; filename="${safeName}"`
+    });
+    const [previewUrl, downloadUrl] = await Promise.all([
+      this.presign(this.s3, command("inline"), { expiresIn }),
+      this.presign(this.s3, command("attachment"), { expiresIn })
+    ]);
+    return { previewUrl, downloadUrl, expiresAt: new Date(this.clock() + expiresIn * 1000).toISOString() };
   }
 }

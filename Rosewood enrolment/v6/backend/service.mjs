@@ -1073,6 +1073,39 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     };
   }
 
+  async function createStaffDocumentPreview(event) {
+    const session = await requireStaffSession(event);
+    const body = parseBody(event, 20_000);
+    const applicationId = safeText(body.applicationId, 200);
+    const documentId = safeText(body.documentId, 300);
+    const app = await store.getApplication(applicationId);
+    if (!app) throw appError(404, "APPLICATION_NOT_FOUND", "The application was not found.");
+    const document = Object.values(app.documents || {}).flat().find(item => (item.id || item.documentId) === documentId);
+    if (!document) throw appError(404, "DOCUMENT_NOT_FOUND", "The document was not found in this application.");
+    if (!drive?.readApplicationDocument || !artifacts?.createStaffPreview) throw appError(503, "DOCUMENT_PREVIEW_UNAVAILABLE", "Document preview is temporarily unavailable.");
+
+    const source = await drive.readApplicationDocument({
+      applicationId: app.id,
+      category: document.category,
+      documentId,
+      expectedMimeType: document.mimeType,
+      expectedSize: document.size,
+      expectedFileName: document.fileName
+    });
+    const preview = await artifacts.createStaffPreview({ applicationId: app.id, documentId, ...source });
+    await recordAudit(createAuditEvent({
+      workflow: "application",
+      recordId: app.id,
+      invitationId: app.invitationId,
+      type: "staff.document_previewed",
+      at: nowIso(),
+      actorType: "staff",
+      actorId: session.email,
+      details: { role: session.role, category: document.category, mimeType: source.mimeType, size: source.size }
+    }));
+    return { fileName: source.fileName, mimeType: source.mimeType, size: source.size, previewUrl: preview.previewUrl, downloadUrl: preview.downloadUrl, expiresAt: preview.expiresAt };
+  }
+
   function permittedCaseRecipients(app) {
     const recipients = new Map();
     const primaryEmail = normalizeEmail(app.recipientEmail);
@@ -2246,6 +2279,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     ["POST /v6/staff/access/verify-code", verifyStaffCode],
     ["GET /v6/staff/dashboard", getStaffDashboard],
     ["POST /v6/staff/applications/detail", getStaffApplicationDetail],
+    ["POST /v6/staff/applications/documents/preview", createStaffDocumentPreview],
     ["POST /v6/staff/applications/revision", getStaffApplicationRevision],
     ["POST /v6/staff/applications/review", saveStaffCaseReview],
     ["POST /v6/staff/applications/messages/draft", saveStaffCaseMessageDraft],

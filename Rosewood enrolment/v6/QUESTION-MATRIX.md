@@ -114,10 +114,10 @@ their original immutable definition.
 
 # Current EOI And Application Question Matrix
 
-`rosewood-eoi-2026.21` and `rosewood-application-2026.22` are the current contracts.
+`rosewood-eoi-2026.23` and `rosewood-application-2026.24` are the current contracts.
 They preserve all preceding family questions, options, requirements and answer keys;
-the release change is limited to the authenticated staff planning record-type/date-sort
-projection and its pinned browser assets.
+the latest release change is limited to stable authenticated staff review navigation,
+protected five-minute document preview and pinned browser assets.
 These releases preserve the V6.15 questions and rules; earlier definitions remain
 immutable for submitted records.
 

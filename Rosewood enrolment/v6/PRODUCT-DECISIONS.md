@@ -1,5 +1,25 @@
 # V6 Product and Backend Decisions
 
+## 2026-09-01: stable staff review and protected document preview
+
+- Keep application-section navigation inside the review dialog. It must not write a
+  page URL hash or move the staff portal behind the modal.
+- Keep the review dialog width and scrollbar stable while staff scroll. Avoid a blurred
+  sticky compositing layer that can visibly jump while long application sections render.
+- Allow authenticated staff roles to preview only a document recorded on the selected
+  application. Revalidate the Drive parent folder, application/category properties,
+  MIME type, size and file signature before any preview is created.
+- Copy the verified bytes to the existing private KMS-encrypted Sydney staging bucket
+  under a non-identifying key. Return separate inline and attachment URLs that expire
+  after five minutes; the existing one-day lifecycle remains a cleanup backstop only.
+- Audit preview creation by staff actor, application, category, MIME type and size. Do
+  not log or return the Drive identifier, S3 key, permanent sharing URL or URL token.
+- PDF, PNG and JPEG are the only preview types. Never create public or link-wide Drive
+  access to support staff viewing.
+- EOI `2026.23` and Application `2026.24` preserve the preceding question and data
+  contracts. They pin only the shared family compatibility update, stable staff review
+  interface and protected document-preview route.
+
 ## 2026-08-30: staff review, correspondence and meetings
 
 - Keep the Application for Enrolment immutable after submission. Store staff review, email drafts/sends and meetings as linked case records.

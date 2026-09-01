@@ -30,6 +30,7 @@
   const inviteDialog = byId("invite-dialog");
   const confirmDialog = byId("confirm-dialog");
   const detailDialog = byId("detail-dialog");
+  const documentPreviewDialog = byId("document-preview-dialog");
 
   function element(tag, className, text) {
     const node = document.createElement(tag);
@@ -811,7 +812,59 @@
     }
   }
 
-  function renderApplicationDetail(application) {
+  function clearCaseSectionHash() {
+    if (!window.location.hash.startsWith("#case-section-")) return;
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}${window.location.search}`);
+  }
+
+  function scrollToCaseSection(sectionId) {
+    const target = byId(`case-section-${sectionId}`);
+    if (!target) return;
+    const navigation = target.parentElement?.querySelector(".case-section-nav");
+    const top = detailDialog.scrollTop + target.getBoundingClientRect().top - detailDialog.getBoundingClientRect().top - (navigation?.offsetHeight || 0) - 16;
+    detailDialog.scrollTo({ top: Math.max(0, top), behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }
+
+  function resetDocumentPreview() {
+    byId("document-preview-frame").removeAttribute("src");
+    byId("document-preview-image").removeAttribute("src");
+    byId("document-download-link").removeAttribute("href");
+    byId("document-preview-frame").hidden = true;
+    byId("document-preview-image").hidden = true;
+    byId("document-preview-content").hidden = true;
+    byId("document-preview-actions").hidden = true;
+    byId("document-preview-loading").hidden = false;
+    clearNotices("document-preview-error");
+  }
+
+  async function openDocumentPreview(application, documentRecord, button) {
+    resetDocumentPreview();
+    byId("document-preview-title").textContent = documentRecord.fileName || "Application document";
+    byId("document-preview-summary").textContent = `${fieldLabel(documentRecord.category)} · Preparing a short-lived staff preview...`;
+    documentPreviewDialog.showModal();
+    setLoading(button, true);
+    try {
+      const result = await api("/v6/staff/applications/documents/preview", { method: "POST", body: { applicationId: application.applicationId, documentId: documentRecord.documentId } });
+      const isPdf = result.mimeType === "application/pdf";
+      const preview = isPdf ? byId("document-preview-frame") : byId("document-preview-image");
+      preview.src = result.previewUrl;
+      preview.hidden = false;
+      if (!isPdf) preview.alt = `Preview of ${result.fileName}`;
+      byId("document-download-link").href = result.downloadUrl;
+      byId("document-preview-summary").textContent = `${result.fileName} · ${fieldLabel(documentRecord.category)}`;
+      byId("document-preview-loading").hidden = true;
+      byId("document-preview-content").hidden = false;
+      byId("document-preview-actions").hidden = false;
+    } catch (error) {
+      byId("document-preview-loading").hidden = true;
+      setNotice("document-preview-error", error.message);
+    } finally {
+      setLoading(button, false);
+    }
+  }
+
+  function renderApplicationDetail(application, { resetScroll = false } = {}) {
+    const previousScrollTop = detailDialog.scrollTop;
     state.currentApplicationDetail = application;
     const content = byId("detail-content");
     clear(content);
@@ -833,9 +886,10 @@
       const navigation = element("nav", "case-section-nav");
       navigation.setAttribute("aria-label", "Application sections");
       review.sections.forEach(section => {
-        const link = element("a", "", section.title);
-        link.href = `#case-section-${section.id}`;
-        navigation.append(link);
+        const button = element("button", "", section.title);
+        button.type = "button";
+        button.addEventListener("click", () => scrollToCaseSection(section.id));
+        navigation.append(button);
       });
       content.append(navigation);
       review.sections.forEach(section => {
@@ -871,10 +925,14 @@
       application.documents.forEach(document => {
         const row = element("div", "document-row");
         const details = element("div");
-        const storageLabel = document.storageProvider === "google_drive" ? "Restricted Google Drive" : "Legacy document storage";
+        const storageLabel = ["google_drive", "google_drive_via_s3"].includes(document.storageProvider) ? "Restricted enrolment storage" : "Legacy document storage";
         details.append(element("strong", "", document.fileName), element("small", "", `${fieldLabel(document.category)} · ${storageLabel}`));
         row.append(details);
-        row.append(element("small", "", "Access through the restricted enrolment Drive"));
+        const previewButton = element("button", "secondary-button compact-button", "Preview");
+        previewButton.type = "button";
+        previewButton.setAttribute("aria-label", `Preview ${document.fileName}`);
+        previewButton.addEventListener("click", () => openDocumentPreview(application, document, previewButton));
+        row.append(previewButton);
         list.append(row);
       });
       section.append(list);
@@ -929,6 +987,7 @@
     content.append(renderCaseTimeline(application));
     byId("detail-loading").hidden = true;
     content.hidden = false;
+    requestAnimationFrame(() => { detailDialog.scrollTop = resetScroll ? 0 : previousScrollTop; });
   }
 
   function formField(label, control) {
@@ -1041,11 +1100,13 @@
     byId("detail-content").hidden = true;
     byId("detail-loading").hidden = false;
     clearNotices("detail-error");
+    clearCaseSectionHash();
+    detailDialog.scrollTop = 0;
     detailDialog.showModal();
     try {
       if (!state.meetings.length) await loadMeetings();
       const result = await api("/v6/staff/applications/detail", { method: "POST", body: { applicationId: record.applicationId } });
-      renderApplicationDetail(result.application);
+      renderApplicationDetail(result.application, { resetScroll: true });
     } catch (error) {
       byId("detail-loading").hidden = true;
       setNotice("detail-error", error.message);
@@ -1248,6 +1309,8 @@
   inviteDialog.addEventListener("click", event => { if (event.target === inviteDialog) inviteDialog.close(); });
   confirmDialog.addEventListener("click", event => { if (event.target === confirmDialog) confirmDialog.close(); });
   detailDialog.addEventListener("click", event => { if (event.target === detailDialog) detailDialog.close(); });
+  documentPreviewDialog.addEventListener("click", event => { if (event.target === documentPreviewDialog) documentPreviewDialog.close(); });
+  documentPreviewDialog.addEventListener("close", resetDocumentPreview);
   byId("detail-content").addEventListener("click", event => {
     const button = event.target.closest("[data-revision-key]");
     if (button) openApplicationRevision(button);

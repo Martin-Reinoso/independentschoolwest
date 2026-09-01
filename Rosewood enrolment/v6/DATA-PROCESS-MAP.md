@@ -116,7 +116,7 @@ checks.
 | Verified session | Main DynamoDB table and browser memory | None | Raw session token stays in browser memory; only its hash is stored. |
 | Application draft and revision | Main DynamoDB table | Progress and audit projections | Full draft answers are not written to a draft Sheet. |
 | Submitted application | Main DynamoDB table | Normalised Application Sheets | A frozen JSON snapshot is stored in restricted Drive. |
-| Supporting documents | Restricted Google Drive | DynamoDB and Sheet metadata | Private S3 is a temporary upload buffer only; portal lists metadata and staff open files through restricted Drive. |
+| Supporting documents | Restricted Google Drive | DynamoDB and Sheet metadata | Private S3 buffers uploads and five-minute staff preview copies only; neither is authoritative. |
 | Signature image | Restricted Google Drive | DynamoDB and Sheet metadata | Staff API does not return the image. |
 | Audit events | Separate append-only DynamoDB table | EOI, Application and Operations audit tabs | Detailed application views and state changes create events. |
 | Email work and receipts | DynamoDB outbox/receipts plus SES | Operations Email Events | Outbox is retried every minute. |
@@ -592,9 +592,14 @@ Staging keys contain opaque application/upload identifiers rather than filenames
 are not exposed to staff, are not backed up and expire after one day if an interrupted
 upload cannot be confirmed. Google Drive remains the authoritative file store.
 
-The staff portal returns document metadata only. It does not generate public or
-temporary download links. Authorised operators use the restricted enrolment Drive.
-Automated malware scanning is outside the current launch scope.
+The staff portal first returns document metadata only. When authenticated staff select
+Preview, the backend confirms that the recorded file remains in the restricted Drive
+application folder with matching application/category/type/size metadata and a valid
+PDF/PNG/JPEG signature. It then writes a non-identifying KMS-encrypted S3 copy and
+returns separate inline/download capabilities that expire after five minutes. The
+preview event is audited; Drive IDs, S3 keys and URL tokens are not written to ordinary
+logs or returned as permanent links. Automated malware scanning remains outside the
+current launch scope.
 
 ### Section 4: Conditions
 
@@ -815,7 +820,10 @@ flowchart LR
     Detail --> Authorise["Server authorises application lookup"]
     Authorise --> Audit["Append staff.application_viewed"]
     Authorise --> Answers["Return current answers and safe metadata"]
-    Answers --> Drive["Authorised staff separately use restricted Drive"]
+    Answers --> Preview["Staff selects Preview for recorded document"]
+    Preview --> Verify["Revalidate Drive ownership, metadata and file signature"]
+    Verify --> Temp["Create KMS-encrypted five-minute S3 view"]
+    Temp --> PreviewAudit["Append staff.document_previewed"]
 ```
 
 ## Asynchronous Email, Slack and Sheet Processing
@@ -894,8 +902,8 @@ an explicit apply confirmation is supplied.
 | Public visitor | Can open static pages; can request an Application link or submit EOI | None without verified application session | None | Receives only generic request status |
 | Verified application family | Editable current application before submission; masked read-only status after submission | Can upload only before submission | Primary signature during submission; may step-up-authenticate to correct/resend a permitted pending signer | Own save/status responses only; no submitted-answer reopening |
 | Verified additional guardian | Frozen review context for its signature task | No document access | Can submit only its assigned signature | Own completion status only |
-| Viewer staff | Dashboard and detailed application review | Metadata in portal; restricted Drive only if separately authorised | Metadata only, no images | Read operational summaries; detailed view is audited |
-| Admissions/Admin staff | Viewer access plus create/resend invitations | Same Drive boundary | Metadata plus explicit audited pending contact-permission change | Invitation, permission and review actions are audited |
+| Viewer staff | Dashboard and detailed application review | Audited five-minute PDF/image preview after backend Drive revalidation | Metadata only, no images | Read operational summaries; detail and preview access are audited |
+| Admissions/Admin staff | Viewer access plus create/resend invitations | Same short-lived preview boundary | Metadata plus explicit audited pending contact-permission change | Invitation, permission and review actions are audited |
 | Restricted Drive operator | Files within approved enrolment folders | Direct restricted access | Direct restricted access where authorised | No automatic DynamoDB authority from Drive access |
 | Google Sheets editor | Reporting projections | No file access from Sheet alone | Metadata only | Sheet edits do not alter authoritative records |
 | AWS operator | Infrastructure and authoritative stores under AWS account controls | File IDs/metadata, not Google file contents by AWS alone | Metadata, not Drive image content by AWS alone | Backup, restore, logs and alarms |

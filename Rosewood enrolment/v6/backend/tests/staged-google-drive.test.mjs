@@ -84,3 +84,31 @@ test("staged confirmation rejects altered file metadata before Drive", async () 
   await assert.rejects(() => store.confirmUpload(uploadRecord()), error => error.code === "DOCUMENT_MISMATCH");
   assert.equal(uploaded, false);
 });
+
+test("staff previews use encrypted non-identifying objects and five-minute signed URLs", async () => {
+  const sent = [];
+  const signed = [];
+  const now = Date.parse("2026-09-01T00:00:00.000Z");
+  const store = new StagedGoogleDriveStore({
+    drive: {},
+    bucketName: "private-bucket",
+    kmsKeyId: "kms-key",
+    s3: { send: async command => { sent.push(command.input); return {}; } },
+    presign: async (_client, command, options) => {
+      signed.push({ input: command.input, options });
+      return command.input.ResponseContentDisposition.startsWith("inline") ? "https://private-bucket.s3.ap-southeast-2.amazonaws.com/preview" : "https://private-bucket.s3.ap-southeast-2.amazonaws.com/download";
+    },
+    clock: () => now
+  });
+  const result = await store.createStaffPreview({ applicationId: "app-private-123", documentId: "drive-private-456", fileName: "Family document.pdf", mimeType: "application/pdf", size: 5, data: Buffer.from("hello") });
+  assert.equal(sent.length, 1);
+  assert.match(sent[0].Key, /^pending\/staff-preview\/[a-f0-9]{64}$/);
+  assert.doesNotMatch(sent[0].Key, /app-private|drive-private/);
+  assert.equal(sent[0].ServerSideEncryption, "aws:kms");
+  assert.equal(sent[0].SSEKMSKeyId, "kms-key");
+  assert.equal(sent[0].CacheControl, "private, no-store, max-age=0");
+  assert.deepEqual(signed.map(item => item.options.expiresIn), [300, 300]);
+  assert.match(signed[0].input.ResponseContentDisposition, /^inline/);
+  assert.match(signed[1].input.ResponseContentDisposition, /^attachment/);
+  assert.equal(result.expiresAt, "2026-09-01T00:05:00.000Z");
+});

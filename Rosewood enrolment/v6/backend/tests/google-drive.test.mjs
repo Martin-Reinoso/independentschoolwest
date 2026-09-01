@@ -43,3 +43,42 @@ test("Google Drive confirmation rejects metadata drift and labels accepted files
   assert.equal(document.malwareScanStatus, "not_scanned");
   assert.equal(document.documentId, "drive-1");
 });
+
+test("Google Drive staff preview revalidates application ownership before reading bytes", async () => {
+  const data = Buffer.from("%PDF-synthetic");
+  const requests = [];
+  const fetchImpl = async url => {
+    requests.push(String(url));
+    if (String(url).includes("oauth2.googleapis.com")) return new Response(JSON.stringify({ access_token: "token", expires_in: 3600 }), { status: 200, headers: { "Content-Type": "application/json" } });
+    if (String(url).includes("alt=media")) return new Response(data, { status: 200, headers: { "Content-Type": "application/pdf" } });
+    return new Response(JSON.stringify({ id: "drive-1", name: "protected.pdf", mimeType: "application/pdf", size: String(data.length), parents: ["application-folder"], appProperties: { rosewoodApplicationId: "app-1", rosewoodCategory: "birth_certificate" }, trashed: false }), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+  const store = new GoogleDriveStore({ auth, eoiFolderId: "eoi-folder", applicationFolderId: "application-folder", fetchImpl });
+  const document = await store.readApplicationDocument({ applicationId: "app-1", category: "birth_certificate", documentId: "drive-1", expectedMimeType: "application/pdf", expectedSize: data.length, expectedFileName: "family-document.pdf" });
+  assert.equal(document.fileName, "family-document.pdf");
+  assert.deepEqual(document.data, data);
+  assert.ok(requests.some(url => url.includes("alt=media")));
+});
+
+test("Google Drive staff preview rejects a document owned by another application", async () => {
+  let mediaRequested = false;
+  const fetchImpl = async url => {
+    if (String(url).includes("oauth2.googleapis.com")) return new Response(JSON.stringify({ access_token: "token", expires_in: 3600 }), { status: 200, headers: { "Content-Type": "application/json" } });
+    if (String(url).includes("alt=media")) mediaRequested = true;
+    return new Response(JSON.stringify({ id: "drive-1", name: "protected.pdf", mimeType: "application/pdf", size: "10", parents: ["application-folder"], appProperties: { rosewoodApplicationId: "different-app", rosewoodCategory: "birth_certificate" }, trashed: false }), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+  const store = new GoogleDriveStore({ auth, eoiFolderId: "eoi-folder", applicationFolderId: "application-folder", fetchImpl });
+  await assert.rejects(() => store.readApplicationDocument({ applicationId: "app-1", category: "birth_certificate", documentId: "drive-1", expectedMimeType: "application/pdf", expectedSize: 10 }), error => error.code === "DOCUMENT_MISMATCH");
+  assert.equal(mediaRequested, false);
+});
+
+test("Google Drive staff preview rejects content that does not match its declared type", async () => {
+  const data = Buffer.from("not-a-pdf-file");
+  const fetchImpl = async url => {
+    if (String(url).includes("oauth2.googleapis.com")) return new Response(JSON.stringify({ access_token: "token", expires_in: 3600 }), { status: 200, headers: { "Content-Type": "application/json" } });
+    if (String(url).includes("alt=media")) return new Response(data, { status: 200, headers: { "Content-Type": "application/pdf" } });
+    return new Response(JSON.stringify({ id: "drive-1", name: "protected.pdf", mimeType: "application/pdf", size: String(data.length), parents: ["application-folder"], appProperties: { rosewoodApplicationId: "app-1", rosewoodCategory: "birth_certificate" }, trashed: false }), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+  const store = new GoogleDriveStore({ auth, eoiFolderId: "eoi-folder", applicationFolderId: "application-folder", fetchImpl });
+  await assert.rejects(() => store.readApplicationDocument({ applicationId: "app-1", category: "birth_certificate", documentId: "drive-1", expectedMimeType: "application/pdf", expectedSize: data.length }), error => error.code === "DOCUMENT_MISMATCH");
+});

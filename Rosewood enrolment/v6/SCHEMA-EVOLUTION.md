@@ -1,5 +1,17 @@
 # V6 Form And Data Evolution
 
+## Staff document-preview access (2026-09-01)
+
+No application or document entity is added or changed. An authenticated preview reads
+the existing application document reference, revalidates the authoritative Drive file
+and creates a temporary encrypted S3 viewing copy under
+`pending/staff-preview/{non-identifying SHA-256}`. Two presigned GET capabilities
+(inline and attachment) expire after five minutes; the existing one-day lifecycle is a
+cleanup backstop. `staff.document_previewed` is appended to the restricted audit table
+with staff actor, application, category, MIME type and size, but no Drive ID, S3 key or
+presigned URL. EOI `2026.23` and Application `2026.24` retain the exact preceding answer
+contracts and pin only the updated interfaces.
+
 ## Case-management records (2026-08-30)
 
 - `APP#{applicationId} / CASE#REVIEW`: optimistic-versioned staff review status, bounded checklist and internal note.
@@ -40,8 +52,8 @@ deliberately creating a new version.
 Current launch contracts:
 
 ```text
-EOI:                      rosewood-eoi-2026.21
-Application:              rosewood-application-2026.22
+EOI:                      rosewood-eoi-2026.23
+Application:              rosewood-application-2026.24
 Application-link request: rosewood-application-link-request-2026.1
 Community enquiry:       rosewood-community-enquiry-2026.1
 ```

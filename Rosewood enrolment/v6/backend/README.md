@@ -37,7 +37,7 @@ server-acknowledged application create, start, save and submission also writes a
 append-only DynamoDB revision. Staff can inspect a selected historical revision through
 an authorised, audited endpoint. See `../SCHEMA-EVOLUTION.md` before changing fields,
 options, validation or required status.
-The current EOI `2026.21` and Application `2026.22` contracts pin the family, staff and signing HTML/JavaScript/CSS,
+The current EOI `2026.23` and Application `2026.24` contracts pin the family, staff and signing HTML/JavaScript/CSS,
 policy projection and all original Word/PDF policy assets. Policy viewing is frontend-
 only and does not create an application answer, acknowledgement or audit event.
 EOI `2026.15` preserves its earlier data contract. Application `2026.15` preserves the
@@ -203,6 +203,7 @@ POST /v6/staff/access/request-code
 POST /v6/staff/access/verify-code
 GET  /v6/staff/dashboard
 POST /v6/staff/applications/detail
+POST /v6/staff/applications/documents/preview
 POST /v6/staff/applications/revision
 POST /v6/staff/invitations
 POST /v6/staff/invitations/resend
@@ -244,6 +245,12 @@ revision hashes, network fingerprints or signature file identifiers.
 Document start records use opaque application/upload identifiers in S3 keys. The
 presigned PUT is constrained by the approved MIME type, SHA-256 checksum and KMS
 encryption; confirmation is idempotent at the Drive upload identifier boundary.
+The staff document-preview endpoint accepts only a document already recorded on the
+selected application. It revalidates Drive ownership and metadata plus PDF/PNG/JPEG
+file signatures, copies the bytes to a non-identifying KMS-encrypted staging key and
+returns separate inline/download URLs valid for five minutes. Preview creation is
+audited. The response and ordinary logs exclude the Drive ID, S3 key and permanent
+sharing information; the one-day bucket lifecycle removes abandoned preview copies.
 
 ## Build And Recovery
 

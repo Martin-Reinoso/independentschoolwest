@@ -134,11 +134,12 @@ class StaffStore {
   }
 }
 
-function staffService({ store = new StaffStore(), staffRoles = "info@ffe.org.au=admin", clockFn = clock, config = {} } = {}) {
+function staffService({ store = new StaffStore(), staffRoles = "info@ffe.org.au=admin", clockFn = clock, config = {}, drive = {}, artifacts = drive } = {}) {
   const sent = [];
   const service = createService({
     store,
-    drive: {},
+    drive,
+    artifacts,
     sheets: { async apply() {} },
     mailer: { async send(message) { sent.push(message); return { messageId: "ses-1" }; } },
     env: {
@@ -426,6 +427,37 @@ test("staff can retrieve an audited historical answer snapshot", async () => {
   assert.ok(store.audit.some(audit => audit.type === "staff.application_revision_viewed"));
 });
 
+test("authorised staff can create an audited short-lived preview only for a document in the application", async () => {
+  const source = Buffer.from("%PDF-synthetic");
+  let readInput;
+  let previewInput;
+  const drive = { async readApplicationDocument(input) { readInput = input; return { fileName: "synthetic.pdf", mimeType: "application/pdf", size: source.length, data: source }; } };
+  const artifacts = { async createStaffPreview(input) { previewInput = input; return { previewUrl: "https://private.example/preview", downloadUrl: "https://private.example/download", expiresAt: "2026-09-01T00:05:00.000Z" }; } };
+  const { service, store } = staffService({ staffRoles: "info@ffe.org.au=viewer", drive, artifacts });
+  const sessionToken = await staffSession(service);
+  store.applications.set("app-preview", { id: "app-preview", invitationId: "invite-preview", recipientEmail: "family@example.com", status: "in_progress", revision: 1, createdAt: "2026-09-01T00:00:00.000Z", updatedAt: "2026-09-01T00:00:00.000Z", documents: { birth_certificate: [{ id: "drive-doc-1", category: "birth_certificate", fileName: "synthetic.pdf", mimeType: "application/pdf", size: source.length }] } });
+
+  const response = await service(event("/v6/staff/applications/documents/preview", "POST", { applicationId: "app-preview", documentId: "drive-doc-1" }, sessionToken));
+  assert.equal(response.statusCode, 200);
+  const body = JSON.parse(response.body);
+  assert.equal(body.previewUrl, "https://private.example/preview");
+  assert.equal(body.downloadUrl, "https://private.example/download");
+  assert.equal("documentId" in body, false);
+  assert.equal("storageKey" in body, false);
+  assert.equal(readInput.applicationId, "app-preview");
+  assert.equal(readInput.documentId, "drive-doc-1");
+  assert.deepEqual(previewInput.data, source);
+  assert.ok(store.audit.some(audit => audit.type === "staff.document_previewed" && audit.actorId === "info@ffe.org.au"));
+
+  const missing = await service(event("/v6/staff/applications/documents/preview", "POST", { applicationId: "app-preview", documentId: "drive-doc-2" }, sessionToken));
+  assert.equal(missing.statusCode, 404);
+  assert.equal(JSON.parse(missing.body).error, "DOCUMENT_NOT_FOUND");
+
+  const unauthenticated = await service(event("/v6/staff/applications/documents/preview", "POST", { applicationId: "app-preview", documentId: "drive-doc-1" }));
+  assert.equal(unauthenticated.statusCode, 401);
+  assert.equal(JSON.parse(unauthenticated.body).error, "SESSION_REQUIRED");
+});
+
 test("verified family can create separate child applications but cannot select an unrelated record", async () => {
   const { service, store } = staffService();
   const created = await createApplicationInvitation({ store, recipientEmail: "family@example.com", firstName: "Alex", applicationUrl: "https://ffe.org.au/form", clock });
@@ -538,7 +570,7 @@ test("an active V14 draft adopts the current contract without transforming its f
   await service(event("/v6/application/access/verify-code", "POST", { invitationToken, challengeId: requested.challengeId, code: "123456" }));
   const upgraded = store.applications.get(created.applicationId);
 
-  assert.equal(upgraded.formVersion, "rosewood-application-2026.23");
+  assert.equal(upgraded.formVersion, "rosewood-application-2026.24");
   assert.deepEqual(upgraded.values, values);
   assert.deepEqual(store.audit.find(eventRecord => eventRecord.type === "application.form_definition_upgraded").details.normalizedFields, []);
 });
