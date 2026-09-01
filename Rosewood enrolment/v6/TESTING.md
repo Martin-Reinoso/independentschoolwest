@@ -1796,3 +1796,37 @@ release verification.
   has no uploaded file, so production verification did not access a real family
   document; protected preview bytes and popup behavior remain covered by the passing
   synthetic automated tests.
+
+## V6.25 Separated Communications And Principal Meetings Verification
+
+Released and verified in production on 1 September 2026 using synthetic data and
+read-only operational checks only. No applicant record, invitation, OTP, family email,
+upload, signature, case message or meeting booking was created or changed during
+release verification.
+
+- All 147 backend and interface tests passed. Desktop and 390 x 844 mobile browser
+  checks confirmed the private meeting page retained accessible landmarks, full-width
+  responsive layout and no horizontal overflow; the staff entry point loaded without
+  console errors.
+- Pull request `#46` passed both repository checks and merged as
+  `62f77971b53790f29ddd3574549bf86a4eac468d`. GitHub Pages run `33483839808`
+  completed successfully, and all eight pinned V6 family, staff and meeting assets
+  served from `ffe.org.au` matched their committed SHA-256 hashes.
+- Reviewed CloudFormation change set `rosewood-v625-62f7797` modified only the existing
+  Lambda code plus conditional EventBridge permission/target and SES subscription
+  recalculation. It proposed no DynamoDB, audit, KMS, staging-bucket, backup-vault,
+  secret, Google configuration, staff-parameter or IAM-role change.
+- The stack returned to `UPDATE_COMPLETE`. Lambda
+  `rosewood-enrolment-v6-production-service` is `Active` with
+  `LastUpdateStatus: Successful`; `/v6/health` reports EOI
+  `rosewood-eoi-2026.24` and Application `rosewood-application-2026.25`.
+- Unauthenticated staff-dashboard, family-communications context and family-meeting
+  context requests each returned `401 SESSION_REQUIRED`. The one-minute outbox and
+  ten-minute production-canary schedules are enabled.
+- The manual non-writing canary at `2026-09-01T07:54:40.971Z` reported Public form,
+  backend health, EOI address, Application workflow and operational pipeline all
+  available. All nine production alarms are `OK`.
+- Both security-topic email subscriptions remain confirmed. The enabled SES feedback
+  destination retains all seven configured event types through its confirmed Lambda
+  subscription, and its SNS topic remains encrypted with dedicated enabled
+  customer-managed key `75953611-d9aa-4cf2-9e5e-e08cf674864d`.
