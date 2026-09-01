@@ -2,9 +2,18 @@ import crypto from "node:crypto";
 import { GoogleAccessTokenProvider } from "./google-auth.mjs";
 
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive";
+const PREVIEW_MIME_TYPES = new Set(["application/pdf", "image/png", "image/jpeg"]);
+const MAX_PREVIEW_BYTES = 10 * 1024 * 1024;
 
 function safeName(value) {
   return String(value || "document").normalize("NFKD").replace(/[^A-Za-z0-9._-]+/g, "-").replace(/-+/g, "-").replace(/^[-.]+|[-.]+$/g, "").slice(0, 160) || "document";
+}
+
+function hasExpectedFileSignature(data, mimeType) {
+  if (mimeType === "application/pdf") return data.subarray(0, 1024).includes(Buffer.from("%PDF-"));
+  if (mimeType === "image/png") return data.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  if (mimeType === "image/jpeg") return data.length >= 3 && data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff;
+  return false;
 }
 
 export class GoogleDriveStore {
@@ -90,6 +99,29 @@ export class GoogleDriveStore {
     const valid = !file.trashed && file.parents?.includes(this.applicationFolderId) && properties.rosewoodApplicationId === applicationId && properties.rosewoodCategory === category && properties.rosewoodExpectedMime === file.mimeType && Number(properties.rosewoodExpectedSize) === Number(file.size);
     if (!valid) throw Object.assign(new Error("Uploaded document metadata does not match its authorised upload."), { status: 422, code: "DOCUMENT_MISMATCH" });
     return { documentId: file.id, fileName: file.name, mimeType: file.mimeType, size: Number(file.size), category, checksum: file.md5Checksum || "", malwareScanStatus: "not_scanned", storageProvider: this.storageProvider, storageKey: file.id, uploadedAt: file.createdTime || new Date().toISOString() };
+  }
+
+  async readApplicationDocument({ applicationId, category, documentId, expectedMimeType = "", expectedSize = 0, expectedFileName = "" }) {
+    const fields = "id,name,mimeType,size,parents,appProperties,trashed";
+    const metadataResponse = await this.request(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(documentId)}?fields=${encodeURIComponent(fields)}`);
+    const file = await metadataResponse.json();
+    const properties = file.appProperties || {};
+    const size = Number(file.size);
+    const valid = !file.trashed
+      && file.parents?.includes(this.applicationFolderId)
+      && properties.rosewoodApplicationId === applicationId
+      && properties.rosewoodCategory === category
+      && PREVIEW_MIME_TYPES.has(file.mimeType)
+      && size > 0
+      && size <= MAX_PREVIEW_BYTES
+      && (!expectedMimeType || file.mimeType === expectedMimeType)
+      && (!expectedSize || size === Number(expectedSize));
+    if (!valid) throw Object.assign(new Error("The document does not match the protected application record."), { status: 422, code: "DOCUMENT_MISMATCH" });
+
+    const mediaResponse = await this.request(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(documentId)}?alt=media`);
+    const data = Buffer.from(await mediaResponse.arrayBuffer());
+    if (data.length !== size || !hasExpectedFileSignature(data, file.mimeType)) throw Object.assign(new Error("The document content did not match its protected metadata."), { status: 422, code: "DOCUMENT_MISMATCH" });
+    return { fileName: expectedFileName || file.name, mimeType: file.mimeType, size, data };
   }
 
   async findUploadedDocument({ applicationId, category, uploadId }) {

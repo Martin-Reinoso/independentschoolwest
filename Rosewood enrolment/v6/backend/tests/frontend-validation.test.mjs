@@ -146,6 +146,27 @@ test("staff admissions overview presents the canonical pipeline and privacy-cons
   assert.match(css, /\.overview-stage-card:focus-visible/);
 });
 
+test("staff application review scrolls without page hashes and previews documents through protected temporary links", async () => {
+  const [source, html, css] = await Promise.all([
+    readFile(new URL("../../../../pages/rosewood-enrolment-admin-v6.js", import.meta.url), "utf8"),
+    readFile(new URL("../../../../pages/rosewood-enrolment-admin-v6.html", import.meta.url), "utf8"),
+    readFile(new URL("../../../../pages/rosewood-enrolment-admin-v6.css", import.meta.url), "utf8")
+  ]);
+  const detailSource = source.slice(source.indexOf("function clearCaseSectionHash"), source.indexOf("function formField"));
+  assert.match(detailSource, /history\.replaceState/);
+  assert.match(detailSource, /detailDialog\.scrollTo/);
+  assert.match(detailSource, /navigation\.append\(button\)/);
+  assert.doesNotMatch(detailSource, /link\.href = `#case-section-/);
+  assert.match(detailSource, /staff\/applications\/documents\/preview/);
+  assert.match(detailSource, /document-preview-frame/);
+  assert.match(detailSource, /document-preview-image/);
+  assert.match(html, /id="document-preview-dialog"/);
+  assert.match(html, /https:\/\/\*\.s3\.ap-southeast-2\.amazonaws\.com/);
+  assert.match(css, /scrollbar-gutter: stable/);
+  assert.doesNotMatch(css.slice(css.indexOf(".case-section-nav"), css.indexOf(".readable-section")), /backdrop-filter/);
+  assert.match(css, /\.case-section-nav button:focus-visible/);
+});
+
 test("V6.14 applies the approved family feedback without weakening verification or saved-draft safety", async () => {
   const [source, html] = await Promise.all([
     readFile(new URL("../../../../pages/rosewood-enrolment-v6.js", import.meta.url), "utf8"),
@@ -210,7 +231,7 @@ test("guardian signing renders the complete server-provided application review",
   assert.match(source, /value="\$\{melbourneDate\(\)\}"/);
   assert.doesNotMatch(source, /new Date\(\)\.toISOString\(\)\.slice\(0, 10\)/);
   assert.match(await readFile(new URL("../../../../pages/rosewood-enrolment-v6.js", import.meta.url), "utf8"), /rosewood-application-2026\.21/);
-  assert.match(await readFile(new URL("../../../../pages/rosewood-enrolment-v6.html", import.meta.url), "utf8"), /rosewood-enrolment-v6\.js\?v=33/);
+  assert.match(await readFile(new URL("../../../../pages/rosewood-enrolment-v6.html", import.meta.url), "utf8"), /rosewood-enrolment-v6\.js\?v=34/);
   assert.match(html, /rosewood-application-sign-v6\.css\?v=2/);
   assert.match(html, /rosewood-application-sign-v6\.js\?v=5/);
   assert.match(css, /\.application-review-section/);

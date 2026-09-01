@@ -1745,3 +1745,23 @@ verification.
 - Both security-topic email subscriptions remain confirmed. The enabled encrypted SES
   feedback destination retains all seven send, delivery, delay, bounce, complaint,
   reject and rendering-failure event types through its confirmed Lambda subscription.
+
+## V6.24 Stable Staff Review And Document Preview Verification
+
+Prepared locally on 1 September 2026 using synthetic metadata and file bytes only.
+
+- Browser measurements confirmed the long review dialog retained a constant 1480 px
+  content width while scrolling. The visible jump came from global URL-hash anchoring
+  and sticky blurred-layer recomposition, not application data or answer rendering.
+- Section navigation now uses keyboard-accessible buttons and explicit in-dialog
+  scrolling. It clears stale `#case-section-*` hashes, keeps a stable scrollbar and
+  removes the blurred sticky layer.
+- PDF and image preview uses a separate responsive dialog. Closing it removes temporary
+  URLs from the DOM; the original application review remains open and read-only.
+- Backend tests prove staff authentication, exact application/document membership,
+  Drive folder and app-property validation, MIME/size/file-signature checks, KMS
+  encryption, non-identifying S3 keys, five-minute inline/download URLs, audit creation
+  and rejection of another application's file.
+- EOI `2026.23` and Application `2026.24` preserve all preceding question, answer and
+  validation contracts. No application was reopened and no existing document,
+  signature or family answer was changed.

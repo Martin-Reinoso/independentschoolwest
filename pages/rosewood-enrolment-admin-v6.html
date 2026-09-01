@@ -6,10 +6,10 @@
   <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Cache-Control" content="no-store">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src https://6zyzo44sdb5zmmx53toktqrnuu0sikyd.lambda-url.ap-southeast-2.on.aws; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://*.s3.ap-southeast-2.amazonaws.com; style-src 'self'; script-src 'self'; connect-src https://6zyzo44sdb5zmmx53toktqrnuu0sikyd.lambda-url.ap-southeast-2.on.aws; form-action 'none'; frame-src https://*.s3.ap-southeast-2.amazonaws.com; object-src 'none'; base-uri 'none'">
   <title>Enrolment Operations | Rosewood College</title>
   <link rel="icon" href="../img/favicon.ico" type="image/x-icon">
-  <link rel="stylesheet" href="rosewood-enrolment-admin-v6.css?v=8">
+  <link rel="stylesheet" href="rosewood-enrolment-admin-v6.css?v=9">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to operations</a>
@@ -258,6 +258,25 @@
     <div class="detail-content" id="detail-content" hidden></div>
   </dialog>
 
-  <script src="rosewood-enrolment-admin-v6.js?v=13"></script>
+  <dialog class="document-preview-dialog" id="document-preview-dialog" aria-labelledby="document-preview-title">
+    <form method="dialog" class="dialog-close-form"><button class="dialog-close" aria-label="Close document preview" value="cancel">×</button></form>
+    <div class="document-preview-heading">
+      <p class="eyebrow">Protected document preview</p>
+      <h2 id="document-preview-title">Application document</h2>
+      <p id="document-preview-summary">Preparing a short-lived staff preview...</p>
+    </div>
+    <div class="notice error-notice" id="document-preview-error" role="alert" tabindex="-1" hidden></div>
+    <div class="document-preview-loading" id="document-preview-loading" role="status">Preparing document preview...</div>
+    <div class="document-preview-content" id="document-preview-content" hidden>
+      <iframe id="document-preview-frame" title="Application document preview" referrerpolicy="no-referrer" hidden></iframe>
+      <img id="document-preview-image" alt="" referrerpolicy="no-referrer" hidden>
+    </div>
+    <div class="document-preview-actions" id="document-preview-actions" hidden>
+      <p>This temporary preview expires after five minutes. Access is recorded in the enrolment audit.</p>
+      <a class="download-link" id="document-download-link" href="#" target="_blank" rel="noopener noreferrer">Download original</a>
+    </div>
+  </dialog>
+
+  <script src="rosewood-enrolment-admin-v6.js?v=14"></script>
 </body>
 </html>

@@ -184,11 +184,17 @@ status, progress, timestamps, signature counts and recent email-operation summar
 Select **Review** to open the authoritative application answers. Each detailed view
 creates an audit event.
 
-- The portal lists document names and categories but does not create sharing or
-  download links.
-- Authorised operators access files through the restricted enrolment Drive using the
-  `info@ffe.org.au` organisation identity.
+- The portal lists document names and categories. Select **Preview** to open an
+  in-portal PDF or image view; use **Download original** only when the operational task
+  requires a local copy.
+- Preview and download links expire after five minutes. Close and reopen Preview to
+  obtain a new audited link if one expires.
+- The backend checks that the file belongs to the selected application and remains in
+  the restricted enrolment Drive before creating the short-lived view. A mismatch must
+  fail closed rather than open the file.
 - Never create public or link-wide sharing to make a document easier to access.
+- Treat downloaded files as restricted child/family information and remove local copies
+  when the authorised task is complete.
 - The portal never returns signature drawings, raw invitation/signing links or network
   fingerprints.
 

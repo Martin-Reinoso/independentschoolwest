@@ -163,9 +163,10 @@ request. Google Sheets show the record's actual form version but remain replacea
 reports. `SCHEMA-EVOLUTION.md` defines the mandatory process for adding, removing,
 renaming or changing questions and for migrating existing records.
 
-The current EOI `2026.21` and Application `2026.22` releases preserve their preceding
-question and data contracts while pinning the staff planning record-type and date-sort
-interface. The preceding releases pin the Admissions overview, enrolment-planning, implemented
+The current EOI `2026.23` and Application `2026.24` releases preserve their preceding
+question and data contracts while pinning stable staff review navigation and protected
+five-minute PDF/image document previews. The preceding releases pin staff case
+management, the staff planning record-type/date-sort interface, Admissions overview, enrolment-planning, implemented
 application-link request and staff request-list interfaces. Public promotion of that
 request interface is paused;
 the separate retained backend contract is
@@ -205,9 +206,11 @@ identified synthetic/test names and test-address markers are available under **T
 applications** or **All records** and remain retained for audit. Before child details exist,
 the primary parent/guardian becomes the row title and the row is labelled **child
 details not started**. Health, document and other application answers remain excluded
-from planning. It lists document metadata but does not create
-document-sharing links; authorised staff access documents through the restricted
-enrolment Drive. Viewers cannot create invitations.
+from planning. Detailed review lists document metadata and offers an audited Preview
+action. The backend revalidates each file against the application and restricted Drive,
+then creates a five-minute inline/download view through the existing KMS-encrypted
+Sydney staging bucket. It never creates a permanent or public Drive sharing link.
+Viewers can review and preview but cannot create invitations.
 The default **Admissions overview** counts child applications rather than families and
 uses five application-progress stages; Application complete is not an offer or
 enrolment decision. Its read-only attention queue derives unavailable access,
