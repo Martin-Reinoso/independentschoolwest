@@ -34,6 +34,8 @@ class StaffStore {
     this.meetingSlots = new Map();
     this.meetingInvitations = new Map();
     this.meetingInvitationTokens = new Map();
+    this.meetingInvitationScopes = new Map();
+    this.meetingBookings = new Map();
     this.outboxEvents = [];
   }
   async checkRateLimit(key, limit, seconds) {
@@ -96,11 +98,15 @@ class StaffStore {
   async getMeetingSeries(id) { return this.meetingSeries.get(id) || null; }
   async createMeetingSeries(series, auditEvents = []) { this.meetingSeries.set(series.id, structuredClone(series)); this.audit.push(...auditEvents); return series; }
   async createMeetingSlot(slot, auditEvents = []) { const slots = this.meetingSlots.get(slot.seriesId) || []; slots.push(structuredClone(slot)); this.meetingSlots.set(slot.seriesId, slots); this.audit.push(...auditEvents); return slot; }
+  async createMeetingSlots(slots, auditEvents = []) { for (const slot of slots) await this.createMeetingSlot(slot); this.audit.push(...auditEvents); return slots; }
   async listMeetingSlots(seriesId) { return structuredClone(this.meetingSlots.get(seriesId) || []); }
-  async createMeetingInvitation({ invitation, tokenHash, outboxEvents = [], auditEvents = [] }) { const stored = { ...invitation, tokenHash }; this.meetingInvitations.set(invitation.id, structuredClone(stored)); this.meetingInvitationTokens.set(tokenHash, structuredClone(stored)); this.outboxEvents.push(...outboxEvents); this.audit.push(...auditEvents); return invitation; }
+  async createMeetingInvitation({ invitation, tokenHash, outboxEvents = [], auditEvents = [] }) { const scoped = invitation.scopeKey ? this.meetingInvitationScopes.get(invitation.scopeKey) : null; if (scoped && scoped.expiresAt >= clock()) throw Object.assign(new Error("This family already has an active invitation for this meeting schedule."), { status: 409, code: "REVISION_CONFLICT" }); const stored = { ...invitation, tokenHash }; this.meetingInvitations.set(invitation.id, structuredClone(stored)); this.meetingInvitationTokens.set(tokenHash, structuredClone(stored)); if (invitation.scopeKey) this.meetingInvitationScopes.set(invitation.scopeKey, { invitationId: invitation.id, expiresAt: invitation.expiresAt }); this.outboxEvents.push(...outboxEvents); this.audit.push(...auditEvents); return invitation; }
   async getMeetingInvitation(tokenHash) { return this.meetingInvitationTokens.get(tokenHash) || null; }
   async getMeetingInvitationById(id) { return this.meetingInvitations.get(id) || null; }
-  async bookMeetingSlot({ seriesId, slot, invitation, booking, outboxEvents = [], auditEvents = [] }) { const slots = this.meetingSlots.get(seriesId); const index = slots.findIndex(item => item.id === slot.id); assert.equal(slots[index].status, "available"); slots[index] = { ...slots[index], status: "booked", bookingId: booking.id }; const booked = { ...invitation, status: "booked", bookingId: booking.id }; this.meetingInvitations.set(invitation.id, booked); this.meetingInvitationTokens.set(invitation.tokenHash, booked); this.outboxEvents.push(...outboxEvents); this.audit.push(...auditEvents); return booking; }
+  async listMeetingInvitations() { return structuredClone([...this.meetingInvitations.values()]); }
+  async getMeetingBooking(seriesId, bookingId) { return structuredClone(this.meetingBookings.get(`${seriesId}:${bookingId}`) || null); }
+  async bookMeetingSlot({ seriesId, slot, invitation, booking, outboxEvents = [], auditEvents = [] }) { const slots = this.meetingSlots.get(seriesId); const index = slots.findIndex(item => item.id === slot.id); assert.equal(slots[index].status, "available"); slots[index] = { ...slots[index], status: "booked", bookingId: booking.id }; this.meetingBookings.set(`${seriesId}:${booking.id}`, structuredClone(booking)); const booked = { ...invitation, status: "booked", bookingId: booking.id, expiresAt: Math.max(invitation.expiresAt, booking.manageUntil) }; this.meetingInvitations.set(invitation.id, booked); this.meetingInvitationTokens.set(invitation.tokenHash, booked); if (invitation.scopeKey) this.meetingInvitationScopes.set(invitation.scopeKey, { invitationId: invitation.id, expiresAt: booked.expiresAt }); this.outboxEvents.push(...outboxEvents); this.audit.push(...auditEvents); return booking; }
+  async changeMeetingSlot({ seriesId, previousSlot, slot, invitation, booking, outboxEvents = [], auditEvents = [] }) { const slots = this.meetingSlots.get(seriesId); const previousIndex = slots.findIndex(item => item.id === previousSlot.id); const nextIndex = slots.findIndex(item => item.id === slot.id); assert.equal(slots[previousIndex].status, "booked"); assert.equal(slots[previousIndex].bookingId, booking.id); assert.equal(slots[nextIndex].status, "available"); slots[previousIndex] = { ...slots[previousIndex], status: "available", bookingId: undefined }; slots[nextIndex] = { ...slots[nextIndex], status: "booked", bookingId: booking.id }; this.meetingBookings.set(`${seriesId}:${booking.id}`, structuredClone(booking)); const booked = { ...invitation, status: "booked", bookingId: booking.id, expiresAt: Math.max(invitation.expiresAt, booking.manageUntil) }; this.meetingInvitations.set(invitation.id, booked); this.meetingInvitationTokens.set(invitation.tokenHash, booked); if (invitation.scopeKey) this.meetingInvitationScopes.set(invitation.scopeKey, { invitationId: invitation.id, expiresAt: booked.expiresAt }); this.outboxEvents.push(...outboxEvents); this.audit.push(...auditEvents); return booking; }
   async listApplicationsByInvitationId(invitationId) { return [...this.applications.values()].filter(application => application.invitationId === invitationId); }
   async renewInvitationAccess(value) {
     this.renewals.push(structuredClone(value));
@@ -319,6 +325,10 @@ test("viewer staff can see summaries but cannot create invitations", async () =>
   assert.equal(JSON.parse(dashboard.body).staff.role, "viewer");
   const invitation = await service(event("/v6/staff/invitations", "POST", { recipientEmail: "family@example.com" }, sessionToken));
   assert.equal(invitation.statusCode, 403);
+  const communication = await service(event("/v6/staff/applications/communications/context", "POST", { applicationId: "synthetic" }, sessionToken));
+  assert.equal(communication.statusCode, 403);
+  const meetingSeries = await service(event("/v6/staff/meetings/series", "POST", { title: "Synthetic", hostName: "Principal", location: "Rosewood" }, sessionToken));
+  assert.equal(meetingSeries.statusCode, 403);
 });
 
 test("staff portal creates a parent-only direct invitation without returning its private link", async () => {
@@ -570,7 +580,7 @@ test("an active V14 draft adopts the current contract without transforming its f
   await service(event("/v6/application/access/verify-code", "POST", { invitationToken, challengeId: requested.challengeId, code: "123456" }));
   const upgraded = store.applications.get(created.applicationId);
 
-  assert.equal(upgraded.formVersion, "rosewood-application-2026.24");
+  assert.equal(upgraded.formVersion, "rosewood-application-2026.25");
   assert.deepEqual(upgraded.values, values);
   assert.deepEqual(store.audit.find(eventRecord => eventRecord.type === "application.form_definition_upgraded").details.normalizedFields, []);
 });
@@ -755,7 +765,10 @@ test("staff review and reviewed correspondence remain separate from the submitte
   const detail = JSON.parse((await service(event("/v6/staff/applications/detail", "POST", { applicationId: created.applicationId }, sessionToken))).body).application;
   assert.ok(detail.review.sections.length > 5);
   assert.equal(detail.caseReview.status, "in_progress");
-  assert.equal(detail.communications.length, 1);
+  assert.equal("communications" in detail, false);
+  const communicationContext = JSON.parse((await service(event("/v6/staff/applications/communications/context", "POST", { applicationId: created.applicationId }, sessionToken))).body).application;
+  assert.equal(communicationContext.communications.length, 1);
+  assert.equal(communicationContext.recipients.length, 1);
 });
 
 test("do-not-contact blocks reviewed staff correspondence on the backend", async () => {
@@ -770,25 +783,53 @@ test("do-not-contact blocks reviewed staff correspondence on the backend", async
   assert.equal(store.outboxEvents.length, 0);
 });
 
-test("principal meeting schedules use private invitations and atomically reserve one slot", async () => {
+test("principal meeting schedules use private invitations and atomically create and change one family booking", async () => {
   const { service, store } = staffService();
   const created = await createApplicationInvitation({ store, recipientEmail: "family@example.com", firstName: "Alex", applicationUrl: "https://ffe.org.au/form", clock });
   const sessionToken = await staffSession(service);
   const series = JSON.parse((await service(event("/v6/staff/meetings/series", "POST", { title: "Principal meeting", hostName: "Principal", location: "Rosewood College", durationMinutes: 30 }, sessionToken))).body).series;
   const startsAt = new Date(clock() + 86400_000).toISOString();
-  const slot = JSON.parse((await service(event("/v6/staff/meetings/slots", "POST", { seriesId: series.id, startsAt }, sessionToken))).body).slot;
+  const secondStartsAt = new Date(clock() + 2 * 86400_000).toISOString();
+  const slotsResponse = await service(event("/v6/staff/meetings/slots/bulk", "POST", { seriesId: series.id, startsAt: [startsAt, secondStartsAt] }, sessionToken));
+  assert.equal(slotsResponse.statusCode, 200);
+  const [slot, secondSlot] = JSON.parse(slotsResponse.body).slots;
   const invited = await service(event("/v6/staff/applications/meeting-invitations", "POST", { applicationId: created.applicationId, seriesId: series.id, recipientEmail: "family@example.com", confirmation: "Send meeting invitation" }, sessionToken));
   assert.equal(invited.statusCode, 200);
   const invitation = [...store.meetingInvitations.values()][0];
   assert.equal(invitation.status, "pending");
   assert.equal(store.outboxEvents.filter(item => item.kind === "email").length, 1);
+  const duplicateInvite = await service(event("/v6/staff/applications/meeting-invitations", "POST", { applicationId: created.applicationId, seriesId: series.id, recipientEmail: "family@example.com", confirmation: "Send meeting invitation" }, sessionToken));
+  assert.equal(duplicateInvite.statusCode, 409);
+  assert.equal(store.meetingInvitations.size, 1);
 
   const familyToken = "synthetic-meeting-session";
   store.sessions.set((await import("node:crypto")).createHash("sha256").update(familyToken).digest("hex"), { scope: "meeting_booking", meetingInvitationId: invitation.id, expiresAt: clock() + 1800000 });
   const context = JSON.parse((await service(event("/v6/meetings/context", "GET", null, familyToken))).body);
-  assert.equal(context.slots.length, 1);
+  assert.equal(context.slots.length, 2);
   const booked = await service(event("/v6/meetings/book", "POST", { slotId: slot.id }, familyToken));
   assert.equal(booked.statusCode, 200);
-  assert.equal((await store.listMeetingSlots(series.id))[0].status, "booked");
+  const firstBooking = JSON.parse(booked.body).booking;
+  assert.equal((await store.listMeetingSlots(series.id)).find(item => item.id === slot.id).status, "booked");
   assert.equal(store.applications.get(created.applicationId).status, "invited");
+
+  const bookedContext = JSON.parse((await service(event("/v6/meetings/context", "GET", null, familyToken))).body);
+  assert.equal(bookedContext.booking.id, firstBooking.id);
+  assert.equal(bookedContext.slots.length, 1);
+  assert.equal(bookedContext.slots[0].id, secondSlot.id);
+
+  const changed = await service(event("/v6/meetings/book", "POST", { slotId: secondSlot.id }, familyToken));
+  assert.equal(changed.statusCode, 200);
+  assert.equal(JSON.parse(changed.body).changed, true);
+  assert.equal(JSON.parse(changed.body).booking.id, firstBooking.id);
+  const changedSlots = await store.listMeetingSlots(series.id);
+  assert.equal(changedSlots.find(item => item.id === slot.id).status, "available");
+  assert.equal(changedSlots.find(item => item.id === secondSlot.id).status, "booked");
+  assert.equal(store.meetingBookings.size, 1);
+  assert.equal((await store.getMeetingBooking(series.id, firstBooking.id)).revision, 2);
+  assert.equal(store.applications.get(created.applicationId).status, "invited");
+  assert.ok(store.audit.some(item => item.type === "meeting.booking_changed"));
+
+  const staffMeetings = JSON.parse((await service(event("/v6/staff/meetings", "GET", null, sessionToken))).body);
+  assert.equal(staffMeetings.series[0].invitations[0].booking.id, firstBooking.id);
+  assert.equal(staffMeetings.series[0].invitations[0].booking.revision, 2);
 });

@@ -61,6 +61,9 @@ test("V23 keeps earlier contracts addressable and changes only pinned release in
   const v19 = getFormDefinition("application", "rosewood-application-2026.19");
   const v20 = getFormDefinition("application", "rosewood-application-2026.20");
   const v21 = getFormDefinition("application", "rosewood-application-2026.21");
+  const v22 = getFormDefinition("application", "rosewood-application-2026.22");
+  const v23 = getFormDefinition("application", "rosewood-application-2026.23");
+  const v24 = getFormDefinition("application", "rosewood-application-2026.24");
   const current = currentFormDefinition("application");
   const previousEoi = getFormDefinition("eoi", "rosewood-eoi-2026.10");
   const v11Eoi = getFormDefinition("eoi", "rosewood-eoi-2026.11");
@@ -73,6 +76,9 @@ test("V23 keeps earlier contracts addressable and changes only pinned release in
   const v18Eoi = getFormDefinition("eoi", "rosewood-eoi-2026.18");
   const v19Eoi = getFormDefinition("eoi", "rosewood-eoi-2026.19");
   const v20Eoi = getFormDefinition("eoi", "rosewood-eoi-2026.20");
+  const v21Eoi = getFormDefinition("eoi", "rosewood-eoi-2026.21");
+  const v22Eoi = getFormDefinition("eoi", "rosewood-eoi-2026.22");
+  const v23Eoi = getFormDefinition("eoi", "rosewood-eoi-2026.23");
   const currentEoi = currentFormDefinition("eoi");
   assert.equal(previous.formVersion, "rosewood-application-2026.10");
   assert.equal(v11.formVersion, "rosewood-application-2026.11");
@@ -86,7 +92,10 @@ test("V23 keeps earlier contracts addressable and changes only pinned release in
   assert.equal(v19.formVersion, "rosewood-application-2026.19");
   assert.equal(v20.formVersion, "rosewood-application-2026.20");
   assert.equal(v21.formVersion, "rosewood-application-2026.21");
-  assert.equal(current.formVersion, "rosewood-application-2026.24");
+  assert.equal(v22.formVersion, "rosewood-application-2026.22");
+  assert.equal(v23.formVersion, "rosewood-application-2026.23");
+  assert.equal(v24.formVersion, "rosewood-application-2026.24");
+  assert.equal(current.formVersion, "rosewood-application-2026.25");
   assert.deepEqual(v13.contract, previous.contract);
   assert.deepEqual(v13.contract, v11.contract);
   assert.deepEqual(v13.contract, v12.contract);
@@ -112,7 +121,10 @@ test("V23 keeps earlier contracts addressable and changes only pinned release in
   assert.equal(v18Eoi.formVersion, "rosewood-eoi-2026.18");
   assert.equal(v19Eoi.formVersion, "rosewood-eoi-2026.19");
   assert.equal(v20Eoi.formVersion, "rosewood-eoi-2026.20");
-  assert.equal(currentEoi.formVersion, "rosewood-eoi-2026.23");
+  assert.equal(v21Eoi.formVersion, "rosewood-eoi-2026.21");
+  assert.equal(v22Eoi.formVersion, "rosewood-eoi-2026.22");
+  assert.equal(v23Eoi.formVersion, "rosewood-eoi-2026.23");
+  assert.equal(currentEoi.formVersion, "rosewood-eoi-2026.24");
   assert.deepEqual(currentEoi.contract, previousEoi.contract);
   assert.deepEqual(currentEoi.contract, v11Eoi.contract);
   assert.deepEqual(currentEoi.contract, v12Eoi.contract);

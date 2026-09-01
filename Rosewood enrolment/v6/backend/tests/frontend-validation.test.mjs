@@ -167,6 +167,34 @@ test("staff application review scrolls without page hashes and previews document
   assert.match(css, /\.case-section-nav button:focus-visible/);
 });
 
+test("staff review, family communications and principal bookings are separate workspaces", async () => {
+  const [source, html, meetingSource, meetingHtml] = await Promise.all([
+    readFile(new URL("../../../../pages/rosewood-enrolment-admin-v6.js", import.meta.url), "utf8"),
+    readFile(new URL("../../../../pages/rosewood-enrolment-admin-v6.html", import.meta.url), "utf8"),
+    readFile(new URL("../../../../pages/rosewood-enrolment-meeting-v1.js", import.meta.url), "utf8"),
+    readFile(new URL("../../../../pages/rosewood-enrolment-meeting-v1.html", import.meta.url), "utf8")
+  ]);
+  const reviewSource = source.slice(source.indexOf("function renderApplicationDetail"), source.indexOf("function changeContactPermission"));
+
+  assert.match(html, /data-panel="communications"/);
+  assert.match(html, /id="communications-panel"/);
+  assert.match(html, /This workspace is separate from application review/);
+  assert.match(html, /id="meetings-panel"/);
+  assert.match(html, /Prepare available times/);
+  assert.match(html, /Invite a family to book/);
+  assert.doesNotMatch(reviewSource, /Write to the family|Invite to a principal meeting|Communication history/);
+  assert.doesNotMatch(source, /function renderCaseEmailComposer|function renderMeetingInvitation|function renderCaseTimeline/);
+  assert.match(source, /staff\/applications\/communications\/context/);
+  assert.match(source, /staff\/meetings\/slots\/bulk/);
+  assert.match(source, /Send this private principal-meeting invitation/);
+  assert.match(meetingHtml, /id="current-booking"/);
+  assert.match(meetingHtml, /Change this booking/);
+  assert.match(meetingSource, /context\.booking/);
+  assert.match(meetingSource, /Update meeting time/);
+  assert.match(meetingSource, /result\.changed/);
+  assert.doesNotMatch(meetingHtml, /Cancel booking|Delete booking/);
+});
+
 test("V6.14 applies the approved family feedback without weakening verification or saved-draft safety", async () => {
   const [source, html] = await Promise.all([
     readFile(new URL("../../../../pages/rosewood-enrolment-v6.js", import.meta.url), "utf8"),
@@ -231,7 +259,7 @@ test("guardian signing renders the complete server-provided application review",
   assert.match(source, /value="\$\{melbourneDate\(\)\}"/);
   assert.doesNotMatch(source, /new Date\(\)\.toISOString\(\)\.slice\(0, 10\)/);
   assert.match(await readFile(new URL("../../../../pages/rosewood-enrolment-v6.js", import.meta.url), "utf8"), /rosewood-application-2026\.21/);
-  assert.match(await readFile(new URL("../../../../pages/rosewood-enrolment-v6.html", import.meta.url), "utf8"), /rosewood-enrolment-v6\.js\?v=34/);
+  assert.match(await readFile(new URL("../../../../pages/rosewood-enrolment-v6.html", import.meta.url), "utf8"), /rosewood-enrolment-v6\.js\?v=35/);
   assert.match(html, /rosewood-application-sign-v6\.css\?v=2/);
   assert.match(html, /rosewood-application-sign-v6\.js\?v=5/);
   assert.match(css, /\.application-review-section/);

@@ -8,7 +8,7 @@
   <meta http-equiv="Cache-Control" content="no-store">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src https://6zyzo44sdb5zmmx53toktqrnuu0sikyd.lambda-url.ap-southeast-2.on.aws; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'">
   <title>Book a Principal Meeting | Rosewood College</title>
-  <link rel="stylesheet" href="rosewood-enrolment-meeting-v1.css?v=1">
+  <link rel="stylesheet" href="rosewood-enrolment-meeting-v1.css?v=2">
 </head>
 <body>
   <main class="booking-shell">
@@ -30,13 +30,14 @@
       </div>
       <div id="slots-step" hidden>
         <p class="step">Step 3 of 3</p><h2 id="series-title">Available meeting times</h2><p id="meeting-context"></p>
-        <form id="slots-form"><fieldset><legend>Choose one available time</legend><div id="slot-list"></div></fieldset><button id="book-button" type="submit">Confirm meeting</button></form>
+        <section class="current-booking" id="current-booking" aria-labelledby="current-booking-title" hidden><p class="step">Current booking</p><h3 id="current-booking-title">Your confirmed time</h3><p id="current-booking-time"></p></section>
+        <form id="slots-form"><fieldset><legend id="slot-legend">Choose one available time</legend><div id="slot-list"></div></fieldset><button id="book-button" type="submit">Confirm meeting</button></form>
       </div>
       <div id="complete-step" hidden>
-        <div class="success-mark" aria-hidden="true">✓</div><h2>Meeting confirmed</h2><p id="confirmation"></p><p>A confirmation has also been sent to your email address.</p>
+        <div class="success-mark" aria-hidden="true">✓</div><h2 id="complete-title">Meeting confirmed</h2><p id="confirmation"></p><p>A confirmation has also been sent to your email address.</p><button class="secondary-action" id="change-booking-button" type="button">Change this booking</button>
       </div>
     </section>
   </main>
-  <script src="rosewood-enrolment-meeting-v1.js?v=1"></script>
+  <script src="rosewood-enrolment-meeting-v1.js?v=2"></script>
 </body>
 </html>

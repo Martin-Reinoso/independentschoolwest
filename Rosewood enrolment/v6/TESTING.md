@@ -1,8 +1,8 @@
 # V6 Testing
 
-## Staff case management (2026-08-30)
+## Separated staff communications and bookings (2026-09-01)
 
-Automated coverage verifies complete review projection, separate/versioned staff review, draft-before-send behavior, explicit reviewed-send confirmation, backend contact-permission enforcement, private meeting invitations, available-slot listing, atomic slot reservation and unchanged Application records. The full backend suite passes 140 tests.
+Automated coverage verifies complete review projection, absence of email/meeting controls from Application Review, a separate Family communications workspace, draft-before-send behavior, explicit reviewed-send confirmation, backend contact-permission enforcement, batch time creation, duplicate-invitation prevention, invited-email OTP, initial atomic booking, same-booking time changes, old-slot release, new-slot reservation and unchanged Application records. The full backend suite passes 147 tests.
 
 Test date: 8 August 2026
 

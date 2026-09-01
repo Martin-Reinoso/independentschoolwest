@@ -35,6 +35,8 @@ retention schedule, legal declaration or Enrolment Agreement.
 | Request application link | **Live - writing** | Home-page card or standalone no-index page | Direct family invitation and initial blank Application record |
 | Expression of Interest (EOI) | **Live - writing** | Public, hidden and `noindex` EOI URL | Independent EOI record, reference and acknowledgement email |
 | Staff operations | **Live - writing** | Hidden and `noindex` staff portal plus staff OTP | Review EOI/Application progress and issue direct or EOI-linked invitations |
+| Family communications | **Live - writing** | Separate staff-portal workspace | Staff-reviewed draft/test/explicit send linked to an application; never embedded in Application Review |
+| Principal meetings | **Live - writing** | Separate staff workspace plus private invitation and invited-email OTP | Staff-defined times; family booking or atomic change of the same booking; no family delete/cancel |
 | Application for Enrolment | **Live - writing** | Private invitation URL plus family email OTP | Revisioned application, documents, primary signature and status |
 | Additional application guardian signing | **Live - read/sign** | Private signature-request URL plus guardian email OTP | Signature against the frozen submitted application revision |
 | Offer Acceptance / Enrolment Agreement | **Preview only** | V6 review workflow | No record, upload, email or signature is created |

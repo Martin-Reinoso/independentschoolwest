@@ -9,7 +9,7 @@ and creates a temporary encrypted S3 viewing copy under
 (inline and attachment) expire after five minutes; the existing one-day lifecycle is a
 cleanup backstop. `staff.document_previewed` is appended to the restricted audit table
 with staff actor, application, category, MIME type and size, but no Drive ID, S3 key or
-presigned URL. EOI `2026.23` and Application `2026.24` retain the exact preceding answer
+presigned URL. EOI `2026.24` and Application `2026.25` retain the exact preceding answer
 contracts and pin only the updated interfaces.
 
 ## Case-management records (2026-08-30)
@@ -20,6 +20,9 @@ contracts and pin only the updated interfaces.
 - `MEETING_SERIES#{seriesId} / SLOT#{startsAt}#{slotId}`: available/booked slot; booking uses a conditional transaction.
 - `MEETING_INVITE#{tokenHash}` and `MEETING_INVITE_ID#{invitationId}`: expiring private invitation and restricted index.
 - `MEETING_SERIES#{seriesId} / BOOKING#{bookingId}`: confirmed booking linked to the unchanged application identifier.
+- `MEETING_INVITE_SCOPE#{scopeHash}`: conditional uniqueness guard for one active invitation per application, schedule and recipient email; stores no raw email.
+
+Changing a booked time updates the existing `BOOKING` revision and its bounded previous-time history, marks the replacement slot booked, releases the former slot and updates both invitation indexes in one transaction. The application record and submitted revisions are not part of that transaction. Invitation expiry is extended to the booked meeting time so the invited email can re-authenticate and manage the booking. There is no family delete/cancel mutation.
 
 These records are append-only or independently versioned. No case operation updates `APP#{applicationId} / CURRENT`.
 
@@ -52,8 +55,8 @@ deliberately creating a new version.
 Current launch contracts:
 
 ```text
-EOI:                      rosewood-eoi-2026.23
-Application:              rosewood-application-2026.24
+EOI:                      rosewood-eoi-2026.24
+Application:              rosewood-application-2026.25
 Application-link request: rosewood-application-link-request-2026.1
 Community enquiry:       rosewood-community-enquiry-2026.1
 ```

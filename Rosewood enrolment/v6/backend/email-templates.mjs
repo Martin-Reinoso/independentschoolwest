@@ -105,12 +105,20 @@ export function meetingBookingInvitation({ firstName, studentName, seriesTitle, 
   return { subject, text, html };
 }
 
-export function meetingBookingConfirmation({ firstName, studentName, seriesTitle, startsAt, location }) {
+export function meetingBookingConfirmation({ firstName, studentName, seriesTitle, startsAt, location, manageUrl = "", changed = false, canManage = false }) {
   const greeting = firstName || "Parent/Guardian";
-  const subject = `Rosewood College meeting confirmed`;
+  const subject = changed ? `Rosewood College meeting time updated` : `Rosewood College meeting confirmed`;
   const student = studentName ? ` for ${studentName}` : "";
   const where = location ? `\nLocation: ${location}` : "";
-  const text = `Dear ${greeting},\n\nYour ${seriesTitle}${student} is confirmed.\n\nTime: ${startsAt}${where}\n\nIf you need to change this booking, contact enrolment@ffe.org.au.\n\nKind regards,\n\nRosewood College Enrolment Team`;
-  const html = frame(`<h1 style="font:700 28px Georgia,serif">Meeting confirmed</h1><p>Dear ${htmlEscape(greeting)},</p><p>Your <strong>${htmlEscape(seriesTitle)}</strong>${htmlEscape(student)} is confirmed.</p><div style="margin:22px 0;padding:16px;background:#f4f1e9;border-radius:8px"><p style="margin:0 0 6px"><strong>${htmlEscape(startsAt)}</strong></p>${location ? `<p style="margin:0">${htmlEscape(location)}</p>` : ""}</div><p>If you need to change this booking, contact enrolment@ffe.org.au.</p>`);
+  const manageText = manageUrl
+    ? `\n\nTo choose a different available time, reopen your private booking link and verify this email address:\n${manageUrl}`
+    : canManage ? `\n\nTo choose a different available time, reopen the private link in your meeting invitation and verify this email address.` : "";
+  const heading = changed ? "Meeting time updated" : "Meeting confirmed";
+  const verb = changed ? "has been updated" : "is confirmed";
+  const text = `Dear ${greeting},\n\nYour ${seriesTitle}${student} ${verb}.\n\nTime: ${startsAt}${where}${manageText}\n\nKind regards,\n\nRosewood College Enrolment Team`;
+  const manageAction = manageUrl
+    ? `<p>To choose a different available time, reopen your private booking link and verify this email address.</p>${button("Manage meeting time", manageUrl)}${fallbackLink(manageUrl)}`
+    : canManage ? `<p>To choose a different available time, reopen the private link in your meeting invitation and verify this email address.</p>` : "";
+  const html = frame(`<h1 style="font:700 28px Georgia,serif">${heading}</h1><p>Dear ${htmlEscape(greeting)},</p><p>Your <strong>${htmlEscape(seriesTitle)}</strong>${htmlEscape(student)} ${verb}.</p><div style="margin:22px 0;padding:16px;background:#f4f1e9;border-radius:8px"><p style="margin:0 0 6px"><strong>${htmlEscape(startsAt)}</strong></p>${location ? `<p style="margin:0">${htmlEscape(location)}</p>` : ""}</div>${manageAction}`);
   return { subject, text, html };
 }

@@ -48,6 +48,7 @@ export class DynamoStore {
   getCaseReview(applicationId) { return this.get(`APP#${applicationId}`, "CASE#REVIEW"); }
   getCaseMessage(applicationId, messageId) { return this.get(`APP#${applicationId}`, `CASE_MESSAGE#${messageId}`); }
   getMeetingSeries(id) { return this.get(`MEETING_SERIES#${id}`); }
+  getMeetingBooking(seriesId, bookingId) { return this.get(`MEETING_SERIES#${seriesId}`, `BOOKING#${bookingId}`); }
   getMeetingInvitation(tokenHash) { return this.get(`MEETING_INVITE#${tokenHash}`); }
   getMeetingInvitationById(id) { return this.get(`MEETING_INVITE_ID#${id}`); }
 
@@ -127,6 +128,22 @@ export class DynamoStore {
     return slot;
   }
 
+  async createMeetingSlots(slots, auditEvents = []) {
+    if (!slots.length) return [];
+    if (slots.length > 40) throw new Error("A maximum of 40 meeting times can be created together.");
+    try {
+      await this.client.send(new TransactWriteCommand({ TransactItems: [
+        ...slots.map(slot => ({ Put: {
+          TableName: this.tableName,
+          Item: { ...this.key(`MEETING_SERIES#${slot.seriesId}`, `SLOT#${slot.startsAt}#${slot.id}`), entity: "meeting_slot", data: slot },
+          ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)"
+        } })),
+        ...this.auditActions(auditEvents)
+      ] }));
+      return slots;
+    } catch (error) { if (conditional(error)) throw conflict("One of these meeting times was added by another staff member. Refresh the schedule and try again."); throw error; }
+  }
+
   async listMeetingSeries() {
     return (await this.scanEntities(["meeting_series"])).map(item => item.data).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
   }
@@ -142,20 +159,44 @@ export class DynamoStore {
     return (response.Items || []).filter(item => item.entity === "meeting_slot").map(item => item.data);
   }
 
+  async listMeetingInvitations() {
+    return (await this.scanEntities(["meeting_invitation_index"])).map(item => item.data).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  }
+
   async createMeetingInvitation({ invitation, tokenHash, outboxEvents = [], auditEvents = [] }) {
     const ttl = Math.floor(invitation.expiresAt / 1000) + 86400;
     const storedInvitation = { ...invitation, tokenHash };
-    await this.client.send(new TransactWriteCommand({ TransactItems: [
-      { Put: { TableName: this.tableName, Item: { ...this.key(`MEETING_INVITE#${tokenHash}`), entity: "meeting_invitation", ttl, data: storedInvitation }, ConditionExpression: "attribute_not_exists(PK)" } },
-      { Put: { TableName: this.tableName, Item: { ...this.key(`MEETING_INVITE_ID#${invitation.id}`), entity: "meeting_invitation_index", ttl, data: storedInvitation }, ConditionExpression: "attribute_not_exists(PK)" } },
-      ...this.outboxActions(outboxEvents),
-      ...this.auditActions(auditEvents)
-    ] }));
-    return invitation;
+    const scopeAction = invitation.scopeKey ? [{ Put: {
+      TableName: this.tableName,
+      Item: { ...this.key(`MEETING_INVITE_SCOPE#${invitation.scopeKey}`), entity: "meeting_invitation_scope", ttl, data: { invitationId: invitation.id, expiresAt: invitation.expiresAt } },
+      ConditionExpression: "attribute_not_exists(PK) OR #data.#expiresAt < :now",
+      ExpressionAttributeNames: { "#data": "data", "#expiresAt": "expiresAt" },
+      ExpressionAttributeValues: { ":now": this.now() }
+    } }] : [];
+    try {
+      await this.client.send(new TransactWriteCommand({ TransactItems: [
+        { Put: { TableName: this.tableName, Item: { ...this.key(`MEETING_INVITE#${tokenHash}`), entity: "meeting_invitation", ttl, data: storedInvitation }, ConditionExpression: "attribute_not_exists(PK)" } },
+        { Put: { TableName: this.tableName, Item: { ...this.key(`MEETING_INVITE_ID#${invitation.id}`), entity: "meeting_invitation_index", ttl, data: storedInvitation }, ConditionExpression: "attribute_not_exists(PK)" } },
+        ...scopeAction,
+        ...this.outboxActions(outboxEvents),
+        ...this.auditActions(auditEvents)
+      ] }));
+      return invitation;
+    } catch (error) { if (conditional(error)) throw conflict("This family already has an active invitation for this meeting schedule."); throw error; }
   }
 
   async bookMeetingSlot({ seriesId, slot, invitation, booking, outboxEvents = [], auditEvents = [] }) {
     const slotKey = this.key(`MEETING_SERIES#${seriesId}`, `SLOT#${slot.startsAt}#${slot.id}`);
+    const expiresAt = Math.max(Number(invitation.expiresAt) || 0, Number(booking.manageUntil) || 0);
+    const ttl = Math.floor(expiresAt / 1000) + 86400;
+    const bookedInvitation = { ...invitation, status: "booked", bookingId: booking.id, bookedAt: booking.createdAt, expiresAt };
+    const scopeAction = invitation.scopeKey ? [{ Put: {
+      TableName: this.tableName,
+      Item: { ...this.key(`MEETING_INVITE_SCOPE#${invitation.scopeKey}`), entity: "meeting_invitation_scope", ttl, data: { invitationId: invitation.id, expiresAt } },
+      ConditionExpression: "#data.#invitationId = :invitationId",
+      ExpressionAttributeNames: { "#data": "data", "#invitationId": "invitationId" },
+      ExpressionAttributeValues: { ":invitationId": invitation.id }
+    } }] : [];
     try {
       await this.client.send(new TransactWriteCommand({ TransactItems: [
         { Put: {
@@ -168,23 +209,84 @@ export class DynamoStore {
         { Put: { TableName: this.tableName, Item: { ...this.key(`MEETING_SERIES#${seriesId}`, `BOOKING#${booking.id}`), entity: "meeting_booking", data: booking }, ConditionExpression: "attribute_not_exists(PK)" } },
         { Put: {
           TableName: this.tableName,
-          Item: { ...this.key(`MEETING_INVITE_ID#${invitation.id}`), entity: "meeting_invitation_index", ttl: Math.floor(invitation.expiresAt / 1000) + 86400, data: { ...invitation, status: "booked", bookingId: booking.id, bookedAt: booking.createdAt } },
+          Item: { ...this.key(`MEETING_INVITE_ID#${invitation.id}`), entity: "meeting_invitation_index", ttl, data: bookedInvitation },
           ConditionExpression: "#data.#status = :pending",
           ExpressionAttributeNames: { "#data": "data", "#status": "status" },
           ExpressionAttributeValues: { ":pending": "pending" }
         } },
         { Put: {
           TableName: this.tableName,
-          Item: { ...this.key(`MEETING_INVITE#${invitation.tokenHash}`), entity: "meeting_invitation", ttl: Math.floor(invitation.expiresAt / 1000) + 86400, data: { ...invitation, status: "booked", bookingId: booking.id, bookedAt: booking.createdAt } },
+          Item: { ...this.key(`MEETING_INVITE#${invitation.tokenHash}`), entity: "meeting_invitation", ttl, data: bookedInvitation },
           ConditionExpression: "#data.#status = :pending",
           ExpressionAttributeNames: { "#data": "data", "#status": "status" },
           ExpressionAttributeValues: { ":pending": "pending" }
         } },
+        ...scopeAction,
         ...this.outboxActions(outboxEvents),
         ...this.auditActions(auditEvents)
       ] }));
       return booking;
     } catch (error) { if (conditional(error)) throw conflict("This meeting time is no longer available. Choose another time."); throw error; }
+  }
+
+  async changeMeetingSlot({ seriesId, previousSlot, slot, invitation, booking, outboxEvents = [], auditEvents = [] }) {
+    const previousSlotKey = this.key(`MEETING_SERIES#${seriesId}`, `SLOT#${previousSlot.startsAt}#${previousSlot.id}`);
+    const slotKey = this.key(`MEETING_SERIES#${seriesId}`, `SLOT#${slot.startsAt}#${slot.id}`);
+    const { bookingId: _bookingId, bookedAt: _bookedAt, ...previousSlotWithoutBooking } = previousSlot;
+    const releasedSlot = { ...previousSlotWithoutBooking, status: "available", releasedAt: booking.changedAt };
+    const expiresAt = Math.max(Number(invitation.expiresAt) || 0, Number(booking.manageUntil) || 0);
+    const ttl = Math.floor(expiresAt / 1000) + 86400;
+    const bookedInvitation = { ...invitation, status: "booked", bookingId: booking.id, bookedAt: invitation.bookedAt || booking.createdAt, updatedAt: booking.changedAt, expiresAt };
+    const scopeAction = invitation.scopeKey ? [{ Put: {
+      TableName: this.tableName,
+      Item: { ...this.key(`MEETING_INVITE_SCOPE#${invitation.scopeKey}`), entity: "meeting_invitation_scope", ttl, data: { invitationId: invitation.id, expiresAt } },
+      ConditionExpression: "#data.#invitationId = :invitationId",
+      ExpressionAttributeNames: { "#data": "data", "#invitationId": "invitationId" },
+      ExpressionAttributeValues: { ":invitationId": invitation.id }
+    } }] : [];
+    try {
+      await this.client.send(new TransactWriteCommand({ TransactItems: [
+        { Put: {
+          TableName: this.tableName,
+          Item: { ...slotKey, entity: "meeting_slot", data: { ...slot, status: "booked", bookingId: booking.id, bookedAt: booking.changedAt } },
+          ConditionExpression: "#data.#status = :available",
+          ExpressionAttributeNames: { "#data": "data", "#status": "status" },
+          ExpressionAttributeValues: { ":available": "available" }
+        } },
+        { Put: {
+          TableName: this.tableName,
+          Item: { ...previousSlotKey, entity: "meeting_slot", data: releasedSlot },
+          ConditionExpression: "#data.#status = :booked AND #data.#bookingId = :bookingId",
+          ExpressionAttributeNames: { "#data": "data", "#status": "status", "#bookingId": "bookingId" },
+          ExpressionAttributeValues: { ":booked": "booked", ":bookingId": booking.id }
+        } },
+        { Put: {
+          TableName: this.tableName,
+          Item: { ...this.key(`MEETING_SERIES#${seriesId}`, `BOOKING#${booking.id}`), entity: "meeting_booking", data: booking },
+          ConditionExpression: "#data.#status = :confirmed AND #data.#slotId = :previousSlotId",
+          ExpressionAttributeNames: { "#data": "data", "#status": "status", "#slotId": "slotId" },
+          ExpressionAttributeValues: { ":confirmed": "confirmed", ":previousSlotId": previousSlot.id }
+        } },
+        { Put: {
+          TableName: this.tableName,
+          Item: { ...this.key(`MEETING_INVITE_ID#${invitation.id}`), entity: "meeting_invitation_index", ttl, data: bookedInvitation },
+          ConditionExpression: "#data.#status = :booked AND #data.#bookingId = :bookingId",
+          ExpressionAttributeNames: { "#data": "data", "#status": "status", "#bookingId": "bookingId" },
+          ExpressionAttributeValues: { ":booked": "booked", ":bookingId": booking.id }
+        } },
+        { Put: {
+          TableName: this.tableName,
+          Item: { ...this.key(`MEETING_INVITE#${invitation.tokenHash}`), entity: "meeting_invitation", ttl, data: bookedInvitation },
+          ConditionExpression: "#data.#status = :booked AND #data.#bookingId = :bookingId",
+          ExpressionAttributeNames: { "#data": "data", "#status": "status", "#bookingId": "bookingId" },
+          ExpressionAttributeValues: { ":booked": "booked", ":bookingId": booking.id }
+        } },
+        ...scopeAction,
+        ...this.outboxActions(outboxEvents),
+        ...this.auditActions(auditEvents)
+      ] }));
+      return booking;
+    } catch (error) { if (conditional(error)) throw conflict("This meeting changed before your update could be saved. Refresh the available times and try again."); throw error; }
   }
 
   auditActions(events = []) {
