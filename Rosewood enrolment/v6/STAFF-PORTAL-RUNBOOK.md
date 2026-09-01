@@ -1,19 +1,29 @@
 # Rosewood V6 Staff Portal Runbook
 
-## Reviewing and following up an application
+## Reviewing an application
 
 1. Open **Applications** or **Enrolment planning**, then choose **Review**.
 2. Read the section navigation and complete application projection. Opening a record is audited.
 3. Use **Staff review** to save operational status, checklist and a bounded internal note. This does not alter the family submission.
-4. Use **Write to the family** to select an authorised recipient, write the email, save a draft, optionally send a test to yourself, then explicitly send the reviewed email.
-5. Never use email to transmit sensitive application answers or documents.
+4. Close the review when finished. The review dialog has no family-email or meeting-invitation controls.
+
+## Family communications
+
+1. Open **Family communications** and select an application.
+2. Confirm the displayed family/student context and choose a backend-permitted recipient.
+3. Write the message. Save a draft, and use **Send test to me** when appropriate.
+4. Re-read the recipient, subject and body before choosing **Send reviewed email** and confirming the send.
+5. Never use email to transmit sensitive application answers or documents. Purpose selection never triggers an email.
 
 ## Principal meetings
 
-1. Open **Principal meetings**, create a schedule, then add future available times.
-2. Return to the application review and select **Invite to a principal meeting**.
-3. Confirm the permitted recipient and schedule before sending.
-4. The family verifies the invited address before seeing times. Booking is conditional; an already-booked time cannot be claimed again.
+1. Open **Principal meetings** and create a schedule.
+2. Select that schedule, add future dates/times to the prepared list, review the list, then save the available times together.
+3. In **Invite a family to book**, select the schedule and application. The server supplies only contact-permitted recipients.
+4. Confirm the recipient and send the private invitation. Do not create a duplicate invitation for the same application, schedule and email; the backend blocks it.
+5. The family verifies the invited email before seeing the schedule. A confirmed family can reopen the same invitation, verify the same email and choose a different available time.
+6. A change keeps the same booking/application IDs and applicant data. It atomically frees the former slot and reserves the replacement, so another family cannot overwrite either operation.
+7. Families cannot delete or cancel a booking online. Staff should manage exceptional cancellations operationally until a separately approved cancellation workflow exists.
 
 ## Scope
 

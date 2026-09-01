@@ -1,5 +1,14 @@
 # V6 Product and Backend Decisions
 
+## 2026-09-01: separate review, communications and principal meetings
+
+- **Application Review is for reading and internal review only.** It contains the frozen application projection, protected document previews, signature evidence, revision history and staff-only review status/checklist/note. It contains no family-email composer, correspondence history or meeting invitation action.
+- **Family communications is a separate workspace.** Every message remains staff-written and reviewed; purpose selection never sends. Staff can save a draft, test to their own address and explicitly confirm a send. Backend contact permission remains authoritative.
+- **Principal meetings is a separate booking workspace.** Staff define a schedule and a reviewed list of future times, then deliberately send a private invitation to a permitted application contact.
+- **Family booking identity is the private invitation plus invited email OTP.** The same authenticated family may replace its confirmed slot with another available slot. The update keeps the same booking and application IDs and atomically reserves/releases slots.
+- **No online deletion or cancellation is provided.** Another family cannot overwrite a booked slot, and duplicate active invitations for the same application/schedule/email are conditionally blocked.
+- EOI `2026.24` and Application `2026.25` change no family questions or answer rules; they pin the separated operational interfaces and preserve every prior contract.
+
 ## 2026-09-01: stable staff review and protected document preview
 
 - Keep application-section navigation inside the review dialog. It must not write a

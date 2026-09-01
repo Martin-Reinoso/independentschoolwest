@@ -1,12 +1,12 @@
 # Rosewood Enrolment V6
 
-## Staff case management (2026-08-30)
+## Staff review, communications and meetings (2026-09-01)
 
-Authenticated admissions staff can review a submitted application through the same frozen, human-readable section projection used for guardian review. Review state, internal notes, correspondence and principal-meeting bookings are separate DynamoDB entities; they never rewrite submitted answers, documents, signatures or application revisions.
+Authenticated admissions staff can review a submitted application through the same frozen, human-readable section projection used for guardian review. Application Review is deliberately read-only apart from its staff-only checklist, status and internal note. Family emails and principal-meeting invitations are not available inside the review dialog. Review state, correspondence and bookings are separate DynamoDB entities; they never rewrite submitted answers, documents, signatures or application revisions.
 
-Family correspondence is deliberately human-reviewed. Staff may save a draft, send a test to their own authorised staff address, and explicitly send the reviewed message. A purpose classifies the record but never triggers an automatic family email. Backend recipient checks preserve explicit guardian contact permission.
+Family correspondence has a separate **Family communications** workspace. Staff may save a draft, send a test to their own authorised staff address, and explicitly send the reviewed message. A purpose classifies the record but never triggers an automatic family email. Backend recipient checks preserve explicit guardian contact permission.
 
-Principal meetings use staff-created schedules and atomic availability slots. A family receives a private application-linked invitation, verifies the invited email by OTP, and books one available time. The booking workflow does not reopen the Application for Enrolment.
+Principal meetings have a separate workspace. Staff create a schedule, prepare up to 40 future times in a reviewed batch, then deliberately invite one contact-permitted recipient. A family receives a private application-linked invitation, verifies the invited email by OTP, and books one available time. The same verified family can later replace that time with another available slot; one conditional transaction releases the old slot and reserves the new one without changing the booking or application identifier. Another family cannot overwrite the booking, and no family cancellation/deletion action exists.
 
 V6 is the Rosewood College enrolment interface at:
 
@@ -33,6 +33,7 @@ https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=acceptance
 https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=signing
 https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=decline
 https://ffe.org.au/pages/rosewood-enrolment-admin-v6.html
+https://ffe.org.au/pages/rosewood-enrolment-meeting-v1.html?invite=[private-token]
 https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=application&policy=enrolment-policy
 https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=application&policy=enrolment-procedure
 https://ffe.org.au/pages/rosewood-enrolment-v6.html?workflow=application&policy=privacy-policy

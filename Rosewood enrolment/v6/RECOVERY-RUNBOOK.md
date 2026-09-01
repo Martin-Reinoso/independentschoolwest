@@ -2,11 +2,16 @@
 
 ## Case correspondence and meetings
 
+- Application Review is not a recovery surface for emails or bookings. Use the separate **Family communications** and **Principal meetings** workspaces.
 - A failed email remains in the durable outbox and follows the existing bounded retry and terminal-failure alarms. Do not create a duplicate application to retry correspondence.
 - A draft case email can be edited only while its status remains `draft`. Sending changes it to `sent` and creates the outbox item atomically.
 - SES feedback updates only the linked case-message delivery projection; it cannot alter the application.
-- If a meeting invitation expires, create a new invitation for the same application and schedule. Do not expose or reuse the old token.
+- A meeting invitation is unique per application, schedule and recipient email while active. If staff see the duplicate-invitation conflict, inspect the existing invitation/booking rather than sending another link.
+- If a meeting invitation expires before booking, create a new invitation for the same application and schedule. Do not expose or reuse the old token.
 - If a booking reports that the time is unavailable, refresh available slots. Never overwrite a booked slot.
+- If a family reports that a slot was lost during a change, inspect the booking, old slot, new slot, both meeting-invitation indexes and `meeting.booking_changed` audit together. The transaction should retain either the original booking or the complete replacement, never a partial state.
+- Do not manually mark a slot available without reconciling its `bookingId`, and do not delete an application or invitation to free a slot.
+- A booked family can reopen the original private invitation and reverify the invited email until the meeting time. There is no family cancellation endpoint; exceptional cancellation remains staff-governed pending a separately approved workflow.
 - Case and meeting entities are covered by the retained table's existing point-in-time recovery boundary.
 
 ## Safety Rules

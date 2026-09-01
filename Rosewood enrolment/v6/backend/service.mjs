@@ -1020,11 +1020,10 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     const applicationId = safeText(body.applicationId, 200);
     const app = await store.getApplication(applicationId);
     if (!app) throw appError(404, "APPLICATION_NOT_FOUND", "The application was not found.");
-    const [revisions, signatureTasks, caseReview, caseMessages] = await Promise.all([
+    const [revisions, signatureTasks, caseReview] = await Promise.all([
       store.listApplicationRevisions ? store.listApplicationRevisions(app.id, 100) : [],
       store.listSignatureTasksForApplication ? store.listSignatureTasksForApplication(app.id) : [],
-      store.getCaseReview ? store.getCaseReview(app.id) : null,
-      store.listCaseMessages ? store.listCaseMessages(app.id, 200) : []
+      store.getCaseReview ? store.getCaseReview(app.id) : null
     ]);
     await recordAudit(createAuditEvent({ workflow: "application", recordId: app.id, invitationId: app.invitationId, type: "staff.application_viewed", at: nowIso(), actorType: "staff", actorId: session.email, details: { role: session.role } }));
     const formReference = recordFormReference(app, "application");
@@ -1067,8 +1066,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
           return { guardianId: control.guardianId, guardianIndex: control.guardianIndex, name: control.name, contactPermission: contactPermissionLabel(control.contactPermission), contactPermissionChangedAt: control.contactPermissionChangedAt || "", contactPermissionChangedBy: control.contactPermissionChangedBy || "", currentEmail: control.currentEmail, previousEmails: control.previousEmails || [], emailCorrectedAt: control.emailCorrectedAt || "", emailCorrectionRequestedBy: control.emailCorrectionRequestedBy || "", signatureRequired: Boolean(control.signatureRequired), requestGenerated: Boolean(control.requestGenerated), requestSent: Boolean(control.requestSent), requestStatus: signatureRequestLabel(control), requestSentAt: control.requestSentAt || "", deliveryStatus: control.deliveryStatus || (control.requestSent ? "accepted_by_ses" : "not_sent"), deliveryAt: control.deliveryAt || control.requestSentAt || "", openedAt: control.openedAt || "", emailVerifiedAt: control.emailVerifiedAt || "", signatureStatus: control.signatureStatus === "complete" ? "Complete" : control.signatureStatus, completedAt: control.completedAt || "", signedDocumentRevision: control.signedDocumentRevision || "", previousLinkRevokedAt: control.previousLinkRevokedAt || "", activeTaskStatus: task?.status || "not_generated", activeTaskGeneration: task?.generation || control.requestGeneration || 0 };
         }),
         revisions: revisions.map(revision => ({ revisionKey: revision.revisionKey, revision: revision.revision, kind: revision.kind, status: revision.status, stage: revision.stage, savedAt: revision.savedAt, saveMode: revision.saveMode, changedFields: revision.changedFields || [], formVersion: revision.formVersion, formDefinitionHash: revision.formDefinitionHash, schemaVersion: revision.schemaVersion })),
-        caseReview: caseReview || { status: "not_started", checklist: {}, note: "", version: 0 },
-        communications: caseMessages.map(message => ({ id: message.id, purpose: message.purpose, subject: message.subject, body: message.body, recipientEmail: message.recipientEmail, recipientName: message.recipientName || "", status: message.status, createdAt: message.createdAt, updatedAt: message.updatedAt, sentAt: message.sentAt || "", deliveryStatus: message.deliveryStatus || (message.status === "sent" ? "queued" : "not_sent"), createdBy: message.createdBy, sentBy: message.sentBy || "" }))
+        caseReview: caseReview || { status: "not_started", checklist: {}, note: "", version: 0 }
       }
     };
   }
@@ -1115,6 +1113,32 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
       if (email && control.contactPermission === true) recipients.set(email, { email, name: control.name || "Parent/Guardian", kind: "permitted_guardian" });
     }
     return recipients;
+  }
+
+  function caseMessageView(message) {
+    return { id: message.id, purpose: message.purpose, subject: message.subject, body: message.body, recipientEmail: message.recipientEmail, recipientName: message.recipientName || "", status: message.status, createdAt: message.createdAt, updatedAt: message.updatedAt, sentAt: message.sentAt || "", deliveryStatus: message.deliveryStatus || (message.status === "sent" ? "queued" : "not_sent"), createdBy: message.createdBy, sentBy: message.sentBy || "" };
+  }
+
+  async function getStaffCommunicationContext(event) {
+    const session = await requireStaffSession(event, ["admin", "admissions"]);
+    const body = parseBody(event, 20_000);
+    const applicationId = safeText(body.applicationId, 200);
+    const app = await store.getApplication(applicationId);
+    if (!app) throw appError(404, "APPLICATION_NOT_FOUND", "The application was not found.");
+    const communications = store.listCaseMessages ? await store.listCaseMessages(app.id, 200) : [];
+    const recipients = [...permittedCaseRecipients(app).values()].map(recipient => ({ ...recipient, maskedEmail: maskEmail(recipient.email) }));
+    await recordAudit(createAuditEvent({ workflow: "application", recordId: app.id, invitationId: app.invitationId, type: "staff.communications_viewed", at: nowIso(), actorType: "staff", actorId: session.email, details: { messageCount: communications.length } }));
+    return {
+      application: {
+        applicationId: app.id,
+        reference: app.reference || "",
+        studentName: [app.values?.student_first, app.values?.student_last].filter(Boolean).join(" ") || "Student name not yet provided",
+        parentGuardianName: [app.values?.app_guardian_0_first, app.values?.app_guardian_0_last].filter(Boolean).join(" ") || "Parent/guardian",
+        status: app.status,
+        recipients,
+        communications: communications.map(caseMessageView)
+      }
+    };
   }
 
   async function saveStaffCaseReview(event) {
@@ -1189,8 +1213,24 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
 
   async function listStaffMeetings(event) {
     await requireStaffSession(event);
-    const series = await store.listMeetingSeries();
-    return { series: await Promise.all(series.map(async item => ({ ...item, slots: await store.listMeetingSlots(item.id) }))) };
+    const [series, invitations] = await Promise.all([
+      store.listMeetingSeries(),
+      store.listMeetingInvitations ? store.listMeetingInvitations() : []
+    ]);
+    return { series: await Promise.all(series.map(async item => {
+      const slots = await store.listMeetingSlots(item.id);
+      const seriesInvitations = invitations.filter(invitation => invitation.seriesId === item.id);
+      const bookingEntries = await Promise.all(seriesInvitations.filter(invitation => invitation.bookingId).map(async invitation => ({ invitation, booking: await store.getMeetingBooking?.(item.id, invitation.bookingId) })));
+      const bookingByInvitation = new Map(bookingEntries.map(entry => [entry.invitation.id, entry.booking]));
+      return {
+        ...item,
+        slots,
+        invitations: seriesInvitations.map(invitation => {
+          const booking = bookingByInvitation.get(invitation.id);
+          return { id: invitation.id, applicationId: invitation.applicationId, recipientName: invitation.recipientName, recipientEmail: invitation.recipientEmail, status: invitation.status, createdAt: invitation.createdAt, expiresAt: invitation.expiresAt, booking: booking ? { id: booking.id, startsAt: booking.startsAt, endsAt: booking.endsAt, changedAt: booking.changedAt || "", revision: booking.revision || 1 } : null };
+        })
+      };
+    })) };
   }
 
   async function createStaffMeetingSeries(event) {
@@ -1223,6 +1263,28 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     return { slot };
   }
 
+  async function createStaffMeetingSlots(event) {
+    const session = await requireStaffSession(event, ["admin", "admissions"]);
+    const body = parseBody(event, 30_000);
+    const seriesId = safeText(body.seriesId, 200);
+    const requestedTimes = Array.isArray(body.startsAt) ? body.startsAt : [];
+    if (!requestedTimes.length || requestedTimes.length > 40) throw appError(422, "MEETING_TIMES_INVALID", "Add between 1 and 40 meeting times.");
+    const series = await store.getMeetingSeries(seriesId);
+    if (!series || series.status !== "open") throw appError(404, "MEETING_SERIES_NOT_FOUND", "Select an open meeting schedule.");
+    const startsAtValues = requestedTimes.map(value => Date.parse(value || ""));
+    if (startsAtValues.some(value => !Number.isFinite(value) || value <= clock())) throw appError(422, "INVALID_MEETING_TIME", "Every meeting time must be in the future.");
+    const uniqueTimes = [...new Set(startsAtValues)].sort((left, right) => left - right);
+    if (uniqueTimes.length !== startsAtValues.length) throw appError(422, "DUPLICATE_MEETING_TIME", "Remove duplicate meeting times before saving.");
+    const existing = await store.listMeetingSlots(seriesId);
+    const existingStarts = new Set(existing.map(slot => Date.parse(slot.startsAt)));
+    if (uniqueTimes.some(value => existingStarts.has(value))) throw appError(409, "MEETING_TIME_EXISTS", "One of these times is already in the schedule. Refresh and remove the duplicate.");
+    const createdAt = nowIso();
+    const slots = uniqueTimes.map(startsAtMs => ({ id: id("meeting-slot"), seriesId, startsAt: iso(startsAtMs), endsAt: iso(startsAtMs + Number(series.durationMinutes) * 60_000), status: "available", createdAt, createdBy: session.email }));
+    const audits = slots.map(slot => createAuditEvent({ workflow: "meetings", recordId: slot.id, type: "meeting.slot_created", at: createdAt, actorType: "staff", actorId: session.email, details: { seriesId, startsAt: slot.startsAt, creationMode: "batch" } }));
+    await store.createMeetingSlots(slots, audits);
+    return { slots };
+  }
+
   async function inviteApplicationToMeeting(event) {
     const session = await requireStaffSession(event, ["admin", "admissions"]);
     const body = parseBody(event, 20_000);
@@ -1237,7 +1299,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     const rawToken = token();
     const createdAt = nowIso();
     const expiresAt = clock() + MEETING_INVITATION_LIFETIME_MS;
-    const invitation = { id: id("meeting-invite"), applicationId, seriesId, recipientEmail, recipientName: recipient.name, status: "pending", createdAt, createdBy: session.email, expiresAt };
+    const invitation = { id: id("meeting-invite"), applicationId, seriesId, recipientEmail, recipientName: recipient.name, status: "pending", createdAt, createdBy: session.email, expiresAt, scopeKey: sha256(`${seriesId}:${applicationId}:${recipientEmail}`) };
     const bookingUrl = `${meetingPageUrl}?invite=${encodeURIComponent(rawToken)}`;
     const studentName = [app.values?.student_first, app.values?.student_last].filter(Boolean).join(" ") || "your child";
     const email = meetingBookingInvitation({ firstName: recipient.name.split(/\s+/)[0] || "Parent/Guardian", studentName, seriesTitle: series.title, bookingUrl, expiresAt: invitationDate(expiresAt) });
@@ -1254,7 +1316,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     for (const [key, limit, seconds] of [[`meeting-cooldown:${tokenHash}:${sha256(email)}`, 1, 30], [`meeting-invite:${tokenHash}`, 5, 1800], [`meeting-email:${sha256(email)}`, 5, 1800]]) if (!await store.checkRateLimit(key, limit, seconds)) throw appError(429, "OTP_RATE_LIMIT", "Please wait before requesting another verification code.");
     const invitation = await store.getMeetingInvitation(tokenHash);
     const challengeId = id("challenge");
-    if (invitation?.status === "pending" && invitation.expiresAt > clock() && invitation.recipientEmail === email) {
+    if (["pending", "booked"].includes(invitation?.status) && invitation.expiresAt > clock() && invitation.recipientEmail === email) {
       const verificationCode = code();
       await store.putChallenge({ id: challengeId, purpose: "meeting_booking", subjectHash: tokenHash, email, meetingInvitationId: invitation.id, codeHmac: hmac(otpSecret, `${challengeId}:${verificationCode}`), attempts: 0, maxAttempts: 5, createdAt: clock(), expiresAt: clock() + 600_000, ttl: Math.floor((clock() + 86400_000) / 1000) });
       await mailer.send({ to: email, ...applicationOtp({ code: verificationCode }), tags: { workflow: "meetings", message_type: "meeting_otp", record_id: invitation.id } });
@@ -1267,7 +1329,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     const tokenHash = sha256(safeText(body.invite, 1000));
     const challengeId = safeText(body.challengeId, 200);
     const [challenge, invitation] = await Promise.all([store.getChallenge(challengeId), store.getMeetingInvitation(tokenHash)]);
-    if (!challenge || challenge.purpose !== "meeting_booking" || challenge.subjectHash !== tokenHash || !invitation || invitation.id !== challenge.meetingInvitationId || invitation.status !== "pending" || invitation.expiresAt <= clock()) throw appError(401, "OTP_INVALID", "The code is invalid or expired. Request a new code.");
+    if (!challenge || challenge.purpose !== "meeting_booking" || challenge.subjectHash !== tokenHash || !invitation || invitation.id !== challenge.meetingInvitationId || !["pending", "booked"].includes(invitation.status) || invitation.expiresAt <= clock()) throw appError(401, "OTP_INVALID", "The code is invalid or expired. Request a new code.");
     const consumed = await store.consumeChallenge(challengeId, hmac(otpSecret, `${challengeId}:${safeText(body.code, 12)}`), clock());
     if (!consumed) { await store.failChallenge(challengeId); throw appError(401, "OTP_INVALID", "The code is invalid or expired. Request a new code."); }
     const rawSession = token();
@@ -1278,28 +1340,58 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
   async function getMeetingContext(event) {
     const session = await requireSession(event, "meeting_booking");
     const invitation = await store.getMeetingInvitationById(session.meetingInvitationId);
-    if (!invitation || invitation.status !== "pending" || invitation.expiresAt <= clock()) throw appError(409, "MEETING_INVITATION_UNAVAILABLE", "This meeting invitation is no longer available.");
-    const [series, app, slots] = await Promise.all([store.getMeetingSeries(invitation.seriesId), store.getApplication(invitation.applicationId), store.listMeetingSlots(invitation.seriesId)]);
-    return { invitation: { id: invitation.id, recipientName: invitation.recipientName }, series: { id: series.id, title: series.title, hostName: series.hostName, location: series.location, durationMinutes: series.durationMinutes }, studentName: [app.values?.student_first, app.values?.student_last].filter(Boolean).join(" "), slots: slots.filter(slot => slot.status === "available" && Date.parse(slot.startsAt) > clock()).map(slot => ({ id: slot.id, startsAt: slot.startsAt, endsAt: slot.endsAt })) };
+    if (!invitation || !["pending", "booked"].includes(invitation.status) || invitation.expiresAt <= clock()) throw appError(409, "MEETING_INVITATION_UNAVAILABLE", "This meeting invitation is no longer available.");
+    const [series, app, slots, booking] = await Promise.all([
+      store.getMeetingSeries(invitation.seriesId),
+      store.getApplication(invitation.applicationId),
+      store.listMeetingSlots(invitation.seriesId),
+      invitation.bookingId ? store.getMeetingBooking(invitation.seriesId, invitation.bookingId) : null
+    ]);
+    if (!series || !app) throw appError(404, "MEETING_CONTEXT_NOT_FOUND", "The meeting schedule is no longer available.");
+    return {
+      invitation: { id: invitation.id, recipientName: invitation.recipientName, maskedEmail: maskEmail(invitation.recipientEmail) },
+      series: { id: series.id, title: series.title, hostName: series.hostName, location: series.location, durationMinutes: series.durationMinutes },
+      studentName: [app.values?.student_first, app.values?.student_last].filter(Boolean).join(" "),
+      booking: booking ? { id: booking.id, slotId: booking.slotId, startsAt: booking.startsAt, endsAt: booking.endsAt, changedAt: booking.changedAt || "", revision: booking.revision || 1 } : null,
+      slots: slots.filter(slot => slot.status === "available" && Date.parse(slot.startsAt) > clock()).map(slot => ({ id: slot.id, startsAt: slot.startsAt, endsAt: slot.endsAt }))
+    };
   }
 
   async function bookMeeting(event) {
     const session = await requireSession(event, "meeting_booking");
     const body = parseBody(event, 20_000);
     const invitation = await store.getMeetingInvitationById(session.meetingInvitationId);
-    if (!invitation || invitation.status !== "pending" || invitation.expiresAt <= clock()) throw appError(409, "MEETING_INVITATION_UNAVAILABLE", "This meeting invitation is no longer available.");
-    const [series, app, slots] = await Promise.all([store.getMeetingSeries(invitation.seriesId), store.getApplication(invitation.applicationId), store.listMeetingSlots(invitation.seriesId)]);
+    if (!invitation || !["pending", "booked"].includes(invitation.status) || invitation.expiresAt <= clock()) throw appError(409, "MEETING_INVITATION_UNAVAILABLE", "This meeting invitation is no longer available.");
+    const [series, app, slots, currentBooking] = await Promise.all([
+      store.getMeetingSeries(invitation.seriesId),
+      store.getApplication(invitation.applicationId),
+      store.listMeetingSlots(invitation.seriesId),
+      invitation.bookingId ? store.getMeetingBooking(invitation.seriesId, invitation.bookingId) : null
+    ]);
+    if (!series || !app) throw appError(404, "MEETING_CONTEXT_NOT_FOUND", "The meeting schedule is no longer available.");
     const slot = slots.find(item => item.id === safeText(body.slotId, 200));
+    if (currentBooking?.slotId === slot?.id) return { booking: { id: currentBooking.id, startsAt: currentBooking.startsAt, endsAt: currentBooking.endsAt, title: series.title, location: series.location }, changed: false };
     if (!slot || slot.status !== "available" || Date.parse(slot.startsAt) <= clock()) throw appError(409, "MEETING_SLOT_UNAVAILABLE", "This meeting time is no longer available.");
     const createdAt = nowIso();
-    const booking = { id: id("meeting-booking"), applicationId: app.id, invitationId: invitation.id, seriesId: series.id, slotId: slot.id, startsAt: slot.startsAt, endsAt: slot.endsAt, status: "confirmed", createdAt };
+    if (currentBooking && Date.parse(currentBooking.startsAt) <= clock()) throw appError(409, "MEETING_CHANGE_CLOSED", "This meeting has already started and can no longer be changed online.");
+    const changed = Boolean(currentBooking);
+    const booking = currentBooking
+      ? { ...currentBooking, slotId: slot.id, startsAt: slot.startsAt, endsAt: slot.endsAt, changedAt: createdAt, revision: Number(currentBooking.revision || 1) + 1, manageUntil: Date.parse(slot.startsAt), previousTimes: [...(currentBooking.previousTimes || []), { slotId: currentBooking.slotId, startsAt: currentBooking.startsAt, endsAt: currentBooking.endsAt, changedAt: createdAt }].slice(-20) }
+      : { id: id("meeting-booking"), applicationId: app.id, invitationId: invitation.id, seriesId: series.id, slotId: slot.id, startsAt: slot.startsAt, endsAt: slot.endsAt, status: "confirmed", createdAt, revision: 1, manageUntil: Date.parse(slot.startsAt), previousTimes: [] };
     const studentName = [app.values?.student_first, app.values?.student_last].filter(Boolean).join(" ") || "your child";
     const startsAt = new Date(slot.startsAt).toLocaleString("en-AU", { dateStyle: "full", timeStyle: "short", timeZone: "Australia/Melbourne" });
-    const email = meetingBookingConfirmation({ firstName: invitation.recipientName.split(/\s+/)[0] || "Parent/Guardian", studentName, seriesTitle: series.title, startsAt, location: series.location });
-    const audit = createAuditEvent({ workflow: "meetings", recordId: booking.id, type: "meeting.booked", at: createdAt, actorType: "family", actorId: maskEmail(invitation.recipientEmail), details: { applicationId: app.id, seriesId: series.id, slotId: slot.id } });
-    await store.bookMeetingSlot({ seriesId: series.id, slot, invitation, booking, outboxEvents: [emailOutbox({ to: invitation.recipientEmail, ...email, tags: { workflow: "meetings", message_type: "meeting_confirmation", record_id: booking.id } }, clock())], auditEvents: [audit] });
+    const email = meetingBookingConfirmation({ firstName: invitation.recipientName.split(/\s+/)[0] || "Parent/Guardian", studentName, seriesTitle: series.title, startsAt, location: series.location, changed, canManage: true });
+    const audit = createAuditEvent({ workflow: "meetings", recordId: booking.id, type: changed ? "meeting.booking_changed" : "meeting.booked", at: createdAt, actorType: "family", actorId: maskEmail(invitation.recipientEmail), details: { applicationId: app.id, seriesId: series.id, slotId: slot.id, previousSlotId: currentBooking?.slotId || "" } });
+    const outboxEvents = [emailOutbox({ to: invitation.recipientEmail, ...email, tags: { workflow: "meetings", message_type: changed ? "meeting_changed" : "meeting_confirmation", record_id: booking.id } }, clock())];
+    if (changed) {
+      const previousSlot = slots.find(item => item.id === currentBooking.slotId);
+      if (!previousSlot || previousSlot.status !== "booked" || previousSlot.bookingId !== currentBooking.id) throw appError(409, "MEETING_BOOKING_CONFLICT", "The current booking changed before it could be updated. Refresh and try again.");
+      await store.changeMeetingSlot({ seriesId: series.id, previousSlot, slot, invitation, booking, outboxEvents, auditEvents: [audit] });
+    } else {
+      await store.bookMeetingSlot({ seriesId: series.id, slot, invitation, booking, outboxEvents, auditEvents: [audit] });
+    }
     await dispatchOutbox(20);
-    return { booking: { id: booking.id, startsAt: booking.startsAt, endsAt: booking.endsAt, title: series.title, location: series.location } };
+    return { booking: { id: booking.id, startsAt: booking.startsAt, endsAt: booking.endsAt, title: series.title, location: series.location }, changed };
   }
 
   async function getStaffApplicationRevision(event) {
@@ -2282,12 +2374,14 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     ["POST /v6/staff/applications/documents/preview", createStaffDocumentPreview],
     ["POST /v6/staff/applications/revision", getStaffApplicationRevision],
     ["POST /v6/staff/applications/review", saveStaffCaseReview],
+    ["POST /v6/staff/applications/communications/context", getStaffCommunicationContext],
     ["POST /v6/staff/applications/messages/draft", saveStaffCaseMessageDraft],
     ["POST /v6/staff/applications/messages/test", testStaffCaseMessage],
     ["POST /v6/staff/applications/messages/send", sendStaffCaseMessage],
     ["GET /v6/staff/meetings", listStaffMeetings],
     ["POST /v6/staff/meetings/series", createStaffMeetingSeries],
     ["POST /v6/staff/meetings/slots", createStaffMeetingSlot],
+    ["POST /v6/staff/meetings/slots/bulk", createStaffMeetingSlots],
     ["POST /v6/staff/applications/meeting-invitations", inviteApplicationToMeeting],
     ["POST /v6/staff/invitations", createStaffInvitation],
     ["POST /v6/staff/invitations/resend", resendStaffInvitation],

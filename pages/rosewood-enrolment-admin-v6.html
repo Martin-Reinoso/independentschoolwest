@@ -9,7 +9,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://*.s3.ap-southeast-2.amazonaws.com; style-src 'self'; script-src 'self'; connect-src https://6zyzo44sdb5zmmx53toktqrnuu0sikyd.lambda-url.ap-southeast-2.on.aws; form-action 'none'; frame-src https://*.s3.ap-southeast-2.amazonaws.com; object-src 'none'; base-uri 'none'">
   <title>Enrolment Operations | Rosewood College</title>
   <link rel="icon" href="../img/favicon.ico" type="image/x-icon">
-  <link rel="stylesheet" href="rosewood-enrolment-admin-v6.css?v=9">
+  <link rel="stylesheet" href="rosewood-enrolment-admin-v6.css?v=10">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to operations</a>
@@ -100,8 +100,9 @@
             <button class="nav-button" data-panel="applications" type="button"><span>Applications</span><strong id="nav-app-count">0</strong></button>
             <button class="nav-button" data-panel="requests" type="button"><span>Link requests</span><strong id="nav-request-count">0</strong></button>
             <button class="nav-button" data-panel="eois" type="button"><span>Expressions of interest</span><strong id="nav-eoi-count">0</strong></button>
+            <button class="nav-button" id="communications-nav-button" data-panel="communications" type="button"><span>Family communications</span><strong id="nav-communication-count">0</strong></button>
             <button class="nav-button" data-panel="emails" type="button"><span>Email activity</span><strong id="nav-email-count">0</strong></button>
-            <button class="nav-button" data-panel="meetings" type="button"><span>Principal meetings</span><strong id="nav-meeting-count">0</strong></button>
+            <button class="nav-button" id="meetings-nav-button" data-panel="meetings" type="button"><span>Principal meetings</span><strong id="nav-meeting-count">0</strong></button>
             <div class="sheet-links" id="sheet-links">
               <p>Record source</p>
               <span>DynamoDB is authoritative. Google Sheets are replaceable reporting copies.</span>
@@ -185,6 +186,34 @@
             <div class="empty-state" id="eoi-empty" hidden><strong>No expressions of interest found</strong><p>New submissions will appear here.</p></div>
           </section>
 
+          <section class="workspace-panel communications-panel" id="communications-panel" data-workspace-panel hidden>
+            <div class="panel-heading">
+              <div><p class="eyebrow">Deliberate family contact</p><h2>Family communications</h2><p class="panel-note">Select an application, write and review the message, then send it explicitly. This workspace is separate from application review.</p></div>
+            </div>
+            <div class="notice error-notice" id="communication-error" role="alert" tabindex="-1" hidden></div>
+            <div class="notice success-notice" id="communication-message" role="status" hidden></div>
+            <div class="communications-layout">
+              <section class="staff-tool-card communication-case-card" aria-labelledby="communication-case-title">
+                <h3 id="communication-case-title">Choose an application</h3>
+                <label>Application<select id="communication-application"><option value="">Select an application</option></select></label>
+                <div class="communication-context" id="communication-context"><p class="panel-note">No application selected.</p></div>
+              </section>
+              <form class="staff-tool-card communication-composer" id="communication-form" hidden>
+                <h3>Write a reviewed email</h3>
+                <p class="panel-note">Choosing a purpose never sends an email. Contact permission is checked again by the server when the reviewed message is sent.</p>
+                <label>Recipient<select id="communication-recipient" required></select></label>
+                <label>Purpose<select id="communication-purpose" required><option value="missing_document">Missing document</option><option value="replacement_document">Replacement document</option><option value="clarification">Question about the application</option><option value="additional_information">Additional information</option><option value="principal_meeting">Principal meeting</option><option value="general_update">General update</option></select></label>
+                <label>Subject<input id="communication-subject" maxlength="180" required></label>
+                <label>Message<textarea id="communication-body" rows="11" maxlength="20000" required></textarea></label>
+                <div class="composer-actions"><button class="secondary-button" id="communication-save" type="button">Save draft</button><button class="secondary-button" id="communication-test" type="button">Send test to me</button><button class="primary-button" id="communication-send" type="button" disabled>Send reviewed email</button></div>
+              </form>
+            </div>
+            <section class="communication-history-card" id="communication-history-card" hidden aria-labelledby="communication-history-title">
+              <h3 id="communication-history-title">Communication history</h3>
+              <div class="case-timeline" id="communication-history"></div>
+            </section>
+          </section>
+
           <section class="workspace-panel" id="emails-panel" data-workspace-panel hidden>
             <div class="panel-heading"><div><p class="eyebrow">Amazon SES</p><h2>Recent email activity</h2></div><p class="panel-note">This confirms messages accepted by the sending service. Bounce and complaint alerts continue separately.</p></div>
             <div class="record-list" id="email-list" aria-live="polite"></div>
@@ -192,7 +221,7 @@
           </section>
 
           <section class="workspace-panel" id="meetings-panel" data-workspace-panel hidden>
-            <div class="panel-heading"><div><p class="eyebrow">Private family bookings</p><h2>Principal meetings</h2><p class="panel-note">Create a schedule and its available times here. Send a private booking invitation from an application review.</p></div></div>
+            <div class="panel-heading"><div><p class="eyebrow">Private family bookings</p><h2>Principal meetings</h2><p class="panel-note">Create schedules, prepare a list of times and invite a family here. Families verify the invited email before booking or changing their time.</p></div></div>
             <div class="meeting-admin-grid">
               <form class="staff-tool-card" id="meeting-series-form">
                 <h3>Create a meeting schedule</h3>
@@ -203,10 +232,20 @@
                 <button class="primary-button" type="submit">Create schedule</button>
               </form>
               <form class="staff-tool-card" id="meeting-slot-form">
-                <h3>Add an available time</h3>
+                <h3>Prepare available times</h3>
                 <label>Schedule<select id="meeting-slot-series" required><option value="">Select a schedule</option></select></label>
                 <label>Date and time<input id="meeting-slot-start" type="datetime-local" required></label>
-                <button class="primary-button" type="submit">Add time</button>
+                <button class="secondary-button" id="meeting-stage-time" type="button">Add to list</button>
+                <div class="pending-slot-list" id="meeting-pending-times" aria-live="polite"><p class="panel-note">No times prepared yet.</p></div>
+                <button class="primary-button" id="meeting-save-times" type="submit" disabled>Save available times</button>
+              </form>
+              <form class="staff-tool-card meeting-invite-card" id="meeting-invitation-form">
+                <h3>Invite a family to book</h3>
+                <label>Schedule<select id="meeting-invitation-series" required><option value="">Select a schedule</option></select></label>
+                <label>Application<select id="meeting-invitation-application" required><option value="">Select an application</option></select></label>
+                <label>Recipient<select id="meeting-invitation-recipient" required disabled><option value="">Select an application first</option></select></label>
+                <p class="panel-note" id="meeting-invitation-context">The private invitation is tied to the selected application and email address.</p>
+                <button class="primary-button" type="submit">Send private booking invitation</button>
               </form>
             </div>
             <div class="notice error-notice" id="meeting-error" role="alert" hidden></div>
@@ -277,6 +316,6 @@
     </div>
   </dialog>
 
-  <script src="rosewood-enrolment-admin-v6.js?v=14"></script>
+  <script src="rosewood-enrolment-admin-v6.js?v=15"></script>
 </body>
 </html>

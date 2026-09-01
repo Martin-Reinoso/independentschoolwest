@@ -17,8 +17,12 @@
     invitationActionMode: "resend",
     invitationOperationId: "",
     resendTimer: null,
-    refreshTimer: null
-    ,meetings: []
+    refreshTimer: null,
+    meetings: [],
+    communicationContext: null,
+    communicationMessageId: "",
+    pendingMeetingTimes: [],
+    meetingInvitationContext: null
   };
 
   const byId = id => document.getElementById(id);
@@ -264,9 +268,12 @@
     byId("nav-app-count").textContent = data.applications.length;
     byId("nav-request-count").textContent = (data.applicationRequests || []).length;
     byId("nav-eoi-count").textContent = data.eois.length;
+    byId("nav-communication-count").textContent = data.applications.length;
     byId("nav-email-count").textContent = data.recentEmails.length;
     const canManage = ["admin", "admissions"].includes(data.staff.role);
     byId("open-invite-button").hidden = !canManage;
+    byId("communications-nav-button").hidden = !canManage;
+    byId("meetings-nav-button").hidden = !canManage;
     syncOverviewFilters();
     renderOverview();
     syncPlanningFilters();
@@ -276,6 +283,7 @@
     renderEois();
     renderEmails();
     renderEoiPicker();
+    syncApplicationSelectors();
   }
 
   function addRecordCell(card, label, primary, secondary = "") {
@@ -435,6 +443,12 @@
       review.type = "button";
       review.addEventListener("click", () => openApplicationDetail(record));
       actions.append(review);
+      if (["admin", "admissions"].includes(state.dashboard.staff.role)) {
+        const contact = element("button", "small-button", "Contact family");
+        contact.type = "button";
+        contact.addEventListener("click", () => openCommunicationWorkspace(record.applicationId));
+        actions.append(contact);
+      }
       card.append(actions);
       list.append(card);
     });
@@ -690,15 +704,186 @@
     byId("email-empty").hidden = records.length > 0;
   }
 
+  function applicationOptionLabel(record) {
+    const family = record.parentGuardianName || record.recipientEmail || "Family";
+    const student = record.studentName || "Student name not yet provided";
+    return `${student} · ${family}${record.reference ? ` · ${record.reference}` : ""}`;
+  }
+
+  function syncApplicationSelect(id) {
+    const select = byId(id);
+    if (!select) return;
+    const selected = select.value;
+    clear(select);
+    select.add(new Option("Select an application", ""));
+    (state.dashboard?.applications || []).forEach(record => select.add(new Option(applicationOptionLabel(record), record.applicationId)));
+    if ([...select.options].some(option => option.value === selected)) select.value = selected;
+  }
+
+  function syncApplicationSelectors() {
+    syncApplicationSelect("communication-application");
+    syncApplicationSelect("meeting-invitation-application");
+  }
+
+  function renderCommunicationHistory(messages = []) {
+    const card = byId("communication-history-card");
+    const list = byId("communication-history");
+    clear(list);
+    messages.forEach(message => {
+      const item = element("article", "timeline-item");
+      item.append(
+        element("strong", "", message.subject),
+        element("span", "", `${fieldLabel(message.purpose)} · ${message.status === "draft" ? "Draft, not sent" : fieldLabel(message.deliveryStatus)} · ${formatDate(message.updatedAt, true)}`),
+        element("p", "", message.body)
+      );
+      list.append(item);
+    });
+    if (!messages.length) list.append(element("p", "panel-note", "No family correspondence has been recorded for this application."));
+    card.hidden = false;
+  }
+
+  function renderCommunicationContext(application) {
+    state.communicationContext = application;
+    state.communicationMessageId = "";
+    const context = byId("communication-context");
+    clear(context);
+    context.append(
+      element("strong", "", application.studentName),
+      element("span", "", `${application.parentGuardianName} · ${application.reference || application.applicationId}`),
+      element("span", "", statusLabel(application.status))
+    );
+    const recipient = byId("communication-recipient");
+    clear(recipient);
+    application.recipients.forEach(item => recipient.add(new Option(`${item.name} · ${item.email}`, item.email)));
+    byId("communication-form").hidden = application.recipients.length === 0;
+    byId("communication-send").disabled = true;
+    byId("communication-subject").value = "";
+    byId("communication-body").value = "";
+    renderCommunicationHistory(application.communications || []);
+    if (!application.recipients.length) setNotice("communication-error", "No contact-permitted recipient is available for this application.");
+  }
+
+  async function loadCommunicationContext(applicationId) {
+    clearNotices("communication-error", "communication-message");
+    state.communicationContext = null;
+    state.communicationMessageId = "";
+    byId("communication-form").hidden = true;
+    byId("communication-history-card").hidden = true;
+    const context = byId("communication-context");
+    clear(context);
+    context.append(element("p", "panel-note", "Loading protected communication context..."));
+    if (!applicationId) {
+      clear(context);
+      context.append(element("p", "panel-note", "No application selected."));
+      return;
+    }
+    try {
+      const result = await api("/v6/staff/applications/communications/context", { method: "POST", body: { applicationId } });
+      renderCommunicationContext(result.application);
+    } catch (error) {
+      clear(context);
+      context.append(element("p", "panel-note", "Communication context could not be loaded."));
+      setNotice("communication-error", error.message);
+    }
+  }
+
+  function openCommunicationWorkspace(applicationId) {
+    showPanel("communications");
+    byId("communication-application").value = applicationId;
+    loadCommunicationContext(applicationId);
+  }
+
+  function communicationDraftPayload() {
+    return {
+      applicationId: state.communicationContext?.applicationId || "",
+      messageId: state.communicationMessageId,
+      recipientEmail: byId("communication-recipient").value,
+      purpose: byId("communication-purpose").value,
+      subject: byId("communication-subject").value,
+      body: byId("communication-body").value
+    };
+  }
+
+  async function saveCommunicationDraft() {
+    if (!state.communicationContext) throw new Error("Select an application before writing an email.");
+    const result = await api("/v6/staff/applications/messages/draft", { method: "POST", body: communicationDraftPayload() });
+    state.communicationMessageId = result.message.id;
+    byId("communication-send").disabled = false;
+    return result.message;
+  }
+
+  function renderPendingMeetingTimes() {
+    const list = byId("meeting-pending-times");
+    clear(list);
+    state.pendingMeetingTimes.sort((left, right) => Date.parse(left) - Date.parse(right)).forEach(startsAt => {
+      const chip = element("span", "pending-slot");
+      const remove = element("button", "", "×");
+      remove.type = "button";
+      remove.setAttribute("aria-label", `Remove ${formatDate(startsAt, true)}`);
+      remove.addEventListener("click", () => {
+        state.pendingMeetingTimes = state.pendingMeetingTimes.filter(value => value !== startsAt);
+        renderPendingMeetingTimes();
+      });
+      chip.append(element("span", "", formatDate(startsAt, true)), remove);
+      list.append(chip);
+    });
+    if (!state.pendingMeetingTimes.length) list.append(element("p", "panel-note", "No times prepared yet."));
+    byId("meeting-save-times").disabled = state.pendingMeetingTimes.length === 0;
+  }
+
+  function stageMeetingTime() {
+    clearNotices("meeting-error", "meeting-message");
+    const seriesId = byId("meeting-slot-series").value;
+    const localValue = byId("meeting-slot-start").value;
+    if (!seriesId) return setNotice("meeting-error", "Select a meeting schedule first.");
+    const startsAtMs = Date.parse(localValue || "");
+    if (!Number.isFinite(startsAtMs) || startsAtMs <= Date.now()) return setNotice("meeting-error", "Choose a future date and time.");
+    const startsAt = new Date(startsAtMs).toISOString();
+    if (state.pendingMeetingTimes.includes(startsAt)) return setNotice("meeting-error", "That meeting time is already in the prepared list.");
+    const series = state.meetings.find(item => item.id === seriesId);
+    if ((series?.slots || []).some(slot => Date.parse(slot.startsAt) === startsAtMs)) return setNotice("meeting-error", "That meeting time already exists in this schedule.");
+    state.pendingMeetingTimes.push(startsAt);
+    byId("meeting-slot-start").value = "";
+    renderPendingMeetingTimes();
+  }
+
+  async function loadMeetingInvitationContext(applicationId) {
+    clearNotices("meeting-error", "meeting-message");
+    state.meetingInvitationContext = null;
+    const recipient = byId("meeting-invitation-recipient");
+    clear(recipient);
+    recipient.add(new Option(applicationId ? "Loading permitted recipients..." : "Select an application first", ""));
+    recipient.disabled = true;
+    byId("meeting-invitation-context").textContent = "The private invitation is tied to the selected application and email address.";
+    if (!applicationId) return;
+    try {
+      const result = await api("/v6/staff/applications/communications/context", { method: "POST", body: { applicationId } });
+      state.meetingInvitationContext = result.application;
+      clear(recipient);
+      result.application.recipients.forEach(item => recipient.add(new Option(`${item.name} · ${item.email}`, item.email)));
+      recipient.disabled = result.application.recipients.length === 0;
+      byId("meeting-invitation-context").textContent = result.application.recipients.length
+        ? `${result.application.studentName} · ${result.application.parentGuardianName}. The family will verify the selected email before viewing times.`
+        : "No contact-permitted recipient is available for this application.";
+    } catch (error) {
+      clear(recipient);
+      recipient.add(new Option("Recipients unavailable", ""));
+      setNotice("meeting-error", error.message);
+    }
+  }
+
   async function loadMeetings() {
     try {
       const result = await api("/v6/staff/meetings");
       state.meetings = result.series || [];
       byId("nav-meeting-count").textContent = state.meetings.length;
-      const select = byId("meeting-slot-series");
-      const selected = select.value;
-      clear(select); select.add(new Option("Select a schedule", ""));
-      state.meetings.filter(item => item.status === "open").forEach(item => select.add(new Option(item.title, item.id, false, item.id === selected)));
+      ["meeting-slot-series", "meeting-invitation-series"].forEach(id => {
+        const select = byId(id);
+        const selected = select.value;
+        clear(select);
+        select.add(new Option("Select a schedule", ""));
+        state.meetings.filter(item => item.status === "open").forEach(item => select.add(new Option(item.title, item.id, false, item.id === selected)));
+      });
       renderMeetings();
     } catch (error) { setNotice("meeting-error", error.message); }
   }
@@ -711,12 +896,30 @@
       const slots = element("div", "slot-list");
       (series.slots || []).forEach(slot => slots.append(element("span", `slot-chip ${slot.status}`, `${formatDate(slot.startsAt, true)} · ${fieldLabel(slot.status)}`)));
       if (!slots.children.length) slots.append(element("span", "panel-note", "No times added yet."));
-      card.append(slots); list.append(card);
+      card.append(slots);
+      const invitations = element("div", "meeting-invitation-list");
+      (series.invitations || []).forEach(invitation => {
+        const row = element("div", "meeting-invitation-row");
+        const details = element("div");
+        const bookingStatus = invitation.booking ? `Booked · ${formatDate(invitation.booking.startsAt, true)}` : fieldLabel(invitation.status);
+        details.append(
+          element("strong", "", invitation.recipientName || "Parent/guardian"),
+          element("span", "", `${invitation.recipientEmail} · ${bookingStatus}`)
+        );
+        row.append(details, element("span", "", formatDate(invitation.createdAt, true)));
+        invitations.append(row);
+      });
+      if (invitations.children.length) {
+        card.append(element("h4", "", "Family invitations"), invitations);
+      }
+      list.append(card);
     });
     if (!state.meetings.length) list.append(element("p", "panel-note", "No principal meeting schedules have been created."));
   }
 
   function showPanel(name) {
+    const canManage = ["admin", "admissions"].includes(state.dashboard?.staff?.role);
+    if (["communications", "meetings"].includes(name) && !canManage) name = "overview";
     document.querySelectorAll("[data-workspace-panel]").forEach(panel => { panel.hidden = panel.id !== `${name}-panel`; });
     document.querySelectorAll(".nav-button").forEach(button => {
       const active = button.dataset.panel === name;
@@ -981,10 +1184,7 @@
     });
     const history = renderRevisionHistory(application);
     if (history) content.append(history);
-    if (["admin", "admissions"].includes(state.dashboard?.staff?.role)) {
-      content.append(renderCaseReviewControls(application), renderCaseEmailComposer(application), renderMeetingInvitation(application));
-    }
-    content.append(renderCaseTimeline(application));
+    if (["admin", "admissions"].includes(state.dashboard?.staff?.role)) content.append(renderCaseReviewControls(application));
     byId("detail-loading").hidden = true;
     content.hidden = false;
     requestAnimationFrame(() => { detailDialog.scrollTop = resetScroll ? 0 : previousScrollTop; });
@@ -1022,57 +1222,6 @@
     section.append(form); return section;
   }
 
-  function caseRecipients(application) {
-    const values = [{ email: application.recipientEmail, name: "Submitting applicant" }];
-    (application.signerControls || []).forEach(control => { if (control.contactPermission === "Contact permitted" && control.currentEmail && !values.some(item => item.email === control.currentEmail)) values.push({ email: control.currentEmail, name: control.name || "Parent/guardian" }); });
-    return values;
-  }
-
-  function renderCaseEmailComposer(application) {
-    const section = element("section", "detail-section staff-tool-section"); section.append(element("h3", "", "Write to the family"));
-    const form = element("form", "staff-tool-form");
-    const recipient = document.createElement("select"); caseRecipients(application).forEach(item => recipient.add(new Option(`${item.name} · ${item.email}`, item.email)));
-    const purpose = document.createElement("select"); [["missing_document", "Missing document"], ["replacement_document", "Replacement document"], ["clarification", "Question about the application"], ["additional_information", "Additional information"], ["principal_meeting", "Principal meeting"], ["general_update", "General update"]].forEach(([value, label]) => purpose.add(new Option(label, value)));
-    const subject = document.createElement("input"); subject.maxLength = 180;
-    const body = document.createElement("textarea"); body.rows = 9; body.maxLength = 20000;
-    const actions = element("div", "composer-actions");
-    const save = element("button", "secondary-button", "Save draft"); save.type = "button";
-    const test = element("button", "secondary-button", "Send test to me"); test.type = "button";
-    const send = element("button", "primary-button", "Send reviewed email"); send.type = "button"; send.disabled = true;
-    let messageId = "";
-    async function saveDraft() {
-      const result = await api("/v6/staff/applications/messages/draft", { method: "POST", body: { applicationId: application.applicationId, messageId, recipientEmail: recipient.value, purpose: purpose.value, subject: subject.value, body: body.value } });
-      messageId = result.message.id; send.disabled = false; return result.message;
-    }
-    save.addEventListener("click", async () => { setLoading(save, true); try { await saveDraft(); setNotice("dashboard-message", "Email draft saved. Nothing has been sent."); } catch (error) { setNotice("detail-error", error.message); } finally { setLoading(save, false); } });
-    test.addEventListener("click", async () => { setLoading(test, true); try { await api("/v6/staff/applications/messages/test", { method: "POST", body: { applicationId: application.applicationId, subject: subject.value, body: body.value } }); setNotice("dashboard-message", "Test email sent to your staff address."); } catch (error) { setNotice("detail-error", error.message); } finally { setLoading(test, false); } });
-    send.addEventListener("click", async () => {
-      if (!window.confirm("Send this reviewed email to the selected family recipient?")) return;
-      setLoading(send, true);
-      try { if (!messageId) await saveDraft(); await api("/v6/staff/applications/messages/send", { method: "POST", body: { applicationId: application.applicationId, messageId, confirmation: "Send reviewed email" } }); const result = await api("/v6/staff/applications/detail", { method: "POST", body: { applicationId: application.applicationId } }); renderApplicationDetail(result.application); }
-      catch (error) { setNotice("detail-error", error.message); setLoading(send, false); }
-    });
-    actions.append(save, test, send); form.append(element("p", "panel-note", "Every message is written and reviewed by staff. Choosing a purpose never sends an email."), formField("Recipient", recipient), formField("Purpose", purpose), formField("Subject", subject), formField("Message", body), actions); section.append(form); return section;
-  }
-
-  function renderCaseTimeline(application) {
-    const section = element("section", "detail-section staff-tool-section"); section.append(element("h3", "", "Communication history"));
-    const list = element("div", "case-timeline");
-    (application.communications || []).forEach(message => { const item = element("article", "timeline-item"); item.append(element("strong", "", message.subject), element("span", "", `${fieldLabel(message.purpose)} · ${message.status === "draft" ? "Draft, not sent" : fieldLabel(message.deliveryStatus)} · ${formatDate(message.updatedAt, true)}`), element("p", "", message.body)); list.append(item); });
-    if (!list.children.length) list.append(element("p", "panel-note", "No case correspondence has been recorded.")); section.append(list); return section;
-  }
-
-  function renderMeetingInvitation(application) {
-    const section = element("section", "detail-section staff-tool-section"); section.append(element("h3", "", "Invite to a principal meeting"));
-    const form = element("form", "staff-tool-form");
-    const schedule = document.createElement("select"); schedule.add(new Option("Select a meeting schedule", "")); state.meetings.forEach(item => schedule.add(new Option(item.title, item.id)));
-    const recipient = document.createElement("select"); caseRecipients(application).forEach(item => recipient.add(new Option(`${item.name} · ${item.email}`, item.email)));
-    const button = element("button", "primary-button", "Send private booking invitation"); button.type = "submit";
-    form.append(element("p", "panel-note", "The family will verify their invited email before seeing available times."), formField("Schedule", schedule), formField("Recipient", recipient), button);
-    form.addEventListener("submit", async event => { event.preventDefault(); if (!schedule.value) return setNotice("detail-error", "Select a meeting schedule."); if (!window.confirm("Send this private meeting invitation?")) return; setLoading(button, true); try { await api("/v6/staff/applications/meeting-invitations", { method: "POST", body: { applicationId: application.applicationId, seriesId: schedule.value, recipientEmail: recipient.value, confirmation: "Send meeting invitation" } }); setNotice("dashboard-message", "Private meeting invitation queued."); } catch (error) { setNotice("detail-error", error.message); } finally { setLoading(button, false); } });
-    section.append(form); return section;
-  }
-
   async function changeContactPermission(application, control, enable, button) {
     const confirmation = window.prompt('Type exactly: I confirm this authorised contact-permission change');
     if (confirmation !== "I confirm this authorised contact-permission change") {
@@ -1104,7 +1253,6 @@
     detailDialog.scrollTop = 0;
     detailDialog.showModal();
     try {
-      if (!state.meetings.length) await loadMeetings();
       const result = await api("/v6/staff/applications/detail", { method: "POST", body: { applicationId: record.applicationId } });
       renderApplicationDetail(result.application, { resetScroll: true });
     } catch (error) {
@@ -1264,6 +1412,42 @@
   byId("eoi-search").addEventListener("input", renderEois);
   byId("invite-eoi-search").addEventListener("input", renderEoiPicker);
   document.querySelectorAll(".nav-button").forEach(button => button.addEventListener("click", () => showPanel(button.dataset.panel)));
+  byId("communication-application").addEventListener("change", event => loadCommunicationContext(event.target.value));
+  byId("communication-save").addEventListener("click", async event => {
+    const button = event.currentTarget;
+    clearNotices("communication-error", "communication-message");
+    setLoading(button, true);
+    try {
+      await saveCommunicationDraft();
+      setNotice("communication-message", "Email draft saved. Nothing has been sent.");
+    } catch (error) { setNotice("communication-error", error.message); }
+    finally { setLoading(button, false); }
+  });
+  byId("communication-test").addEventListener("click", async event => {
+    const button = event.currentTarget;
+    clearNotices("communication-error", "communication-message");
+    setLoading(button, true);
+    try {
+      if (!state.communicationContext) throw new Error("Select an application before sending a test.");
+      await api("/v6/staff/applications/messages/test", { method: "POST", body: { applicationId: state.communicationContext.applicationId, subject: byId("communication-subject").value, body: byId("communication-body").value } });
+      setNotice("communication-message", "Test email sent to your staff address. No family email was sent.");
+    } catch (error) { setNotice("communication-error", error.message); }
+    finally { setLoading(button, false); }
+  });
+  byId("communication-send").addEventListener("click", async event => {
+    if (!window.confirm("Send this reviewed email to the selected family recipient?")) return;
+    const button = event.currentTarget;
+    clearNotices("communication-error", "communication-message");
+    setLoading(button, true);
+    try {
+      await saveCommunicationDraft();
+      await api("/v6/staff/applications/messages/send", { method: "POST", body: { applicationId: state.communicationContext.applicationId, messageId: state.communicationMessageId, confirmation: "Send reviewed email" } });
+      const applicationId = state.communicationContext.applicationId;
+      await loadCommunicationContext(applicationId);
+      setNotice("communication-message", "The reviewed family email has been queued for delivery.");
+    } catch (error) { setNotice("communication-error", error.message); }
+    finally { setLoading(button, false); }
+  });
   byId("meeting-series-form").addEventListener("submit", async event => {
     event.preventDefault(); clearNotices("meeting-error", "meeting-message");
     const button = event.submitter; setLoading(button, true);
@@ -1272,13 +1456,48 @@
       event.target.reset(); byId("meeting-series-duration").value = "30"; setNotice("meeting-message", "Meeting schedule created."); await loadMeetings();
     } catch (error) { setNotice("meeting-error", error.message); } finally { setLoading(button, false); }
   });
+  byId("meeting-stage-time").addEventListener("click", stageMeetingTime);
   byId("meeting-slot-form").addEventListener("submit", async event => {
     event.preventDefault(); clearNotices("meeting-error", "meeting-message");
     const button = event.submitter; setLoading(button, true);
     try {
-      await api("/v6/staff/meetings/slots", { method: "POST", body: { seriesId: byId("meeting-slot-series").value, startsAt: new Date(byId("meeting-slot-start").value).toISOString() } });
-      byId("meeting-slot-start").value = ""; setNotice("meeting-message", "Available meeting time added."); await loadMeetings();
+      if (!state.pendingMeetingTimes.length) throw new Error("Add at least one future meeting time to the list.");
+      await api("/v6/staff/meetings/slots/bulk", { method: "POST", body: { seriesId: byId("meeting-slot-series").value, startsAt: state.pendingMeetingTimes } });
+      const count = state.pendingMeetingTimes.length;
+      state.pendingMeetingTimes = [];
+      renderPendingMeetingTimes();
+      setNotice("meeting-message", `${count} available meeting time${count === 1 ? "" : "s"} saved.`);
+      await loadMeetings();
     } catch (error) { setNotice("meeting-error", error.message); } finally { setLoading(button, false); }
+  });
+  byId("meeting-slot-series").addEventListener("change", () => {
+    state.pendingMeetingTimes = [];
+    renderPendingMeetingTimes();
+  });
+  byId("meeting-invitation-application").addEventListener("change", event => loadMeetingInvitationContext(event.target.value));
+  byId("meeting-invitation-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    clearNotices("meeting-error", "meeting-message");
+    if (!window.confirm("Send this private principal-meeting invitation to the selected family recipient?")) return;
+    const button = event.submitter;
+    setLoading(button, true);
+    try {
+      await api("/v6/staff/applications/meeting-invitations", {
+        method: "POST",
+        body: {
+          applicationId: byId("meeting-invitation-application").value,
+          seriesId: byId("meeting-invitation-series").value,
+          recipientEmail: byId("meeting-invitation-recipient").value,
+          confirmation: "Send meeting invitation"
+        }
+      });
+      event.target.reset();
+      state.meetingInvitationContext = null;
+      await loadMeetingInvitationContext("");
+      setNotice("meeting-message", "The private booking invitation has been queued for delivery.");
+      await loadMeetings();
+    } catch (error) { setNotice("meeting-error", error.message); }
+    finally { setLoading(button, false); }
   });
   byId("direct-invite-form").addEventListener("submit", event => {
     event.preventDefault();
@@ -1315,5 +1534,6 @@
     const button = event.target.closest("[data-revision-key]");
     if (button) openApplicationRevision(button);
   });
+  renderPendingMeetingTimes();
   restoreRememberedSession();
 })();

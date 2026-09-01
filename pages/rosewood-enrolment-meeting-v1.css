@@ -4,7 +4,7 @@ body { margin:0; color:var(--ink); background:radial-gradient(circle at 10% 15%,
 .booking-shell { width:min(1180px,calc(100% - 2rem)); min-height:100vh; display:grid; grid-template-columns:.85fr 1.15fr; align-items:center; gap:4rem; margin:auto; padding:3rem 0; }
 .booking-story img { width:82px; height:82px; object-fit:contain; }
 .eyebrow,.step { color:var(--clay); font-size:.75rem; font-weight:800; letter-spacing:.13em; text-transform:uppercase; }
-h1,h2 { font-family:var(--display); }
+h1,h2,h3 { font-family:var(--display); }
 h1 { max-width:550px; margin:.4rem 0 1.2rem; font-size:clamp(3rem,7vw,6rem); line-height:.98; }
 .booking-story>p:last-child { max-width:520px; color:var(--soft); font-size:1.1rem; line-height:1.7; }
 .booking-card { min-height:560px; padding:clamp(1.4rem,4vw,3rem); background:rgba(255,255,255,.95); border:1px solid var(--line); border-radius:1.2rem; box-shadow:0 30px 70px rgba(20,33,58,.15); }
@@ -21,5 +21,10 @@ fieldset { margin:0; padding:0; border:0; }
 #slot-list { display:grid; gap:.7rem; margin-top:.8rem; }
 .slot-option { display:flex; align-items:center; gap:.8rem; padding:1rem; background:var(--paper); border:1px solid var(--line); border-radius:.7rem; }
 .slot-option input { min-height:auto; width:1.2rem; height:1.2rem; }
+.current-booking { margin:1.2rem 0; padding:1rem 1.1rem; background:#edf6f0; border:1px solid #bcd8c7; border-radius:.75rem; }
+.current-booking .step { margin:0 0 .3rem; color:var(--green); }
+.current-booking h3 { margin:0 0 .35rem; font-size:1.25rem; }
+.current-booking p:last-child { margin:0; color:var(--ink); font-weight:700; }
+.secondary-action { margin-top:1rem; color:var(--green); background:#fff; border:1px solid var(--green); }
 .success-mark { width:4rem; height:4rem; display:grid; place-items:center; color:#fff; background:var(--green); border-radius:50%; font-size:2rem; }
 @media(max-width:760px){ .booking-shell{grid-template-columns:1fr;gap:1.5rem;padding:1.2rem 0 2rem}.booking-story img{width:58px;height:58px}.booking-story h1{font-size:3rem}.booking-story>p:last-child{font-size:.95rem}.booking-card{min-height:0;padding:1.3rem} }

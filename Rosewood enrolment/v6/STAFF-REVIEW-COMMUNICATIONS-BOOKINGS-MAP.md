@@ -1,6 +1,6 @@
 # Staff Review, Family Follow-up And Principal Booking Map
 
-Status: architecture proposal for exploration; not an approved production contract.
+Status: implemented operational baseline; later enhancements remain proposals.
 
 Date: 30 August 2026
 
@@ -16,9 +16,17 @@ connected but separately stored capabilities:
 3. **Principal meetings** — a separate appointment module linked to the application
    and family, with private family booking access.
 
-The portal may present these capabilities together, but they should not be stored as
-extra application answers. This preserves the original form revision, signatures,
-audit evidence and future flexibility.
+The portal presents these capabilities as separate top-level workspaces and does not
+store them as application answers. Application Review has no message composer or
+booking invitation action. Family communications and Principal meetings require
+deliberate navigation and retain their own records. This preserves the original form
+revision, signatures, audit evidence and future flexibility.
+
+The implemented family booking model uses the invited email plus OTP, one active
+invitation per application/schedule/email, conditional slot reservation and an atomic
+change operation. A family can replace its own booked time with an available time but
+cannot erase a booking or affect another family. Cancellation and staff-assisted
+rescheduling remain future, separately governed work.
 
 ## Why application review comes first
 
