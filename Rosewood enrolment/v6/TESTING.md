@@ -1765,3 +1765,34 @@ Prepared locally on 1 September 2026 using synthetic metadata and file bytes onl
 - EOI `2026.23` and Application `2026.24` preserve all preceding question, answer and
   validation contracts. No application was reopened and no existing document,
   signature or family answer was changed.
+
+### Production release
+
+Released and verified in production on 1 September 2026 using the existing synthetic
+canary record only. No real family document was opened, and no invitation, OTP, email,
+application, upload, signature, review or correspondence write was created during
+release verification.
+
+- Pull request `#44` passed both repository checks and merged as
+  `813fed5decd62afb47f16cb601529d5df8e82750`. GitHub Pages run `33477661714`
+  completed successfully; the five changed family and staff assets served from
+  `ffe.org.au` matched the committed SHA-256 hashes exactly.
+- Reviewed CloudFormation change set `v624-staff-document-preview-813fed5` modified
+  only the existing Lambda code plus conditional EventBridge permission/target and
+  SES subscription recalculation. It proposed no DynamoDB, audit, KMS, staging-bucket,
+  backup-vault, secret, Google configuration, staff-parameter or IAM-role replacement.
+- The stack returned to `UPDATE_COMPLETE` with termination protection enabled. Lambda
+  `rosewood-enrolment-v6-production-service` is `Active` with
+  `LastUpdateStatus: Successful`; `/v6/health` reports EOI
+  `rosewood-eoi-2026.23` and Application `rosewood-application-2026.24`.
+- An unauthenticated preview request returned `401 SESSION_REQUIRED`. The one-minute
+  outbox and ten-minute production-canary schedules are enabled. A manual non-writing
+  canary reported Public form, backend health, EOI address, Application workflow and
+  operational pipeline all available; all nine production alarms are `OK`, and both
+  security-topic email subscriptions remain confirmed.
+- Signed-in browser verification on the synthetic canary record confirmed the dialog
+  retained a constant 1480 px width while navigating from the review top to Documents
+  and Signature. Section navigation did not change the page hash. The synthetic record
+  has no uploaded file, so production verification did not access a real family
+  document; protected preview bytes and popup behavior remain covered by the passing
+  synthetic automated tests.
