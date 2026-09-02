@@ -1,5 +1,19 @@
 # Rosewood Enrolment V6
 
+## Cohort planning (2026-09-02)
+
+The staff portal now separates **Applications**, **Prospective families** and a
+de-duplicated **Combined forecast** inside **Cohort planning**. Prospective families are
+stored as independent DynamoDB planning records with explicit contact permission,
+status, source, follow-up ownership, restricted notes and one or more child cohorts.
+They do not create an EOI, invitation or Application and cannot send an email.
+
+Staff may deliberately link one prospective child to one existing family Application.
+The relationship is unique, audited and reversible; it never changes the submitted or
+in-progress Application. The combined forecast counts linked children only through the
+Application side, excludes marked test Applications and excludes archived or
+not-proceeding prospects. Google Sheets are not used for these planning records.
+
 ## Staff review, communications and meetings (2026-09-01)
 
 Authenticated admissions staff can review a submitted application through the same frozen, human-readable section projection used for guardian review. Application Review is deliberately read-only apart from its staff-only checklist, status and internal note. Family emails and principal-meeting invitations are not available inside the review dialog. Review state, correspondence and bookings are separate DynamoDB entities; they never rewrite submitted answers, documents, signatures or application revisions.
@@ -164,9 +178,10 @@ request. Google Sheets show the record's actual form version but remain replacea
 reports. `SCHEMA-EVOLUTION.md` defines the mandatory process for adding, removing,
 renaming or changing questions and for migrating existing records.
 
-The current EOI `2026.23` and Application `2026.24` releases preserve their preceding
-question and data contracts while pinning stable staff review navigation and protected
-five-minute PDF/image document previews. The preceding releases pin staff case
+The current EOI `2026.25` and Application `2026.26` releases preserve their preceding
+question and data contracts while pinning the separate cohort-planning interface and
+read-only monitoring markers. The preceding releases pin stable staff review navigation,
+protected five-minute PDF/image document previews and staff case
 management, the staff planning record-type/date-sort interface, Admissions overview, enrolment-planning, implemented
 application-link request and staff request-list interfaces. Public promotion of that
 request interface is paused;
@@ -198,7 +213,7 @@ browser storage and its server expiry slides to two hours after each authorised
 activity; sign-out or expiry removes it. No staff dashboard data is persisted there. It displays operational
 summaries, creates direct or EOI-linked invitations, rotates active tokens when
 resending, renews expired or missing access without replacing the application, and
-provides audited application review. Its **Enrolment planning** section shows student
+provides audited application review. Its **Cohort planning** Applications tab shows student
 name, primary parent/guardian name and invitation email, entry year, entry level,
 status, signature progress, last activity, staff-review flag and reference, with
 contact-aware search and year, level, status and record-type filters, plus application-
@@ -274,3 +289,4 @@ immunisation-guidance, upload-recovery, family-feedback and family-question clar
 releases. `V6.19-CHANGE-MAP.md` records enrolment planning and
 `V6.20-CHANGE-MAP.md` records the Phase 1 Admissions overview and
 `V6.21-CHANGE-MAP.md` records the planning identity and density refinement.
+`V6.26-CHANGE-MAP.md` records the separate prospective-family cohort-planning release.

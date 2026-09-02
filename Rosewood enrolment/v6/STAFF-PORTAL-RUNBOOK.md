@@ -2,7 +2,7 @@
 
 ## Reviewing an application
 
-1. Open **Applications** or **Enrolment planning**, then choose **Review**.
+1. Open **Applications** or **Cohort planning** > **Applications**, then choose **Review**.
 2. Read the section navigation and complete application projection. Opening a record is audited.
 3. Use **Staff review** to save operational status, checklist and a bounded internal note. This does not alter the family submission.
 4. Close the review when finished. The review dialog has no family-email or meeting-invitation controls.
@@ -41,9 +41,11 @@ preview-only workflows. Do not record or manage them through this portal.
 - The portal is hidden from public navigation and marked `noindex`, but the URL itself
   is not a security boundary.
 - AWS verifies an email OTP before returning any records or accepting a staff action.
-- The production allowlist currently contains only `info@ffe.org.au`.
-- The role model supports `admin`, `admissions` and `viewer`. Admin/admissions can
-  invite, resend and renew expired access; viewers cannot.
+- The production allowlist is managed through the stack configuration; verify the live
+  value rather than relying on this runbook for current membership.
+- The role model supports `admin`, `admissions`, `planning_editor` and `viewer`.
+  Admin/admissions can invite, resend and renew expired access. Admin/admissions and
+  planning editors can maintain prospective-family records; viewers cannot write.
 - Codes expire after 10 minutes, allow five attempts and have server-side email/network
   throttling plus a 30-second resend cooldown.
 - Staff sessions expire after two hours. Without **Remember me**, the token remains in
@@ -156,7 +158,7 @@ entry details. These are derived prompts. They do not send a message, change a s
 reopen an application or make an admissions decision. Select **Review** only when
 follow-up requires the authoritative detail; opening detail is audited.
 
-The **Enrolment planning** section is the operational cohort view. It shows each child's
+The **Cohort planning** > **Applications** tab is the operational application view. It shows each child's
 name, primary parent/guardian name, invitation email, recorded entry year and entry
 level, application status, signature progress, last activity, staff-review warning and
 reference. Search by student, parent/guardian, email or reference, or filter by entry
@@ -210,6 +212,39 @@ creates an audit event.
 
 Google Sheets are replaceable reporting projections. Do not use a Sheet edit to correct
 an application or change Sheet sharing from `info@ffe.org.au` without approval.
+
+## Prospective Families And Combined Forecast
+
+Use **Cohort planning** > **Prospective families** for a family known to Rosewood that
+has not yet supplied an Application record.
+
+1. Select **Add prospective family**.
+2. Enter the parent/guardian name and email, then record contact permission explicitly.
+3. Choose a planning status and source. Add optional relationship/context, staff owner,
+   follow-up date and a restrained internal note.
+4. Add each prospective child separately. A name is optional, but intended entry year
+   and entry level are required.
+5. Save once. The confirmation must state that no Application was created and no email
+   was sent.
+
+Use **Link application** only after confirming that one prospective child and one
+existing family Application are the same person. The action is deliberate, audited,
+unique and reversible. Never link by name/email similarity alone. Linking does not copy
+planning notes into the Application and does not change family answers.
+
+- **Expected to apply** and **Possible** support near-term planning; **Future intake**
+  and **Research needed** remain separate judgement categories; **Not proceeding** is
+  excluded from active forecast totals.
+- Archive obsolete records instead of deleting them. Archived records remain in
+  DynamoDB/audit history and are excluded from the active forecast.
+- **Combined forecast** counts each family Application plus each unlinked active
+  prospective child. A linked child is counted only as an Application. Test Applications
+  are excluded.
+- Do not paste sensitive personal history or unverified comments into restricted notes.
+  Do not copy the source spreadsheet wholesale.
+- Prospect records have no Google Sheets projection and no email action. Use the
+  separate **Family communications** workspace only when a permitted family message is
+  required and has been reviewed.
 
 ## Production Monitoring
 

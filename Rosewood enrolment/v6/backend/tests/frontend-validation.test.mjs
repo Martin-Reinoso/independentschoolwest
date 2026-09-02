@@ -108,9 +108,39 @@ test("V6.8 exposes the revised responsive application experience without retired
   assert.match(adminSource, /compareCreated/);
   assert.match(adminHtml, /Student, parent\/guardian or email/);
   assert.match(adminSource, /Staff review required/);
-  assert.doesNotMatch(adminSource.slice(adminSource.indexOf("function renderPlanning()"), adminSource.indexOf("function renderApplications()")), /mobile|dateOfBirth|health|documents/);
+  assert.doesNotMatch(adminSource.slice(adminSource.indexOf("function renderPlanning()"), adminSource.indexOf("function prospectStatusLabel")), /mobile|dateOfBirth|health|documents/);
   assert.match(adminCss, /\.planning-card \.planning-contact-email/);
   assert.match(adminCss, /#planning-panel \{ padding-inline:/);
+});
+
+test("staff cohort planning separates applications, prospects and de-duplicated forecasting", async () => {
+  const [source, html, css, storeSource] = await Promise.all([
+    readFile(new URL("../../../../pages/rosewood-enrolment-admin-v6.js", import.meta.url), "utf8"),
+    readFile(new URL("../../../../pages/rosewood-enrolment-admin-v6.html", import.meta.url), "utf8"),
+    readFile(new URL("../../../../pages/rosewood-enrolment-admin-v6.css", import.meta.url), "utf8"),
+    readFile(new URL("../dynamo-store.mjs", import.meta.url), "utf8")
+  ]);
+  assert.match(html, /data-panel="planning"[^>]*>\s*<span>Cohort planning<\/span>/);
+  assert.match(html, /data-planning-view="applications"/);
+  assert.match(html, /data-planning-view="prospects"/);
+  assert.match(html, /data-planning-view="forecast"/);
+  assert.match(html, /May Rosewood College contact this family\?/);
+  assert.match(html, /Do not enter health, disability, financial or other sensitive personal information/);
+  assert.match(html, /The portal never links records by name or email automatically/);
+  assert.match(html, /Linked prospective children are represented by their application only/);
+  assert.match(source, /\/v6\/staff\/cohort-planning/);
+  assert.match(source, /\/v6\/staff\/prospects\/application-link/);
+  assert.match(source, /confirmation: "Confirm application link"/);
+  assert.match(source, /No application was created and no message was sent/);
+  assert.match(source, /planning_editor/);
+  assert.match(source, /forecast\?\.totals\?\.potentialTotal/);
+  assert.doesNotMatch(source.slice(source.indexOf("function prospectFormBody"), source.indexOf("function openProspectLink")), /messages\/send|invitations|mailto/);
+  assert.match(storeSource, /PROSPECT_EMAIL#/);
+  assert.match(storeSource, /entity: "prospect_email_index"/);
+  assert.match(css, /\.planning-tab:focus-visible/);
+  assert.match(html, /id="planning-prospects-tab"[^>]*tabindex="-1"/);
+  assert.match(css, /\.forecast-table-wrap \{ overflow-x: auto/);
+  assert.match(css, /@media \(max-width: 700px\)[\s\S]*\.prospect-form-grid, \.prospect-child-row \{ grid-template-columns: 1fr/);
 });
 
 test("staff admissions overview presents the canonical pipeline and privacy-conscious follow-up queue", async () => {

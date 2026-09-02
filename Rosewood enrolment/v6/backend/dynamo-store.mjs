@@ -51,6 +51,135 @@ export class DynamoStore {
   getMeetingBooking(seriesId, bookingId) { return this.get(`MEETING_SERIES#${seriesId}`, `BOOKING#${bookingId}`); }
   getMeetingInvitation(tokenHash) { return this.get(`MEETING_INVITE#${tokenHash}`); }
   getMeetingInvitationById(id) { return this.get(`MEETING_INVITE_ID#${id}`); }
+  getProspectFamily(id) { return this.get(`PROSPECT#${id}`, "PROFILE"); }
+  getProspectChild(familyId, childId) { return this.get(`PROSPECT#${familyId}`, `CHILD#${childId}`); }
+  getProspectApplicationLink(applicationId) { return this.get(`PROSPECT_APP_LINK#${applicationId}`); }
+
+  async listProspectRecords() {
+    return this.scanEntities(["prospect_family", "prospect_child"]);
+  }
+
+  async listProspectChildren(familyId) {
+    const response = await this.client.send(new QueryCommand({
+      TableName: this.tableName,
+      KeyConditionExpression: "PK = :pk AND begins_with(SK, :prefix)",
+      ExpressionAttributeValues: { ":pk": `PROSPECT#${familyId}`, ":prefix": "CHILD#" },
+      ScanIndexForward: true,
+      ConsistentRead: true
+    }));
+    return (response.Items || []).filter(item => item.entity === "prospect_child").map(item => item.data);
+  }
+
+  async saveProspectFamily({ family, children, removedChildIds = [], expectedRevision = 0, emailHash = "", previousEmailHash = "", auditEvents = [] }) {
+    const profileCondition = Number(expectedRevision) === 0
+      ? { ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)" }
+      : {
+          ConditionExpression: "#data.#revision = :expectedRevision",
+          ExpressionAttributeNames: { "#data": "data", "#revision": "revision" },
+          ExpressionAttributeValues: { ":expectedRevision": Number(expectedRevision) }
+        };
+    const childActions = children.map(child => {
+      const previousRevision = Number(child.revision || 1) - 1;
+      const condition = previousRevision === 0
+        ? { ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)" }
+        : {
+            ConditionExpression: "#data.#revision = :expectedChildRevision",
+            ExpressionAttributeNames: { "#data": "data", "#revision": "revision" },
+            ExpressionAttributeValues: { ":expectedChildRevision": previousRevision }
+          };
+      return { Put: {
+        TableName: this.tableName,
+        Item: { ...this.key(`PROSPECT#${family.id}`, `CHILD#${child.id}`), entity: "prospect_child", data: child },
+        ...condition
+      } };
+    });
+    const removalActions = removedChildIds.map(childId => ({ Delete: {
+      TableName: this.tableName,
+      Key: this.key(`PROSPECT#${family.id}`, `CHILD#${childId}`),
+      ConditionExpression: "#data.#linkedApplicationId = :empty",
+      ExpressionAttributeNames: { "#data": "data", "#linkedApplicationId": "linkedApplicationId" },
+      ExpressionAttributeValues: { ":empty": "" }
+    } }));
+    const emailActions = [];
+    if (emailHash && emailHash !== previousEmailHash) emailActions.push({ Put: {
+      TableName: this.tableName,
+      Item: { ...this.key(`PROSPECT_EMAIL#${emailHash}`), entity: "prospect_email_index", data: { familyId: family.id, emailHash, updatedAt: family.updatedAt } },
+      ConditionExpression: "attribute_not_exists(PK)"
+    } });
+    if (previousEmailHash && previousEmailHash !== emailHash) emailActions.push({ Delete: {
+      TableName: this.tableName,
+      Key: this.key(`PROSPECT_EMAIL#${previousEmailHash}`),
+      ConditionExpression: "#data.#familyId = :familyId",
+      ExpressionAttributeNames: { "#data": "data", "#familyId": "familyId" },
+      ExpressionAttributeValues: { ":familyId": family.id }
+    } });
+    try {
+      await this.client.send(new TransactWriteCommand({ TransactItems: [
+        { Put: { TableName: this.tableName, Item: { ...this.key(`PROSPECT#${family.id}`, "PROFILE"), entity: "prospect_family", data: family }, ...profileCondition } },
+        ...childActions,
+        ...removalActions,
+        ...emailActions,
+        ...this.auditActions(auditEvents)
+      ] }));
+      return { family, children };
+    } catch (error) { if (conditional(error)) throw conflict("This prospective-family record changed before it could be saved."); throw error; }
+  }
+
+  async archiveProspectFamily({ family, expectedRevision, emailHash = "", auditEvents = [] }) {
+    const emailActions = emailHash ? [{ Delete: {
+      TableName: this.tableName,
+      Key: this.key(`PROSPECT_EMAIL#${emailHash}`),
+      ConditionExpression: "#data.#familyId = :familyId",
+      ExpressionAttributeNames: { "#data": "data", "#familyId": "familyId" },
+      ExpressionAttributeValues: { ":familyId": family.id }
+    } }] : [];
+    try {
+      await this.client.send(new TransactWriteCommand({ TransactItems: [
+        { Put: {
+          TableName: this.tableName,
+          Item: { ...this.key(`PROSPECT#${family.id}`, "PROFILE"), entity: "prospect_family", data: family },
+          ConditionExpression: "#data.#revision = :expectedRevision",
+          ExpressionAttributeNames: { "#data": "data", "#revision": "revision" },
+          ExpressionAttributeValues: { ":expectedRevision": Number(expectedRevision) }
+        } },
+        ...emailActions,
+        ...this.auditActions(auditEvents)
+      ] }));
+      return family;
+    } catch (error) { if (conditional(error)) throw conflict("This prospective-family record changed before it could be archived."); throw error; }
+  }
+
+  async linkProspectApplication({ familyId, child, previousApplicationId = "", applicationId = "", expectedChildRevision = 0, auditEvents = [] }) {
+    const actions = [{ ConditionCheck: {
+      TableName: this.tableName,
+      Key: this.key(`PROSPECT#${familyId}`, "PROFILE"),
+      ConditionExpression: "attribute_not_exists(#data.#archivedAt) OR #data.#archivedAt = :empty",
+      ExpressionAttributeNames: { "#data": "data", "#archivedAt": "archivedAt" },
+      ExpressionAttributeValues: { ":empty": "" }
+    } }, { Put: {
+      TableName: this.tableName,
+      Item: { ...this.key(`PROSPECT#${familyId}`, `CHILD#${child.id}`), entity: "prospect_child", data: child },
+      ConditionExpression: "#data.#revision = :expectedRevision",
+      ExpressionAttributeNames: { "#data": "data", "#revision": "revision" },
+      ExpressionAttributeValues: { ":expectedRevision": Number(expectedChildRevision) }
+    } }];
+    if (previousApplicationId) actions.push({ Delete: {
+      TableName: this.tableName,
+      Key: this.key(`PROSPECT_APP_LINK#${previousApplicationId}`),
+      ConditionExpression: "#data.#familyId = :familyId AND #data.#childId = :childId",
+      ExpressionAttributeNames: { "#data": "data", "#familyId": "familyId", "#childId": "childId" },
+      ExpressionAttributeValues: { ":familyId": familyId, ":childId": child.id }
+    } });
+    if (applicationId) actions.push({ Put: {
+      TableName: this.tableName,
+      Item: { ...this.key(`PROSPECT_APP_LINK#${applicationId}`), entity: "prospect_application_link", data: { applicationId, familyId, childId: child.id, linkedAt: child.linkedAt, linkedBy: child.linkedBy } },
+      ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)"
+    } });
+    try {
+      await this.client.send(new TransactWriteCommand({ TransactItems: [...actions, ...this.auditActions(auditEvents)] }));
+      return child;
+    } catch (error) { if (conditional(error)) throw conflict("This application or prospective child was linked by another staff member. Refresh and try again."); throw error; }
+  }
 
   async listCaseMessages(applicationId, limit = 200) {
     const response = await this.client.send(new QueryCommand({

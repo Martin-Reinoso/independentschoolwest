@@ -9,7 +9,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://*.s3.ap-southeast-2.amazonaws.com; style-src 'self'; script-src 'self'; connect-src https://6zyzo44sdb5zmmx53toktqrnuu0sikyd.lambda-url.ap-southeast-2.on.aws; form-action 'none'; frame-src https://*.s3.ap-southeast-2.amazonaws.com; object-src 'none'; base-uri 'none'">
   <title>Enrolment Operations | Rosewood College</title>
   <link rel="icon" href="../img/favicon.ico" type="image/x-icon">
-  <link rel="stylesheet" href="rosewood-enrolment-admin-v6.css?v=10">
+  <link rel="stylesheet" href="rosewood-enrolment-admin-v6.css?v=11">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to operations</a>
@@ -96,7 +96,7 @@
         <div class="workspace">
           <aside class="workspace-nav" aria-label="Portal sections">
             <button class="nav-button active" data-panel="overview" type="button"><span>Admissions overview</span><strong id="nav-overview-count">0</strong></button>
-            <button class="nav-button" data-panel="planning" type="button"><span>Enrolment planning</span><strong id="nav-planning-count">0</strong></button>
+            <button class="nav-button" data-panel="planning" type="button"><span>Cohort planning</span><strong id="nav-planning-count">0</strong></button>
             <button class="nav-button" data-panel="applications" type="button"><span>Applications</span><strong id="nav-app-count">0</strong></button>
             <button class="nav-button" data-panel="requests" type="button"><span>Link requests</span><strong id="nav-request-count">0</strong></button>
             <button class="nav-button" data-panel="eois" type="button"><span>Expressions of interest</span><strong id="nav-eoi-count">0</strong></button>
@@ -140,20 +140,49 @@
 
           <section class="workspace-panel" id="planning-panel" data-workspace-panel hidden>
             <div class="panel-heading planning-heading">
-              <div><p class="eyebrow">Cohort visibility</p><h2>Enrolment planning</h2><p class="panel-note">Plan future cohorts using each child’s recorded year and year level of entry.</p></div>
-              <div class="panel-filters planning-filters">
-                <label class="search-field"><span>Search enrolment planning</span><input id="planning-search" type="search" placeholder="Student, parent/guardian or email"></label>
+              <div><p class="eyebrow">Cohort visibility</p><h2>Cohort planning</h2><p class="panel-note">Keep submitted applications authoritative while planning for families who may apply in future.</p></div>
+              <button class="primary-button" id="open-prospect-button" type="button" hidden>Add prospective family</button>
+            </div>
+            <div class="notice error-notice" id="cohort-error" role="alert" tabindex="-1" hidden></div>
+            <div class="notice success-notice" id="cohort-message" role="status" hidden></div>
+            <div class="planning-tabs" role="tablist" aria-label="Cohort planning views">
+              <button class="planning-tab active" id="planning-applications-tab" data-planning-view="applications" role="tab" aria-selected="true" aria-controls="planning-applications-view" type="button">Applications</button>
+              <button class="planning-tab" id="planning-prospects-tab" data-planning-view="prospects" role="tab" aria-selected="false" aria-controls="planning-prospects-view" tabindex="-1" type="button">Prospective families</button>
+              <button class="planning-tab" id="planning-forecast-tab" data-planning-view="forecast" role="tab" aria-selected="false" aria-controls="planning-forecast-view" tabindex="-1" type="button">Combined forecast</button>
+            </div>
+
+            <section id="planning-applications-view" data-planning-view-panel role="tabpanel" aria-labelledby="planning-applications-tab">
+              <div class="panel-filters planning-filters planning-subfilters">
+                <label class="search-field"><span>Search application planning</span><input id="planning-search" type="search" placeholder="Student, parent/guardian or email"></label>
                 <label class="select-field"><span>Entry year</span><select id="planning-year"><option value="all">All entry years</option></select></label>
                 <label class="select-field"><span>Entry level</span><select id="planning-level"><option value="all">All entry levels</option></select></label>
                 <label class="select-field"><span>Status</span><select id="planning-status"><option value="all">All statuses</option><option value="invited">Invited</option><option value="in_progress">In progress</option><option value="pending_signatures">Pending signatures</option><option value="staff_review_required">Staff review required</option><option value="submitted">Submitted</option></select></label>
                 <label class="select-field planning-category-field"><span>Record type</span><select id="planning-category"><option value="family">Family applications</option><option value="test">Test applications</option><option value="all">All records</option></select></label>
                 <label class="select-field planning-sort-field"><span>Sort by</span><select id="planning-sort"><option value="created_desc">Application date · newest</option><option value="created_asc">Application date · oldest</option><option value="cohort">Entry year and level</option></select></label>
               </div>
-            </div>
-            <div class="planning-summary" id="planning-summary" aria-live="polite"></div>
-            <div class="planning-year-summary" id="planning-year-summary" aria-label="Applications by entry year"></div>
-            <div class="record-list" id="planning-list" aria-live="polite"></div>
-            <div class="empty-state" id="planning-empty" hidden><strong>No applications found</strong><p>Try changing the search, record type, entry year, entry level or status filter.</p></div>
+              <div class="planning-summary" id="planning-summary" aria-live="polite"></div>
+              <div class="planning-year-summary" id="planning-year-summary" aria-label="Applications by entry year"></div>
+              <div class="record-list" id="planning-list" aria-live="polite"></div>
+              <div class="empty-state" id="planning-empty" hidden><strong>No applications found</strong><p>Try changing the search, record type, entry year, entry level or status filter.</p></div>
+            </section>
+
+            <section id="planning-prospects-view" data-planning-view-panel role="tabpanel" aria-labelledby="planning-prospects-tab" hidden>
+              <div class="panel-filters prospect-filters">
+                <label class="search-field"><span>Search prospective families</span><input id="prospect-search" type="search" placeholder="Parent/guardian, child or email"></label>
+                <label class="select-field"><span>Planning status</span><select id="prospect-status"><option value="active">All active prospects</option><option value="expected_to_apply">Expected to apply</option><option value="possible">Possible</option><option value="future_intake">Future intake</option><option value="research_needed">Research needed</option><option value="not_proceeding">Not proceeding</option><option value="archived">Archived</option><option value="all">All records</option></select></label>
+                <label class="select-field"><span>Entry year</span><select id="prospect-year"><option value="all">All entry years</option></select></label>
+              </div>
+              <p class="planning-summary" id="prospect-summary" aria-live="polite">Loading prospective-family records...</p>
+              <div class="prospect-list" id="prospect-list" aria-live="polite"></div>
+              <div class="empty-state" id="prospect-empty" hidden><strong>No prospective families found</strong><p>Add a prospective family or change the current filters.</p></div>
+            </section>
+
+            <section id="planning-forecast-view" data-planning-view-panel role="tabpanel" aria-labelledby="planning-forecast-tab" hidden>
+              <div class="forecast-intro"><div><p class="eyebrow">No double counting</p><h3>Combined cohort forecast</h3><p>Linked prospective children are represented by their application only. Test applications and families marked not proceeding are excluded.</p></div><span id="forecast-generated"></span></div>
+              <div class="forecast-totals" id="forecast-totals" aria-label="Combined forecast totals"></div>
+              <div class="forecast-table-wrap"><table class="forecast-table"><caption class="visually-hidden">Applications and unlinked prospective children by intended entry cohort</caption><thead><tr><th scope="col">Entry year</th><th scope="col">Entry level</th><th scope="col">Applications</th><th scope="col">Expected</th><th scope="col">Possible</th><th scope="col">Other prospects</th><th scope="col">Potential total</th></tr></thead><tbody id="forecast-body"></tbody></table></div>
+              <p class="forecast-note" id="forecast-note"></p>
+            </section>
           </section>
 
           <section class="workspace-panel" id="applications-panel" data-workspace-panel hidden>
@@ -289,6 +318,41 @@
     <div class="confirm-actions"><button class="secondary-button" id="cancel-resend-button" type="button">Cancel</button><button class="primary-button" id="confirm-resend-button" type="button"><span>Resend invitation</span><span class="button-loader" aria-hidden="true"></span></button></div>
   </dialog>
 
+  <dialog class="prospect-dialog" id="prospect-dialog" aria-labelledby="prospect-dialog-title">
+    <form method="dialog" class="dialog-close-form"><button class="dialog-close" aria-label="Close prospective family panel" value="cancel">×</button></form>
+    <div class="dialog-heading"><p class="eyebrow">Staff-only planning record</p><h2 id="prospect-dialog-title">Add prospective family</h2><p>This record supports cohort planning only. Saving it does not create an application or send a message.</p></div>
+    <div class="notice error-notice" id="prospect-dialog-error" role="alert" tabindex="-1" hidden></div>
+    <form class="prospect-form" id="prospect-form" novalidate>
+      <input id="prospect-family-id" type="hidden"><input id="prospect-revision" type="hidden" value="0">
+      <div class="prospect-form-grid">
+        <label>Parent/guardian name <span>*</span><input id="prospect-contact-name" maxlength="160" autocomplete="off" required></label>
+        <label>Email address <span>*</span><input id="prospect-email" type="email" maxlength="254" autocomplete="off" required></label>
+        <label>Phone <small>Optional</small><input id="prospect-phone" type="tel" maxlength="40" autocomplete="off"></label>
+        <label>Planning status <span>*</span><select id="prospect-planning-status" required><option value="expected_to_apply">Expected to apply</option><option value="possible">Possible</option><option value="future_intake">Future intake</option><option value="research_needed">Research needed</option><option value="not_proceeding">Not proceeding</option></select></label>
+        <fieldset class="prospect-permission"><legend>May Rosewood College contact this family? <span>*</span></legend><label><input type="radio" name="prospect-contact-permission" value="yes" required> Yes, contact permitted</label><label><input type="radio" name="prospect-contact-permission" value="no" required> No, do not contact</label></fieldset>
+        <label>Source <span>*</span><select id="prospect-source" required><option value="known_family">Known family</option><option value="community_connection">Community connection</option><option value="event">Event or information session</option><option value="website">Website</option><option value="referral">Referral</option><option value="other">Other</option></select></label>
+        <label>Relationship or source detail <small>Optional</small><input id="prospect-relationship" maxlength="300" autocomplete="off"></label>
+        <label>Staff owner <small>Optional email</small><input id="prospect-owner" type="email" maxlength="254" autocomplete="off"></label>
+        <label>Next follow-up <small>Optional</small><input id="prospect-next-follow-up" type="date"></label>
+      </div>
+      <section class="prospect-children-section" aria-labelledby="prospect-children-title"><div class="prospect-section-heading"><div><h3 id="prospect-children-title">Prospective children</h3><p>Add one row per child. The child name may be left blank until known.</p></div><button class="secondary-button" id="add-prospect-child" type="button">Add child</button></div><div id="prospect-child-rows"></div></section>
+      <label class="prospect-notes">Restricted planning notes <small>Do not enter health, disability, financial or other sensitive personal information here.</small><textarea id="prospect-notes" rows="5" maxlength="4000"></textarea></label>
+      <div class="prospect-form-actions"><button class="text-button danger-text" id="archive-prospect-button" type="button" hidden>Archive record</button><button class="primary-button" id="save-prospect-button" type="submit"><span>Save prospective family</span><span class="button-loader" aria-hidden="true"></span></button></div>
+    </form>
+  </dialog>
+
+  <dialog class="prospect-link-dialog" id="prospect-link-dialog" aria-labelledby="prospect-link-title">
+    <form method="dialog" class="dialog-close-form"><button class="dialog-close" aria-label="Close application link panel" value="cancel">×</button></form>
+    <div class="dialog-heading"><p class="eyebrow">Deliberate record link</p><h2 id="prospect-link-title">Link an application</h2><p id="prospect-link-summary">Choose the authoritative application that belongs to this prospective child.</p></div>
+    <div class="notice error-notice" id="prospect-link-error" role="alert" tabindex="-1" hidden></div>
+    <form id="prospect-link-form" class="prospect-link-form">
+      <input id="prospect-link-family-id" type="hidden"><input id="prospect-link-child-id" type="hidden"><input id="prospect-link-child-revision" type="hidden">
+      <label>Application<select id="prospect-link-application"><option value="">No linked application</option></select></label>
+      <p class="link-warning">Confirm the family and child carefully. The portal never links records by name or email automatically.</p>
+      <button class="primary-button" id="save-prospect-link-button" type="submit"><span>Confirm application link</span><span class="button-loader" aria-hidden="true"></span></button>
+    </form>
+  </dialog>
+
   <dialog class="detail-dialog" id="detail-dialog" aria-labelledby="detail-title">
     <form method="dialog" class="dialog-close-form"><button class="dialog-close" aria-label="Close application record" value="cancel">×</button></form>
     <div class="dialog-heading"><p class="eyebrow">Protected application record</p><h2 id="detail-title">Application details</h2><p id="detail-summary">Loading the latest authoritative record...</p></div>
@@ -316,6 +380,6 @@
     </div>
   </dialog>
 
-  <script src="rosewood-enrolment-admin-v6.js?v=15"></script>
+  <script src="rosewood-enrolment-admin-v6.js?v=16"></script>
 </body>
 </html>

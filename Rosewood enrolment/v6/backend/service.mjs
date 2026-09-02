@@ -20,6 +20,10 @@ const APPLICATION_REQUEST_NETWORK_DAILY_LIMIT = 500;
 const APPLICATION_OTP_NETWORK_HALF_HOURLY_LIMIT = 100;
 const CASE_REVIEW_STATUSES = new Set(["not_started", "in_progress", "further_information_required", "ready_for_principal", "on_hold", "review_complete"]);
 const CASE_MESSAGE_PURPOSES = new Set(["missing_document", "replacement_document", "clarification", "additional_information", "principal_meeting", "general_update"]);
+const PROSPECT_PLANNING_STATUSES = new Set(["expected_to_apply", "possible", "future_intake", "research_needed", "not_proceeding"]);
+const PROSPECT_SOURCES = new Set(["known_family", "community_connection", "event", "website", "referral", "other"]);
+const PROSPECT_ENTRY_LEVELS = new Set(["Foundation (Prep)", "Year 1", "Year 2", "Year 3", "Year 4", "Year 5"]);
+const PROSPECT_WRITE_ROLES = ["admin", "admissions", "planning_editor"];
 const MEETING_INVITATION_LIFETIME_MS = 14 * 86400_000;
 const COMMUNITY_ENQUIRY_INTERESTS = new Set(COMMUNITY_ENQUIRY_CONTRACT.fields.find(field => field.id === "interest").options);
 const APPLICATION_VALIDATORS = new Map(Object.keys(FORM_DEFINITIONS.application).map(formVersion => [formVersion, { sanitize: sanitizeApplication, validate: validateApplicationForSubmission }]));
@@ -200,6 +204,52 @@ export function staffPlanningSummary(applications, generatedAt = new Date().toIS
     attention: { total: attentionItems.length, items: attentionItems },
     thresholds: STAFF_ATTENTION_THRESHOLDS
   };
+}
+
+export function staffCohortForecast(applications = [], prospectFamilies = []) {
+  const rows = new Map();
+  const rowFor = (entryYear, entryLevel) => {
+    const key = `${entryYear || "missing"}\u0000${entryLevel || "missing"}`;
+    if (!rows.has(key)) rows.set(key, { entryYear: entryYear || "", entryLevel: entryLevel || "", applications: 0, expectedProspects: 0, possibleProspects: 0, otherProspects: 0, potentialTotal: 0 });
+    return rows.get(key);
+  };
+  for (const application of applications.filter(record => (record.recordCategory || "family") === "family")) {
+    rowFor(application.entryYear, application.entryLevel).applications += 1;
+  }
+  let linkedProspectChildren = 0;
+  for (const family of prospectFamilies.filter(record => !record.archivedAt && record.planningStatus !== "not_proceeding")) {
+    for (const child of family.children || []) {
+      if (child.linkedApplicationId) {
+        linkedProspectChildren += 1;
+        continue;
+      }
+      const row = rowFor(child.entryYear, child.entryLevel);
+      if (family.planningStatus === "expected_to_apply") row.expectedProspects += 1;
+      else if (family.planningStatus === "possible") row.possibleProspects += 1;
+      else row.otherProspects += 1;
+    }
+  }
+  const ordered = [...rows.values()].map(row => ({ ...row, potentialTotal: row.applications + row.expectedProspects + row.possibleProspects + row.otherProspects }))
+    .sort((left, right) => String(left.entryYear || "9999").localeCompare(String(right.entryYear || "9999"), "en", { numeric: true }) || String(left.entryLevel || "zzzz").localeCompare(String(right.entryLevel || "zzzz"), "en", { numeric: true }));
+  return {
+    unit: "student",
+    rows: ordered,
+    totals: ordered.reduce((result, row) => ({ applications: result.applications + row.applications, expectedProspects: result.expectedProspects + row.expectedProspects, possibleProspects: result.possibleProspects + row.possibleProspects, otherProspects: result.otherProspects + row.otherProspects, potentialTotal: result.potentialTotal + row.potentialTotal }), { applications: 0, expectedProspects: 0, possibleProspects: 0, otherProspects: 0, potentialTotal: 0 }),
+    linkedProspectChildren
+  };
+}
+
+function groupProspectRecords(records = []) {
+  const families = new Map(records.filter(item => item.entity === "prospect_family").map(item => [item.data.id, { ...item.data, children: [] }]));
+  for (const item of records.filter(record => record.entity === "prospect_child")) {
+    const family = families.get(item.data.familyId);
+    if (family) family.children.push(item.data);
+  }
+  return [...families.values()].map(family => ({
+    ...family,
+    children: family.children.sort((left, right) => String(left.entryYear || "9999").localeCompare(String(right.entryYear || "9999"), "en", { numeric: true }) || String(left.entryLevel || "").localeCompare(String(right.entryLevel || "")) || String(left.name || "").localeCompare(String(right.name || "")))
+  }))
+    .sort((left, right) => String(right.updatedAt || right.createdAt).localeCompare(String(left.updatedAt || left.createdAt)));
 }
 
 function signerControl(app, guardianId, task = null) {
@@ -717,7 +767,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
   for (const entry of String(env.STAFF_ROLES || "").split(",").map(value => value.trim()).filter(Boolean)) {
     const [rawEmail, rawRole] = entry.split("=");
     const email = normalizeEmail(rawEmail);
-    const role = ["admin", "admissions", "viewer"].includes(rawRole) ? rawRole : "viewer";
+    const role = ["admin", "admissions", "planning_editor", "viewer"].includes(rawRole) ? rawRole : "viewer";
     if (staffEmails.has(email)) staffRoles.set(email, role);
   }
   const otpSecret = env.OTP_HMAC_SECRET;
@@ -866,7 +916,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     return { signedOut: true };
   }
 
-  async function requireStaffSession(event, roles = ["admin", "admissions", "viewer"]) {
+  async function requireStaffSession(event, roles = ["admin", "admissions", "planning_editor", "viewer"]) {
     const session = await requireSession(event, "staff");
     const email = normalizeEmail(session.email);
     const role = staffRoles.get(email);
@@ -1012,6 +1062,161 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
       recentEmails: emailReceipts.sort((a, b) => String(b.completedAt).localeCompare(String(a.completedAt))).slice(0, 30).map(receipt => ({ occurredAt: receipt.completedAt || receipt.createdAt, messageType: receipt.payload?.tags?.message_type || "transactional_email", workflow: receipt.payload?.tags?.workflow || "application", recordId: receipt.payload?.tags?.record_id || "", recipientEmail: receipt.payload?.to || "", deliveryStatus: receipt.result?.messageId ? "sent_to_ses" : "completed" })),
       reporting: { source: "dynamodb", googleSheetsRole: "replaceable_projection" }
     };
+  }
+
+  function cohortApplicationView(application) {
+    const studentName = [application.values?.student_first, application.values?.student_last].filter(Boolean).join(" ");
+    const parentGuardianName = [application.values?.app_guardian_0_first, application.values?.app_guardian_0_last].filter(Boolean).join(" ");
+    return {
+      applicationId: application.id,
+      reference: application.reference || "",
+      studentName,
+      parentGuardianName,
+      recipientEmail: application.recipientEmail || "",
+      entryYear: application.values?.entry_year || "",
+      entryLevel: application.values?.entry_level || "",
+      status: application.status || "invited",
+      recordCategory: staffRecordCategory({ studentName, parentGuardianName, recipientEmail: application.recipientEmail, recordCategory: application.recordCategory })
+    };
+  }
+
+  async function getStaffCohortPlanning(event) {
+    const session = await requireStaffSession(event);
+    const [prospectRecords, operationalRecords] = await Promise.all([store.listProspectRecords(), store.listOperationalRecords()]);
+    const families = groupProspectRecords(prospectRecords);
+    const applications = operationalRecords.filter(item => item.entity === "application").map(item => cohortApplicationView(item.data));
+    return {
+      generatedAt: nowIso(),
+      canEdit: PROSPECT_WRITE_ROLES.includes(session.role),
+      families,
+      applications,
+      forecast: staffCohortForecast(applications, families)
+    };
+  }
+
+  async function saveStaffProspect(event) {
+    const session = await requireStaffSession(event, PROSPECT_WRITE_ROLES);
+    const body = parseBody(event, 40_000);
+    const familyId = safeText(body.familyId, 200) || id("prospect");
+    const existing = body.familyId ? await store.getProspectFamily(familyId) : null;
+    if (body.familyId && !existing) throw appError(404, "PROSPECT_NOT_FOUND", "The prospective-family record was not found.");
+    if (existing?.archivedAt) throw appError(409, "PROSPECT_ARCHIVED", "Archived prospective-family records cannot be edited.");
+    const expectedRevision = Math.max(0, Number(body.expectedRevision) || 0);
+    if (Number(existing?.revision || 0) !== expectedRevision) throw appError(409, "REVISION_CONFLICT", "This prospective-family record changed before it could be saved. Refresh and try again.");
+
+    const contactName = safeText(body.contactName, 160);
+    const email = normalizeEmail(body.email);
+    const phone = safeText(body.phone, 40);
+    const planningStatus = safeText(body.planningStatus, 80);
+    const source = safeText(body.source, 80);
+    const relationship = safeText(body.relationship, 300);
+    const owner = normalizeEmail(body.owner);
+    const nextFollowUp = safeText(body.nextFollowUp, 20);
+    const notes = safeText(body.notes, 4000);
+    if (!contactName) throw appError(422, "CONTACT_NAME_REQUIRED", "Enter the parent or guardian name.");
+    if (!email || email.length > 254 || !/^\S+@\S+\.\S+$/.test(email)) throw appError(422, "INVALID_EMAIL", "Enter a valid family email address.");
+    if (body.contactPermission !== true && body.contactPermission !== false) throw appError(422, "CONTACT_PERMISSION_REQUIRED", "Record whether Rosewood College may contact this family.");
+    if (!PROSPECT_PLANNING_STATUSES.has(planningStatus)) throw appError(422, "INVALID_PLANNING_STATUS", "Select a valid planning status.");
+    if (!PROSPECT_SOURCES.has(source)) throw appError(422, "INVALID_PROSPECT_SOURCE", "Select a valid source or relationship category.");
+    if (owner && !/^\S+@\S+\.\S+$/.test(owner)) throw appError(422, "INVALID_OWNER", "Enter a valid staff owner email address.");
+    if (nextFollowUp && !/^\d{4}-\d{2}-\d{2}$/.test(nextFollowUp)) throw appError(422, "INVALID_FOLLOW_UP_DATE", "Enter a valid next follow-up date.");
+
+    const allProspectRecords = await store.listProspectRecords();
+    const duplicate = groupProspectRecords(allProspectRecords).find(record => record.id !== familyId && !record.archivedAt && record.email === email);
+    if (duplicate) throw appError(409, "PROSPECT_EMAIL_EXISTS", "An active prospective-family record already uses this email address.");
+    const currentChildren = existing ? (store.listProspectChildren ? await store.listProspectChildren(familyId) : allProspectRecords.filter(item => item.entity === "prospect_child" && item.data.familyId === familyId).map(item => item.data)) : [];
+    const currentById = new Map(currentChildren.map(child => [child.id, child]));
+    const submittedChildren = Array.isArray(body.children) ? body.children.slice(0, 8) : [];
+    if (!submittedChildren.length) throw appError(422, "PROSPECT_CHILD_REQUIRED", "Add at least one prospective child.");
+    const childIds = new Set();
+    const savedAt = nowIso();
+    const children = submittedChildren.map(input => {
+      const suppliedId = safeText(input?.id, 200);
+      if (suppliedId && !currentById.has(suppliedId)) throw appError(422, "INVALID_PROSPECT_CHILD", "A prospective child identifier was not recognised.");
+      const childId = suppliedId || id("prospect-child");
+      if (childIds.has(childId)) throw appError(422, "DUPLICATE_PROSPECT_CHILD", "Each prospective child may appear only once.");
+      childIds.add(childId);
+      const current = currentById.get(childId);
+      const name = safeText(input?.name, 160);
+      const entryYear = safeText(input?.entryYear, 4);
+      const entryLevel = safeText(input?.entryLevel, 80);
+      if (!/^20\d{2}$/.test(entryYear)) throw appError(422, "INVALID_ENTRY_YEAR", "Enter a four-digit intended entry year for each child.");
+      if (!PROSPECT_ENTRY_LEVELS.has(entryLevel)) throw appError(422, "INVALID_ENTRY_LEVEL", "Select a valid intended entry level for each child.");
+      return { id: childId, familyId, name, entryYear, entryLevel, linkedApplicationId: current?.linkedApplicationId || "", linkedAt: current?.linkedAt || "", linkedBy: current?.linkedBy || "", createdAt: current?.createdAt || savedAt, updatedAt: savedAt, revision: Number(current?.revision || 0) + 1 };
+    });
+    const removedChildren = currentChildren.filter(child => !childIds.has(child.id));
+    if (removedChildren.some(child => child.linkedApplicationId)) throw appError(409, "LINKED_CHILD_CANNOT_BE_REMOVED", "Unlink the application before removing this prospective child.");
+
+    const family = {
+      id: familyId,
+      contactName,
+      email,
+      phone,
+      contactPermission: body.contactPermission,
+      planningStatus,
+      source,
+      relationship,
+      owner,
+      nextFollowUp,
+      notes,
+      createdAt: existing?.createdAt || savedAt,
+      createdBy: existing?.createdBy || session.email,
+      updatedAt: savedAt,
+      updatedBy: session.email,
+      revision: expectedRevision + 1,
+      archivedAt: "",
+      archivedBy: ""
+    };
+    const audit = createAuditEvent({ workflow: "cohort_planning", recordId: familyId, type: existing ? "prospect.family_updated" : "prospect.family_created", at: savedAt, actorType: "staff", actorId: session.email, details: { planningStatus, contactPermission: body.contactPermission, childCount: children.length, revision: family.revision } });
+    await store.saveProspectFamily({ family, children, removedChildIds: removedChildren.map(child => child.id), expectedRevision, emailHash: sha256(email), previousEmailHash: existing?.email ? sha256(existing.email) : "", auditEvents: [audit] });
+    return { family: { ...family, children } };
+  }
+
+  async function archiveStaffProspect(event) {
+    const session = await requireStaffSession(event, PROSPECT_WRITE_ROLES);
+    const body = parseBody(event, 20_000);
+    if (safeText(body.confirmation, 100) !== "Archive prospective family") throw appError(422, "CONFIRMATION_REQUIRED", "Confirm that this prospective-family record should be archived.");
+    const familyId = safeText(body.familyId, 200);
+    const current = await store.getProspectFamily(familyId);
+    if (!current) throw appError(404, "PROSPECT_NOT_FOUND", "The prospective-family record was not found.");
+    if (current.archivedAt) return { family: current };
+    const expectedRevision = Math.max(0, Number(body.expectedRevision) || 0);
+    if (Number(current.revision || 0) !== expectedRevision) throw appError(409, "REVISION_CONFLICT", "This prospective-family record changed before it could be archived. Refresh and try again.");
+    const archivedAt = nowIso();
+    const family = { ...current, archivedAt, archivedBy: session.email, updatedAt: archivedAt, updatedBy: session.email, revision: expectedRevision + 1 };
+    const audit = createAuditEvent({ workflow: "cohort_planning", recordId: familyId, type: "prospect.family_archived", at: archivedAt, actorType: "staff", actorId: session.email, details: { revision: family.revision } });
+    await store.archiveProspectFamily({ family, expectedRevision, emailHash: current.email ? sha256(current.email) : "", auditEvents: [audit] });
+    return { family };
+  }
+
+  async function linkStaffProspectApplication(event) {
+    const session = await requireStaffSession(event, PROSPECT_WRITE_ROLES);
+    const body = parseBody(event, 20_000);
+    if (safeText(body.confirmation, 100) !== "Confirm application link") throw appError(422, "CONFIRMATION_REQUIRED", "Confirm this deliberate application link.");
+    const familyId = safeText(body.familyId, 200);
+    const childId = safeText(body.childId, 200);
+    const applicationId = safeText(body.applicationId, 200);
+    const [family, child, application] = await Promise.all([
+      store.getProspectFamily(familyId),
+      store.getProspectChild(familyId, childId),
+      applicationId ? store.getApplication(applicationId) : Promise.resolve(null)
+    ]);
+    if (!family || !child) throw appError(404, "PROSPECT_NOT_FOUND", "The prospective family or child was not found.");
+    if (family.archivedAt) throw appError(409, "PROSPECT_ARCHIVED", "Archived prospective-family records cannot be linked.");
+    if (applicationId && !application) throw appError(404, "APPLICATION_NOT_FOUND", "The selected application was not found.");
+    if (application && cohortApplicationView(application).recordCategory !== "family") throw appError(422, "TEST_APPLICATION_NOT_LINKABLE", "Test applications cannot be linked to cohort planning.");
+    const expectedChildRevision = Math.max(0, Number(body.expectedChildRevision) || 0);
+    if (Number(child.revision || 0) !== expectedChildRevision) throw appError(409, "REVISION_CONFLICT", "This prospective child changed before the application could be linked.");
+    if ((child.linkedApplicationId || "") === applicationId) return { child };
+    if (applicationId) {
+      const claimed = await store.getProspectApplicationLink(applicationId);
+      if (claimed && (claimed.familyId !== familyId || claimed.childId !== childId)) throw appError(409, "APPLICATION_ALREADY_LINKED", "This application is already linked to another prospective child.");
+    }
+    const linkedAt = nowIso();
+    const next = { ...child, linkedApplicationId: applicationId, linkedAt: applicationId ? linkedAt : "", linkedBy: applicationId ? session.email : "", updatedAt: linkedAt, revision: expectedChildRevision + 1 };
+    const audit = createAuditEvent({ workflow: "cohort_planning", recordId: familyId, type: applicationId ? "prospect.application_linked" : "prospect.application_unlinked", at: linkedAt, actorType: "staff", actorId: session.email, details: { childId, applicationId: applicationId || child.linkedApplicationId, previousApplicationId: child.linkedApplicationId || "", childRevision: next.revision } });
+    await store.linkProspectApplication({ familyId, child: next, previousApplicationId: child.linkedApplicationId || "", applicationId, expectedChildRevision, auditEvents: [audit] });
+    return { child: next };
   }
 
   async function getStaffApplicationDetail(event) {
@@ -2365,11 +2570,15 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
   }
 
   const routes = new Map([
-    ["GET /v6/health", async () => ({ status: "ok", schemaVersion: SCHEMA_VERSION, formVersions: { eoi: currentFormDefinition("eoi").formVersion, application: currentFormDefinition("application").formVersion, applicationLinkRequest: APPLICATION_REQUEST_CONTRACT.formVersion, communityEnquiry: COMMUNITY_ENQUIRY_CONTRACT.formVersion }, features: { communityEnquiries: true } })],
+    ["GET /v6/health", async () => ({ status: "ok", schemaVersion: SCHEMA_VERSION, formVersions: { eoi: currentFormDefinition("eoi").formVersion, application: currentFormDefinition("application").formVersion, applicationLinkRequest: APPLICATION_REQUEST_CONTRACT.formVersion, communityEnquiry: COMMUNITY_ENQUIRY_CONTRACT.formVersion }, features: { communityEnquiries: true, cohortPlanning: true } })],
     ["POST /v6/session/logout", logoutSession],
     ["POST /v6/staff/access/request-code", requestStaffCode],
     ["POST /v6/staff/access/verify-code", verifyStaffCode],
     ["GET /v6/staff/dashboard", getStaffDashboard],
+    ["GET /v6/staff/cohort-planning", getStaffCohortPlanning],
+    ["POST /v6/staff/prospects", saveStaffProspect],
+    ["POST /v6/staff/prospects/archive", archiveStaffProspect],
+    ["POST /v6/staff/prospects/application-link", linkStaffProspectApplication],
     ["POST /v6/staff/applications/detail", getStaffApplicationDetail],
     ["POST /v6/staff/applications/documents/preview", createStaffDocumentPreview],
     ["POST /v6/staff/applications/revision", getStaffApplicationRevision],

@@ -1,5 +1,35 @@
 # V6 Product and Backend Decisions
 
+## 2026-09-02: separate prospective-family cohort planning
+
+- Rename the staff **Enrolment planning** workspace to **Cohort planning** and divide
+  it into **Applications**, **Prospective families** and **Combined forecast**. The
+  existing Applications list remains an authoritative read-only projection.
+- Store a prospective family and each prospective child as separate DynamoDB entities.
+  A planning record is not an EOI, invitation or Application and cannot submit answers,
+  upload documents, sign or send an email.
+- Require parent/guardian name, email, explicit contact permission, planning status,
+  source and at least one child cohort. Child name is optional; intended entry year and
+  entry level are required. Keep internal notes restricted to authorised staff.
+- Use only `expected_to_apply`, `possible`, `future_intake`, `research_needed` and
+  `not_proceeding` as planning statuses. They are planning judgements, not admissions
+  decisions or automated communication triggers.
+- Never infer an application link from matching names or email addresses. Linking one
+  prospective child to one existing family Application requires a deliberate confirmed
+  staff action, is unique and reversible, and never changes the Application.
+- The combined forecast counts family Applications and unlinked active prospective
+  children. Linked prospective children are excluded so each child is counted once;
+  synthetic/test Applications and archived/not-proceeding prospects are excluded.
+- Do not project prospective-family records to Google Sheets. DynamoDB and its existing
+  point-in-time/locked-backup controls are authoritative; spreadsheet material is an
+  import reference only and is not copied wholesale.
+- Add `planning_editor` as a least-privilege code role for prospective-family writes.
+  `admin` and `admissions` may also write; `viewer` is read-only. Adding the role to
+  code does not grant it to any mailbox.
+- EOI `2026.25` and Application `2026.26` preserve every family question, answer,
+  validator, submission and signature rule. They pin only the updated staff interface
+  and monitoring markers.
+
 ## 2026-09-01: separate review, communications and principal meetings
 
 - **Application Review is for reading and internal review only.** It contains the frozen application projection, protected document previews, signature evidence, revision history and staff-only review status/checklist/note. It contains no family-email composer, correspondence history or meeting invitation action.

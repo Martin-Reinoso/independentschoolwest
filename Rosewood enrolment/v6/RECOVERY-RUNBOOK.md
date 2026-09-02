@@ -1,5 +1,21 @@
 # V6 Recovery Runbook
 
+## Cohort-planning records
+
+- `prospect_family`, `prospect_child` and `prospect_application_link` live in the
+  authoritative main DynamoDB table; prospect audit events live in the restricted audit
+  table. Existing PITR and locked AWS Backup recovery points cover them.
+- There is intentionally no Google Sheets projection to rebuild. Do not restore from an
+  informal planning spreadsheet or treat spreadsheet colours/totals as authoritative.
+- Restore main and audit tables to new isolated recovery resources, validate aggregate
+  prospect-family/child/link counts and one synthetic relationship, then follow the
+  normal authorised cutover process. Never print notes, names, email or phone values.
+- A missing uniqueness claim can make a forecast unsafe. Stop manual linking and
+  reconcile the child link and `PROSPECT_APP_LINK#{applicationId}` together before
+  resuming writes. Do not edit an Application to repair a planning link.
+- Archiving is non-destructive. Do not delete the family/children to remove them from a
+  forecast; use the audited archive operation.
+
 ## Case correspondence and meetings
 
 - Application Review is not a recovery surface for emails or bookings. Use the separate **Family communications** and **Principal meetings** workspaces.

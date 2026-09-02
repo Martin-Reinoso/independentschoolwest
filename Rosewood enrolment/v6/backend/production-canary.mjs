@@ -55,7 +55,7 @@ const PUBLIC_ASSETS = [
   },
   {
     path: "/pages/rosewood-enrolment-admin-v6.js",
-    markers: ["staff/access/request-code", "staff/dashboard", "planningSummary", "renderAttentionQueue", "staff/invitations/renew-access", "staff/applications/communications/context", "staff/applications/messages/send", "staff/meetings/slots/bulk", "staff/applications/documents/preview"]
+    markers: ["staff/access/request-code", "staff/dashboard", "planningSummary", "renderAttentionQueue", "staff/invitations/renew-access", "staff/applications/communications/context", "staff/applications/messages/send", "staff/meetings/slots/bulk", "staff/applications/documents/preview", "staff/cohort-planning", "staff/prospects/application-link"]
   },
   {
     path: "/pages/rosewood-enrolment-meeting-v1.html",
@@ -125,6 +125,7 @@ async function checkBackendHealth({ fetchImpl, apiBaseUrl }) {
     throw new Error("The backend form versions do not match the deployed canary release.");
   }
   if (payload?.features?.communityEnquiries !== true) throw new Error("The community enquiry workflow is not enabled in the deployed backend.");
+  if (payload?.features?.cohortPlanning !== true) throw new Error("The staff cohort-planning workflow is not enabled in the deployed backend.");
 }
 
 async function checkEoiAddressConfiguration({ fetchImpl, apiBaseUrl, siteBaseUrl }) {

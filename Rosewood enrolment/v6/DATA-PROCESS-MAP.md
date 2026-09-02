@@ -1,6 +1,6 @@
 # Rosewood V6 Application Workflow and Data Process Map
 
-Document date: 8 August 2026
+Document date: 2 September 2026
 Implementation: Rosewood Enrolment V6
 Audience: Rosewood leadership, admissions, governance, privacy, records management,
 technology support and implementation partners
@@ -35,6 +35,7 @@ retention schedule, legal declaration or Enrolment Agreement.
 | Request application link | **Live - writing** | Home-page card or standalone no-index page | Direct family invitation and initial blank Application record |
 | Expression of Interest (EOI) | **Live - writing** | Public, hidden and `noindex` EOI URL | Independent EOI record, reference and acknowledgement email |
 | Staff operations | **Live - writing** | Hidden and `noindex` staff portal plus staff OTP | Review EOI/Application progress and issue direct or EOI-linked invitations |
+| Cohort planning | **Live - writing** | Staff portal Cohort planning tabs | Read Applications, maintain separate prospective-family records and view a de-duplicated forecast; no family message is sent |
 | Family communications | **Live - writing** | Separate staff-portal workspace | Staff-reviewed draft/test/explicit send linked to an application; never embedded in Application Review |
 | Principal meetings | **Live - writing** | Separate staff workspace plus private invitation and invited-email OTP | Staff-defined times; family booking or atomic change of the same booking; no family delete/cancel |
 | Application for Enrolment | **Live - writing** | Private invitation URL plus family email OTP | Revisioned application, documents, primary signature and status |
@@ -117,6 +118,8 @@ checks.
 | OTP challenge | Main DynamoDB table | Minimal email-event projection | Code is emailed; only an HMAC is stored. Challenge expires automatically. |
 | Verified session | Main DynamoDB table and browser memory | None | Raw session token stays in browser memory; only its hash is stored. |
 | Application draft and revision | Main DynamoDB table | Progress and audit projections | Full draft answers are not written to a draft Sheet. |
+| Prospective family and child cohorts | Main DynamoDB table | Staff Cohort planning only | Separate from EOI/Application; no Google Sheet projection and no automatic matching or messaging. |
+| Deliberate prospect-to-Application link | Main DynamoDB table | Staff Cohort planning only | Conditional one-to-one claim; changes planning counts only and never rewrites the Application. |
 | Submitted application | Main DynamoDB table | Normalised Application Sheets | A frozen JSON snapshot is stored in restricted Drive. |
 | Supporting documents | Restricted Google Drive | DynamoDB and Sheet metadata | Private S3 buffers uploads and five-minute staff preview copies only; neither is authoritative. |
 | Signature image | Restricted Google Drive | DynamoDB and Sheet metadata | Staff API does not return the image. |
@@ -124,6 +127,40 @@ checks.
 | Email work and receipts | DynamoDB outbox/receipts plus SES | Operations Email Events | Outbox is retried every minute. |
 | Slack completion work and receipts | DynamoDB outbox/receipts | Private `#enrolments-committee` message | Contains reference, completion time and staff-portal link only. Slack is not authoritative. |
 | Backups | DynamoDB PITR and locked AWS Backup vault | None | Drive recovery is governed separately by Google account controls. |
+
+## Workflow: Cohort Planning
+
+```mermaid
+flowchart LR
+    Staff["OTP-authenticated staff"] --> Tabs["Cohort planning"]
+    Tabs --> Apps["Applications: authoritative read-only projection"]
+    Tabs --> Prospects["Prospective families: separate planning records"]
+    Prospects -->|"Transactional save + audit"| DB["Main DynamoDB"]
+    Prospects -->|"Deliberate confirmed link"| Claim["Unique Application-link claim"]
+    Apps --> Forecast["Combined forecast"]
+    Prospects --> Forecast
+    Claim -->|"Exclude linked prospect child"| Forecast
+    Forecast --> Staff
+```
+
+The prospect family stores contact name, email, optional phone, explicit contact
+permission, planning status/source, optional relationship/context, owner, follow-up
+date and restricted note. Each child stores an optional name plus required intended
+entry year and entry level. These are operational estimates and not family-submitted
+answers or admissions decisions.
+
+The service never matches a prospect automatically. A staff member must deliberately
+link one prospect child to one existing non-test Application. The database applies a
+conditional uniqueness claim and audit event. Unlinking removes the claim but leaves
+both records unchanged. Forecast totals count unlinked active prospects plus family
+Applications, so a linked child appears exactly once. Archived and not-proceeding
+prospects and synthetic/test Applications do not contribute.
+
+No cohort-planning endpoint creates an invitation, OTP, session, application revision,
+email/Slack/Sheets outbox item or file. Explicit contact permission is retained for
+future staff judgement but does not itself authorise an automated send from this
+workspace. Family contact continues through the separate reviewed communications
+workflow.
 
 ## End-to-End State Model
 

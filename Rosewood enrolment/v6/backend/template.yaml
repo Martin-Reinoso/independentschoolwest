@@ -32,6 +32,7 @@ Parameters:
   StaffRoles:
     Type: String
     Default: info@ffe.org.au=admin
+    Description: Comma-separated email=role mappings; roles are admin, admissions, planning_editor or viewer
   SecurityNotificationEmail:
     Type: String
     Default: info@ffe.org.au
