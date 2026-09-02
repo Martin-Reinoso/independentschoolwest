@@ -10,6 +10,8 @@
     sessionExpiresAt: 0,
     rememberMe: false,
     dashboard: null,
+    cohort: null,
+    planningView: "applications",
     currentApplicationDetail: null,
     selectedEoi: null,
     selectedApplication: null,
@@ -35,6 +37,8 @@
   const confirmDialog = byId("confirm-dialog");
   const detailDialog = byId("detail-dialog");
   const documentPreviewDialog = byId("document-preview-dialog");
+  const prospectDialog = byId("prospect-dialog");
+  const prospectLinkDialog = byId("prospect-link-dialog");
 
   function element(tag, className, text) {
     const node = document.createElement(tag);
@@ -202,12 +206,15 @@
     state.sessionToken = "";
     state.sessionExpiresAt = 0;
     state.dashboard = null;
+    state.cohort = null;
     state.selectedEoi = null;
     state.selectedApplication = null;
     clearInterval(state.refreshTimer);
     if (inviteDialog.open) inviteDialog.close();
     if (confirmDialog.open) confirmDialog.close();
     if (detailDialog.open) detailDialog.close();
+    if (prospectDialog.open) prospectDialog.close();
+    if (prospectLinkDialog.open) prospectLinkDialog.close();
     dashboardView.hidden = true;
     headerActions.hidden = true;
     accessView.hidden = false;
@@ -248,6 +255,7 @@
     try {
       state.dashboard = await api("/v6/staff/dashboard");
       renderDashboard();
+      await loadCohortPlanning({ quiet: true });
     } catch (error) {
       if (state.sessionToken) setNotice("dashboard-error", error.message);
     } finally {
@@ -264,14 +272,16 @@
     byId("metric-signatures").textContent = data.stats.pendingSignatures;
     byId("metric-submitted").textContent = data.stats.submitted;
     byId("nav-overview-count").textContent = data.planningSummary?.attention?.total || 0;
-    byId("nav-planning-count").textContent = data.applications.length;
+    byId("nav-planning-count").textContent = state.cohort?.forecast?.totals?.potentialTotal ?? data.applications.length;
     byId("nav-app-count").textContent = data.applications.length;
     byId("nav-request-count").textContent = (data.applicationRequests || []).length;
     byId("nav-eoi-count").textContent = data.eois.length;
     byId("nav-communication-count").textContent = data.applications.length;
     byId("nav-email-count").textContent = data.recentEmails.length;
     const canManage = ["admin", "admissions"].includes(data.staff.role);
+    const canPlan = ["admin", "admissions", "planning_editor"].includes(data.staff.role);
     byId("open-invite-button").hidden = !canManage;
+    byId("open-prospect-button").hidden = !canPlan;
     byId("communications-nav-button").hidden = !canManage;
     byId("meetings-nav-button").hidden = !canManage;
     syncOverviewFilters();
@@ -284,6 +294,24 @@
     renderEmails();
     renderEoiPicker();
     syncApplicationSelectors();
+  }
+
+  async function loadCohortPlanning({ quiet = false } = {}) {
+    if (!state.sessionToken) return;
+    if (!quiet) clearNotices("cohort-error", "cohort-message");
+    try {
+      state.cohort = await api("/v6/staff/cohort-planning");
+      syncProspectFilters();
+      renderProspects();
+      renderForecast();
+      byId("nav-planning-count").textContent = state.cohort.forecast?.totals?.potentialTotal ?? (state.dashboard?.applications?.length || 0);
+      byId("open-prospect-button").hidden = !state.cohort.canEdit;
+    } catch (error) {
+      state.cohort = null;
+      setNotice("cohort-error", `Prospective-family planning could not be loaded. Existing application planning remains available. ${error.message}`);
+      renderProspects();
+      renderForecast();
+    }
   }
 
   function addRecordCell(card, label, primary, secondary = "") {
@@ -583,6 +611,255 @@
       list.append(card);
     });
     byId("planning-empty").hidden = records.length > 0;
+  }
+
+  function prospectStatusLabel(status) {
+    return ({ expected_to_apply: "Expected to apply", possible: "Possible", future_intake: "Future intake", research_needed: "Research needed", not_proceeding: "Not proceeding" })[status] || "Not recorded";
+  }
+
+  function prospectSourceLabel(source) {
+    return ({ known_family: "Known family", community_connection: "Community connection", event: "Event or information session", website: "Website", referral: "Referral", other: "Other" })[source] || "Not recorded";
+  }
+
+  function showPlanningView(name) {
+    state.planningView = name;
+    document.querySelectorAll("[data-planning-view-panel]").forEach(panel => { panel.hidden = panel.id !== `planning-${name}-view`; });
+    document.querySelectorAll("[data-planning-view]").forEach(button => {
+      const active = button.dataset.planningView === name;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-selected", String(active));
+      button.tabIndex = active ? 0 : -1;
+    });
+  }
+
+  function syncProspectFilters() {
+    const select = byId("prospect-year");
+    const current = select.value;
+    const years = [...new Set((state.cohort?.families || []).flatMap(family => family.children || []).map(child => child.entryYear).filter(Boolean))].sort((left, right) => left.localeCompare(right, "en", { numeric: true }));
+    clear(select);
+    select.add(new Option("All entry years", "all"));
+    years.forEach(year => select.add(new Option(year, year)));
+    select.value = years.includes(current) ? current : "all";
+  }
+
+  function applicationForProspect(child) {
+    return (state.cohort?.applications || []).find(application => application.applicationId === child.linkedApplicationId) || null;
+  }
+
+  function renderProspects() {
+    const families = state.cohort?.families || [];
+    const query = byId("prospect-search").value.trim().toLowerCase();
+    const status = byId("prospect-status").value;
+    const year = byId("prospect-year").value;
+    const records = families.filter(family => {
+      const archived = Boolean(family.archivedAt);
+      const statusMatch = status === "all" || (status === "active" ? !archived && family.planningStatus !== "not_proceeding" : status === "archived" ? archived : !archived && family.planningStatus === status);
+      const yearMatch = year === "all" || (family.children || []).some(child => child.entryYear === year);
+      const haystack = [family.contactName, family.email, family.phone, family.relationship, family.owner, ...(family.children || []).map(child => child.name)].join(" ").toLowerCase();
+      return statusMatch && yearMatch && (!query || haystack.includes(query));
+    });
+    byId("prospect-summary").textContent = state.cohort
+      ? `Showing ${records.length} of ${families.length} prospective famil${families.length === 1 ? "y" : "ies"}. Planning records never create applications or send messages.`
+      : "Prospective-family records are temporarily unavailable. Existing application planning is unaffected.";
+    const list = byId("prospect-list");
+    clear(list);
+    records.forEach(family => {
+      const card = element("article", "prospect-card");
+      const heading = element("div", "prospect-card-heading");
+      const identity = element("div", "prospect-identity");
+      identity.append(element("strong", "", family.contactName), element("span", "prospect-email", family.email));
+      if (family.phone) identity.append(element("span", "", family.phone));
+      const badges = element("div", "prospect-badges");
+      badges.append(element("span", `prospect-status prospect-status-${family.archivedAt ? "archived" : family.planningStatus}`, family.archivedAt ? "Archived" : prospectStatusLabel(family.planningStatus)));
+      badges.append(element("span", `permission-badge permission-${family.contactPermission ? "yes" : "no"}`, family.contactPermission ? "Contact permitted" : "Do not contact"));
+      heading.append(identity, badges);
+      card.append(heading);
+
+      const meta = element("dl", "prospect-meta");
+      [["Source", [prospectSourceLabel(family.source), family.relationship].filter(Boolean).join(" · ")], ["Staff owner", family.owner || "Not assigned"], ["Next follow-up", family.nextFollowUp ? formatDate(`${family.nextFollowUp}T00:00:00`) : "Not scheduled"], ["Updated", formatDate(family.updatedAt, true)]].forEach(([label, value]) => {
+        const item = element("div", "");
+        item.append(element("dt", "", label), element("dd", "", value));
+        meta.append(item);
+      });
+      card.append(meta);
+
+      const children = element("div", "prospect-children");
+      (family.children || []).forEach(child => {
+        const row = element("div", "prospect-child-summary");
+        const application = applicationForProspect(child);
+        const childIdentity = element("div", "");
+        childIdentity.append(element("strong", "", child.name || "Child name not yet provided"), element("span", "", `${child.entryLevel} · ${child.entryYear}`));
+        const linkState = element("span", `prospect-link-state ${application ? "linked" : "unlinked"}`, application ? `Linked to ${application.reference || application.studentName || "application"}` : "Not linked to an application");
+        row.append(childIdentity, linkState);
+        if (state.cohort?.canEdit && !family.archivedAt) {
+          const linkButton = element("button", "small-button", application ? "Change link" : "Link application");
+          linkButton.type = "button";
+          linkButton.addEventListener("click", () => openProspectLink(family, child));
+          row.append(linkButton);
+        }
+        children.append(row);
+      });
+      card.append(children);
+      if (family.notes) {
+        const note = element("p", "prospect-note", family.notes);
+        note.prepend(element("strong", "", "Restricted note: "));
+        card.append(note);
+      }
+      if (state.cohort?.canEdit && !family.archivedAt) {
+        const actions = element("div", "prospect-card-actions");
+        const edit = element("button", "secondary-button", "Edit planning record");
+        edit.type = "button";
+        edit.addEventListener("click", () => openProspectDialog(family));
+        actions.append(edit);
+        card.append(actions);
+      }
+      list.append(card);
+    });
+    byId("prospect-empty").hidden = records.length > 0;
+  }
+
+  function renderForecast() {
+    const forecast = state.cohort?.forecast;
+    const totals = byId("forecast-totals");
+    const body = byId("forecast-body");
+    clear(totals);
+    clear(body);
+    byId("forecast-generated").textContent = state.cohort ? `Updated ${formatDate(state.cohort.generatedAt, true)}` : "Not available";
+    if (!forecast) {
+      const row = document.createElement("tr");
+      const cell = element("td", "", "Combined forecast is temporarily unavailable.");
+      cell.colSpan = 7;
+      row.append(cell);
+      body.append(row);
+      byId("forecast-note").textContent = "Existing application records remain available in the Applications tab.";
+      return;
+    }
+    [["Applications", forecast.totals.applications], ["Expected prospects", forecast.totals.expectedProspects], ["Possible prospects", forecast.totals.possibleProspects], ["Other active prospects", forecast.totals.otherProspects], ["Potential students", forecast.totals.potentialTotal]].forEach(([label, value]) => {
+      const card = element("article", "forecast-total");
+      card.append(element("span", "", label), element("strong", "", String(value)));
+      totals.append(card);
+    });
+    forecast.rows.forEach(item => {
+      const row = document.createElement("tr");
+      [item.entryYear || "Not provided", item.entryLevel || "Not provided", item.applications, item.expectedProspects, item.possibleProspects, item.otherProspects, item.potentialTotal].forEach((value, index) => {
+        const cell = element(index < 2 ? "th" : "td", index === 6 ? "forecast-potential" : "", String(value));
+        if (index < 2) cell.scope = "row";
+        row.append(cell);
+      });
+      body.append(row);
+    });
+    if (!forecast.rows.length) {
+      const row = document.createElement("tr");
+      const cell = element("td", "", "No cohort records are available yet.");
+      cell.colSpan = 7;
+      row.append(cell);
+      body.append(row);
+    }
+    byId("forecast-note").textContent = `${forecast.linkedProspectChildren} linked prospective ${forecast.linkedProspectChildren === 1 ? "child is" : "children are"} excluded from prospect counts to prevent double counting.`;
+  }
+
+  function addProspectChildRow(child = {}) {
+    const container = byId("prospect-child-rows");
+    if (container.children.length >= 8) return;
+    const row = element("div", "prospect-child-row");
+    row.dataset.childId = child.id || "";
+    row.dataset.childRevision = String(child.revision || 0);
+    row.dataset.linkedApplicationId = child.linkedApplicationId || "";
+    const nameLabel = element("label", "", "Child name");
+    const name = document.createElement("input");
+    name.className = "prospect-child-name";
+    name.maxLength = 160;
+    name.autocomplete = "off";
+    name.value = child.name || "";
+    nameLabel.append(name);
+    const yearLabel = element("label", "", "Intended entry year *");
+    const year = document.createElement("input");
+    year.className = "prospect-child-year";
+    year.type = "number";
+    year.min = "2026";
+    year.max = "2099";
+    year.required = true;
+    year.value = child.entryYear || "2027";
+    yearLabel.append(year);
+    const levelLabel = element("label", "", "Intended entry level *");
+    const level = document.createElement("select");
+    level.className = "prospect-child-level";
+    ["Foundation (Prep)", "Year 1", "Year 2", "Year 3", "Year 4", "Year 5"].forEach(value => level.add(new Option(value, value)));
+    level.value = child.entryLevel || "Foundation (Prep)";
+    levelLabel.append(level);
+    const remove = element("button", "text-button danger-text", "Remove");
+    remove.type = "button";
+    remove.disabled = Boolean(child.linkedApplicationId);
+    if (child.linkedApplicationId) remove.title = "Unlink the application before removing this child.";
+    remove.addEventListener("click", () => {
+      row.remove();
+      if (!container.children.length) addProspectChildRow();
+    });
+    row.append(nameLabel, yearLabel, levelLabel, remove);
+    if (child.linkedApplicationId) row.append(element("p", "linked-child-note", "This child is linked to an application and cannot be removed until the link is cleared."));
+    container.append(row);
+  }
+
+  function openProspectDialog(family = null) {
+    clearNotices("prospect-dialog-error");
+    byId("prospect-dialog-title").textContent = family ? "Edit prospective family" : "Add prospective family";
+    byId("prospect-family-id").value = family?.id || "";
+    byId("prospect-revision").value = String(family?.revision || 0);
+    byId("prospect-contact-name").value = family?.contactName || "";
+    byId("prospect-email").value = family?.email || "";
+    byId("prospect-phone").value = family?.phone || "";
+    byId("prospect-planning-status").value = family?.planningStatus || "expected_to_apply";
+    document.querySelectorAll('input[name="prospect-contact-permission"]').forEach(input => { input.checked = family ? input.value === (family.contactPermission ? "yes" : "no") : input.value === "yes"; });
+    byId("prospect-source").value = family?.source || "known_family";
+    byId("prospect-relationship").value = family?.relationship || "";
+    byId("prospect-owner").value = family?.owner || "";
+    byId("prospect-next-follow-up").value = family?.nextFollowUp || "";
+    byId("prospect-notes").value = family?.notes || "";
+    clear(byId("prospect-child-rows"));
+    (family?.children?.length ? family.children : [{}]).forEach(addProspectChildRow);
+    byId("archive-prospect-button").hidden = !family;
+    prospectDialog.showModal();
+    byId("prospect-contact-name").focus();
+  }
+
+  function prospectFormBody() {
+    const permission = document.querySelector('input[name="prospect-contact-permission"]:checked');
+    return {
+      familyId: byId("prospect-family-id").value || undefined,
+      expectedRevision: Number(byId("prospect-revision").value || 0),
+      contactName: byId("prospect-contact-name").value,
+      email: byId("prospect-email").value,
+      phone: byId("prospect-phone").value,
+      contactPermission: permission ? permission.value === "yes" : null,
+      planningStatus: byId("prospect-planning-status").value,
+      source: byId("prospect-source").value,
+      relationship: byId("prospect-relationship").value,
+      owner: byId("prospect-owner").value,
+      nextFollowUp: byId("prospect-next-follow-up").value,
+      notes: byId("prospect-notes").value,
+      children: [...byId("prospect-child-rows").children].map(row => ({ id: row.dataset.childId || undefined, name: row.querySelector(".prospect-child-name").value, entryYear: row.querySelector(".prospect-child-year").value, entryLevel: row.querySelector(".prospect-child-level").value }))
+    };
+  }
+
+  function openProspectLink(family, child) {
+    clearNotices("prospect-link-error");
+    byId("prospect-link-family-id").value = family.id;
+    byId("prospect-link-child-id").value = child.id;
+    byId("prospect-link-child-revision").value = String(child.revision || 0);
+    byId("prospect-link-summary").textContent = `${child.name || "Unnamed child"} · ${child.entryLevel} · ${child.entryYear}. Choose the authoritative application only after confirming the family.`;
+    const select = byId("prospect-link-application");
+    clear(select);
+    select.add(new Option("No linked application", ""));
+    const claims = new Map((state.cohort?.families || []).flatMap(item => (item.children || []).filter(entry => entry.linkedApplicationId).map(entry => [entry.linkedApplicationId, entry.id])));
+    (state.cohort?.applications || []).filter(application => application.recordCategory === "family").sort((left, right) => String(left.studentName || left.parentGuardianName || left.recipientEmail).localeCompare(String(right.studentName || right.parentGuardianName || right.recipientEmail))).forEach(application => {
+      const label = `${application.studentName || "Student not named"} · ${application.parentGuardianName || application.recipientEmail} · ${application.entryLevel || "level pending"} ${application.entryYear || ""}`;
+      const option = new Option(label, application.applicationId);
+      option.disabled = claims.has(application.applicationId) && claims.get(application.applicationId) !== child.id;
+      select.add(option);
+    });
+    select.value = child.linkedApplicationId || "";
+    prospectLinkDialog.showModal();
+    select.focus();
   }
 
   function renderApplications() {
@@ -1407,6 +1684,64 @@
   byId("planning-status").addEventListener("change", renderPlanning);
   byId("planning-category").addEventListener("change", renderPlanning);
   byId("planning-sort").addEventListener("change", renderPlanning);
+  document.querySelectorAll("[data-planning-view]").forEach((button, index, buttons) => {
+    button.addEventListener("click", () => showPlanningView(button.dataset.planningView));
+    button.addEventListener("keydown", event => {
+      if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+      event.preventDefault();
+      const next = event.key === 'ArrowRight' ? (index + 1) % buttons.length : (index - 1 + buttons.length) % buttons.length;
+      buttons[next].focus();
+      showPlanningView(buttons[next].dataset.planningView);
+    });
+  });
+  byId("prospect-search").addEventListener("input", renderProspects);
+  byId("prospect-status").addEventListener("change", renderProspects);
+  byId("prospect-year").addEventListener("change", renderProspects);
+  byId("open-prospect-button").addEventListener("click", () => openProspectDialog());
+  byId("add-prospect-child").addEventListener("click", () => addProspectChildRow());
+  byId("prospect-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!event.currentTarget.reportValidity()) return;
+    const button = byId("save-prospect-button");
+    clearNotices("prospect-dialog-error", "cohort-message");
+    setLoading(button, true);
+    try {
+      await api("/v6/staff/prospects", { method: "POST", body: prospectFormBody() });
+      prospectDialog.close();
+      await loadCohortPlanning();
+      setNotice("cohort-message", "Prospective-family planning record saved. No application was created and no message was sent.");
+      showPlanningView("prospects");
+    } catch (error) { setNotice("prospect-dialog-error", error.message); }
+    finally { setLoading(button, false); }
+  });
+  byId("archive-prospect-button").addEventListener("click", async event => {
+    if (!window.confirm("Archive this prospective-family planning record? It will remain in the audit history and no application will be changed.")) return;
+    const button = event.currentTarget;
+    clearNotices("prospect-dialog-error", "cohort-message");
+    setLoading(button, true);
+    try {
+      await api("/v6/staff/prospects/archive", { method: "POST", body: { familyId: byId("prospect-family-id").value, expectedRevision: Number(byId("prospect-revision").value || 0), confirmation: "Archive prospective family" } });
+      prospectDialog.close();
+      await loadCohortPlanning();
+      setNotice("cohort-message", "Prospective-family planning record archived. Applications and family communications were not changed.");
+      showPlanningView("prospects");
+    } catch (error) { setNotice("prospect-dialog-error", error.message); }
+    finally { setLoading(button, false); }
+  });
+  byId("prospect-link-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    const button = byId("save-prospect-link-button");
+    clearNotices("prospect-link-error", "cohort-message");
+    setLoading(button, true);
+    try {
+      await api("/v6/staff/prospects/application-link", { method: "POST", body: { familyId: byId("prospect-link-family-id").value, childId: byId("prospect-link-child-id").value, expectedChildRevision: Number(byId("prospect-link-child-revision").value || 0), applicationId: byId("prospect-link-application").value, confirmation: "Confirm application link" } });
+      prospectLinkDialog.close();
+      await loadCohortPlanning();
+      setNotice("cohort-message", "Application link updated. The combined forecast now counts the student once.");
+      showPlanningView("prospects");
+    } catch (error) { setNotice("prospect-link-error", error.message); }
+    finally { setLoading(button, false); }
+  });
   byId("request-search").addEventListener("input", renderApplicationRequests);
   byId("application-status").addEventListener("change", renderApplications);
   byId("eoi-search").addEventListener("input", renderEois);

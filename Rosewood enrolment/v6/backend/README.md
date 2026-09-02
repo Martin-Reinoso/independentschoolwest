@@ -9,7 +9,7 @@ preview-only workflows.
 AWS in `ap-southeast-2` is authoritative for operational records:
 
 - DynamoDB stores application-link request, EOI, application, invitation, draft,
-  session and outbox records.
+  session, prospective-family planning and outbox records.
 - A separate DynamoDB table stores append-only application and staff audit events.
 - Both tables use customer-managed KMS encryption, deletion protection and point-in-
   time recovery.
@@ -37,7 +37,7 @@ server-acknowledged application create, start, save and submission also writes a
 append-only DynamoDB revision. Staff can inspect a selected historical revision through
 an authorised, audited endpoint. See `../SCHEMA-EVOLUTION.md` before changing fields,
 options, validation or required status.
-The current EOI `2026.24` and Application `2026.25` contracts pin the family, staff and signing HTML/JavaScript/CSS,
+The current EOI `2026.25` and Application `2026.26` contracts pin the family, staff and signing HTML/JavaScript/CSS,
 policy projection and all original Word/PDF policy assets. Policy viewing is frontend-
 only and does not create an application answer, acknowledgement or audit event.
 These contracts change no family question or answer rule. They pin the operational
@@ -70,6 +70,14 @@ remain outside the aggregate `planningSummary` and attention items. A response-o
 email aliases for staff filtering; it is not written to the application, Sheets or an
 admissions decision. `createdAt` remains the authoritative application-created date for
 the staff sort.
+
+The staff **Cohort planning** endpoint also reads separate `prospect_family` and
+`prospect_child` records. These records hold operational planning data only and are not
+EOIs or Applications. A unique `prospect_application_link` claim makes deliberate
+child-to-Application links one-to-one. The combined forecast counts unlinked active
+prospective children plus family Applications, excludes test Applications, and omits
+archived or not-proceeding prospects. No prospect route queues email or writes a Google
+Sheet projection.
 
 `GOOGLE_MAPS_BROWSER_API_KEY` is read from the existing Secrets Manager configuration.
 It is returned through the no-store EOI runtime-config route and an OTP-verified
@@ -105,7 +113,9 @@ API and Places API (New). Never commit the key or print it in logs.
   distinct application record. Existing one-child invitation records remain supported.
 - Staff authenticate at
   `https://ffe.org.au/pages/rosewood-enrolment-admin-v6.html` with an allowlisted OTP.
-- Roles are `admin`, `admissions` and `viewer`; configured addresses receive one role.
+- Roles are `admin`, `admissions`, `planning_editor` and `viewer`; configured addresses
+  receive one role. `planning_editor` is limited to cohort-planning writes plus common
+  read surfaces and is not granted merely by deploying this release.
 - Detailed application views create append-only audit events.
 - Documents are listed in the portal but accessed only through the restricted Drive.
 - Raw invitation links, signature drawings and network fingerprints are not returned
@@ -207,6 +217,10 @@ POST /v6/session/logout
 POST /v6/staff/access/request-code
 POST /v6/staff/access/verify-code
 GET  /v6/staff/dashboard
+GET  /v6/staff/cohort-planning
+POST /v6/staff/prospects
+POST /v6/staff/prospects/archive
+POST /v6/staff/prospects/application-link
 POST /v6/staff/applications/detail
 POST /v6/staff/applications/documents/preview
 POST /v6/staff/applications/revision

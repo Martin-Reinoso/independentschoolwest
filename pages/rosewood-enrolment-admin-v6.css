@@ -191,6 +191,59 @@ button:disabled { cursor: not-allowed; opacity: .5; transform: none !important; 
 .planning-year-chip:hover { border-color: var(--ink); background: #fff; }
 .planning-year-chip:focus-visible { outline: 3px solid rgba(19, 34, 59, .22); outline-offset: 2px; }
 .planning-year-chip strong { min-width: 1.7rem; padding: .15rem .35rem; color: #fff; background: var(--ink); border-radius: 999px; font-size: .7rem; text-align: center; }
+.planning-tabs { display: flex; gap: .35rem; margin: 0 0 1.15rem; padding: .3rem; overflow-x: auto; background: #eee8dd; border-radius: .75rem; }
+.planning-tab { min-height: 42px; flex: 1 1 0; padding: .62rem .9rem; color: var(--ink-soft); background: transparent; border: 0; border-radius: .55rem; cursor: pointer; font-size: .78rem; font-weight: 800; white-space: nowrap; }
+.planning-tab:hover { color: var(--ink); background: rgba(255,255,255,.55); }
+.planning-tab.active { color: var(--ink); background: #fff; box-shadow: 0 3px 10px rgba(19,34,59,.08); }
+.planning-tab:focus-visible { outline: 3px solid rgba(19,34,59,.22); outline-offset: 2px; }
+.planning-subfilters, .prospect-filters { justify-content: flex-start; margin-bottom: 1rem; padding: .8rem; background: #f8f4ed; border: 1px solid #e6ddcf; border-radius: .75rem; }
+.prospect-filters { display: flex; flex-wrap: wrap; gap: .7rem; }
+.prospect-filters .search-field { width: min(360px, 100%); }
+.prospect-filters .select-field { width: 190px; }
+.prospect-list { display: grid; gap: .8rem; }
+.prospect-card { padding: 1rem; background: #fff; border: 1px solid #ded5c6; border-radius: .85rem; }
+.prospect-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding-bottom: .8rem; border-bottom: 1px solid #eee7dc; }
+.prospect-identity { min-width: 0; display: grid; gap: .18rem; }
+.prospect-identity > strong { font-size: 1rem; }
+.prospect-identity > span, .prospect-email { color: var(--ink-soft); font-size: .75rem; overflow-wrap: anywhere; }
+.prospect-email { width: fit-content; }
+.prospect-badges { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .35rem; }
+.prospect-status, .permission-badge, .prospect-link-state { display: inline-flex; width: fit-content; padding: .3rem .52rem; border-radius: 999px; font-size: .67rem; font-weight: 800; }
+.prospect-status-expected_to_apply { color: #1f6244; background: #e3f1e7; }
+.prospect-status-possible { color: #77500f; background: #f7edcf; }
+.prospect-status-future_intake { color: #315c7c; background: #e6f0f7; }
+.prospect-status-research_needed { color: #704f2f; background: #f1e7da; }
+.prospect-status-not_proceeding, .prospect-status-archived { color: #5f6672; background: #eceef1; }
+.permission-yes { color: #1f6244; background: #e3f1e7; }
+.permission-no { color: #873d2d; background: #f6e4de; }
+.prospect-meta { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .7rem; margin: .8rem 0; }
+.prospect-meta div { min-width: 0; }
+.prospect-meta dt { color: #788295; font-size: .62rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.prospect-meta dd { margin: .22rem 0 0; color: var(--ink); font-size: .75rem; overflow-wrap: anywhere; }
+.prospect-children { display: grid; gap: .45rem; }
+.prospect-child-summary { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(190px, .7fr) auto; align-items: center; gap: .7rem; padding: .65rem .75rem; background: #faf7f1; border-radius: .6rem; }
+.prospect-child-summary > div { min-width: 0; display: grid; gap: .15rem; }
+.prospect-child-summary > div span { color: var(--ink-soft); font-size: .7rem; }
+.prospect-link-state.linked { color: var(--green-dark); background: var(--green-soft); }
+.prospect-link-state.unlinked { color: #596275; background: #edf0f4; }
+.prospect-note { margin: .75rem 0 0; padding: .65rem .75rem; color: #6d542f; background: #fbf4df; border-left: 3px solid var(--gold); border-radius: .35rem; font-size: .72rem; line-height: 1.5; white-space: pre-wrap; }
+.prospect-card-actions { display: flex; justify-content: flex-end; margin-top: .8rem; }
+.forecast-intro { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+.forecast-intro h3 { margin: 0 0 .3rem; font: 700 1.65rem var(--display); }
+.forecast-intro p:not(.eyebrow), .forecast-intro > span, .forecast-note { margin: 0; color: var(--ink-soft); font-size: .75rem; line-height: 1.5; }
+.forecast-totals { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .55rem; margin-bottom: 1rem; }
+.forecast-total { display: grid; gap: .35rem; padding: .8rem; background: #fff; border: 1px solid var(--line); border-radius: .65rem; }
+.forecast-total span { color: var(--ink-soft); font-size: .68rem; font-weight: 800; }
+.forecast-total strong { font: 700 1.8rem var(--display); }
+.forecast-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: .75rem; }
+.forecast-table { width: 100%; min-width: 720px; border-collapse: collapse; background: #fff; font-size: .75rem; }
+.forecast-table th, .forecast-table td { padding: .75rem; border-bottom: 1px solid #eee7dc; text-align: left; }
+.forecast-table thead th { color: #fff; background: var(--ink); font-size: .66rem; letter-spacing: .04em; text-transform: uppercase; }
+.forecast-table tbody th { font-weight: 750; }
+.forecast-table td { text-align: center; }
+.forecast-table .forecast-potential { color: var(--green-dark); background: #edf6ef; font-weight: 900; }
+.forecast-note { margin-top: .75rem; }
+.visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; white-space: nowrap !important; border: 0 !important; }
 
 .record-list { display: grid; gap: .7rem; }
 .record-card { display: grid; grid-template-columns: minmax(200px, 1.4fr) minmax(160px, .9fr) minmax(150px, .8fr) minmax(130px, .7fr) auto; align-items: center; gap: 1rem; padding: 1rem 1.1rem; background: #fff; border: 1px solid #e3dbcf; border-radius: .75rem; transition: border-color .18s, box-shadow .18s; }
@@ -233,6 +286,30 @@ dialog { color: var(--ink); }
 dialog::backdrop { background: rgba(10, 20, 35, .62); backdrop-filter: blur(4px); }
 .invite-dialog { width: min(850px, calc(100% - 2rem)); max-height: calc(100vh - 2rem); margin: auto; padding: 0; overflow: auto; background: var(--surface); border: 0; border-radius: 1.1rem; box-shadow: 0 30px 90px rgba(10, 20, 35, .32); }
 .invite-dialog[open] { animation: dialog-in .2s ease-out; }
+.prospect-dialog, .prospect-link-dialog { width: min(920px, calc(100% - 2rem)); max-height: calc(100vh - 2rem); margin: auto; padding: 0; overflow: auto; color: var(--ink); background: var(--surface); border: 0; border-radius: 1.1rem; box-shadow: 0 30px 90px rgba(10,20,35,.32); }
+.prospect-link-dialog { width: min(680px, calc(100% - 2rem)); }
+.prospect-dialog[open], .prospect-link-dialog[open] { animation: dialog-in .2s ease-out; }
+.prospect-dialog > .notice, .prospect-link-dialog > .notice { margin: 1rem 1.5rem 0; }
+.prospect-form { display: grid; gap: 1.1rem; padding: 1.4rem 1.5rem 1.6rem; }
+.prospect-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .9rem; }
+.prospect-form label small, .prospect-notes small { display: block; margin-top: .18rem; color: var(--ink-soft); font-size: .68rem; font-weight: 500; }
+.prospect-form textarea { width: 100%; margin-top: .5rem; padding: .75rem .9rem; resize: vertical; color: var(--ink); background: #fff; border: 1px solid #cfc5b6; border-radius: .62rem; font: inherit; outline: none; }
+.prospect-form textarea:focus { border-color: var(--ink); box-shadow: 0 0 0 4px rgba(19,34,59,.1); }
+.prospect-permission { min-width: 0; display: flex; flex-wrap: wrap; gap: .6rem 1rem; margin: 0; padding: .75rem .85rem; border: 1px solid var(--line); border-radius: .62rem; }
+.prospect-permission legend { padding: 0 .25rem; font-size: .78rem; font-weight: 800; }
+.prospect-permission label { display: flex; align-items: center; gap: .45rem; font-size: .73rem; cursor: pointer; }
+.prospect-permission input { width: 1rem; min-height: 1rem; margin: 0; accent-color: var(--green); }
+.prospect-children-section { padding: 1rem; background: #f8f4ed; border: 1px solid var(--line); border-radius: .75rem; }
+.prospect-section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: .8rem; }
+.prospect-section-heading h3 { margin: 0; font-size: 1rem; }
+.prospect-section-heading p { margin: .25rem 0 0; color: var(--ink-soft); font-size: .72rem; }
+#prospect-child-rows { display: grid; gap: .55rem; }
+.prospect-child-row { display: grid; grid-template-columns: minmax(180px, 1fr) 145px minmax(180px, .7fr) auto; align-items: end; gap: .65rem; padding: .75rem; background: #fff; border: 1px solid #e4dccf; border-radius: .65rem; }
+.linked-child-note { grid-column: 1 / -1; margin: 0; color: var(--ink-soft); font-size: .68rem; }
+.prospect-form-actions { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.danger-text { color: var(--danger); }
+.prospect-link-form { display: grid; gap: 1rem; padding: 1.4rem 1.5rem 1.6rem; }
+.link-warning { margin: 0; padding: .75rem; color: #6f4e18; background: #fbf1d6; border-radius: .55rem; font-size: .76rem; line-height: 1.5; }
 @keyframes dialog-in { from { opacity: 0; transform: translateY(18px) scale(.98); } }
 .dialog-close-form { position: sticky; top: .9rem; z-index: 2; float: right; margin: .9rem .9rem 0 0; }
 .dialog-close { width: 2.4rem; height: 2.4rem; color: var(--ink); background: #f3eee5; border: 0; border-radius: 50%; cursor: pointer; font-size: 1.5rem; line-height: 1; }
@@ -365,6 +442,8 @@ dialog::backdrop { background: rgba(10, 20, 35, .62); backdrop-filter: blur(4px)
   .planning-card .record-cell:nth-child(3) { display: block; }
   .planning-card .record-cell:nth-child(4) { display: none; }
   .email-card { grid-template-columns: 1fr 1fr 1fr; }
+  .prospect-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .forecast-totals { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 700px) {
@@ -409,6 +488,15 @@ dialog::backdrop { background: rgba(10, 20, 35, .62); backdrop-filter: blur(4px)
   .planning-heading > div:first-child { max-width: none; }
   .planning-filters { width: 100%; }
   .planning-filters .search-field, .planning-filters .select-field { width: 100%; }
+  .planning-tabs { margin-inline: -.25rem; }
+  .planning-subfilters, .prospect-filters { align-items: stretch; flex-direction: column; }
+  .prospect-filters .search-field, .prospect-filters .select-field { width: 100%; }
+  .prospect-card-heading, .forecast-intro { align-items: stretch; flex-direction: column; }
+  .prospect-badges { justify-content: flex-start; }
+  .prospect-meta { grid-template-columns: 1fr 1fr; }
+  .prospect-child-summary { grid-template-columns: 1fr; }
+  .prospect-child-summary .small-button { justify-self: start; }
+  .forecast-totals { grid-template-columns: 1fr 1fr; }
   .search-field, .select-field { width: 100%; }
   .record-card, .email-card { grid-template-columns: 1fr auto; gap: .8rem; }
   .record-card .record-cell { display: none; }
@@ -430,6 +518,10 @@ dialog::backdrop { background: rgba(10, 20, 35, .62); backdrop-filter: blur(4px)
   .invite-dialog > .notice { margin-inline: 1.2rem; }
   .mode-switch { margin-inline: 1.2rem; }
   .invite-form { grid-template-columns: 1fr; padding: 1.2rem; }
+  .prospect-form-grid, .prospect-child-row { grid-template-columns: 1fr; }
+  .prospect-form, .prospect-link-form { padding: 1.2rem; }
+  .prospect-dialog > .notice, .prospect-link-dialog > .notice { margin-inline: 1.2rem; }
+  .prospect-section-heading, .prospect-form-actions { align-items: stretch; flex-direction: column; }
   .form-submit { align-items: stretch; flex-direction: column; gap: 1rem; }
   .form-submit .primary-button { width: 100%; }
   .confirm-actions { grid-template-columns: 1fr; }

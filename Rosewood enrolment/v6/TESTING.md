@@ -1830,3 +1830,29 @@ release verification.
   destination retains all seven configured event types through its confirmed Lambda
   subscription, and its SNS topic remains encrypted with dedicated enabled
   customer-managed key `75953611-d9aa-4cf2-9e5e-e08cf674864d`.
+
+## V6.26 Prospective-Family Cohort Planning Verification
+
+Prepared on 2 September 2026 with synthetic planning records only. The source workbook
+was inspected read-only and was not imported into tests, Git, DynamoDB or Google Sheets.
+
+- All 156 backend and interface-contract tests pass.
+- Dedicated tests prove admin/planning-editor write access, viewer read-only access,
+  explicit contact permission, bounded child cohorts, no email send, transactional
+  audit, archive preservation and exclusion from active forecasts.
+- Deliberate linking tests prove one Application cannot be claimed by two prospective
+  children, unlinking is reversible, test Applications are rejected and the linked
+  Application remains byte-for-byte unchanged.
+- Forecast tests prove family Applications and unlinked active prospects are counted by
+  child, linked prospects are counted once, and test, archived and not-proceeding
+  records are excluded.
+- Frontend tests prove the three accessible tabs, restricted-note warning, exact link
+  confirmation, responsive layout, read-only viewer presentation and absence of any
+  prospect email/send action.
+- Syntax checks pass for the service, DynamoDB store and staff client. The three changed
+  staff assets match the SHA-256 values pinned in EOI `rosewood-eoi-2026.25` and
+  Application `rosewood-application-2026.26`.
+- Existing EOI/Application questions, answer keys, validators, submissions, uploads,
+  signatures, communications, meetings and Google Sheets projections are unchanged.
+- Production release evidence must be appended after static assets and Lambda are
+  deployed and the non-writing canary, health versions and all alarms are verified.

@@ -1,5 +1,28 @@
 # V6 Form And Data Evolution
 
+## Prospective-family planning records (2026-09-02)
+
+These staff-only entities are independent of the immutable EOI/Application answer maps:
+
+- `PROSPECT#{familyId} / PROFILE` (`prospect_family`): contact identity, explicit
+  contact permission, planning status/source, ownership, follow-up, restricted notes,
+  timestamps, staff actors, archive state and optimistic revision.
+- `PROSPECT#{familyId} / CHILD#{childId}` (`prospect_child`): optional child name,
+  intended entry year/level, optional deliberate Application link, link actor/time and
+  optimistic revision.
+- `PROSPECT_APP_LINK#{applicationId} / META` (`prospect_application_link`): a conditional
+  uniqueness claim that prevents one Application being counted against multiple
+  prospective children.
+- `PROSPECT_EMAIL#{sha256(normalizedEmail)} / META` (`prospect_email_index`): an atomic
+  duplicate-prevention claim containing no raw email in its key or value.
+
+Prospect writes and audit events are transactional. Linking updates only the planning
+child and uniqueness claim; it never writes `APP#{applicationId} / CURRENT`, an
+Application revision, an invitation, an outbox item or a Google Sheet. Archiving is
+non-destructive and removes the record from active forecasting. Restore these entities
+with the authoritative main/audit DynamoDB recovery boundary, not from Anne-Marie's or
+any later spreadsheet.
+
 ## Staff document-preview access (2026-09-01)
 
 No application or document entity is added or changed. An authenticated preview reads
@@ -55,8 +78,8 @@ deliberately creating a new version.
 Current launch contracts:
 
 ```text
-EOI:                      rosewood-eoi-2026.24
-Application:              rosewood-application-2026.25
+EOI:                      rosewood-eoi-2026.25
+Application:              rosewood-application-2026.26
 Application-link request: rosewood-application-link-request-2026.1
 Community enquiry:       rosewood-community-enquiry-2026.1
 ```

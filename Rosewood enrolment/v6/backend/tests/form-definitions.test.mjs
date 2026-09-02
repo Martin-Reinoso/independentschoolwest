@@ -48,7 +48,7 @@ test("legacy records resolve to the current workflow contract without changing a
   assert.equal(reference.schemaVersion, "legacy-schema");
 });
 
-test("V23 keeps earlier contracts addressable and changes only pinned release interfaces", () => {
+test("the current release keeps earlier contracts addressable and changes only pinned release interfaces", () => {
   const previous = getFormDefinition("application", "rosewood-application-2026.10");
   const v11 = getFormDefinition("application", "rosewood-application-2026.11");
   const v12 = getFormDefinition("application", "rosewood-application-2026.12");
@@ -95,7 +95,7 @@ test("V23 keeps earlier contracts addressable and changes only pinned release in
   assert.equal(v22.formVersion, "rosewood-application-2026.22");
   assert.equal(v23.formVersion, "rosewood-application-2026.23");
   assert.equal(v24.formVersion, "rosewood-application-2026.24");
-  assert.equal(current.formVersion, "rosewood-application-2026.25");
+  assert.equal(current.formVersion, "rosewood-application-2026.26");
   assert.deepEqual(v13.contract, previous.contract);
   assert.deepEqual(v13.contract, v11.contract);
   assert.deepEqual(v13.contract, v12.contract);
@@ -124,7 +124,7 @@ test("V23 keeps earlier contracts addressable and changes only pinned release in
   assert.equal(v21Eoi.formVersion, "rosewood-eoi-2026.21");
   assert.equal(v22Eoi.formVersion, "rosewood-eoi-2026.22");
   assert.equal(v23Eoi.formVersion, "rosewood-eoi-2026.23");
-  assert.equal(currentEoi.formVersion, "rosewood-eoi-2026.24");
+  assert.equal(currentEoi.formVersion, "rosewood-eoi-2026.25");
   assert.deepEqual(currentEoi.contract, previousEoi.contract);
   assert.deepEqual(currentEoi.contract, v11Eoi.contract);
   assert.deepEqual(currentEoi.contract, v12Eoi.contract);

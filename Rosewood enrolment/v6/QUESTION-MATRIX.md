@@ -114,13 +114,20 @@ their original immutable definition.
 
 # Current EOI And Application Question Matrix
 
-`rosewood-eoi-2026.24` and `rosewood-application-2026.25` are the current contracts.
+`rosewood-eoi-2026.25` and `rosewood-application-2026.26` are the current contracts.
 They preserve all preceding family questions, options, requirements and answer keys;
 the latest release changes only pinned browser/operations assets and separates staff
 review, deliberate family communications and OTP-protected principal-meeting booking.
 No family question, required answer or submitted-application rule changed.
 These releases preserve the V6.15 questions and rules; earlier definitions remain
 immutable for submitted records.
+
+The staff-only prospective-family fields are not applicant questions and are not part
+of either form contract. They are separate planning records: parent/guardian name,
+email, optional phone, explicit contact permission, planning status, source,
+relationship/context, owner, next follow-up, restricted notes and one or more child
+cohorts with optional name plus required intended entry year and level. They must never
+be prefilled into or inferred from an Application without a deliberate staff link.
 
 The separate `rosewood-application-link-request-2026.1` public gateway has this complete
 question contract:
