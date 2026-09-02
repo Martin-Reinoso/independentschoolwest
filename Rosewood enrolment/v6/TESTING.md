@@ -1854,5 +1854,37 @@ was inspected read-only and was not imported into tests, Git, DynamoDB or Google
   Application `rosewood-application-2026.26`.
 - Existing EOI/Application questions, answer keys, validators, submissions, uploads,
   signatures, communications, meetings and Google Sheets projections are unchanged.
-- Production release evidence must be appended after static assets and Lambda are
-  deployed and the non-writing canary, health versions and all alarms are verified.
+
+### Production release
+
+Released and verified in production on 2 September 2026 using read-only checks and the
+existing non-writing canary. No prospective-family record, application, invitation,
+OTP, email, upload, signature, case message or meeting booking was created or changed
+during release verification.
+
+- Pull request `#48` passed both repository checks and merged as
+  `b1c1d2c32f469d5bb19b0eeb80b66037f089f0ac`. GitHub Pages run `33623862744`
+  completed successfully, and the three changed staff assets served from `ffe.org.au`
+  matched their committed SHA-256 hashes exactly.
+- Reviewed CloudFormation change set `rosewood-v626-b1c1d2c` modified only the
+  existing Lambda code plus conditional EventBridge permission/target and SES
+  subscription recalculation. It proposed no DynamoDB, audit, KMS, staging-bucket,
+  backup-vault, secret, Google configuration, staff-parameter or IAM-role replacement.
+- The stack returned to `UPDATE_COMPLETE` with termination protection enabled. Lambda
+  `rosewood-enrolment-v6-production-service` is `Active` with
+  `LastUpdateStatus: Successful`; `/v6/health` reports EOI
+  `rosewood-eoi-2026.25`, Application `rosewood-application-2026.26` and
+  `cohortPlanning: true`.
+- An unauthenticated Cohort planning request returned `401 SESSION_REQUIRED`. The
+  one-minute outbox and ten-minute production-canary schedules remain enabled. The
+  manual non-writing canary at `2026-09-02T11:26:13.654Z` reported Public form,
+  backend health, EOI address, Application workflow and operational pipeline all
+  available; all nine production alarms are `OK`.
+- Both security-topic email subscriptions remain confirmed. The enabled SES feedback
+  destination retains all seven send, delivery, delay, bounce, complaint, reject and
+  rendering-failure event types through its confirmed Lambda subscription, and the
+  topic remains encrypted with enabled customer-managed KMS key
+  `75953611-d9aa-4cf2-9e5e-e08cf674864d`.
+- Existing production staff access and roles were preserved exactly. No mailbox was
+  silently granted the new `planning_editor` role; existing viewer accounts remain
+  read-only in Cohort planning.
