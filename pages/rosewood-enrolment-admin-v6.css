@@ -417,6 +417,44 @@ dialog::backdrop { background: rgba(10, 20, 35, .62); backdrop-filter: blur(4px)
 .communication-context span { color: var(--ink-soft); font-size: .76rem; }
 .communication-history-card { margin-top: 1rem; overflow: hidden; background: #fff; border: 1px solid var(--line); border-radius: .8rem; }
 .communication-history-card > h3 { margin: 0; padding: .9rem 1rem; color: #fff; background: var(--green-dark); font-family: var(--display); }
+.family-template-card { align-content: start; }
+.family-template-heading, .family-preview-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.family-template-heading .eyebrow, .family-preview-header .eyebrow { margin: 0 0 .25rem; }
+.family-choice-group { min-width: 0; margin: 0; padding: .8rem; border: 1px solid var(--line); border-radius: .65rem; }
+.family-choice-group legend { padding: 0 .35rem; font-size: .75rem; font-weight: 800; }
+.family-choice-list { display: grid; gap: .45rem; }
+.family-choice { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: .65rem; padding: .65rem; background: var(--paper); border: 1px solid #e7dfd2; border-radius: .55rem; cursor: pointer; }
+.family-choice input { width: 1.1rem; height: 1.1rem; margin-top: .15rem; accent-color: var(--green); }
+.family-choice:focus-within { outline: 3px solid var(--focus); outline-offset: 2px; }
+.family-choice strong, .family-choice small { display: block; overflow-wrap: anywhere; }
+.family-choice small { margin-top: .2rem; color: var(--ink-soft); font-size: .71rem; line-height: 1.4; }
+.family-choice.disabled { opacity: .6; cursor: not-allowed; }
+.field-help { margin: .6rem 0 0; color: var(--ink-soft); font-size: .72rem; line-height: 1.45; }
+.status-pill { flex: none; padding: .38rem .58rem; color: var(--ink-soft); background: #edf2f7; border-radius: 999px; font-size: .68rem; font-weight: 800; }
+.status-pill.pending { color: #705515; background: #fff3cf; }
+.status-pill.warning { color: #7a341f; background: #fbe7dc; }
+.family-preview-card { margin-top: 1rem; padding: 1.1rem; background: #fff; border: 1px solid var(--line); border-radius: .8rem; }
+.family-preview-header h3 { margin: 0 0 .3rem; font-family: var(--display); }
+.preview-size-switch { flex: none; display: inline-flex; padding: .2rem; background: #eee9df; border-radius: .55rem; }
+.preview-size-switch button { min-height: 36px; padding: .45rem .65rem; color: var(--ink-soft); background: transparent; border: 0; border-radius: .4rem; cursor: pointer; font: 800 .7rem var(--body); }
+.preview-size-switch button.active { color: #fff; background: var(--green-dark); }
+.family-preview-tabs { display: flex; gap: .45rem; overflow-x: auto; margin-top: 1rem; padding-bottom: .35rem; }
+.family-preview-tabs button { flex: none; min-height: 40px; padding: .55rem .75rem; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 999px; cursor: pointer; font: 800 .72rem var(--body); }
+.family-preview-tabs button.active { color: #fff; background: var(--green-dark); border-color: var(--green-dark); }
+.family-preview-tabs button:focus-visible, .preview-size-switch button:focus-visible, .manual-communication-card > summary:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.email-preview-frame-shell { width: 100%; max-width: 760px; margin: .65rem auto 0; padding: .65rem; background: #d8d4ca; border-radius: .75rem; transition: max-width .2s ease; }
+.email-preview-frame-shell.mobile { max-width: 430px; }
+.email-preview-frame-shell iframe { width: 100%; height: 720px; display: block; background: #fff; border: 0; border-radius: .35rem; }
+.plain-text-preview { max-width: 760px; margin: .75rem auto; padding: .75rem; background: var(--paper); border: 1px solid var(--line); border-radius: .65rem; }
+.plain-text-preview summary { cursor: pointer; font-size: .75rem; font-weight: 800; }
+.plain-text-preview pre { margin: .75rem 0 0; overflow-wrap: anywhere; white-space: pre-wrap; font: 500 .78rem/1.55 var(--body); }
+.review-confirmation { max-width: 760px; display: grid; grid-template-columns: auto 1fr; gap: .65rem; margin: 1rem auto; padding: .85rem; background: #fff9e8; border: 1px solid #ead7a7; border-radius: .65rem; font-size: .78rem; font-weight: 700; line-height: 1.45; }
+.review-confirmation input { width: 1.15rem; height: 1.15rem; accent-color: var(--green); }
+.family-preview-card > .composer-actions { max-width: 760px; margin: 0 auto; justify-content: flex-end; }
+.manual-communication-card { margin-top: 1rem; background: #fff; border: 1px solid var(--line); border-radius: .8rem; }
+.manual-communication-card > summary { padding: 1rem 1.1rem; cursor: pointer; color: var(--ink); font-family: var(--display); font-weight: 700; }
+.manual-communication-card .staff-tool-card { border: 0; border-top: 1px solid var(--line); border-radius: 0 0 .8rem .8rem; }
+.family-timeline-item { border-left: 4px solid var(--green); }
 .meeting-admin-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
 .staff-tool-card, .meeting-series-card { display: grid; gap: .8rem; padding: 1.1rem; background: #fff; border: 1px solid var(--line); border-radius: .8rem; }
 .staff-tool-card h3, .meeting-series-card h3 { margin: 0; font-family: var(--display); }
@@ -546,6 +584,12 @@ dialog::backdrop { background: rgba(10, 20, 35, .62); backdrop-filter: blur(4px)
   .document-preview-content { padding: .5rem; }
   .document-preview-content iframe, .document-preview-content img { min-height: 340px; }
   .document-preview-actions { align-items: stretch; flex-direction: column; padding: .75rem 1rem 1rem; }
+  .family-template-heading, .family-preview-header { align-items: stretch; flex-direction: column; }
+  .preview-size-switch { align-self: flex-start; }
+  .email-preview-frame-shell { padding: .3rem; }
+  .email-preview-frame-shell iframe { height: 660px; }
+  .family-preview-card > .composer-actions { justify-content: stretch; }
+  .family-preview-card > .composer-actions button { flex: 1 1 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {

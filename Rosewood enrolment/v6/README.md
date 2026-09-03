@@ -1,5 +1,23 @@
 # Rosewood Enrolment V6
 
+## Family-grouped reviewed communications (2026-09-03)
+
+The staff **Family communications** workspace can prepare the reusable **Application
+review update** for one or more submitted child applications under the same verified
+family invitation. Staff explicitly select the children and recipients, inspect the
+exact responsive HTML and plain-text copy for every recipient, mark that immutable copy
+reviewed, and then deliberately send it. The server rechecks the family grouping,
+application status, entry-year variant, recipient contact permission and content hash
+immediately before the transactional send.
+
+One family-level communication is linked to every selected child application. Each
+recipient receives a separate private email; addresses are never shared through To or
+Cc. The template uses a 2027, later-entry or mixed-entry variant so future applicants
+are not promised a 2027 interview. Existing one-off staff correspondence remains
+available for application-specific questions. Neither path changes submitted answers,
+documents, signatures, application identifiers or revisions, and these records are not
+projected to Google Sheets.
+
 ## Cohort planning (2026-09-02)
 
 The staff portal now separates **Applications**, **Prospective families** and a
@@ -295,3 +313,4 @@ releases. `V6.19-CHANGE-MAP.md` records enrolment planning and
 `V6.20-CHANGE-MAP.md` records the Phase 1 Admissions overview and
 `V6.21-CHANGE-MAP.md` records the planning identity and density refinement.
 `V6.26-CHANGE-MAP.md` records the separate prospective-family cohort-planning release.
+`V6.28-CHANGE-MAP.md` records the reviewed family-communication release.

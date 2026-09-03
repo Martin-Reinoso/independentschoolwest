@@ -47,6 +47,8 @@ export class DynamoStore {
   getCommunityEnquiry(id) { return this.get(`COMMUNITY_ENQUIRY#${id}`); }
   getCaseReview(applicationId) { return this.get(`APP#${applicationId}`, "CASE#REVIEW"); }
   getCaseMessage(applicationId, messageId) { return this.get(`APP#${applicationId}`, `CASE_MESSAGE#${messageId}`); }
+  getFamilyMessage(messageId) { return this.get(`FAMILY_COMM#${messageId}`, "MASTER"); }
+  getFamilyMessageRecipient(messageId, recipientCopyId) { return this.get(`FAMILY_COMM#${messageId}`, `RECIPIENT#${recipientCopyId}`); }
   getMeetingSeries(id) { return this.get(`MEETING_SERIES#${id}`); }
   getMeetingBooking(seriesId, bookingId) { return this.get(`MEETING_SERIES#${seriesId}`, `BOOKING#${bookingId}`); }
   getMeetingInvitation(tokenHash) { return this.get(`MEETING_INVITE#${tokenHash}`); }
@@ -233,6 +235,88 @@ export class DynamoStore {
     try { await this.client.send(new UpdateCommand({
       TableName: this.tableName,
       Key: this.key(`APP#${applicationId}`, `CASE_MESSAGE#${messageId}`),
+      UpdateExpression: "SET #data.#deliveryStatus = :deliveryStatus, #data.#deliveryRank = :deliveryRank, #data.#deliveryAt = :at, #data.#providerMessageId = :providerMessageId",
+      ConditionExpression: "#data.#status = :sent AND (attribute_not_exists(#data.#deliveryRank) OR #data.#deliveryRank <= :deliveryRank)",
+      ExpressionAttributeNames: { "#data": "data", "#deliveryStatus": "deliveryStatus", "#deliveryRank": "deliveryRank", "#deliveryAt": "deliveryAt", "#providerMessageId": "providerMessageId", "#status": "status" },
+      ExpressionAttributeValues: { ":deliveryStatus": deliveryStatus, ":deliveryRank": Number(deliveryRank), ":at": at, ":providerMessageId": messageIdFromProvider, ":sent": "sent" }
+    })); return true; }
+    catch (error) { if (conditional(error)) return false; throw error; }
+  }
+
+  async listFamilyMessagesByInvitation(invitationId, limit = 200) {
+    const response = await this.client.send(new QueryCommand({
+      TableName: this.tableName,
+      KeyConditionExpression: "PK = :pk AND begins_with(SK, :prefix)",
+      ExpressionAttributeValues: { ":pk": `INVITE_ID#${invitationId}`, ":prefix": "FAMILY_COMM#" },
+      ScanIndexForward: false,
+      Limit: Math.max(1, Math.min(500, Number(limit) || 200)),
+      ConsistentRead: true
+    }));
+    return (response.Items || []).map(item => item.data);
+  }
+
+  async listFamilyMessageRecipients(messageId) {
+    const response = await this.client.send(new QueryCommand({
+      TableName: this.tableName,
+      KeyConditionExpression: "PK = :pk AND begins_with(SK, :prefix)",
+      ExpressionAttributeValues: { ":pk": `FAMILY_COMM#${messageId}`, ":prefix": "RECIPIENT#" },
+      ScanIndexForward: true,
+      ConsistentRead: true
+    }));
+    return (response.Items || []).map(item => item.data);
+  }
+
+  async saveFamilyMessageReview({ message, recipientCopies, invitationIndex, applicationLinks, auditEvents = [] }) {
+    const actions = [
+      { Put: { TableName: this.tableName, Item: { ...this.key(`FAMILY_COMM#${message.id}`, "MASTER"), entity: "family_communication", data: message }, ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)" } },
+      { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE_ID#${message.invitationId}`, `FAMILY_COMM#${message.id}`), entity: "family_communication_index", data: invitationIndex }, ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)" } },
+      ...recipientCopies.map(copy => ({ Put: { TableName: this.tableName, Item: { ...this.key(`FAMILY_COMM#${message.id}`, `RECIPIENT#${copy.id}`), entity: "family_communication_recipient", data: copy }, ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)" } })),
+      ...applicationLinks.map(link => ({ Put: { TableName: this.tableName, Item: { ...this.key(`APP#${link.applicationId}`, `FAMILY_COMM#${message.id}`), entity: "family_communication_application_link", data: link }, ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)" } })),
+      ...this.auditActions(auditEvents)
+    ];
+    if (actions.length > 100) throw new Error("The family communication exceeds the transactional record limit.");
+    try {
+      await this.client.send(new TransactWriteCommand({ TransactItems: actions }));
+      return message;
+    } catch (error) { if (conditional(error)) throw conflict("This reviewed family email could not be saved because its context changed."); throw error; }
+  }
+
+  async sendFamilyMessage({ message, expectedVersion, recipientCopies, invitationIndex, applicationLinks, outboxEvents = [], auditEvents = [] }) {
+    const masterCondition = {
+      ConditionExpression: "#data.#status = :reviewed AND #data.#version = :expectedVersion",
+      ExpressionAttributeNames: { "#data": "data", "#status": "status", "#version": "version" },
+      ExpressionAttributeValues: { ":reviewed": "reviewed", ":expectedVersion": Number(expectedVersion) }
+    };
+    const linkedCondition = {
+      ConditionExpression: "#data.#messageId = :messageId AND #data.#status = :reviewed",
+      ExpressionAttributeNames: { "#data": "data", "#messageId": "messageId", "#status": "status" },
+      ExpressionAttributeValues: { ":messageId": message.id, ":reviewed": "reviewed" }
+    };
+    const actions = [
+      { Put: { TableName: this.tableName, Item: { ...this.key(`FAMILY_COMM#${message.id}`, "MASTER"), entity: "family_communication", data: message }, ...masterCondition } },
+      { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE_ID#${message.invitationId}`, `FAMILY_COMM#${message.id}`), entity: "family_communication_index", data: invitationIndex }, ...linkedCondition } },
+      ...recipientCopies.map(copy => ({ Put: {
+        TableName: this.tableName,
+        Item: { ...this.key(`FAMILY_COMM#${message.id}`, `RECIPIENT#${copy.id}`), entity: "family_communication_recipient", data: copy },
+        ConditionExpression: "#data.#status = :reviewed AND #data.#contentHash = :contentHash",
+        ExpressionAttributeNames: { "#data": "data", "#status": "status", "#contentHash": "contentHash" },
+        ExpressionAttributeValues: { ":reviewed": "reviewed", ":contentHash": copy.contentHash }
+      } })),
+      ...applicationLinks.map(link => ({ Put: { TableName: this.tableName, Item: { ...this.key(`APP#${link.applicationId}`, `FAMILY_COMM#${message.id}`), entity: "family_communication_application_link", data: link }, ...linkedCondition } })),
+      ...this.outboxActions(outboxEvents),
+      ...this.auditActions(auditEvents)
+    ];
+    if (actions.length > 100) throw new Error("The family communication exceeds the transactional delivery limit.");
+    try {
+      await this.client.send(new TransactWriteCommand({ TransactItems: actions }));
+      return message;
+    } catch (error) { if (conditional(error)) throw conflict("This reviewed family email changed or was already sent."); throw error; }
+  }
+
+  async recordFamilyMessageDelivery({ messageId, recipientCopyId, deliveryStatus, deliveryRank = 0, at, messageIdFromProvider = "" }) {
+    try { await this.client.send(new UpdateCommand({
+      TableName: this.tableName,
+      Key: this.key(`FAMILY_COMM#${messageId}`, `RECIPIENT#${recipientCopyId}`),
       UpdateExpression: "SET #data.#deliveryStatus = :deliveryStatus, #data.#deliveryRank = :deliveryRank, #data.#deliveryAt = :at, #data.#providerMessageId = :providerMessageId",
       ConditionExpression: "#data.#status = :sent AND (attribute_not_exists(#data.#deliveryRank) OR #data.#deliveryRank <= :deliveryRank)",
       ExpressionAttributeNames: { "#data": "data", "#deliveryStatus": "deliveryStatus", "#deliveryRank": "deliveryRank", "#deliveryAt": "deliveryAt", "#providerMessageId": "providerMessageId", "#status": "status" },

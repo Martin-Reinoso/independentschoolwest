@@ -131,6 +131,17 @@ the document.
 
 ## Phase 2 — tracked family follow-up
 
+### Implemented reviewed family update
+
+The first reusable family-level template is **Application review update**. It groups
+only explicitly selected submitted applications sharing one invitation, supports 2027,
+future-entry and mixed-entry wording, and renders one separate copy per recipient.
+Staff must preview every copy, mark the exact content reviewed and then perform a
+separate explicit send. A conditional transaction links the communication to each child
+case and queues each private email without changing application answers. One-off
+application correspondence remains the correct path for missing-document and
+clarification requests.
+
 ### Recommended boundary
 
 Show follow-up inside the application case because staff think in terms of one family

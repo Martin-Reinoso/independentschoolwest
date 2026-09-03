@@ -1,5 +1,36 @@
 # V6 Product and Backend Decisions
 
+## 2026-09-03: reviewed family-grouped application updates
+
+- Treat the existing invitation identifier as a candidate family grouping, but never
+  infer the final email scope from it. Staff must explicitly select the child
+  applications included in each message.
+- Permit the prepared review-update template only when every selected application is
+  `submitted` or `staff_review_required`, belongs to the same invitation, has a student
+  first name and has a valid entry year.
+- Resolve recipients as the intersection of contacts explicitly permitted across every
+  selected application. Send one private copy per recipient and never place family
+  addresses together in To or Cc.
+- Provide 2027, future-entry and mixed-entry variants. A child name may appear in the
+  reviewed body, but never in the subject. Do not promise a 2027 interview for a later
+  entry application.
+- Require staff to open every recipient preview, explicitly mark the exact HTML and
+  plain-text snapshot reviewed, and explicitly send it. Preview and purpose selection
+  never send an email.
+- Recompute the template and permission context immediately before send. A changed
+  child selection, entry year, recipient or contact permission invalidates the reviewed
+  content hash and requires a new preview and review.
+- Persist one master communication, immutable recipient copies, one link on each child
+  application, an invitation index, audit events and email outbox records. The send is
+  conditional, transactional and idempotent by operation ID.
+- Keep one-off application correspondence for missing documents and clarification
+  questions. The prepared family template supplements rather than replaces it.
+- Do not mutate submitted answers, application revisions, documents, signatures or
+  application identifiers. Do not project family communications to Google Sheets.
+- EOI `2026.27` and Application `2026.28` change no family question, answer or validation
+  rule. They pin the updated staff assets, health capability and shared browser
+  compatibility only.
+
 ## 2026-09-03: truthful application-link request delivery status
 
 - Keep the stored public-request status `invitation_queued` unchanged for historical

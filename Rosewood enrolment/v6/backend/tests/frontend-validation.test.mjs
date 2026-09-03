@@ -249,6 +249,36 @@ test("staff review, family communications and principal bookings are separate wo
   assert.doesNotMatch(meetingHtml, /Cancel booking|Delete booking/);
 });
 
+test("staff family communications require an exact multi-recipient preview before reviewed sending", async () => {
+  const [source, html, css] = await Promise.all([
+    readFile(new URL("../../../../pages/rosewood-enrolment-admin-v6.js", import.meta.url), "utf8"),
+    readFile(new URL("../../../../pages/rosewood-enrolment-admin-v6.html", import.meta.url), "utf8"),
+    readFile(new URL("../../../../pages/rosewood-enrolment-admin-v6.css", import.meta.url), "utf8")
+  ]);
+  assert.match(html, /id="family-communication-applications"/);
+  assert.match(html, /id="family-communication-recipients"/);
+  assert.match(html, /Each recipient receives a separate private copy/);
+  assert.match(html, /id="family-preview-frame"[^>]+sandbox=""/);
+  assert.match(html, /frame-src data:/);
+  assert.match(html, /script-src 'self'/);
+  assert.doesNotMatch(html, /script-src[^;]*unsafe-inline/);
+  assert.match(html, /I have reviewed every recipient copy/);
+  assert.match(html, /Write a one-off email about one application/);
+  assert.match(source, /staff\/family-messages\/preview/);
+  assert.match(source, /staff\/family-messages\/review/);
+  assert.match(source, /staff\/family-messages\/send/);
+  assert.match(source, /Open each recipient tab before confirming review/);
+  assert.match(source, /data:text\/html;base64/);
+  assert.match(source, /Send reviewed family email/);
+  assert.match(css, /\.email-preview-frame-shell\.mobile/);
+  assert.match(css, /\.family-choice/);
+});
+
+test("the family browser accepts the current immutable Application release", async () => {
+  const source = await readFile(new URL("../../../../pages/rosewood-enrolment-v6.js", import.meta.url), "utf8");
+  assert.match(source, /SUPPORTED_APPLICATION_FORM_VERSIONS[\s\S]*rosewood-application-2026\.28/);
+});
+
 test("V6.14 applies the approved family feedback without weakening verification or saved-draft safety", async () => {
   const [source, html] = await Promise.all([
     readFile(new URL("../../../../pages/rosewood-enrolment-v6.js", import.meta.url), "utf8"),

@@ -30,6 +30,9 @@ class StaffStore {
     this.rateLimitChecks = [];
     this.caseReviews = new Map();
     this.caseMessages = new Map();
+    this.familyMessages = new Map();
+    this.familyMessageRecipients = new Map();
+    this.familyMessageLinks = new Map();
     this.meetingSeries = new Map();
     this.meetingSlots = new Map();
     this.meetingInvitations = new Map();
@@ -96,6 +99,36 @@ class StaffStore {
   async saveCaseReview({ applicationId, review, expectedVersion, auditEvents = [] }) { assert.equal(Number(this.caseReviews.get(applicationId)?.version || 0), Number(expectedVersion)); this.caseReviews.set(applicationId, structuredClone(review)); this.audit.push(...auditEvents); return review; }
   async saveCaseMessage({ message, expectedStatus = "", outboxEvents = [], auditEvents = [] }) { const current = this.caseMessages.get(message.id); if (expectedStatus) assert.equal(current?.status, expectedStatus); else assert.equal(current, undefined); this.caseMessages.set(message.id, structuredClone(message)); this.outboxEvents.push(...outboxEvents); this.audit.push(...auditEvents); return message; }
   async recordCaseMessageDelivery({ messageId, deliveryStatus, at, messageIdFromProvider }) { const current = this.caseMessages.get(messageId); this.caseMessages.set(messageId, { ...current, deliveryStatus, deliveryAt: at, providerMessageId: messageIdFromProvider }); }
+  async getFamilyMessage(messageId) { return structuredClone(this.familyMessages.get(messageId) || null); }
+  async listFamilyMessagesByInvitation(invitationId) { return [...this.familyMessages.values()].filter(message => message.invitationId === invitationId).map(message => ({ messageId: message.id, invitationId, applicationIds: message.applicationIds, subject: message.subject, status: message.status, updatedAt: message.updatedAt })); }
+  async listFamilyMessageRecipients(messageId) { return structuredClone([...(this.familyMessageRecipients.get(messageId)?.values() || [])]); }
+  async saveFamilyMessageReview({ message, recipientCopies, applicationLinks, outboxEvents = [], auditEvents = [] }) {
+    assert.equal(this.familyMessages.has(message.id), false);
+    this.familyMessages.set(message.id, structuredClone(message));
+    this.familyMessageRecipients.set(message.id, new Map(recipientCopies.map(copy => [copy.id, structuredClone(copy)])));
+    applicationLinks.forEach(link => this.familyMessageLinks.set(`${link.applicationId}:${link.messageId}`, structuredClone(link)));
+    this.outboxEvents.push(...outboxEvents);
+    this.audit.push(...auditEvents);
+    return message;
+  }
+  async sendFamilyMessage({ message, expectedVersion, recipientCopies, applicationLinks, outboxEvents = [], auditEvents = [] }) {
+    const current = this.familyMessages.get(message.id);
+    assert.equal(current.status, "reviewed");
+    assert.equal(current.version, expectedVersion);
+    this.familyMessages.set(message.id, structuredClone(message));
+    this.familyMessageRecipients.set(message.id, new Map(recipientCopies.map(copy => [copy.id, structuredClone(copy)])));
+    applicationLinks.forEach(link => this.familyMessageLinks.set(`${link.applicationId}:${link.messageId}`, structuredClone(link)));
+    this.outboxEvents.push(...outboxEvents);
+    this.audit.push(...auditEvents);
+    return message;
+  }
+  async recordFamilyMessageDelivery({ messageId, recipientCopyId, deliveryStatus, deliveryRank = 0, at, messageIdFromProvider }) {
+    const copies = this.familyMessageRecipients.get(messageId);
+    const current = copies?.get(recipientCopyId);
+    if (!current || current.status !== "sent" || Number(current.deliveryRank || 0) > Number(deliveryRank)) return false;
+    copies.set(recipientCopyId, { ...current, deliveryStatus, deliveryRank, deliveryAt: at, providerMessageId: messageIdFromProvider });
+    return true;
+  }
   async listMeetingSeries() { return [...this.meetingSeries.values()]; }
   async getMeetingSeries(id) { return this.meetingSeries.get(id) || null; }
   async createMeetingSeries(series, auditEvents = []) { this.meetingSeries.set(series.id, structuredClone(series)); this.audit.push(...auditEvents); return series; }
@@ -374,6 +407,8 @@ test("viewer staff can see summaries but cannot create invitations", async () =>
   assert.equal(invitation.statusCode, 403);
   const communication = await service(event("/v6/staff/applications/communications/context", "POST", { applicationId: "synthetic" }, sessionToken));
   assert.equal(communication.statusCode, 403);
+  const familyPreview = await service(event("/v6/staff/family-messages/preview", "POST", { templateId: "application_review_update", applicationIds: ["synthetic"] }, sessionToken));
+  assert.equal(familyPreview.statusCode, 403);
   const meetingSeries = await service(event("/v6/staff/meetings/series", "POST", { title: "Synthetic", hostName: "Principal", location: "Rosewood" }, sessionToken));
   assert.equal(meetingSeries.statusCode, 403);
 });
@@ -627,7 +662,7 @@ test("an active V14 draft adopts the current contract without transforming its f
   await service(event("/v6/application/access/verify-code", "POST", { invitationToken, challengeId: requested.challengeId, code: "123456" }));
   const upgraded = store.applications.get(created.applicationId);
 
-  assert.equal(upgraded.formVersion, "rosewood-application-2026.27");
+  assert.equal(upgraded.formVersion, "rosewood-application-2026.28");
   assert.deepEqual(upgraded.values, values);
   assert.deepEqual(store.audit.find(eventRecord => eventRecord.type === "application.form_definition_upgraded").details.normalizedFields, []);
 });
@@ -828,6 +863,94 @@ test("do-not-contact blocks reviewed staff correspondence on the backend", async
   assert.equal(response.statusCode, 403);
   assert.equal(store.caseMessages.size, 0);
   assert.equal(store.outboxEvents.length, 0);
+});
+
+test("family review updates group sibling applications and send separate private recipient copies", async () => {
+  const { service, store } = staffService();
+  const created = await createApplicationInvitation({ store, recipientEmail: "primary+synthetic@example.com", firstName: "Alex", applicationUrl: "https://ffe.org.au/form", clock });
+  const first = store.applications.get(created.applicationId);
+  const second = { ...structuredClone(first), id: "app-synthetic-sibling", studentId: "student-synthetic-sibling", values: { ...first.values, student_first: "Bailey", student_last: "Example", entry_year: "2029", entry_level: "Year 3", app_guardian_0_first: "Alex", app_guardian_0_last: "Example" } };
+  const sharedControls = [{ guardianId: "guardian-secondary", name: "Jordan Example", currentEmail: "secondary+synthetic@example.com", contactPermission: true }];
+  store.applications.set(first.id, { ...first, status: "submitted", reference: "APP-SYNTHETIC-1", values: { ...first.values, student_first: "Avery", student_last: "Example", entry_year: "2027", entry_level: "Foundation (Prep)", app_guardian_0_first: "Alex", app_guardian_0_last: "Example" }, signerControls: sharedControls });
+  store.applications.set(second.id, { ...second, status: "submitted", reference: "APP-SYNTHETIC-2", signerControls: structuredClone(sharedControls) });
+  const sessionToken = await staffSession(service);
+  const selection = { templateId: "application_review_update", applicationIds: [first.id, second.id], recipientEmails: ["primary+synthetic@example.com", "secondary+synthetic@example.com"] };
+
+  const contextResponse = await service(event("/v6/staff/applications/communications/context", "POST", { applicationId: first.id }, sessionToken));
+  const context = JSON.parse(contextResponse.body);
+  assert.equal(context.family.applications.length, 2);
+  assert.equal(context.family.recipients.length, 2);
+
+  const previewResponse = await service(event("/v6/staff/family-messages/preview", "POST", selection, sessionToken));
+  assert.equal(previewResponse.statusCode, 200);
+  const preview = JSON.parse(previewResponse.body).preview;
+  assert.equal(preview.variant, "mixed_entry");
+  assert.equal(preview.copies.length, 2);
+  assert.ok(preview.copies.every(copy => !copy.subject.includes("Avery") && !copy.subject.includes("Bailey")));
+  assert.match(preview.copies[0].html, /Avery and Bailey/);
+  assert.match(preview.copies[0].text, /2027/);
+  assert.match(preview.copies[0].text, /2029/);
+
+  const staleReviewResponse = await service(event("/v6/staff/family-messages/review", "POST", { ...selection, contentHash: "stale-synthetic-hash", confirmation: "Mark reviewed" }, sessionToken));
+  assert.equal(staleReviewResponse.statusCode, 409);
+  assert.equal(store.familyMessages.size, 0);
+
+  const reviewResponse = await service(event("/v6/staff/family-messages/review", "POST", { ...selection, contentHash: preview.contentHash, confirmation: "Mark reviewed" }, sessionToken));
+  assert.equal(reviewResponse.statusCode, 200);
+  const reviewed = JSON.parse(reviewResponse.body).message;
+  assert.equal(store.familyMessages.get(reviewed.id).status, "reviewed");
+  assert.equal(store.familyMessageLinks.size, 2);
+  assert.equal(store.outboxEvents.length, 0);
+
+  const beforeApplications = structuredClone([...store.applications.values()]);
+  const sendBody = { messageId: reviewed.id, operationId: "synthetic-family-send-0001", confirmation: "Send reviewed family email" };
+  const sendResponse = await service(event("/v6/staff/family-messages/send", "POST", sendBody, sessionToken));
+  assert.equal(sendResponse.statusCode, 200);
+  const emailEvents = store.outboxEvents.filter(item => item.kind === "email");
+  assert.equal(emailEvents.length, 2);
+  assert.deepEqual(new Set(emailEvents.map(item => item.payload.to)), new Set(["primary+synthetic@example.com", "secondary+synthetic@example.com"]));
+  assert.ok(emailEvents.every(item => !item.payload.cc && !Array.isArray(item.payload.to)));
+  assert.ok(emailEvents.every(item => item.payload._tracking.kind === "family_case_message"));
+  assert.deepEqual([...store.applications.values()], beforeApplications);
+
+  const duplicateResponse = await service(event("/v6/staff/family-messages/send", "POST", sendBody, sessionToken));
+  assert.equal(duplicateResponse.statusCode, 200);
+  assert.equal(JSON.parse(duplicateResponse.body).message.deduplicated, true);
+  assert.equal(store.outboxEvents.filter(item => item.kind === "email").length, 2);
+});
+
+test("family email send rechecks contact permission across every selected application", async () => {
+  const { service, store } = staffService();
+  const created = await createApplicationInvitation({ store, recipientEmail: "primary+synthetic@example.com", firstName: "Alex", applicationUrl: "https://ffe.org.au/form", clock });
+  const first = store.applications.get(created.applicationId);
+  const allowed = [{ guardianId: "guardian-secondary", name: "Jordan Example", currentEmail: "secondary+synthetic@example.com", contactPermission: true }];
+  store.applications.set(first.id, { ...first, status: "submitted", values: { ...first.values, student_first: "Avery", entry_year: "2027", entry_level: "Foundation (Prep)" }, signerControls: allowed });
+  const second = { ...structuredClone(store.applications.get(first.id)), id: "app-synthetic-second", studentId: "student-synthetic-second", values: { ...first.values, student_first: "Bailey", entry_year: "2027", entry_level: "Year 2" }, signerControls: structuredClone(allowed) };
+  store.applications.set(second.id, second);
+  const sessionToken = await staffSession(service);
+  const selection = { templateId: "application_review_update", applicationIds: [first.id, second.id], recipientEmails: ["secondary+synthetic@example.com"] };
+  const preview = JSON.parse((await service(event("/v6/staff/family-messages/preview", "POST", selection, sessionToken))).body).preview;
+  const reviewed = JSON.parse((await service(event("/v6/staff/family-messages/review", "POST", { ...selection, contentHash: preview.contentHash, confirmation: "Mark reviewed" }, sessionToken))).body).message;
+  store.applications.set(second.id, { ...second, signerControls: [{ ...allowed[0], contactPermission: false }] });
+
+  const response = await service(event("/v6/staff/family-messages/send", "POST", { messageId: reviewed.id, operationId: "synthetic-family-send-0002", confirmation: "Send reviewed family email" }, sessionToken));
+  assert.equal(response.statusCode, 403);
+  assert.equal(store.outboxEvents.filter(item => item.kind === "email").length, 0);
+  assert.equal(store.familyMessages.get(reviewed.id).status, "reviewed");
+});
+
+test("family email preview refuses to group applications from different invitations", async () => {
+  const { service, store } = staffService();
+  const firstCreated = await createApplicationInvitation({ store, recipientEmail: "first+synthetic@example.com", firstName: "First", applicationUrl: "https://ffe.org.au/form", clock });
+  const secondCreated = await createApplicationInvitation({ store, recipientEmail: "second+synthetic@example.com", firstName: "Second", applicationUrl: "https://ffe.org.au/form", clock });
+  for (const [applicationId, name] of [[firstCreated.applicationId, "Avery"], [secondCreated.applicationId, "Bailey"]]) {
+    const app = store.applications.get(applicationId);
+    store.applications.set(applicationId, { ...app, status: "submitted", values: { ...app.values, student_first: name, entry_year: "2027", entry_level: "Foundation (Prep)" } });
+  }
+  const sessionToken = await staffSession(service);
+  const response = await service(event("/v6/staff/family-messages/preview", "POST", { templateId: "application_review_update", applicationIds: [firstCreated.applicationId, secondCreated.applicationId] }, sessionToken));
+  assert.equal(response.statusCode, 409);
+  assert.equal(JSON.parse(response.body).error, "FAMILY_GROUP_MISMATCH");
 });
 
 test("principal meeting schedules use private invitations and atomically create and change one family booking", async () => {

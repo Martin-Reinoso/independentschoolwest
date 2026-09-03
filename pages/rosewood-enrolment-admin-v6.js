@@ -23,6 +23,10 @@
     meetings: [],
     communicationContext: null,
     communicationMessageId: "",
+    familyCommunicationContext: null,
+    familyCommunicationPreview: null,
+    familyCommunicationMessageId: "",
+    familyCommunicationViewedCopies: new Set(),
     pendingMeetingTimes: [],
     meetingInvitationContext: null
   };
@@ -1026,10 +1030,21 @@
     syncApplicationSelect("meeting-invitation-application");
   }
 
-  function renderCommunicationHistory(messages = []) {
+  function renderCommunicationHistory(messages = [], familyMessages = []) {
     const card = byId("communication-history-card");
     const list = byId("communication-history");
     clear(list);
+    familyMessages.forEach(message => {
+      const item = element("article", "timeline-item family-timeline-item");
+      const applications = (message.applications || []).map(application => application.studentName).join(", ");
+      const recipients = (message.recipients || []).map(recipient => `${recipient.name} (${fieldLabel(recipient.deliveryStatus)})`).join(" · ");
+      item.append(
+        element("strong", "", message.subject),
+        element("span", "", `${message.status === "reviewed" ? "Reviewed, not sent" : "Family email sent"} · ${formatDate(message.sentAt || message.reviewedAt, true)}`),
+        element("p", "", `Applications: ${applications || message.applicationIds.join(", ")}\nRecipients: ${recipients || "Not recorded"}`)
+      );
+      list.append(item);
+    });
     messages.forEach(message => {
       const item = element("article", "timeline-item");
       item.append(
@@ -1039,11 +1054,96 @@
       );
       list.append(item);
     });
-    if (!messages.length) list.append(element("p", "panel-note", "No family correspondence has been recorded for this application."));
+    if (!messages.length && !familyMessages.length) list.append(element("p", "panel-note", "No family correspondence has been recorded for this application."));
     card.hidden = false;
   }
 
-  function renderCommunicationContext(application) {
+  function resetFamilyCommunicationPreview() {
+    state.familyCommunicationPreview = null;
+    state.familyCommunicationMessageId = "";
+    state.familyCommunicationViewedCopies = new Set();
+    byId("family-preview-card").hidden = true;
+    byId("family-preview-confirmation").checked = false;
+    byId("family-preview-confirmation").disabled = true;
+    byId("family-communication-review").disabled = true;
+    byId("family-communication-send").disabled = true;
+    byId("family-template-status").textContent = "Not prepared";
+    byId("family-template-status").className = "status-pill";
+  }
+
+  function selectedFamilyApplicationIds() {
+    return [...byId("family-communication-applications").querySelectorAll("input:checked")].map(input => input.value);
+  }
+
+  function selectedFamilyRecipientEmails() {
+    return [...byId("family-communication-recipients").querySelectorAll("input:checked")].map(input => input.value);
+  }
+
+  function familyRecipientsForSelection() {
+    const family = state.familyCommunicationContext;
+    const selected = new Set(selectedFamilyApplicationIds());
+    const applications = (family?.applications || []).filter(application => selected.has(application.applicationId));
+    if (!applications.length) return [];
+    const maps = applications.map(application => new Map((application.recipients || []).map(recipient => [recipient.email, recipient])));
+    return [...maps[0].entries()]
+      .filter(([email]) => maps.every(map => map.has(email)))
+      .map(([email, recipient]) => ({ ...recipient, email }))
+      .sort((left, right) => left.email.localeCompare(right.email));
+  }
+
+  function renderFamilyRecipientChoices() {
+    const list = byId("family-communication-recipients");
+    const previous = new Set([...list.querySelectorAll("input:checked")].map(input => input.value));
+    const recipients = familyRecipientsForSelection();
+    const selected = new Set(selectedFamilyApplicationIds());
+    const selectedApplications = (state.familyCommunicationContext?.applications || []).filter(application => selected.has(application.applicationId));
+    const availableEmails = new Set(selectedApplications.flatMap(application => (application.recipients || []).map(recipient => recipient.email)));
+    const excludedRecipientCount = Math.max(0, availableEmails.size - recipients.length);
+    clear(list);
+    recipients.forEach(recipient => {
+      const label = element("label", "family-choice");
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.value = recipient.email;
+      input.checked = previous.size ? previous.has(recipient.email) : true;
+      input.addEventListener("change", resetFamilyCommunicationPreview);
+      const copy = element("span", "");
+      copy.append(element("strong", "", recipient.name), element("small", "", `${recipient.email} · separate private copy`));
+      label.append(input, copy);
+      list.append(label);
+    });
+    if (!recipients.length) list.append(element("p", "panel-note", "No recipient is contact-permitted across every selected application."));
+    const note = byId("family-recipient-note");
+    note.textContent = excludedRecipientCount
+      ? `${excludedRecipientCount} other contact${excludedRecipientCount === 1 ? " is" : "s are"} not available across every selected application and will not receive this email.`
+      : "Recipients are rechecked by the server immediately before sending.";
+  }
+
+  function renderFamilyCommunicationChoices(family) {
+    state.familyCommunicationContext = family;
+    const list = byId("family-communication-applications");
+    clear(list);
+    const recommended = new Set(family.recommendedApplicationIds || []);
+    (family.applications || []).forEach(application => {
+      const label = element("label", `family-choice${application.eligibleForReviewUpdate ? "" : " disabled"}`);
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.value = application.applicationId;
+      input.checked = recommended.has(application.applicationId);
+      input.disabled = !application.eligibleForReviewUpdate;
+      input.addEventListener("change", () => { resetFamilyCommunicationPreview(); renderFamilyRecipientChoices(); });
+      const copy = element("span", "");
+      copy.append(element("strong", "", application.studentName), element("small", "", `${application.entryYear || "Entry year not provided"} · ${application.entryLevel || "Entry level not provided"} · ${statusLabel(application.status)}`));
+      label.append(input, copy);
+      list.append(label);
+    });
+    renderFamilyRecipientChoices();
+    byId("family-template-card").hidden = false;
+    resetFamilyCommunicationPreview();
+  }
+
+  function renderCommunicationContext(result) {
+    const { application, family } = result;
     state.communicationContext = application;
     state.communicationMessageId = "";
     const context = byId("communication-context");
@@ -1056,11 +1156,12 @@
     const recipient = byId("communication-recipient");
     clear(recipient);
     application.recipients.forEach(item => recipient.add(new Option(`${item.name} · ${item.email}`, item.email)));
-    byId("communication-form").hidden = application.recipients.length === 0;
+    byId("manual-communication-card").hidden = application.recipients.length === 0;
     byId("communication-send").disabled = true;
     byId("communication-subject").value = "";
     byId("communication-body").value = "";
-    renderCommunicationHistory(application.communications || []);
+    renderFamilyCommunicationChoices(family);
+    renderCommunicationHistory(application.communications || [], family.communications || []);
     if (!application.recipients.length) setNotice("communication-error", "No contact-permitted recipient is available for this application.");
   }
 
@@ -1068,7 +1169,10 @@
     clearNotices("communication-error", "communication-message");
     state.communicationContext = null;
     state.communicationMessageId = "";
-    byId("communication-form").hidden = true;
+    state.familyCommunicationContext = null;
+    byId("manual-communication-card").hidden = true;
+    byId("family-template-card").hidden = true;
+    resetFamilyCommunicationPreview();
     byId("communication-history-card").hidden = true;
     const context = byId("communication-context");
     clear(context);
@@ -1080,7 +1184,7 @@
     }
     try {
       const result = await api("/v6/staff/applications/communications/context", { method: "POST", body: { applicationId } });
-      renderCommunicationContext(result.application);
+      renderCommunicationContext(result);
     } catch (error) {
       clear(context);
       context.append(element("p", "panel-note", "Communication context could not be loaded."));
@@ -1111,6 +1215,81 @@
     state.communicationMessageId = result.message.id;
     byId("communication-send").disabled = false;
     return result.message;
+  }
+
+  function familyCommunicationPayload() {
+    return {
+      templateId: byId("family-communication-template").value,
+      applicationIds: selectedFamilyApplicationIds(),
+      recipientEmails: selectedFamilyRecipientEmails()
+    };
+  }
+
+  function htmlDataUrl(value) {
+    const bytes = new TextEncoder().encode(value);
+    let binary = "";
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return `data:text/html;base64,${btoa(binary)}`;
+  }
+
+  function renderFamilyPreviewCopy(index) {
+    const preview = state.familyCommunicationPreview;
+    const copy = preview?.copies?.[index];
+    if (!copy) return;
+    state.familyCommunicationViewedCopies.add(index);
+    byId("family-preview-frame").src = htmlDataUrl(copy.html);
+    byId("family-preview-text").textContent = copy.text;
+    [...byId("family-preview-tabs").querySelectorAll("button")].forEach((button, buttonIndex) => {
+      const active = buttonIndex === index;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-selected", String(active));
+      button.tabIndex = active ? 0 : -1;
+    });
+    const everyCopyViewed = state.familyCommunicationViewedCopies.size === preview.copies.length;
+    byId("family-preview-confirmation").disabled = !everyCopyViewed;
+    byId("family-preview-summary").textContent = everyCopyViewed
+      ? `Subject: ${copy.subject} · ${preview.applications.length} application${preview.applications.length === 1 ? "" : "s"} · ${preview.copies.length} separate recipient cop${preview.copies.length === 1 ? "y" : "ies"} · ${fieldLabel(preview.variant)}`
+      : `Subject: ${copy.subject} · Open each recipient tab before confirming review. ${state.familyCommunicationViewedCopies.size} of ${preview.copies.length} viewed.`;
+  }
+
+  function renderFamilyCommunicationPreview(preview) {
+    state.familyCommunicationPreview = preview;
+    state.familyCommunicationMessageId = "";
+    state.familyCommunicationViewedCopies = new Set();
+    const tabs = byId("family-preview-tabs");
+    clear(tabs);
+    preview.copies.forEach((copy, index) => {
+      const button = element("button", "", `${copy.recipientName} · ${copy.recipientEmail}`);
+      button.type = "button";
+      button.role = "tab";
+      button.addEventListener("click", () => renderFamilyPreviewCopy(index));
+      button.addEventListener("keydown", event => {
+        if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+        event.preventDefault();
+        const last = preview.copies.length - 1;
+        const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? last : event.key === "ArrowRight" ? (index + 1) % preview.copies.length : (index - 1 + preview.copies.length) % preview.copies.length;
+        renderFamilyPreviewCopy(nextIndex);
+        tabs.querySelectorAll("button")[nextIndex].focus();
+      });
+      tabs.append(button);
+    });
+    byId("family-preview-card").hidden = false;
+    byId("family-preview-confirmation").checked = false;
+    byId("family-communication-review").disabled = true;
+    byId("family-communication-send").disabled = true;
+    byId("family-template-status").textContent = "Preview ready";
+    byId("family-template-status").className = "status-pill pending";
+    renderFamilyPreviewCopy(0);
+    byId("family-preview-card").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function setFamilyPreviewSize(size) {
+    const mobile = size === "mobile";
+    byId("family-preview-shell").classList.toggle("mobile", mobile);
+    byId("family-preview-mobile").classList.toggle("active", mobile);
+    byId("family-preview-desktop").classList.toggle("active", !mobile);
+    byId("family-preview-mobile").setAttribute("aria-pressed", String(mobile));
+    byId("family-preview-desktop").setAttribute("aria-pressed", String(!mobile));
   }
 
   function renderPendingMeetingTimes() {
@@ -1772,6 +1951,55 @@
   byId("invite-eoi-search").addEventListener("input", renderEoiPicker);
   document.querySelectorAll(".nav-button").forEach(button => button.addEventListener("click", () => showPanel(button.dataset.panel)));
   byId("communication-application").addEventListener("change", event => loadCommunicationContext(event.target.value));
+  byId("family-communication-template").addEventListener("change", resetFamilyCommunicationPreview);
+  byId("family-preview-desktop").addEventListener("click", () => setFamilyPreviewSize("desktop"));
+  byId("family-preview-mobile").addEventListener("click", () => setFamilyPreviewSize("mobile"));
+  byId("family-preview-confirmation").addEventListener("change", event => {
+    byId("family-communication-review").disabled = !event.target.checked || !state.familyCommunicationPreview;
+  });
+  byId("family-communication-preview").addEventListener("click", async event => {
+    const button = event.currentTarget;
+    clearNotices("communication-error", "communication-message");
+    setLoading(button, true);
+    try {
+      const payload = familyCommunicationPayload();
+      if (!payload.applicationIds.length) throw new Error("Select at least one submitted application.");
+      if (!payload.recipientEmails.length) throw new Error("Select at least one contact-permitted recipient.");
+      const result = await api("/v6/staff/family-messages/preview", { method: "POST", body: payload });
+      renderFamilyCommunicationPreview(result.preview);
+      setNotice("communication-message", "Exact recipient copies prepared. Nothing has been sent.");
+    } catch (error) { setNotice("communication-error", error.message); }
+    finally { setLoading(button, false); }
+  });
+  byId("family-communication-review").addEventListener("click", async event => {
+    const button = event.currentTarget;
+    clearNotices("communication-error", "communication-message");
+    setLoading(button, true);
+    try {
+      if (!state.familyCommunicationPreview || !byId("family-preview-confirmation").checked) throw new Error("Review and confirm every recipient copy first.");
+      const result = await api("/v6/staff/family-messages/review", { method: "POST", body: { ...familyCommunicationPayload(), contentHash: state.familyCommunicationPreview.contentHash, confirmation: "Mark reviewed" } });
+      state.familyCommunicationMessageId = result.message.id;
+      byId("family-communication-send").disabled = false;
+      byId("family-template-status").textContent = "Reviewed, not sent";
+      byId("family-template-status").className = "status-pill warning";
+      setNotice("communication-message", "The exact family email is marked as reviewed. It has not been sent.");
+    } catch (error) { setNotice("communication-error", error.message); }
+    finally { setLoading(button, false); }
+  });
+  byId("family-communication-send").addEventListener("click", async event => {
+    if (!window.confirm("Send the reviewed email as separate private copies to the displayed family recipients?")) return;
+    const button = event.currentTarget;
+    clearNotices("communication-error", "communication-message");
+    setLoading(button, true);
+    try {
+      if (!state.familyCommunicationMessageId) throw new Error("Mark the exact preview as reviewed before sending.");
+      const applicationId = state.communicationContext.applicationId;
+      await api("/v6/staff/family-messages/send", { method: "POST", body: { messageId: state.familyCommunicationMessageId, operationId: newOperationId(), confirmation: "Send reviewed family email" } });
+      await loadCommunicationContext(applicationId);
+      setNotice("communication-message", "The reviewed family email has been queued as separate private recipient copies.");
+    } catch (error) { setNotice("communication-error", error.message); }
+    finally { setLoading(button, false); }
+  });
   byId("communication-save").addEventListener("click", async event => {
     const button = event.currentTarget;
     clearNotices("communication-error", "communication-message");

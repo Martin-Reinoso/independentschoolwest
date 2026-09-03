@@ -1,5 +1,27 @@
 # V6 Recovery Runbook
 
+## Reviewed family communications
+
+- The main DynamoDB table is authoritative for the `FAMILY_COMM` master, recipient
+  copies, invitation index, application links and outbox state. The audit table is
+  authoritative for attributable review/send history. Google Sheets are not a backup
+  and contain no family-communication projection.
+- Restore the master, every `RECIPIENT` copy, `INVITE_ID` index, every `APP` link,
+  related outbox receipt/failure and audit events from the same recovery point. Do not
+  restore or edit only one child link.
+- `reviewed` means no email was queued. Staff should reopen the workspace and recheck
+  every current application and recipient before deciding whether to send.
+- `sent` plus an outbox pending/receipt/failure record is send evidence. Do not create a
+  duplicate communication merely because delivery is delayed; inspect the linked
+  private copy and durable outbox state first.
+- Reviewed HTML/plain-text snapshots are evidence and must remain unchanged. Prepare a
+  new reviewed message rather than altering a saved or sent copy.
+- If a master is `sent` but its transactional child links or outbox set are incomplete,
+  stop manual sends and investigate a restore/integrity incident. The normal transaction
+  must produce the complete graph or no graph.
+- Use only synthetic records during recovery verification. Never print recipient
+  addresses or message bodies in ordinary logs or incident notes.
+
 ## Cohort-planning records
 
 - `prospect_family`, `prospect_child` and `prospect_application_link` live in the
@@ -16,7 +38,7 @@
 - Archiving is non-destructive. Do not delete the family/children to remove them from a
   forecast; use the audited archive operation.
 
-## Case correspondence and meetings
+## One-off case correspondence and meetings
 
 - Application Review is not a recovery surface for emails or bookings. Use the separate **Family communications** and **Principal meetings** workspaces.
 - A failed email remains in the durable outbox and follows the existing bounded retry and terminal-failure alarms. Do not create a duplicate application to retry correspondence.
