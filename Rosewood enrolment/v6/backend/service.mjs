@@ -3,6 +3,7 @@ import { APPLICATION_REQUEST_CONTRACT } from "./application-request-contract.mjs
 import { COMMUNITY_ENQUIRY_CONTRACT } from "./community-enquiry-contract.mjs";
 import { buildApplicationReview } from "./application-review.mjs";
 import { applicationComplete, applicationInvitation, applicationOtp, applicationSubmitted, communityEnquiryNotification, eoiAcknowledgement, meetingBookingConfirmation, meetingBookingInvitation, signatureInvitation, signatureOtp, staffCaseEmail, staffOtp } from "./email-templates.mjs";
+import { FAMILY_COMMUNICATION_TEMPLATE, familyCommunicationContentHash, familyCommunicationVariant, renderFamilyCommunication } from "./family-communication-templates.mjs";
 import { currentFormDefinition, FORM_DEFINITIONS, getFormDefinition, recordFormReference } from "./form-definitions.mjs";
 import { CONTACT_PERMISSION_NO, CONTACT_PERMISSION_YES, SCHEMA_VERSION, contactPermissionAllowed, formReleaseAtLeast, normalizeEmail, safeText, sanitizeApplication, splitApplication, truthy, validateApplicationForSubmission, validateEoi } from "./schema.mjs";
 import { sheetOperation } from "./google-sheets.mjs";
@@ -20,6 +21,7 @@ const APPLICATION_REQUEST_NETWORK_DAILY_LIMIT = 500;
 const APPLICATION_OTP_NETWORK_HALF_HOURLY_LIMIT = 100;
 const CASE_REVIEW_STATUSES = new Set(["not_started", "in_progress", "further_information_required", "ready_for_principal", "on_hold", "review_complete"]);
 const CASE_MESSAGE_PURPOSES = new Set(["missing_document", "replacement_document", "clarification", "additional_information", "principal_meeting", "general_update"]);
+const FAMILY_COMMUNICATION_STATUSES = new Set(["submitted", "staff_review_required"]);
 const PROSPECT_PLANNING_STATUSES = new Set(["expected_to_apply", "possible", "future_intake", "research_needed", "not_proceeding"]);
 const PROSPECT_SOURCES = new Set(["known_family", "community_connection", "event", "website", "referral", "other"]);
 const PROSPECT_ENTRY_LEVELS = new Set(["Foundation (Prep)", "Year 1", "Year 2", "Year 3", "Year 4", "Year 5"]);
@@ -843,6 +845,9 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
       if (tracking?.kind === "case_message") {
         await store.recordCaseMessageDelivery?.({ applicationId: tracking.applicationId, messageId: tracking.messageId, deliveryStatus: feedback.deliveryStatus, deliveryRank: feedback.deliveryRank, at: feedback.occurredAt, messageIdFromProvider: feedback.messageId });
       }
+      if (tracking?.kind === "family_case_message") {
+        await store.recordFamilyMessageDelivery?.({ messageId: tracking.familyMessageId, recipientCopyId: tracking.recipientCopyId, deliveryStatus: feedback.deliveryStatus, deliveryRank: feedback.deliveryRank, at: feedback.occurredAt, messageIdFromProvider: feedback.messageId });
+      }
       const audit = {
         eventId: `ses-${feedback.eventId}`,
         occurredAt: feedback.occurredAt,
@@ -1353,15 +1358,78 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     return { id: message.id, purpose: message.purpose, subject: message.subject, body: message.body, recipientEmail: message.recipientEmail, recipientName: message.recipientName || "", status: message.status, createdAt: message.createdAt, updatedAt: message.updatedAt, sentAt: message.sentAt || "", deliveryStatus: message.deliveryStatus || (message.status === "sent" ? "queued" : "not_sent"), createdBy: message.createdBy, sentBy: message.sentBy || "" };
   }
 
+  function familyApplicationView(app) {
+    const studentFirstName = safeText(app.values?.student_first, 120);
+    const studentLastName = safeText(app.values?.student_last, 120);
+    return {
+      applicationId: app.id,
+      reference: app.reference || "",
+      studentFirstName,
+      studentName: [studentFirstName, studentLastName].filter(Boolean).join(" ") || "Student name not yet provided",
+      entryYear: safeText(app.values?.entry_year, 20),
+      entryLevel: safeText(app.values?.entry_level, 80),
+      status: app.status,
+      eligibleForReviewUpdate: FAMILY_COMMUNICATION_STATUSES.has(app.status),
+      createdAt: app.createdAt || "",
+      updatedAt: app.updatedAt || "",
+      recipients: [...permittedCaseRecipients(app).values()].map(recipient => ({ ...recipient, maskedEmail: maskEmail(recipient.email) }))
+    };
+  }
+
+  function familyRecipientIntersection(applications) {
+    if (!applications.length) return { recipients: [], excludedCount: 0 };
+    const maps = applications.map(permittedCaseRecipients);
+    const allEmails = new Set(maps.flatMap(map => [...map.keys()]));
+    const recipients = [...maps[0].entries()]
+      .filter(([email]) => maps.every(map => map.has(email)))
+      .map(([email, recipient]) => {
+        const names = maps.map(map => map.get(email)?.name).filter(name => name && name !== "Parent/Guardian");
+        return { ...recipient, email, name: names[0] || recipient.name || "Parent/Guardian", maskedEmail: maskEmail(email) };
+      })
+      .sort((left, right) => left.email.localeCompare(right.email));
+    return { recipients, excludedCount: Math.max(0, allEmails.size - recipients.length) };
+  }
+
+  async function familyMessageViews(invitationId) {
+    if (!store.listFamilyMessagesByInvitation) return [];
+    const indexes = await store.listFamilyMessagesByInvitation(invitationId, 100);
+    return Promise.all(indexes.map(async index => {
+      const [message, copies] = await Promise.all([
+        store.getFamilyMessage(index.messageId),
+        store.listFamilyMessageRecipients(index.messageId)
+      ]);
+      if (!message) return null;
+      return {
+        id: message.id,
+        templateId: message.templateId,
+        templateRevision: message.templateRevision,
+        variant: message.variant,
+        subject: message.subject,
+        status: message.status,
+        applicationIds: message.applicationIds,
+        applications: message.applications,
+        reviewedAt: message.reviewedAt,
+        reviewedBy: message.reviewedBy,
+        sentAt: message.sentAt || "",
+        sentBy: message.sentBy || "",
+        recipients: copies.map(copy => ({ id: copy.id, name: copy.recipientName, maskedEmail: maskEmail(copy.recipientEmail), status: copy.status, deliveryStatus: copy.deliveryStatus || (copy.status === "sent" ? "queued" : "not_sent"), deliveryAt: copy.deliveryAt || "" }))
+      };
+    })).then(messages => messages.filter(Boolean));
+  }
+
   async function getStaffCommunicationContext(event) {
     const session = await requireStaffSession(event, ["admin", "admissions"]);
     const body = parseBody(event, 20_000);
     const applicationId = safeText(body.applicationId, 200);
     const app = await store.getApplication(applicationId);
     if (!app) throw appError(404, "APPLICATION_NOT_FOUND", "The application was not found.");
+    const familyApplications = store.listApplicationsByInvitationId ? await store.listApplicationsByInvitationId(app.invitationId) : [app];
     const communications = store.listCaseMessages ? await store.listCaseMessages(app.id, 200) : [];
+    const familyCommunications = await familyMessageViews(app.invitationId);
     const recipients = [...permittedCaseRecipients(app).values()].map(recipient => ({ ...recipient, maskedEmail: maskEmail(recipient.email) }));
-    await recordAudit(createAuditEvent({ workflow: "application", recordId: app.id, invitationId: app.invitationId, type: "staff.communications_viewed", at: nowIso(), actorType: "staff", actorId: session.email, details: { messageCount: communications.length } }));
+    const selectableFamilyApplications = familyApplications.filter(item => FAMILY_COMMUNICATION_STATUSES.has(item.status));
+    const familyRecipients = familyRecipientIntersection(selectableFamilyApplications);
+    await recordAudit(createAuditEvent({ workflow: "application", recordId: app.id, invitationId: app.invitationId, type: "staff.communications_viewed", at: nowIso(), actorType: "staff", actorId: session.email, details: { messageCount: communications.length, familyMessageCount: familyCommunications.length } }));
     return {
       application: {
         applicationId: app.id,
@@ -1371,8 +1439,139 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
         status: app.status,
         recipients,
         communications: communications.map(caseMessageView)
+      },
+      family: {
+        invitationId: app.invitationId,
+        applications: familyApplications.map(familyApplicationView).sort((left, right) => left.studentName.localeCompare(right.studentName)),
+        recommendedApplicationIds: selectableFamilyApplications.map(item => item.id),
+        recipients: familyRecipients.recipients,
+        excludedRecipientCount: familyRecipients.excludedCount,
+        template: FAMILY_COMMUNICATION_TEMPLATE,
+        communications: familyCommunications
       }
     };
+  }
+
+  async function loadFamilyCommunicationSelection(body) {
+    const applicationIds = [...new Set((Array.isArray(body.applicationIds) ? body.applicationIds : []).map(value => safeText(value, 200)).filter(Boolean))];
+    if (!applicationIds.length || applicationIds.length > MAX_FAMILY_APPLICATIONS) throw appError(422, "FAMILY_APPLICATION_SELECTION_REQUIRED", `Select between one and ${MAX_FAMILY_APPLICATIONS} applications.`);
+    const applications = await Promise.all(applicationIds.map(applicationId => store.getApplication(applicationId)));
+    if (applications.some(application => !application)) throw appError(404, "APPLICATION_NOT_FOUND", "One of the selected applications was not found.");
+    const invitationId = applications[0].invitationId;
+    if (!invitationId || applications.some(application => application.invitationId !== invitationId)) throw appError(409, "FAMILY_GROUP_MISMATCH", "Selected applications must belong to the same verified family invitation.");
+    if (applications.some(application => !FAMILY_COMMUNICATION_STATUSES.has(application.status))) throw appError(409, "APPLICATION_NOT_READY_FOR_REVIEW_UPDATE", "This template can be sent only after every selected application has been submitted for staff review.");
+    const applicationViews = applications.map(familyApplicationView).sort((left, right) => {
+      const yearOrder = Number(left.entryYear) - Number(right.entryYear);
+      return yearOrder || left.studentName.localeCompare(right.studentName) || left.applicationId.localeCompare(right.applicationId);
+    });
+    if (applicationViews.some(application => !application.studentFirstName)) throw appError(422, "STUDENT_NAME_REQUIRED", "Every selected application must include the student's first name before this template can be prepared.");
+    const variantResult = familyCommunicationVariant(applicationViews);
+    if (variantResult.error) throw appError(422, "FAMILY_TEMPLATE_UNAVAILABLE", variantResult.error);
+    const recipientResult = familyRecipientIntersection(applications);
+    const requestedEmails = [...new Set((Array.isArray(body.recipientEmails) ? body.recipientEmails : []).map(normalizeEmail).filter(Boolean))];
+    const permittedByEmail = new Map(recipientResult.recipients.map(recipient => [recipient.email, recipient]));
+    const selectedEmails = requestedEmails.length ? requestedEmails : [...permittedByEmail.keys()];
+    if (!selectedEmails.length) throw appError(422, "FAMILY_RECIPIENT_REQUIRED", "Select at least one contact-permitted family recipient.");
+    if (selectedEmails.some(email => !permittedByEmail.has(email))) throw appError(403, "RECIPIENT_NOT_PERMITTED", "A selected recipient is not contact-permitted across every included application.");
+    const recipients = selectedEmails.map(email => permittedByEmail.get(email)).sort((left, right) => left.email.localeCompare(right.email));
+    return { invitationId, applications, applicationViews, recipients, variant: variantResult.variant, excludedRecipientCount: recipientResult.excludedCount };
+  }
+
+  function buildFamilyCommunicationPreview(selection) {
+    const copies = selection.recipients.map(recipient => ({
+      recipientEmail: recipient.email,
+      recipientName: recipient.name,
+      recipientKind: recipient.kind,
+      ...renderFamilyCommunication({ applications: selection.applicationViews, recipient })
+    }));
+    const contentHash = familyCommunicationContentHash({
+      templateId: FAMILY_COMMUNICATION_TEMPLATE.id,
+      templateRevision: FAMILY_COMMUNICATION_TEMPLATE.revision,
+      invitationId: selection.invitationId,
+      applications: selection.applicationViews.map(application => ({ applicationId: application.applicationId, studentFirstName: application.studentFirstName, entryYear: application.entryYear, entryLevel: application.entryLevel })),
+      copies: copies.map(copy => ({ recipientEmail: copy.recipientEmail, recipientName: copy.recipientName, subject: copy.subject, text: copy.text, html: copy.html }))
+    });
+    return { template: FAMILY_COMMUNICATION_TEMPLATE, variant: selection.variant, contentHash, applications: selection.applicationViews, recipients: selection.recipients, copies };
+  }
+
+  async function previewStaffFamilyMessage(event) {
+    const session = await requireStaffSession(event, ["admin", "admissions"]);
+    const body = parseBody(event, 80_000);
+    if (safeText(body.templateId, 120) !== FAMILY_COMMUNICATION_TEMPLATE.id) throw appError(422, "UNKNOWN_FAMILY_TEMPLATE", "Select a supported family email template.");
+    const selection = await loadFamilyCommunicationSelection(body);
+    const preview = buildFamilyCommunicationPreview(selection);
+    await recordAudit(createAuditEvent({ workflow: "family_communications", recordId: selection.invitationId, invitationId: selection.invitationId, type: "staff.family_email_previewed", at: nowIso(), actorType: "staff", actorId: session.email, details: { templateId: preview.template.id, templateRevision: preview.template.revision, variant: preview.variant, applicationCount: preview.applications.length, recipientCount: preview.recipients.length } }));
+    return { preview: { ...preview, recipients: preview.recipients.map(recipient => ({ ...recipient, maskedEmail: maskEmail(recipient.email) })) } };
+  }
+
+  async function reviewStaffFamilyMessage(event) {
+    const session = await requireStaffSession(event, ["admin", "admissions"]);
+    const body = parseBody(event, 80_000);
+    if (body.confirmation !== "Mark reviewed") throw appError(422, "REVIEW_CONFIRMATION_REQUIRED", "Confirm that every recipient copy has been reviewed.");
+    if (safeText(body.templateId, 120) !== FAMILY_COMMUNICATION_TEMPLATE.id) throw appError(422, "UNKNOWN_FAMILY_TEMPLATE", "Select a supported family email template.");
+    const selection = await loadFamilyCommunicationSelection(body);
+    const preview = buildFamilyCommunicationPreview(selection);
+    if (!body.contentHash || body.contentHash !== preview.contentHash) throw appError(409, "FAMILY_EMAIL_PREVIEW_CHANGED", "The family email changed after it was previewed. Preview every recipient copy again.");
+    const messageId = id("family-message");
+    const reviewedAt = nowIso();
+    const recipientCopies = preview.copies.map(copy => ({ id: id("recipient-copy"), familyMessageId: messageId, recipientEmail: copy.recipientEmail, recipientName: copy.recipientName, recipientKind: copy.recipientKind, subject: copy.subject, text: copy.text, html: copy.html, contentHash: familyCommunicationContentHash({ subject: copy.subject, text: copy.text, html: copy.html, recipientEmail: copy.recipientEmail }), status: "reviewed", deliveryStatus: "not_sent", reviewedAt }));
+    const applications = preview.applications.map(application => ({ applicationId: application.applicationId, reference: application.reference, studentName: application.studentName, entryYear: application.entryYear, entryLevel: application.entryLevel }));
+    const message = { id: messageId, invitationId: selection.invitationId, applicationIds: applications.map(application => application.applicationId), applications, templateId: preview.template.id, templateRevision: preview.template.revision, variant: preview.variant, subject: preview.copies[0].subject, contentHash: preview.contentHash, status: "reviewed", version: 1, recipientCount: recipientCopies.length, reviewedAt, reviewedBy: session.email, createdAt: reviewedAt, updatedAt: reviewedAt };
+    const index = { messageId, invitationId: message.invitationId, applicationIds: message.applicationIds, subject: message.subject, templateId: message.templateId, status: message.status, updatedAt: reviewedAt };
+    const applicationLinks = message.applicationIds.map(applicationId => ({ messageId, invitationId: message.invitationId, applicationId, subject: message.subject, templateId: message.templateId, status: message.status, updatedAt: reviewedAt }));
+    const audits = [
+      createAuditEvent({ workflow: "family_communications", recordId: messageId, invitationId: message.invitationId, type: "staff.family_email_reviewed", at: reviewedAt, actorType: "staff", actorId: session.email, details: { templateId: message.templateId, templateRevision: message.templateRevision, variant: message.variant, applicationCount: message.applicationIds.length, recipientCount: recipientCopies.length } }),
+      ...message.applicationIds.map(applicationId => createAuditEvent({ workflow: "application", recordId: applicationId, invitationId: message.invitationId, type: "staff.family_email_linked", at: reviewedAt, actorType: "staff", actorId: session.email, details: { familyMessageId: messageId, status: "reviewed" } }))
+    ];
+    await store.saveFamilyMessageReview({ message, recipientCopies, invitationIndex: index, applicationLinks, auditEvents: audits });
+    return { message: { id: message.id, status: message.status, version: message.version, subject: message.subject, contentHash: message.contentHash, applicationIds: message.applicationIds, recipients: recipientCopies.map(copy => ({ id: copy.id, name: copy.recipientName, maskedEmail: maskEmail(copy.recipientEmail), status: copy.status })) } };
+  }
+
+  async function sendStaffFamilyMessage(event) {
+    const session = await requireStaffSession(event, ["admin", "admissions"]);
+    const body = parseBody(event, 30_000);
+    if (body.confirmation !== "Send reviewed family email") throw appError(422, "SEND_CONFIRMATION_REQUIRED", "Confirm that the reviewed family email should be sent.");
+    const messageId = safeText(body.messageId, 200);
+    const operationId = safeText(body.operationId, 200);
+    if (operationId.length < 16) throw appError(422, "OPERATION_ID_REQUIRED", "A valid send operation identifier is required.");
+    const [current, currentCopies] = await Promise.all([store.getFamilyMessage(messageId), store.listFamilyMessageRecipients(messageId)]);
+    if (!current) throw appError(404, "FAMILY_MESSAGE_NOT_FOUND", "The reviewed family email was not found.");
+    if (current.status === "sent" && current.sendOperationId === operationId) return { message: { id: current.id, status: current.status, sentAt: current.sentAt, deduplicated: true } };
+    if (current.status !== "reviewed") throw appError(409, "FAMILY_MESSAGE_NOT_REVIEWED", "This family email is not in a reviewed state.");
+    const selection = await loadFamilyCommunicationSelection({ applicationIds: current.applicationIds, recipientEmails: currentCopies.map(copy => copy.recipientEmail) });
+    const preview = buildFamilyCommunicationPreview(selection);
+    if (preview.contentHash !== current.contentHash || currentCopies.length !== preview.copies.length) throw appError(409, "FAMILY_EMAIL_CONTEXT_CHANGED", "The family applications or contact permissions changed after review. Prepare and review a new copy.");
+    const copyByEmail = new Map(currentCopies.map(copy => [copy.recipientEmail, copy]));
+    if (preview.copies.some(copy => {
+      const stored = copyByEmail.get(copy.recipientEmail);
+      return !stored || stored.contentHash !== familyCommunicationContentHash({ subject: copy.subject, text: copy.text, html: copy.html, recipientEmail: copy.recipientEmail });
+    })) throw appError(409, "FAMILY_EMAIL_CONTEXT_CHANGED", "The exact recipient copy changed after review. Prepare and review a new copy.");
+    const sentAt = nowIso();
+    const message = { ...current, status: "sent", version: Number(current.version || 1) + 1, sentAt, sentBy: session.email, sendOperationId: operationId, updatedAt: sentAt };
+    const recipientCopies = currentCopies.map(copy => ({ ...copy, status: "sent", deliveryStatus: "queued", sentAt, sentBy: session.email }));
+    const invitationIndex = { messageId, invitationId: message.invitationId, applicationIds: message.applicationIds, subject: message.subject, templateId: message.templateId, status: message.status, updatedAt: sentAt };
+    const applicationLinks = message.applicationIds.map(applicationId => ({ messageId, invitationId: message.invitationId, applicationId, subject: message.subject, templateId: message.templateId, status: message.status, updatedAt: sentAt }));
+    const outboxEvents = recipientCopies.map(copy => emailOutbox({
+      to: copy.recipientEmail,
+      subject: copy.subject,
+      text: copy.text,
+      html: copy.html,
+      tags: { workflow: "family_communications", message_type: "family_application_review_update", record_id: message.id, family_message_id: message.id, recipient_copy_id: copy.id },
+      _tracking: { kind: "family_case_message", familyMessageId: message.id, recipientCopyId: copy.id }
+    }, clock()));
+    const audits = [
+      createAuditEvent({ workflow: "family_communications", recordId: message.id, invitationId: message.invitationId, type: "staff.family_email_queued", at: sentAt, actorType: "staff", actorId: session.email, details: { operationId, templateId: message.templateId, applicationCount: message.applicationIds.length, recipientCount: recipientCopies.length } }),
+      ...message.applicationIds.map(applicationId => createAuditEvent({ workflow: "application", recordId: applicationId, invitationId: message.invitationId, type: "staff.family_email_queued", at: sentAt, actorType: "staff", actorId: session.email, details: { familyMessageId: message.id, recipientCount: recipientCopies.length } }))
+    ];
+    try {
+      await store.sendFamilyMessage({ message, expectedVersion: current.version, recipientCopies, invitationIndex, applicationLinks, outboxEvents, auditEvents: audits });
+    } catch (error) {
+      const committed = await store.getFamilyMessage(messageId);
+      if (committed?.status === "sent" && committed.sendOperationId === operationId) return { message: { id: committed.id, status: committed.status, sentAt: committed.sentAt, deduplicated: true } };
+      throw error;
+    }
+    await dispatchOutbox(20);
+    return { message: { id: message.id, status: message.status, sentAt: message.sentAt, deduplicated: false } };
   }
 
   async function saveStaffCaseReview(event) {
@@ -2576,6 +2775,9 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
         if (tracking?.kind === "case_message") {
           await store.recordCaseMessageDelivery?.({ applicationId: tracking.applicationId, messageId: tracking.messageId, deliveryStatus: "accepted_by_ses", at: nowIso(), messageIdFromProvider: result?.messageId || "" });
         }
+        if (tracking?.kind === "family_case_message") {
+          await store.recordFamilyMessageDelivery?.({ messageId: tracking.familyMessageId, recipientCopyId: tracking.recipientCopyId, deliveryStatus: "accepted_by_ses", deliveryRank: SES_FEEDBACK_RANK.accepted_by_ses, at: nowIso(), messageIdFromProvider: result?.messageId || "" });
+        }
         await store.completeOutbox(item, result || { completed: true });
         completed += 1;
       } catch (error) {
@@ -2599,7 +2801,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
   }
 
   const routes = new Map([
-    ["GET /v6/health", async () => ({ status: "ok", schemaVersion: SCHEMA_VERSION, formVersions: { eoi: currentFormDefinition("eoi").formVersion, application: currentFormDefinition("application").formVersion, applicationLinkRequest: APPLICATION_REQUEST_CONTRACT.formVersion, communityEnquiry: COMMUNITY_ENQUIRY_CONTRACT.formVersion }, features: { communityEnquiries: true, cohortPlanning: true } })],
+    ["GET /v6/health", async () => ({ status: "ok", schemaVersion: SCHEMA_VERSION, formVersions: { eoi: currentFormDefinition("eoi").formVersion, application: currentFormDefinition("application").formVersion, applicationLinkRequest: APPLICATION_REQUEST_CONTRACT.formVersion, communityEnquiry: COMMUNITY_ENQUIRY_CONTRACT.formVersion }, features: { communityEnquiries: true, cohortPlanning: true, familyCommunications: true } })],
     ["POST /v6/session/logout", logoutSession],
     ["POST /v6/staff/access/request-code", requestStaffCode],
     ["POST /v6/staff/access/verify-code", verifyStaffCode],
@@ -2616,6 +2818,9 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     ["POST /v6/staff/applications/messages/draft", saveStaffCaseMessageDraft],
     ["POST /v6/staff/applications/messages/test", testStaffCaseMessage],
     ["POST /v6/staff/applications/messages/send", sendStaffCaseMessage],
+    ["POST /v6/staff/family-messages/preview", previewStaffFamilyMessage],
+    ["POST /v6/staff/family-messages/review", reviewStaffFamilyMessage],
+    ["POST /v6/staff/family-messages/send", sendStaffFamilyMessage],
     ["GET /v6/staff/meetings", listStaffMeetings],
     ["POST /v6/staff/meetings/series", createStaffMeetingSeries],
     ["POST /v6/staff/meetings/slots", createStaffMeetingSlot],

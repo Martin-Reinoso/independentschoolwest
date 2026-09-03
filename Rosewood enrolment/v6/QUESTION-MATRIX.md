@@ -1,5 +1,11 @@
 # V6.6 Parent/Guardian And Signature Question Matrix
 
+> **V6.28 release note:** the reviewed family-communication workspace adds no applicant
+> question, required answer, answer key or validation change. EOI `2026.27` and
+> Application `2026.28` pin staff-interface and compatibility assets only. Family-email
+> grouping and recipient permission are derived operational controls outside the form
+> answer schema.
+
 This matrix is the release contract for parent/guardian contact permission and
 signature routing in `rosewood-application-2026.6`. It supplements the complete V6
 section map in `DATA-PROCESS-MAP.md`. Earlier form contracts remain immutable.
@@ -114,10 +120,10 @@ their original immutable definition.
 
 # Current EOI And Application Question Matrix
 
-`rosewood-eoi-2026.26` and `rosewood-application-2026.27` are the current contracts.
+`rosewood-eoi-2026.27` and `rosewood-application-2026.28` are the current contracts.
 They preserve all preceding family questions, options, requirements and answer keys;
-the latest release changes only pinned browser/operations assets and separates public
-request state from evidence-based email delivery status in the staff portal.
+the latest release changes only pinned browser/operations assets and adds the separate
+reviewed family-communication workflow in the staff portal.
 No family question, required answer or submitted-application rule changed.
 These releases preserve the V6.15 questions and rules; earlier definitions remain
 immutable for submitted records.

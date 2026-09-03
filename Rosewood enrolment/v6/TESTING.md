@@ -1,8 +1,28 @@
 # V6 Testing
 
+## Reviewed family communications (2026-09-03)
+
+Automated coverage verifies same-invitation grouping, explicit child selection,
+submitted-status eligibility, 2027/future/mixed variants, child-free subjects, escaped
+dynamic text, recipient contact-permission intersection, separate To-only copies,
+viewer-role denial, exact-content hash rejection, review-without-send, transactional
+master/copy/index/child-link/audit persistence, transactional outbox creation,
+idempotent duplicate send, permission recheck after review, SES correlation and no
+Application mutation. Frontend validation covers the recipient tabs, keyboard tab
+navigation, desktop/mobile preview, sandboxed email frame, plain-text fallback, explicit
+review gate and separate one-off composer. Synthetic data only is used; verification
+does not send a real family email.
+
+Local browser verification covers the full desktop workspace and a 390 x 844 mobile
+viewport. The exact responsive email renders inside a script-disabled sandboxed frame,
+the recipient tabs scroll without widening the page, the preview-size buttons expose
+their pressed state, and the staff page has no horizontal overflow. The CSP permits the
+email's inline presentation styles and fixed Rosewood emblem while keeping portal
+scripts same-origin and disallowing inline script execution.
+
 ## Separated staff communications and bookings (2026-09-01)
 
-Automated coverage verifies complete review projection, absence of email/meeting controls from Application Review, a separate Family communications workspace, draft-before-send behavior, explicit reviewed-send confirmation, backend contact-permission enforcement, batch time creation, duplicate-invitation prevention, invited-email OTP, initial atomic booking, same-booking time changes, old-slot release, new-slot reservation and unchanged Application records. The full backend suite passes 147 tests.
+Automated coverage verifies complete review projection, absence of email/meeting controls from Application Review, a separate Family communications workspace, draft-before-send behavior, explicit reviewed-send confirmation, backend contact-permission enforcement, batch time creation, duplicate-invitation prevention, invited-email OTP, initial atomic booking, same-booking time changes, old-slot release, new-slot reservation and unchanged Application records. The full backend suite passes 170 tests.
 
 Test date: 8 August 2026
 

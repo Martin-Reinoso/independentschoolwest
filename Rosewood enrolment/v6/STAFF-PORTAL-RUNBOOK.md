@@ -10,10 +10,27 @@
 ## Family communications
 
 1. Open **Family communications** and select an application.
-2. Confirm the displayed family/student context and choose a backend-permitted recipient.
-3. Write the message. Save a draft, and use **Send test to me** when appropriate.
-4. Re-read the recipient, subject and body before choosing **Send reviewed email** and confirming the send.
-5. Never use email to transmit sensitive application answers or documents. Purpose selection never triggers an email.
+2. For the prepared **Application review update**, select the submitted child
+   applications that belong in this family message. Do not include a future-entry child
+   if the family should receive a separate operational update.
+3. Select only the displayed recipients. The server includes a recipient only when that
+   address is contact-permitted across every selected application.
+4. Choose **Prepare exact preview**. Open every recipient tab and check the subject,
+   names, children, entry years, dates and wording in desktop/mobile view. Each recipient
+   receives a separate private copy.
+5. Tick the review confirmation and choose **Mark exact copy as reviewed**. This stores
+   evidence but sends nothing.
+6. Choose **Send reviewed family email** only after the final check. The server rechecks
+   grouping, status, content and permission; changed context requires a new preview.
+7. Use **Write a one-off email about one application** for a missing document,
+   clarification or other application-specific request. Save its draft and re-read it
+   before **Send reviewed email**.
+8. Never use email to transmit sensitive application answers or documents. Selecting a
+   template, purpose, child or recipient never sends an email by itself.
+
+The invitation groups candidate family records, but staff selection defines each
+message. One master history entry is linked to every selected child. Sent addresses are
+not shared through To or Cc, and the operation does not edit any submitted application.
 
 ## Principal meetings
 

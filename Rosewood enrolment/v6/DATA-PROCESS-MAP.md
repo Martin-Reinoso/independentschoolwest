@@ -108,6 +108,33 @@ counters, not payloads. CloudWatch receives one binary availability value for ea
 the public-asset, backend-health, EOI-address, protected-workflow and operational-pipeline
 checks.
 
+## Family-Grouped Application Review Email
+
+```mermaid
+flowchart LR
+    StaffSelect["Staff selects submitted children\nunder one invitation"]
+    ServerPreview["Server validates grouping, years\nand recipient permission"]
+    Copies["Exact HTML and text copy\nfor each recipient"]
+    StaffReview["Staff opens every copy\nand marks exact content reviewed"]
+    Reviewed["Atomic master, copies,\ninvitation index, child links and audit"]
+    Recheck["Server rerenders and rechecks\npermissions and content hash"]
+    Sent["Conditional idempotent send transaction"]
+    OutboxCopies["One durable outbox event\nper private recipient"]
+    SESCopies["Separate SES emails\nno shared To or Cc"]
+    ChildHistory["Same communication shown\non each selected child case"]
+
+    StaffSelect --> ServerPreview --> Copies --> StaffReview --> Reviewed
+    Reviewed --> Recheck --> Sent --> OutboxCopies --> SESCopies
+    Sent --> ChildHistory
+```
+
+The family grouping is operational, not a merge of child records. Every child keeps a
+separate Application, reference, answers, documents, signatures and outcome. The
+selected recipients must be contact-permitted on every included application. A
+permission, entry-year or selection change after review stops sending and requires a
+new preview. Message status and SES delivery evidence are stored against restricted
+recipient copies; Google Sheets remain outside this workflow.
+
 ## Systems of Record
 
 | Information | Authoritative location | Secondary representation | Notes |

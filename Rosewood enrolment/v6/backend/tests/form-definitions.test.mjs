@@ -66,6 +66,7 @@ test("the current release keeps earlier contracts addressable and changes only p
   const v24 = getFormDefinition("application", "rosewood-application-2026.24");
   const v25 = getFormDefinition("application", "rosewood-application-2026.25");
   const v26 = getFormDefinition("application", "rosewood-application-2026.26");
+  const v27 = getFormDefinition("application", "rosewood-application-2026.27");
   const current = currentFormDefinition("application");
   const previousEoi = getFormDefinition("eoi", "rosewood-eoi-2026.10");
   const v11Eoi = getFormDefinition("eoi", "rosewood-eoi-2026.11");
@@ -83,6 +84,7 @@ test("the current release keeps earlier contracts addressable and changes only p
   const v23Eoi = getFormDefinition("eoi", "rosewood-eoi-2026.23");
   const v24Eoi = getFormDefinition("eoi", "rosewood-eoi-2026.24");
   const v25Eoi = getFormDefinition("eoi", "rosewood-eoi-2026.25");
+  const v26Eoi = getFormDefinition("eoi", "rosewood-eoi-2026.26");
   const currentEoi = currentFormDefinition("eoi");
   assert.equal(previous.formVersion, "rosewood-application-2026.10");
   assert.equal(v11.formVersion, "rosewood-application-2026.11");
@@ -101,7 +103,8 @@ test("the current release keeps earlier contracts addressable and changes only p
   assert.equal(v24.formVersion, "rosewood-application-2026.24");
   assert.equal(v25.formVersion, "rosewood-application-2026.25");
   assert.equal(v26.formVersion, "rosewood-application-2026.26");
-  assert.equal(current.formVersion, "rosewood-application-2026.27");
+  assert.equal(v27.formVersion, "rosewood-application-2026.27");
+  assert.equal(current.formVersion, "rosewood-application-2026.28");
   assert.deepEqual(v13.contract, previous.contract);
   assert.deepEqual(v13.contract, v11.contract);
   assert.deepEqual(v13.contract, v12.contract);
@@ -114,7 +117,7 @@ test("the current release keeps earlier contracts addressable and changes only p
   assert.deepEqual(v19.contract, v18.contract);
   assert.deepEqual(v20.contract, v19.contract);
   assert.deepEqual(v21.contract, v20.contract);
-  assert.deepEqual(current.contract, v26.contract);
+  assert.deepEqual(current.contract, v27.contract);
   assert.ok(current.contract.requiredFields.includes("medicare_expiry"));
   assert.ok(!v13.contract.requiredFields.includes("medicare_expiry"));
   assert.equal(v11Eoi.formVersion, "rosewood-eoi-2026.11");
@@ -132,7 +135,8 @@ test("the current release keeps earlier contracts addressable and changes only p
   assert.equal(v23Eoi.formVersion, "rosewood-eoi-2026.23");
   assert.equal(v24Eoi.formVersion, "rosewood-eoi-2026.24");
   assert.equal(v25Eoi.formVersion, "rosewood-eoi-2026.25");
-  assert.equal(currentEoi.formVersion, "rosewood-eoi-2026.26");
+  assert.equal(v26Eoi.formVersion, "rosewood-eoi-2026.26");
+  assert.equal(currentEoi.formVersion, "rosewood-eoi-2026.27");
   assert.deepEqual(currentEoi.contract, previousEoi.contract);
   assert.deepEqual(currentEoi.contract, v11Eoi.contract);
   assert.deepEqual(currentEoi.contract, v12Eoi.contract);

@@ -1,5 +1,30 @@
 # V6 Form And Data Evolution
 
+## Reviewed family communication records (2026-09-03)
+
+The prepared application-review email is stored outside the Application answer model:
+
+- `FAMILY_COMM#{messageId} / MASTER`: family invitation, selected application IDs,
+  template ID/revision, rendering variant, content hash, review/send actors and times,
+  operation ID and lifecycle status.
+- `FAMILY_COMM#{messageId} / RECIPIENT#{copyId}`: one restricted recipient identity,
+  exact reviewed subject, HTML and plain text, copy hash, SES state and delivery time.
+- `INVITE_ID#{invitationId} / FAMILY_COMM#{messageId}`: family-history index containing
+  operational metadata but not the recipient body.
+- `APP#{applicationId} / FAMILY_COMM#{messageId}`: a link that makes the same master
+  communication visible from each selected child application.
+- `OUTBOX / PENDING#{createdAt}#{eventId}`: one private SES operation per recipient,
+  created only by the reviewed-send transaction.
+- `AUDIT`: preview, review, application-link and queued-send evidence with staff actor
+  and bounded metadata.
+
+Review creates the complete master/copy/index/link graph transactionally. Send
+conditionally changes the graph from `reviewed` to `sent` and creates every recipient
+outbox item and audit event in the same transaction. Recipient delivery updates are
+ranked independently so late SES events cannot overwrite stronger evidence. The
+application `CURRENT` item and immutable answer revisions are not transaction members.
+There is no Google Sheets projection or answer-schema migration for these records.
+
 ## Prospective-family planning records (2026-09-02)
 
 These staff-only entities are independent of the immutable EOI/Application answer maps:
@@ -78,8 +103,8 @@ deliberately creating a new version.
 Current launch contracts:
 
 ```text
-EOI:                      rosewood-eoi-2026.26
-Application:              rosewood-application-2026.27
+EOI:                      rosewood-eoi-2026.27
+Application:              rosewood-application-2026.28
 Application-link request: rosewood-application-link-request-2026.1
 Community enquiry:       rosewood-community-enquiry-2026.1
 ```
