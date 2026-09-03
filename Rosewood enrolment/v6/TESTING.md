@@ -1972,3 +1972,59 @@ or family record was created, changed or replayed during release verification.
 - DynamoDB remains active, deletion-protected, KMS-encrypted and protected by point-in-
   time recovery. Existing production staff access and role mappings were preserved
   exactly.
+
+## V6.28 Reviewed Family Communications Verification
+
+Prepared and released on 3 September 2026 with synthetic family, child and recipient
+data only. No real family message, application, invitation, OTP, upload, signature or
+meeting record was created, changed or sent during release verification.
+
+- All 170 backend and interface-contract tests pass. The deployment bundle builds from
+  the frozen lockfile, static reference validation covers 91 tracked HTML/CSS files,
+  and the public-data scan covers 420 tracked files without a private export or
+  high-confidence secret finding.
+- Backend tests prove same-invitation family grouping, contact-permission intersection,
+  separate private recipient copies, exact-content review hashes, permission and
+  context rechecks at send time, atomic review/send record graphs, idempotent send,
+  SES delivery correlation and no mutation of the linked Applications.
+- Frontend tests prove explicit child and recipient selection, exact backend-rendered
+  previews, keyboard-operable recipient tabs, desktop/mobile preview controls,
+  plain-text fallback, review-before-send enforcement and separation from Application
+  Review. Synthetic local browser checks at 1280 px and 473 px confirmed no horizontal
+  page overflow and a correctly styled, sandboxed email preview.
+- The release assets match the SHA-256 values pinned in EOI
+  `rosewood-eoi-2026.27` and Application `rosewood-application-2026.28`: family browser
+  JavaScript `2d1723814c4520d54b1f726660d7e2d06883fea023a0fdeca13e1f44e66e2ec2`,
+  staff HTML `52f57ebf801309ca3ce6624326e0f5a8847cd16cc6170c9e052f5c165168c6fc`,
+  staff JavaScript `0146be5795c5a1690751783883bb2eb95c70896c297e39e55457b83535146d1d`
+  and staff CSS `efc086d3ec2e242a3a545232f054413595cc7b8fb03e40f4f90ba417bfcc3bfe`.
+
+### Production release
+
+- Pull request `#52` passed both repository checks and merged as
+  `fa8252f12dfc14bb0716225dec554150e6281750`. GitHub Pages run `33736192912`
+  completed successfully, and all four release assets served from `ffe.org.au` matched
+  their committed SHA-256 hashes exactly.
+- Reviewed CloudFormation change set `rosewood-v628-fa8252f` modified only the existing
+  Lambda code plus conditional EventBridge permission/schedule and SES subscription
+  recalculation. It proposed no DynamoDB, audit, KMS, staging-bucket, backup-vault,
+  secret, Google configuration, staff-parameter or IAM-role replacement.
+- The stack returned to `UPDATE_COMPLETE` with termination protection enabled. Lambda
+  `rosewood-enrolment-v6-production-service` is `Active` with
+  `LastUpdateStatus: Successful`; `/v6/health` reports EOI
+  `rosewood-eoi-2026.27`, Application `rosewood-application-2026.28`, and
+  `familyCommunications: true`.
+- An unauthenticated family-communications context request returned
+  `401 SESSION_REQUIRED`. The one-minute outbox and ten-minute production-canary
+  schedules remain enabled. The manual non-writing canary at
+  `2026-09-03T09:36:08.003Z` reported Public form, backend health, EOI address,
+  Application workflow and operational pipeline all available; all nine production
+  alarms are `OK`.
+- Both security-topic email subscriptions remain confirmed. The enabled SES feedback
+  destination retains send, delivery, delay, bounce, complaint, reject and
+  rendering-failure events through its confirmed Lambda subscription. Its SNS topic
+  remains encrypted with enabled customer-managed KMS key
+  `75953611-d9aa-4cf2-9e5e-e08cf674864d`.
+- Existing production staff mailboxes and role mappings were preserved exactly. The
+  new family-template endpoints remain restricted to `admin` and `admissions`; current
+  viewer accounts were not granted send access.
