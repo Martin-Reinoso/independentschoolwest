@@ -1919,3 +1919,36 @@ changed or replayed during pre-release verification.
 - Family questions, answer keys, validators, application-link behavior, submissions,
   uploads, signatures, correspondence, meetings, staff roles and Google Sheets
   projections are unchanged.
+
+### Production release
+
+Released and verified in production on 3 September 2026 using read-only checks and the
+existing non-writing canary. No production request, invitation, OTP, email, Application
+or family record was created, changed or replayed during release verification.
+
+- Pull request `#50` passed both repository checks and merged as
+  `b00ddd31eeb19c43f3cbc83a69ad603e415e73a4`. GitHub Pages run `33716318658`
+  completed successfully, and the changed staff HTML, JavaScript and CSS served from
+  `ffe.org.au` matched their committed SHA-256 hashes exactly.
+- Reviewed CloudFormation change set `rosewood-v627-b00ddd3` modified only the existing
+  Lambda code plus conditional EventBridge permission/target and SES subscription
+  recalculation. It proposed no DynamoDB, audit, KMS, staging-bucket, backup-vault,
+  secret, Google configuration, staff-parameter or IAM-role replacement.
+- The stack returned to `UPDATE_COMPLETE` with termination protection enabled. Lambda
+  `rosewood-enrolment-v6-production-service` is `Active` with
+  `LastUpdateStatus: Successful`; `/v6/health` reports EOI
+  `rosewood-eoi-2026.26`, Application `rosewood-application-2026.27` and
+  `cohortPlanning: true`.
+- An unauthenticated staff-dashboard request returned `401 SESSION_REQUIRED`. The
+  one-minute outbox and ten-minute production-canary schedules remain enabled. The
+  manual non-writing canary at `2026-09-03T04:51:29.342Z` reported Public form,
+  backend health, EOI address, Application workflow and operational pipeline all
+  available. All nine production alarms are `OK`, and no outbox item was pending.
+- Both security-topic email subscriptions remain confirmed. The enabled SES feedback
+  destination retains all seven send, delivery, delay, bounce, complaint, reject and
+  rendering-failure event types through its confirmed Lambda subscription. Its SNS
+  topic remains encrypted with enabled customer-managed KMS key
+  `75953611-d9aa-4cf2-9e5e-e08cf674864d`.
+- DynamoDB remains active, deletion-protected, KMS-encrypted and protected by point-in-
+  time recovery. Existing production staff access and role mappings were preserved
+  exactly.
