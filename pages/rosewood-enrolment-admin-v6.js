@@ -105,6 +105,22 @@
     return ({ invited: "Invited", in_progress: "In progress", pending_signatures: "Pending signatures", staff_review_required: "Staff review required", submitted: "Submitted" })[status] || String(status || "Unknown").replaceAll("_", " ");
   }
 
+  function emailDeliveryPresentation(status) {
+    return ({
+      queued: { label: "Email queued", tone: "pending", description: "Waiting for the secure email delivery worker." },
+      accepted_by_ses: { label: "Email sent", tone: "sent", description: "Accepted by Amazon SES for delivery; receipt by the destination mail server is not yet confirmed." },
+      sent_to_ses: { label: "Email sent", tone: "sent", description: "Accepted by Amazon SES for delivery; receipt by the destination mail server is not yet confirmed." },
+      delivered: { label: "Email delivered", tone: "delivered", description: "Accepted by the recipient’s email server; it may still appear in their junk folder." },
+      delayed: { label: "Email delayed", tone: "warning", description: "The recipient’s email server has delayed delivery. Amazon SES may continue trying." },
+      complained: { label: "Complaint received", tone: "failed", description: "The recipient or their mail provider reported this message as unwanted." },
+      bounced: { label: "Email failed", tone: "failed", description: "The recipient’s email server did not accept this message." },
+      rejected: { label: "Email failed", tone: "failed", description: "Amazon SES rejected this message before delivery." },
+      rendering_failed: { label: "Email failed", tone: "failed", description: "The message could not be prepared for delivery." },
+      send_failed: { label: "Email failed", tone: "failed", description: "The secure delivery worker could not send this message after its retry attempts." },
+      unavailable: { label: "Delivery status unavailable", tone: "unknown", description: "No current delivery evidence is retained for this request. This does not mean the email is still queued." }
+    })[status] || { label: "Delivery status unavailable", tone: "unknown", description: "No current delivery evidence is retained for this request." };
+  }
+
   function planningStageLabel(stage) {
     return ({ not_started: "Not started", in_progress: "In progress", awaiting_signatures: "Awaiting signatures", staff_review: "Staff review", complete: "Application complete" })[stage] || String(stage || "Unknown").replaceAll("_", " ");
   }
@@ -921,9 +937,17 @@
       const primary = element("div", "record-primary");
       primary.append(element("strong", "", record.parentGuardianName || "Parent/guardian"), element("small", "", record.recipientEmail));
       card.append(primary);
-      addRecordCell(card, "Requested", formatDate(record.requestedAt, true));
-      addRecordCell(card, "Invitation", record.outcome === "reissued" ? "Existing family link reissued" : "New family invitation", record.invitationId);
-      card.append(element("span", "status-badge status-invited", record.status === "invitation_queued" ? "Invitation queued" : statusLabel(record.status)));
+      addRecordCell(card, "Request", record.requestStatus === "requested_again" ? "Application link requested again" : "Application link requested", formatDate(record.requestedAt, true));
+      addRecordCell(card, "Application", record.outcome === "reissued" ? "Existing application retained" : "New application created", record.invitationId);
+      const delivery = emailDeliveryPresentation(record.emailDeliveryStatus);
+      const deliveryGroup = element("div", "email-delivery-status");
+      const deliveryBadge = element("span", `status-badge email-delivery-${delivery.tone}`, delivery.label);
+      deliveryBadge.title = delivery.description;
+      deliveryBadge.tabIndex = 0;
+      deliveryBadge.setAttribute("aria-label", `${delivery.label}. ${delivery.description}`);
+      deliveryGroup.append(deliveryBadge);
+      if (record.emailDeliveryAt) deliveryGroup.append(element("small", "", formatDate(record.emailDeliveryAt, true)));
+      card.append(deliveryGroup);
       const actions = element("div", "record-actions");
       const linkedApplication = (state.dashboard?.applications || []).find(application => application.applicationId === record.applicationId);
       if (linkedApplication) {

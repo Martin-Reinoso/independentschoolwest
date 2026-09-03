@@ -907,6 +907,15 @@ deduplicated and projected without recipient addresses. Pending guardian control
 updated through the SES message/task index; lower-ranked late events cannot downgrade a
 final state.
 
+For the authenticated **Application-link requests** list, the original request record
+remains the source for who requested a link and whether the existing Application was
+retained. Email state is a separate read-only projection correlated by the exact request
+ID: pending outbox is queued, an outbox receipt is sent, and SES feedback supplies
+delivered, delayed or failure outcomes. The pending/failed lookup projects only kind,
+time and workflow/message/record tags; it does not load recipient, subject or message
+body. If the temporary receipt or SES evidence has expired, the portal reports delivery
+status unavailable rather than reusing the stored `invitation_queued` business status.
+
 ### Staff Slack Notifications
 
 | Trigger | Destination | Information disclosed |

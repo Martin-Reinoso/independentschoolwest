@@ -78,8 +78,8 @@ deliberately creating a new version.
 Current launch contracts:
 
 ```text
-EOI:                      rosewood-eoi-2026.25
-Application:              rosewood-application-2026.26
+EOI:                      rosewood-eoi-2026.26
+Application:              rosewood-application-2026.27
 Application-link request: rosewood-application-link-request-2026.1
 Community enquiry:       rosewood-community-enquiry-2026.1
 ```

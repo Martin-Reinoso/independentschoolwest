@@ -268,6 +268,16 @@ button:disabled { cursor: not-allowed; opacity: .5; transform: none !important; 
 .status-pending_signatures { color: #99442f; background: var(--clay-soft); }
 .status-submitted { color: #236144; background: var(--green-soft); }
 .status-default { color: #596275; background: #edf0f4; }
+.email-delivery-status { min-width: 0; display: grid; gap: .28rem; justify-items: start; }
+.email-delivery-status small { color: var(--ink-soft); font-size: .68rem; white-space: nowrap; }
+.email-delivery-status .status-badge { text-transform: none; }
+.email-delivery-status .status-badge:focus-visible { outline: 3px solid rgba(19, 34, 59, .22); outline-offset: 2px; }
+.email-delivery-pending { color: #845c11; background: #f7edcf; }
+.email-delivery-sent { color: #3f6280; background: var(--blue-soft); }
+.email-delivery-delivered { color: #236144; background: var(--green-soft); }
+.email-delivery-warning { color: #8a5010; background: #f9e8bd; }
+.email-delivery-failed { color: #873d2d; background: #f6e4de; }
+.email-delivery-unknown { color: #596275; background: #edf0f4; }
 .progress-line { width: 100%; max-width: 150px; height: .35rem; display: block; overflow: hidden; margin-top: .45rem; appearance: none; background: #e9e5dd; border: 0; border-radius: 999px; }
 .progress-line::-webkit-progress-bar { background: #e9e5dd; border-radius: 999px; }
 .progress-line::-webkit-progress-value { background: var(--green); border-radius: 999px; }

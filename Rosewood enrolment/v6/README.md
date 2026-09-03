@@ -178,9 +178,14 @@ request. Google Sheets show the record's actual form version but remain replacea
 reports. `SCHEMA-EVOLUTION.md` defines the mandatory process for adding, removing,
 renaming or changing questions and for migrating existing records.
 
-The current EOI `2026.25` and Application `2026.26` releases preserve their preceding
-question and data contracts while pinning the separate cohort-planning interface and
-read-only monitoring markers. The preceding releases pin stable staff review navigation,
+The current EOI `2026.26` and Application `2026.27` releases preserve their preceding
+question and data contracts while pinning the truthful application-link request delivery
+projection. The staff **Application-link requests** list now separates the family's
+request, the retained/new Application relationship and the latest email evidence.
+**Email sent** means accepted by SES; **Email delivered** means accepted by the
+recipient mail server and does not prove it was read or avoided junk. Older requests
+with no retained outbox or SES evidence show **Delivery status unavailable**, never
+**Email queued**. The preceding releases pin stable staff review navigation,
 protected five-minute PDF/image document previews and staff case
 management, the staff planning record-type/date-sort interface, Admissions overview, enrolment-planning, implemented
 application-link request and staff request-list interfaces. Public promotion of that

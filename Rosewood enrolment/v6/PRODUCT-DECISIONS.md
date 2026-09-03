@@ -1,5 +1,27 @@
 # V6 Product and Backend Decisions
 
+## 2026-09-03: truthful application-link request delivery status
+
+- Keep the stored public-request status `invitation_queued` unchanged for historical
+  and reporting compatibility. It records that invitation work was created, not that
+  the email remains queued.
+- In the authenticated **Application-link requests** list, show the family action as
+  **Application link requested** or **Application link requested again** and show the
+  new/retained Application relationship separately.
+- Derive email status by exact request ID from privacy-limited pending/failed outbox
+  state, completed email receipts and SES configuration-set feedback. Never infer
+  delivery from the request status.
+- Use **Email queued**, **Email sent**, **Email delivered**, **Email delayed**,
+  **Email failed**, **Complaint received** and **Delivery status unavailable** as the
+  staff labels. Delivered means the recipient mail server accepted the message; it may
+  still be in junk and does not prove that a person read it.
+- If temporary delivery evidence has expired, show unavailable rather than guessing.
+  The projection does not add a resend action, alter an invitation or Application, or
+  expose an SES message ID, subject, body or new contact detail.
+- EOI `2026.26` and Application `2026.27` change no family questions, answer keys,
+  validation, invitations, submissions or signatures. They pin only this staff
+  projection and its monitoring marker.
+
 ## 2026-09-02: separate prospective-family cohort planning
 
 - Rename the staff **Enrolment planning** workspace to **Cohort planning** and divide

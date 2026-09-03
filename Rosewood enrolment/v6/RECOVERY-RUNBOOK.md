@@ -206,6 +206,14 @@ expired token is also rejected by the access endpoint's expiry check.
    email or manually editing a Sheet.
 
 The public success response is deliberately generic and is not delivery evidence.
+
+The staff **Application-link requests** list separates request state from delivery
+evidence. **Email sent** means SES accepted the message, while **Email delivered** means
+the destination mail server accepted it and may still place it in junk. **Delivery
+status unavailable** is expected for some older requests after temporary receipts or
+feedback expire; it is not evidence that the email is queued or failed. Investigate the
+Application's current invitation access and retained events before using an authorised
+resend or renewal. Never create a duplicate Application to compensate.
 Authoritative success requires the request transaction plus outbox/SES status.
 
 ## Recover A Community Enquiry Notification

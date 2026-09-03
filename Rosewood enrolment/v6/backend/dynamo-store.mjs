@@ -936,6 +936,55 @@ export class DynamoStore {
     return response.Items || [];
   }
 
+  async listEmailOutboxStates(limit = 1000) {
+    const maximum = Math.max(1, Math.min(2000, Number(limit) || 1000));
+    const partitions = [
+      { pk: "OUTBOX", prefix: "PENDING#", state: "queued" },
+      { pk: "OUTBOX_FAILED", prefix: "FAILED#", state: "send_failed" }
+    ];
+    const states = [];
+    for (const partition of partitions) {
+      let ExclusiveStartKey;
+      do {
+        const response = await this.client.send(new QueryCommand({
+          TableName: this.tableName,
+          KeyConditionExpression: "PK = :pk AND begins_with(SK, :prefix)",
+          ExpressionAttributeNames: {
+            "#data": "data",
+            "#kind": "kind",
+            "#createdAt": "createdAt",
+            "#failure": "failure",
+            "#failedAt": "failedAt",
+            "#payload": "payload",
+            "#tags": "tags",
+            "#workflow": "workflow",
+            "#messageType": "message_type",
+            "#recordId": "record_id"
+          },
+          ExpressionAttributeValues: { ":pk": partition.pk, ":prefix": partition.prefix },
+          ProjectionExpression: "#data.#kind, #data.#createdAt, #data.#failure.#failedAt, #data.#payload.#tags.#workflow, #data.#payload.#tags.#messageType, #data.#payload.#tags.#recordId",
+          ExclusiveStartKey,
+          Limit: Math.min(250, maximum),
+          ConsistentRead: true
+        }));
+        for (const item of response.Items || []) {
+          if (item.data?.kind !== "email") continue;
+          const tags = item.data.payload?.tags || {};
+          states.push({
+            state: partition.state,
+            occurredAt: item.data.failure?.failedAt || item.data.createdAt || "",
+            workflow: tags.workflow || "",
+            messageType: tags.message_type || "",
+            recordId: tags.record_id || ""
+          });
+          if (states.length >= maximum) return states;
+        }
+        ExclusiveStartKey = response.LastEvaluatedKey;
+      } while (ExclusiveStartKey && states.length < maximum);
+    }
+    return states;
+  }
+
   async claimOutbox(item, nowMs) {
     try {
       const response = await this.client.send(new UpdateCommand({ TableName: this.tableName, Key: this.key(item.PK, item.SK), UpdateExpression: "SET #leaseUntil = :lease, #attempts = if_not_exists(#attempts, :zero) + :one", ConditionExpression: "attribute_exists(PK) AND (attribute_not_exists(#leaseUntil) OR #leaseUntil < :now)", ExpressionAttributeNames: { "#leaseUntil": "leaseUntil", "#attempts": "attempts" }, ExpressionAttributeValues: { ":lease": nowMs + 60_000, ":now": nowMs, ":zero": 0, ":one": 1 }, ReturnValues: "ALL_NEW" }));

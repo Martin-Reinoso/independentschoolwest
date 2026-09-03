@@ -143,6 +143,30 @@ test("staff cohort planning separates applications, prospects and de-duplicated 
   assert.match(css, /@media \(max-width: 700px\)[\s\S]*\.prospect-form-grid, \.prospect-child-row \{ grid-template-columns: 1fr/);
 });
 
+test("staff application-link requests separate family request state from email delivery state", async () => {
+  const [source, css] = await Promise.all([
+    readFile(new URL("../../../../pages/rosewood-enrolment-admin-v6.js", import.meta.url), "utf8"),
+    readFile(new URL("../../../../pages/rosewood-enrolment-admin-v6.css", import.meta.url), "utf8")
+  ]);
+  const requestSource = source.slice(source.indexOf("function emailDeliveryPresentation"), source.indexOf("function renderEois"));
+  assert.match(requestSource, /Application link requested again/);
+  assert.match(requestSource, /Existing application retained/);
+  assert.match(requestSource, /Email queued/);
+  assert.match(requestSource, /Email sent/);
+  assert.match(requestSource, /Email delivered/);
+  assert.match(requestSource, /Email delayed/);
+  assert.match(requestSource, /Email failed/);
+  assert.match(requestSource, /Delivery status unavailable/);
+  assert.match(requestSource, /may still appear in their junk folder/);
+  assert.match(requestSource, /deliveryBadge\.title = delivery\.description/);
+  assert.match(requestSource, /deliveryBadge\.tabIndex = 0/);
+  assert.match(requestSource, /setAttribute\("aria-label"/);
+  assert.doesNotMatch(requestSource, />Invitation queued</);
+  assert.match(css, /\.email-delivery-status \.status-badge:focus-visible/);
+  assert.match(css, /\.email-delivery-delivered/);
+  assert.match(css, /@media \(max-width: 700px\)[\s\S]*\.record-card, \.email-card \{ grid-template-columns: 1fr auto/);
+});
+
 test("staff admissions overview presents the canonical pipeline and privacy-conscious follow-up queue", async () => {
   const [source, html, css] = await Promise.all([
     readFile(new URL("../../../../pages/rosewood-enrolment-admin-v6.js", import.meta.url), "utf8"),

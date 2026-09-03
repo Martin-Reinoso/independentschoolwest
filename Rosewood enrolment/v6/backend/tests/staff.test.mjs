@@ -37,6 +37,7 @@ class StaffStore {
     this.meetingInvitationScopes = new Map();
     this.meetingBookings = new Map();
     this.outboxEvents = [];
+    this.emailOutboxStates = [];
   }
   async checkRateLimit(key, limit, seconds) {
     this.rateLimitChecks.push({ key, limit, seconds });
@@ -60,6 +61,7 @@ class StaffStore {
   async recordAudit(event) { this.audit.push(event); }
   async listOutbox() { return []; }
   async listOperationalRecords() { return this.records; }
+  async listEmailOutboxStates() { return this.emailOutboxStates; }
   async findApplicationBySourceEoi(sourceEoiId) { return this.records.find(item => item.entity === "application" && item.data.sourceEoiId === sourceEoiId)?.data || null; }
   async getEoi() { return null; }
   async ensureFormDefinition(definition) {
@@ -204,6 +206,8 @@ test("staff dashboard exposes operational summaries but not sensitive columns", 
   assert.equal(dashboard.stats.inProgress, 1);
   assert.equal(dashboard.stats.applicationLinkRequests, 1);
   assert.equal(dashboard.applicationRequests[0].parentGuardianName, "Alex Example");
+  assert.equal(dashboard.applicationRequests[0].requestStatus, "requested");
+  assert.equal(dashboard.applicationRequests[0].emailDeliveryStatus, "unavailable");
   assert.equal(dashboard.eois[0].linkedApplicationId, "app-1");
   assert.equal(dashboard.applications[0].percentComplete, 22);
   assert.equal(dashboard.applications[0].entryYear, "2027");
@@ -218,6 +222,49 @@ test("staff dashboard exposes operational summaries but not sensitive columns", 
   assert.equal("dateOfBirth" in dashboard.eois[0], false);
   assert.doesNotMatch(response.body, /2020-01-01/);
   assert.doesNotMatch(response.body, /restricted-email-hash|restricted-network-fingerprint/);
+});
+
+test("staff application-link requests distinguish request history from current email delivery evidence", async () => {
+  const store = new StaffStore();
+  const request = (id, outcome = "created") => ({
+    entity: "application_request",
+    data: { id, requestedAt: "2026-08-05T10:00:00.000Z", parentGuardianName: "Synthetic Parent", recipientEmail: "parent@example.test", status: "invitation_queued", outcome, invitationId: `invite-${id}`, applicationId: `app-${id}` }
+  });
+  store.records = [
+    request("request-unavailable"),
+    request("request-queued"),
+    request("request-sent", "reissued"),
+    request("request-delivered"),
+    request("request-delayed"),
+    request("request-bounced"),
+    request("request-failed"),
+    { entity: "outbox_receipt", data: { kind: "email", createdAt: "2026-08-05T10:01:00.000Z", completedAt: "2026-08-05T10:02:00.000Z", payload: { to: "parent@example.test", tags: { workflow: "application_link_request", message_type: "application_link_requested", record_id: "request-sent" } }, result: { messageId: "ses-provider-id-not-for-dashboard" } } },
+    { entity: "ses_event", data: { messageType: "application_link_requested", recordId: "request-delivered", deliveryStatus: "accepted_by_ses", occurredAt: "2026-08-05T10:02:00.000Z", messageId: "ses-delivered-private" } },
+    { entity: "ses_event", data: { messageType: "application_link_requested", recordId: "request-delivered", deliveryStatus: "delivered", occurredAt: "2026-08-05T10:03:00.000Z", messageId: "ses-delivered-private" } },
+    { entity: "ses_event", data: { messageType: "application_link_requested", recordId: "request-delayed", deliveryStatus: "delayed", occurredAt: "2026-08-05T10:03:00.000Z" } },
+    { entity: "ses_event", data: { messageType: "application_link_requested", recordId: "request-bounced", deliveryStatus: "bounced", occurredAt: "2026-08-05T10:03:00.000Z" } }
+  ];
+  store.emailOutboxStates = [
+    { state: "queued", occurredAt: "2026-08-05T10:01:00.000Z", messageType: "application_link_requested", recordId: "request-queued" },
+    { state: "send_failed", occurredAt: "2026-08-05T10:04:00.000Z", messageType: "application_link_requested", recordId: "request-failed" },
+    { state: "queued", occurredAt: "2026-08-05T10:04:00.000Z", messageType: "staff_otp", recordId: "request-unavailable" }
+  ];
+  const { service } = staffService({ store });
+  const sessionToken = await staffSession(service);
+  const response = await service(event("/v6/staff/dashboard", "GET", null, sessionToken));
+  assert.equal(response.statusCode, 200);
+  const requests = Object.fromEntries(JSON.parse(response.body).applicationRequests.map(item => [item.requestId, item]));
+
+  assert.equal(requests["request-unavailable"].emailDeliveryStatus, "unavailable");
+  assert.equal(requests["request-queued"].emailDeliveryStatus, "queued");
+  assert.equal(requests["request-sent"].emailDeliveryStatus, "accepted_by_ses");
+  assert.equal(requests["request-sent"].requestStatus, "requested_again");
+  assert.equal(requests["request-delivered"].emailDeliveryStatus, "delivered");
+  assert.equal(requests["request-delivered"].emailDeliveryAt, "2026-08-05T10:03:00.000Z");
+  assert.equal(requests["request-delayed"].emailDeliveryStatus, "delayed");
+  assert.equal(requests["request-bounced"].emailDeliveryStatus, "bounced");
+  assert.equal(requests["request-failed"].emailDeliveryStatus, "send_failed");
+  assert.doesNotMatch(response.body, /ses-provider-id-not-for-dashboard|ses-delivered-private/);
 });
 
 test("staff planning identity falls back to invitation or request contact before child details start", async () => {
@@ -580,7 +627,7 @@ test("an active V14 draft adopts the current contract without transforming its f
   await service(event("/v6/application/access/verify-code", "POST", { invitationToken, challengeId: requested.challengeId, code: "123456" }));
   const upgraded = store.applications.get(created.applicationId);
 
-  assert.equal(upgraded.formVersion, "rosewood-application-2026.26");
+  assert.equal(upgraded.formVersion, "rosewood-application-2026.27");
   assert.deepEqual(upgraded.values, values);
   assert.deepEqual(store.audit.find(eventRecord => eventRecord.type === "application.form_definition_upgraded").details.normalizedFields, []);
 });
