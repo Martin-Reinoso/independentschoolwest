@@ -9,7 +9,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://*.s3.ap-southeast-2.amazonaws.com; style-src 'self'; script-src 'self'; connect-src https://6zyzo44sdb5zmmx53toktqrnuu0sikyd.lambda-url.ap-southeast-2.on.aws; form-action 'none'; frame-src https://*.s3.ap-southeast-2.amazonaws.com; object-src 'none'; base-uri 'none'">
   <title>Enrolment Operations | Rosewood College</title>
   <link rel="icon" href="../img/favicon.ico" type="image/x-icon">
-  <link rel="stylesheet" href="rosewood-enrolment-admin-v6.css?v=11">
+  <link rel="stylesheet" href="rosewood-enrolment-admin-v6.css?v=12">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to operations</a>
@@ -199,7 +199,7 @@
 
           <section class="workspace-panel" id="requests-panel" data-workspace-panel hidden>
             <div class="panel-heading">
-              <div><p class="eyebrow">Public application access</p><h2>Application-link requests</h2></div>
+              <div><p class="eyebrow">Public application access</p><h2>Application-link requests</h2><p class="panel-note">The family request and email delivery are shown separately. Delivered means the recipient’s mail server accepted the message; it may still be in junk.</p></div>
               <label class="search-field"><span>Search requests</span><input id="request-search" type="search" placeholder="Parent/guardian or email"></label>
             </div>
             <div class="record-list" id="request-list" aria-live="polite"></div>
@@ -380,6 +380,6 @@
     </div>
   </dialog>
 
-  <script src="rosewood-enrolment-admin-v6.js?v=16"></script>
+  <script src="rosewood-enrolment-admin-v6.js?v=17"></script>
 </body>
 </html>

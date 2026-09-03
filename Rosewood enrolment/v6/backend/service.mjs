@@ -58,6 +58,7 @@ const SES_FEEDBACK_STATUS = Object.freeze({
   "Rendering Failure": "rendering_failed"
 });
 const SES_FEEDBACK_RANK = Object.freeze({ accepted_by_ses: 10, delayed: 20, delivered: 30, bounced: 40, complained: 40, rejected: 40, rendering_failed: 40 });
+const EMAIL_DELIVERY_RANK = Object.freeze({ unavailable: 0, queued: 5, accepted_by_ses: 10, delayed: 20, delivered: 30, bounced: 40, complained: 40, rejected: 40, rendering_failed: 40, send_failed: 40 });
 const SIGNATURE_EMAIL_TYPES = new Set(["signature_invitation", "signature_invitation_resent", "signature_email_corrected"]);
 const INVITATION_EMAIL_TYPES = new Set(["application_link_requested", "invitation", "invitation_resend", "invitation_access_renewed"]);
 const DELIVERY_FAILURES = new Set(["bounced", "complained", "rejected", "rendering_failed"]);
@@ -88,6 +89,19 @@ export function normalizeSesFeedback(message) {
   const recordId = sesTag(tags, "record_id");
   const eventId = sha256(`${messageId}\n${eventType}\n${occurredAt}`);
   return { eventId, eventType, deliveryStatus, deliveryRank: SES_FEEDBACK_RANK[deliveryStatus], messageId, occurredAt, workflow, messageType, recordId };
+}
+
+function latestEmailDeliveryByRecord(events) {
+  return events.reduce((result, event) => {
+    const recordId = safeText(event?.recordId, 256);
+    const deliveryStatus = safeText(event?.deliveryStatus || event?.state, 80);
+    if (!recordId || !deliveryStatus) return result;
+    const candidate = { recordId, deliveryStatus, occurredAt: safeText(event?.occurredAt, 80) };
+    const current = result.get(recordId);
+    const timeComparison = String(candidate.occurredAt).localeCompare(String(current?.occurredAt || ""));
+    if (!current || timeComparison > 0 || (timeComparison === 0 && (EMAIL_DELIVERY_RANK[deliveryStatus] || 0) > (EMAIL_DELIVERY_RANK[current.deliveryStatus] || 0))) result.set(recordId, candidate);
+    return result;
+  }, new Map());
 }
 
 function contactPermissionLabel(allowed) { return allowed ? "Contact permitted" : "Do not contact"; }
@@ -959,17 +973,26 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
 
   async function getStaffDashboard(event) {
     const session = await requireStaffSession(event);
-    const records = await store.listOperationalRecords();
+    const [records, emailOutboxStates] = await Promise.all([
+      store.listOperationalRecords(),
+      typeof store.listEmailOutboxStates === "function" ? store.listEmailOutboxStates() : Promise.resolve([])
+    ]);
     const eoiRecords = records.filter(item => item.entity === "eoi").map(item => item.data);
     const applicationRequestRecords = records.filter(item => item.entity === "application_request").map(item => item.data);
     const applicationRecords = records.filter(item => item.entity === "application").map(item => item.data);
     const invitationRecords = records.filter(item => item.entity === "invitation_index").map(item => item.data);
     const emailReceipts = records.filter(item => item.entity === "outbox_receipt" && item.data?.kind === "email").map(item => item.data);
-    const invitationFeedbackByRecord = records.filter(item => item.entity === "ses_event" && INVITATION_EMAIL_TYPES.has(item.data?.messageType)).map(item => item.data).reduce((result, feedback) => {
-      const current = result.get(feedback.recordId);
-      if (!current || String(feedback.occurredAt).localeCompare(String(current.occurredAt)) > 0) result.set(feedback.recordId, feedback);
-      return result;
-    }, new Map());
+    const invitationFeedback = records.filter(item => item.entity === "ses_event" && INVITATION_EMAIL_TYPES.has(item.data?.messageType)).map(item => item.data);
+    const invitationFeedbackByRecord = latestEmailDeliveryByRecord(invitationFeedback);
+    const applicationRequestDeliveryByRecord = latestEmailDeliveryByRecord([
+      ...emailOutboxStates.filter(item => item.messageType === "application_link_requested"),
+      ...emailReceipts.filter(receipt => receipt.payload?.tags?.message_type === "application_link_requested").map(receipt => ({
+        recordId: receipt.payload?.tags?.record_id,
+        deliveryStatus: receipt.result?.messageId ? "accepted_by_ses" : "unavailable",
+        occurredAt: receipt.completedAt || receipt.createdAt || ""
+      })),
+      ...invitationFeedback.filter(item => item.messageType === "application_link_requested")
+    ]);
     const invitationByApplication = new Map(invitationRecords.flatMap(invitation => invitationApplicationIds(invitation).map(applicationId => [applicationId, invitation])));
     const applicationByEoi = new Map(applicationRecords.filter(application => application.sourceEoiId).map(application => [application.sourceEoiId, application]));
     const applicationRequestByApplication = new Map(applicationRequestRecords.filter(record => record.applicationId).map(record => [record.applicationId, record]));
@@ -1040,16 +1063,22 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
       };
     }).sort((a, b) => String(b.submittedAt).localeCompare(String(a.submittedAt)));
     const counts = applications.reduce((result, application) => ({ ...result, [application.status]: (result[application.status] || 0) + 1 }), {});
-    const applicationRequests = applicationRequestRecords.map(record => ({
-      requestId: record.id,
-      requestedAt: record.requestedAt,
-      parentGuardianName: record.parentGuardianName,
-      recipientEmail: record.recipientEmail,
-      status: record.status,
-      outcome: record.outcome,
-      invitationId: record.invitationId,
-      applicationId: record.applicationId
-    })).sort((left, right) => String(right.requestedAt).localeCompare(String(left.requestedAt)));
+    const applicationRequests = applicationRequestRecords.map(record => {
+      const delivery = applicationRequestDeliveryByRecord.get(record.id);
+      return {
+        requestId: record.id,
+        requestedAt: record.requestedAt,
+        parentGuardianName: record.parentGuardianName,
+        recipientEmail: record.recipientEmail,
+        status: record.status,
+        requestStatus: record.outcome === "reissued" ? "requested_again" : "requested",
+        outcome: record.outcome,
+        invitationId: record.invitationId,
+        applicationId: record.applicationId,
+        emailDeliveryStatus: delivery?.deliveryStatus || "unavailable",
+        emailDeliveryAt: delivery?.occurredAt || ""
+      };
+    }).sort((left, right) => String(right.requestedAt).localeCompare(String(left.requestedAt)));
     const generatedAt = nowIso();
     return {
       generatedAt,

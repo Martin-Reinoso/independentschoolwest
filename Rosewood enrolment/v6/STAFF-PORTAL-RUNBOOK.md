@@ -76,12 +76,22 @@ a link by itself.
 The **Link requests** panel lists requests submitted through the home-page or standalone
 public card, including request time, outcome and the retained application relationship.
 
-- **Created** means the first direct family invitation/Application relationship was
-  created.
-- **Reissued** means a replacement private link was sent for the same relationship.
+- **Application link requested** means the family made its first request and a new
+  invitation/Application relationship was created.
+- **Application link requested again** means the family requested another link and the
+  existing Application relationship was retained. It does not create a duplicate.
+- **Email queued** is transient and means the durable worker has not completed the send.
+- **Email sent** means Amazon SES accepted the message for delivery. It is not proof of
+  destination-server delivery.
+- **Email delivered** means the recipient mail server accepted the message. It may
+  still be in junk and does not prove the family read it.
+- **Email delayed**, **Email failed** or **Complaint received** are operational states
+  that should be investigated before any deliberate resend or renewal.
+- **Delivery status unavailable** means the temporary receipt/feedback evidence is no
+  longer retained or was not found. It does not mean the email remains queued or failed.
 - A public request never links or prefills an EOI, even when the email matches one.
 - Do not create another direct invitation to compensate for a delayed request email.
-  Check the request, invitation and Email Events status first; use the existing resend
+  Check the request, Application and email status first; use the existing resend
   or renewal path only when operationally required.
 - Google Sheets are reports. Do not edit the Application Link Requests tab to change,
   resend or remove the authoritative DynamoDB record.

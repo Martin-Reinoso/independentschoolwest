@@ -55,7 +55,7 @@ const PUBLIC_ASSETS = [
   },
   {
     path: "/pages/rosewood-enrolment-admin-v6.js",
-    markers: ["staff/access/request-code", "staff/dashboard", "planningSummary", "renderAttentionQueue", "staff/invitations/renew-access", "staff/applications/communications/context", "staff/applications/messages/send", "staff/meetings/slots/bulk", "staff/applications/documents/preview", "staff/cohort-planning", "staff/prospects/application-link"]
+    markers: ["staff/access/request-code", "staff/dashboard", "planningSummary", "renderAttentionQueue", "emailDeliveryPresentation", "staff/invitations/renew-access", "staff/applications/communications/context", "staff/applications/messages/send", "staff/meetings/slots/bulk", "staff/applications/documents/preview", "staff/cohort-planning", "staff/prospects/application-link"]
   },
   {
     path: "/pages/rosewood-enrolment-meeting-v1.html",

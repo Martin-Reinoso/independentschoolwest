@@ -1888,3 +1888,34 @@ during release verification.
 - Existing production staff access and roles were preserved exactly. No mailbox was
   silently granted the new `planning_editor` role; existing viewer accounts remain
   read-only in Cohort planning.
+
+## V6.27 Application-Link Delivery Status Verification
+
+Prepared on 3 September 2026 with synthetic request, outbox and SES evidence only. No
+production request, invitation, OTP, email, Application or family record was created,
+changed or replayed during pre-release verification.
+
+- All 159 backend and interface-contract tests pass.
+- Backend tests prove exact request-ID correlation for queued, SES-accepted, delivered,
+  delayed, bounced, terminal outbox-failure and unavailable states. A request with no
+  retained evidence is unavailable rather than queued.
+- The staff response preserves the historical request status but returns separate
+  `requestStatus`, `emailDeliveryStatus` and `emailDeliveryAt` fields. It does not expose
+  SES provider message IDs.
+- The pending/failed DynamoDB query projects only event kind/time plus `workflow`,
+  `message_type` and `record_id`; recipient, subject and message body are excluded.
+- Frontend tests prove the approved labels, delivered/junk explanation, keyboard-focusable
+  status description, screen-reader label and responsive rules. A local synthetic browser
+  check at 1440 x 900 and 390 x 844 confirmed the card layout has no mobile horizontal
+  overflow.
+- The deployment bundle builds successfully. Syntax checks pass for the service, store
+  and staff client. Static reference validation covers 91 tracked HTML/CSS files, and
+  the public-data scan covers 418 tracked files with no private export or high-confidence
+  secret finding.
+- Changed staff asset SHA-256 values match EOI `rosewood-eoi-2026.26` and Application
+  `rosewood-application-2026.27`: HTML `e5252d7110043937ad2d24e23ebd2e8d7d3e91afe6c06f5ffc9773a5fdfe54ab`,
+  JavaScript `97c172f12abdb5b03ef8ef0a0f2a7b95cf6b43e7839d29f36fc5800612affa3b`
+  and CSS `27182afca4720756be69501dc34b52da882cd0c64f870f9909c561cf2a7a67d5`.
+- Family questions, answer keys, validators, application-link behavior, submissions,
+  uploads, signatures, correspondence, meetings, staff roles and Google Sheets
+  projections are unchanged.

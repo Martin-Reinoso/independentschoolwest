@@ -37,7 +37,7 @@ server-acknowledged application create, start, save and submission also writes a
 append-only DynamoDB revision. Staff can inspect a selected historical revision through
 an authorised, audited endpoint. See `../SCHEMA-EVOLUTION.md` before changing fields,
 options, validation or required status.
-The current EOI `2026.25` and Application `2026.26` contracts pin the family, staff and signing HTML/JavaScript/CSS,
+The current EOI `2026.26` and Application `2026.27` contracts pin the family, staff and signing HTML/JavaScript/CSS,
 policy projection and all original Word/PDF policy assets. Policy viewing is frontend-
 only and does not create an application answer, acknowledgement or audit event.
 These contracts change no family question or answer rule. They pin the operational
@@ -181,6 +181,13 @@ Configuration-set events update send/delivery/delay/bounce/complaint/reject/rend
 state idempotently, append restricted audit evidence and project an Email Events row
 without a recipient address. A signature event that arrives before its correlation
 index fails transiently so SNS retries it rather than losing signer status.
+
+The staff application-link request projection does not interpret the stored
+`invitation_queued` business status as current transport state. It correlates each exact
+request ID with privacy-limited pending/failed outbox state, completed email receipts and
+SES feedback. The pending/failed query projects only event kind/time and the three
+non-sensitive correlation tags. Older requests with no retained transport evidence are
+reported as unavailable rather than queued.
 
 Family OTP challenges expire after 10 minutes, allow five attempts and have resend and
 network throttles. Family and child-application sessions use a sliding 90-minute
