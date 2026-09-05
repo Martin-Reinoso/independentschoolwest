@@ -1,0 +1,92 @@
+/* Run against a local HTTP server: NODE_PATH=<bundled node_modules> node tests/family-evening-presentation.test.cjs [base URL] */
+const assert = require('node:assert/strict');
+const { chromium, request } = require('playwright');
+const base = process.argv[2] || 'http://127.0.0.1:8876';
+const url = `${base}/family-evening/presentation/`;
+(async () => {
+  const browser = await chromium.launch({ headless:true });
+  const api = await request.newContext();
+  try {
+    const manifestResponse = await api.get(`${url}slides.json`);
+    assert.equal(manifestResponse.status(), 200);
+    const manifest = await manifestResponse.json();
+    assert.equal(manifest.slides.length, 37);
+    const responses = await Promise.all(manifest.slides.flatMap(s => [s.src,s.small]).map(s => api.get(url+s)));
+    responses.forEach(r => assert.equal(r.status(),200));
+    const pdf = await api.get(url + manifest.pdf);
+    assert.equal(pdf.status(),200);
+    assert.equal((await pdf.body()).length,manifest.pdfBytes);
+    assert((await pdf.body()).subarray(0,5).equals(Buffer.from('%PDF-')));
+    for (const viewport of [{width:1280,height:1000},{width:390,height:844},{width:844,height:390}]) {
+      const page = await browser.newPage({viewport, deviceScaleFactor:viewport.width===390?3:1, hasTouch:viewport.width!==1280});
+      const errors=[], slideRequests=[];
+      page.on('pageerror', e=>errors.push(e.message));
+      page.on('request', r=>{if(r.url().includes('/slides/'))slideRequests.push(r.url());});
+      await page.goto(url);
+      await page.locator('#controls').waitFor({state:'visible'});
+      await page.waitForFunction(()=>document.querySelector('#slide').complete && document.querySelector('#slide').naturalWidth>0);
+      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+      assert(slideRequests.length<=3,`Too many initial image requests: ${slideRequests.length}`);
+      assert.equal(await page.locator('#previous').getAttribute('aria-disabled'),'true');
+      await page.screenshot({path:`/tmp/ffe-presentation-${viewport.width}.png`,fullPage:true});
+      await page.locator('#next').click();
+      assert.equal(await page.locator('#slide-number').inputValue(),'1');
+      await page.locator('#slide-stage').focus();
+      await page.keyboard.press('ArrowRight');
+      assert.equal(await page.locator('#slide-number').inputValue(),'2');
+      await page.locator('#slide-number').selectOption({value:'31'});
+      await page.waitForFunction(()=>document.querySelector('#slide').complete && document.querySelector('#slide').naturalWidth>0);
+      assert((await page.locator('#slide').getAttribute('src')).endsWith('slide-32.webp'));
+      assert((await page.locator('#image-link').getAttribute('href')).endsWith('slide-32.webp'));
+      await page.reload();
+      await page.locator('#controls').waitFor({state:'visible'});
+      assert.equal(await page.locator('#slide-number').inputValue(),'31');
+      // Exercise the mobile full-window fallback even where native fullscreen is available.
+      await page.evaluate(()=>{document.querySelector('#presentation').requestFullscreen=undefined;});
+      await page.locator('#expand').click();
+      assert.equal(await page.locator('#expand').getAttribute('aria-pressed'),'true');
+      assert.equal(await page.locator('#presentation').evaluate(el=>Math.round(el.getBoundingClientRect().top)),0);
+      await page.screenshot({path:`/tmp/ffe-presentation-expanded-${viewport.width}.png`,fullPage:false});
+      await page.keyboard.press('Escape');
+      assert.equal(await page.locator('#expand').getAttribute('aria-pressed'),'false');
+      await page.locator('#slide-stage').focus();
+      await page.keyboard.press('End');
+      assert.equal(await page.locator('#next').getAttribute('aria-disabled'),'true');
+      await page.locator('#next').click({force:true});
+      assert.equal(await page.locator('#slide-number').inputValue(),'36');
+      assert.deepEqual(errors,[]);
+      console.log(`PASS ${viewport.width}x${viewport.height}: responsive layout, lazy images, navigation, deep link, fullscreen fallback, boundaries`);
+      await page.close();
+    }
+    const native = await browser.newPage();
+    await native.goto(url);
+    await native.locator('#expand').waitFor({state:'visible'});
+    await native.locator('#expand').click();
+    await native.waitForFunction(()=>!!document.fullscreenElement);
+    assert.equal(await native.evaluate(()=>!!document.fullscreenElement),true);
+    await native.locator('#expand').click();
+    await native.waitForFunction(()=>!document.fullscreenElement);
+    assert.equal(await native.evaluate(()=>!!document.fullscreenElement),false);
+    await native.evaluate(()=>{
+      const target=document.querySelector('#slide-stage');
+      const start=new Touch({identifier:1,target,clientX:250,clientY:100});
+      const end=new Touch({identifier:1,target,clientX:100,clientY:102});
+      target.dispatchEvent(new TouchEvent('touchstart',{touches:[start],changedTouches:[start]}));
+      target.dispatchEvent(new TouchEvent('touchend',{touches:[],changedTouches:[end]}));
+    });
+    assert.equal(await native.locator('#slide-number').inputValue(),'1');
+    console.log('PASS native fullscreen and swipe event navigation');
+    await native.close();
+    const noJS = await browser.newPage({javaScriptEnabled:false,viewport:{width:390,height:844}});
+    await noJS.goto(url);
+    assert(await noJS.locator('noscript').isVisible());
+    assert(await noJS.locator('#pdf-link').isVisible());
+    await noJS.close();
+    const offline = await browser.newPage();
+    await offline.route('**/slides.json',route=>route.abort());
+    await offline.goto(url);
+    await offline.locator('#error').waitFor({state:'visible'});
+    assert(await offline.locator('#pdf-link').isVisible());
+    console.log('PASS 74 image URLs, PDF, JavaScript-disabled and manifest-error fallbacks');
+  } finally {await browser.close();await api.dispose();}
+})().catch(e=>{console.error(e);process.exitCode=1;});
