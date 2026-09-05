@@ -23,6 +23,7 @@ assert.equal(crypto.createHash('sha256').update(previous).digest('hex'),'acb6b92
       await page.goto(`${base}/emails/email09-v2.html`);
       await page.waitForFunction(()=>[...document.images].every(i=>i.complete&&i.naturalWidth>0));
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+      assert((await page.locator('#application-count').innerText()).includes('17 completed Applications for Enrolment'));
       const words=await page.evaluate(()=>document.body.innerText.trim().split(/\s+/).length);
       assert(words<330,`Email too wordy: ${words}`);
       const buttons=await page.locator('.mobile-button').evaluateAll(es=>es.map(e=>e.getBoundingClientRect().height));
