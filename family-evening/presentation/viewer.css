@@ -12,33 +12,34 @@ a:focus-visible, button:focus-visible, select:focus-visible, #slide-stage:focus-
 .sr-only, .skip-link:not(:focus) { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 .skip-link:focus { position:fixed; top:12px; left:12px; z-index:1000; padding:12px; background:white; }
 .site-banner { position:sticky; top:0; z-index:10; background:var(--deep); border-bottom:2px solid var(--gold); }
-.brand { display:flex; align-items:center; justify-content:space-between; gap:16px; min-height:64px; max-width:1160px; padding:12px 24px; margin:auto; color:white; text-decoration:none; font:600 19px 'Playfair Display',Georgia,serif; }
+.brand { display:flex; align-items:center; justify-content:space-between; gap:16px; min-height:56px; max-width:1160px; padding:10px 24px; margin:auto; color:white; text-decoration:none; font:600 19px 'Playfair Display',Georgia,serif; }
 .brand span { color:#e1d2b8; font:500 12px Inter,Arial,sans-serif; }
-main { max-width:1160px; margin:24px auto; background:white; }
-.intro { position:relative; padding:24px 36px 30px; text-align:center; border-bottom:4px solid var(--red); }
-.back-link { display:block; width:fit-content; margin-bottom:24px; font-size:12px; color:#526276; }
+main { max-width:1160px; margin:12px auto; background:white; }
+.intro { position:relative; padding:14px 32px 18px; text-align:center; border-bottom:4px solid var(--red); }
+.intro-meta { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+.intro-meta .eyebrow { margin:0; }
+.back-link { display:block; width:fit-content; font-size:12px; color:#526276; }
 .eyebrow { margin:0 0 10px; color:var(--red); text-transform:uppercase; letter-spacing:.14em; font-size:10px; font-weight:700; line-height:1.6; }
 h1,h2 { font-family:'Playfair Display',Georgia,serif; color:var(--navy); font-weight:600; }
-h1 { font-size:clamp(27px,4.5vw,40px); line-height:1.18; margin:0 0 12px; }
-.lead { color:#526276; font:18px/1.55 'Playfair Display',Georgia,serif; margin:0; }
-.viewer { background:var(--cream); padding:24px 32px 18px; }
-.viewer-toolbar { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:18px; }
+h1 { font-size:clamp(24px,3.5vw,32px); line-height:1.18; margin:0; }
+.viewer { background:var(--cream); padding:16px 32px; }
+.viewer-toolbar { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:12px; }
 .slide-context { min-width:0; }
 .slide-context .eyebrow { font-size:9px; }
-#slide-title { color:var(--navy); font-size:14px; line-height:1.4; margin:5px 0 0; }
+#slide-title { color:var(--navy); font-size:14px; line-height:1.4; margin:0; }
 #expand { flex-shrink:0; font-size:12px; }
-.slide-stage { background:#e6edf7; aspect-ratio:16/9; max-height:max(240px, calc(100svh - 470px)); display:flex; align-items:center; justify-content:center; touch-action:pan-y pinch-zoom; }
-#slide { width:100%; height:100%; object-fit:contain; display:block; }
-.controls { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:18px; }
+/* Give the stage its own size: the image's intrinsic ratio must not shrink or
+   overflow its container when a desktop viewport limits the available height. */
+.slide-stage { position:relative; width:100%; background:#e6edf7; aspect-ratio:16/9; max-height:max(240px, calc(100svh - 320px)); touch-action:pan-y pinch-zoom; }
+#slide { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; object-position:center; display:block; }
+.controls { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:12px; }
 .controls button { font-size:13px; min-width:115px; }
 .slide-picker { display:flex; align-items:center; justify-content:center; gap:8px; color:var(--navy); font-size:12px; }
-select { background:white; color:var(--navy); border:1px solid #cbd5e1; border-radius:4px; padding:8px; min-width:60px; min-height:44px; }
+select { appearance:none; -webkit-appearance:none; background:white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='m1 1 5 5 5-5' fill='none' stroke='%2300234b' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 9px center; color:var(--navy); border:1px solid #cbd5e1; border-radius:4px; padding:8px 28px 8px 10px; min-width:60px; height:44px; }
 .below-viewer { padding:0 32px 28px; background:var(--cream); border-bottom:4px solid var(--red); }
-.hint { margin:0 0 22px; font-size:12px; line-height:1.7; color:#526276; }
 .links { display:flex; gap:24px; align-items:center; flex-wrap:wrap; font-size:12px; }
 .button { display:inline-flex; align-items:center; justify-content:center; gap:5px; padding:13px 20px; background:var(--navy); color:white; text-decoration:none; font-size:12px; }
 .button:hover { background:var(--deep); }
-.archive-note { font-size:11px; line-height:1.8; color:#526276; margin:22px 0 0; max-width:840px; }
 .next-step { padding:28px 32px; display:flex; align-items:center; justify-content:space-between; gap:24px; }
 h2 { font-size:24px; margin:0 0 8px; }
 .next-step p:not(.eyebrow) { margin:0; font-size:12px; line-height:1.7; }
@@ -55,14 +56,13 @@ body.viewer-open { overflow:hidden; }
 .viewer.expanded .slide-stage, .viewer:fullscreen .slide-stage { flex:1; min-height:0; max-height:none; aspect-ratio:auto; background:var(--deep); }
 .viewer.expanded .controls, .viewer:fullscreen .controls { margin-top:8px; }
 .viewer.expanded .slide-picker, .viewer:fullscreen .slide-picker { color:white; }
-@media (max-width:1200px) { main { margin:20px 20px; } }
+@media (max-width:1200px) { main { margin:12px 20px; } }
 @media (max-width:700px) {
   main { margin:12px; }
   .brand { padding:12px 16px; font-size:16px; min-height:60px; }
   .brand span { max-width:100px; text-align:right; font-size:10px; line-height:1.5; }
-  .intro { padding:18px 20px 24px; }
-  .back-link { margin-bottom:22px; }
-  .lead { font-size:16px; }
+  .intro { padding:12px 16px 16px; }
+  .intro-meta { flex-direction:column; align-items:flex-start; gap:10px; margin-bottom:10px; }
   .viewer { padding:18px 0 16px; }
   .slide-stage { max-height:none; }
   .viewer-toolbar, .controls { padding:0 12px; }

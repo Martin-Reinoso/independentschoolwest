@@ -4,8 +4,8 @@ Public route: `/family-evening/presentation/`
 
 This is a static, image-based viewer for the supplied 26 August 2026 PowerPoint.
 It retains all 37 slides, including the added website screenshot on slide 32.
-The original PowerPoint is not published. Dates and statements remain an archive
-of the presentation, with that context explained on the web page.
+The original PowerPoint is not published. The compact page header identifies the
+presentation date; the source slides and their wording are unchanged.
 
 ## Regeneration
 
@@ -25,6 +25,9 @@ links are provided, but this is not a tagged accessible document.
 
 - Serve the repository over HTTP and run `tests/family-evening-presentation.test.cjs`
   using Playwright. It accepts a base URL as its optional first argument.
+- Repeat with `PRESENTATION_BROWSER=webkit` for Safari-engine coverage. Layout
+  checks include full-width, centred slide sizing and visible desktop navigation
+  at 720px, 900px and 1000px viewport heights, plus narrow and landscape screens.
 - Inspect desktop, mobile portrait, mobile landscape and expanded-view screenshots.
 - Render the PDF, verify 37 pages, and check slide 32's screenshot placement.
 - Run the site's static-reference and public-data gates from the clean release tree.
