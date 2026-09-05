@@ -38,3 +38,6 @@ swipe gestures and `#slide-N` deep links. Only the current and next image load
 initially. Reduced-data connections do not prefetch. Element fullscreen falls
 back to a full-window view when unavailable. The PDF remains accessible when
 JavaScript or the slide manifest fails.
+
+The optional `?from=email09-v2` parameter returns readers to the v2 comparison
+newsletter. Other values are ignored and retain the original newsletter link.

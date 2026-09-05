@@ -1,5 +1,10 @@
 (() => {
   'use strict';
+  // Keep the return link with the comparison newsletter that opened the viewer.
+  // Only this known public route is accepted; never use an arbitrary return URL.
+  if (new URLSearchParams(location.search).get('from') === 'email09-v2') {
+    document.querySelector('.back-link').href = '../../emails/email09-v2.html';
+  }
   const viewer = document.querySelector('#presentation');
   const stage = document.querySelector('#slide-stage');
   const img = document.querySelector('#slide');
