@@ -384,7 +384,7 @@
         <p class="application-request-lead">Interested in enrolling your child at Rosewood College? Share your name and email address, and we’ll send you a private link to continue with the Application for Enrolment.</p>
       </div>
 
-      <div class="application-request-card reveal delay-1" id="application-link-request" style="scroll-margin-top:110px;">
+      <div class="application-request-card" id="application-link-request" style="scroll-margin-top:110px;">
         <div class="application-request-card-heading">
           <img src="img/rosewood-emblem-corrected-transparent.png" alt="Rosewood College">
           <div>
@@ -1142,6 +1142,14 @@
     hamburger.addEventListener('click', () => toggleNav(!mainNav.classList.contains('open')));
     navOverlay.addEventListener('click', () => toggleNav(false));
     mainNav.querySelectorAll('a').forEach(a => a.addEventListener('click', () => toggleNav(false)));
+
+    // Align external invitation links after layout settles, including WebKit.
+    window.addEventListener('load', () => {
+      if (window.location.hash !== '#application-link-request') return;
+      const card = document.getElementById('application-link-request');
+      const clearance = Math.max(header.offsetHeight + 16, 110);
+      window.scrollTo({top: card.getBoundingClientRect().top + window.scrollY - clearance, behavior: 'instant'});
+    });
 
     // ====== SMOOTH SCROLL ======
     document.querySelectorAll('a[href^="#"]').forEach(a => {
