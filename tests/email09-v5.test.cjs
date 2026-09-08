@@ -26,7 +26,7 @@ assert.equal(crypto.createHash('sha256').update(previous).digest('hex'),'acb6b92
       assert((await page.locator('#interview-update').innerText()).includes('21 to 28 September'));
       assert((await page.locator('#interview-update').innerText()).includes('2027 entry'));
       assert.equal(await page.locator('#application-count').count(),0);
-      assert(await page.getByText('Please register as soon as possible.',{exact:true}).isVisible());
+      assert(await page.getByText('Join us this Friday—book your place today.',{exact:true}).isVisible());
       assert((await page.locator('p.stack-center').evaluateAll(es=>es.map(e=>getComputedStyle(e).textAlign))).every(a=>a==='center'));
       const words=await page.evaluate(()=>document.body.innerText.trim().split(/\s+/).length);
       assert(words<420,`Email too wordy: ${words}`);
