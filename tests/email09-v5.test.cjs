@@ -23,7 +23,10 @@ assert.equal(crypto.createHash('sha256').update(previous).digest('hex'),'acb6b92
       await page.goto(`${base}/emails/email09-v5.html`);
       await page.waitForFunction(()=>[...document.images].every(i=>i.complete&&i.naturalWidth>0));
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-      assert((await page.locator('#application-count').innerText()).includes('Families have already completed 16 Applications for Enrolment. Thank you for taking this exciting step with us.'));
+      assert((await page.locator('#interview-update').innerText()).includes('21 to 28 September'));
+      assert((await page.locator('#interview-update').innerText()).includes('2027 entry'));
+      assert.equal(await page.locator('#application-count').count(),0);
+      assert(await page.getByText('Please register as soon as possible.',{exact:true}).isVisible());
       assert((await page.locator('p.stack-center').evaluateAll(es=>es.map(e=>getComputedStyle(e).textAlign))).every(a=>a==='center'));
       const words=await page.evaluate(()=>document.body.innerText.trim().split(/\s+/).length);
       assert(words<420,`Email too wordy: ${words}`);
@@ -49,4 +52,3 @@ assert.equal(crypto.createHash('sha256').update(previous).digest('hex'),'acb6b92
     console.log('PASS all destinations, original email unchanged, enrolment is the first action');
   }finally{await browser.close();await api.dispose();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
-
