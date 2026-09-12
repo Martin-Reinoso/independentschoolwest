@@ -23,7 +23,7 @@ Validation:
 - Four sample PDFs (five pages) visually reviewed; long text, date, tax and footer bounds tested.
 - Full backup/restore drill preserves billing state and revokes recovered sessions; a new independent restore regression preserves outbox/manual resolutions, holds, staff and financial state.
 - Existing enrolment: 170 tests and deployment build pass. Previous enrolment/public-site paths are unchanged from `af96814`; read-only live page/health checks pass and unauthenticated staff access remains denied.
-- Static links and public-data scan pass. GitHub CI passed on Ubuntu/Node 24.21.0 for implementation `ca5c350`: [run evidence](https://github.com/Martin-Reinoso/independentschoolwest/actions/runs/34677724668).
+- Static links and public-data scan pass (98 HTML/CSS files and 573 tracked files). GitHub CI passed all 111 application and 22 browser tests on Ubuntu/Node 24.21.0 for the enhanced feature commit `2f0542a`: [run evidence](https://github.com/Martin-Reinoso/independentschoolwest/actions/runs/34683535975).
 
 Run `pnpm install --frozen-lockfile` and `pnpm demo` in `Rosewood billing/app`. The launcher prints a private credential-file path. The demo is synthetic and all PDFs are marked as samples. Staff/operations/test manuals are included.
 

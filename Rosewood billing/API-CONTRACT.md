@@ -111,7 +111,7 @@ Refund uniqueness uses normalized `(reference, paidOn)` across all accounts and 
 | `communication.update` | `{id,expectedRevision,subject,body}`; billing+, draft only; subject 200/body 12,000 characters |
 | `communication.approve` | `{id,expectedRevision}`; finance+; current eligible draft becomes queued |
 | `communication.cancel` | `{id,expectedRevision,reason}`; billing+ for draft, finance+ for other cancellable states |
-| `communication.refresh` | `{id,expectedRevision}`; billing+; draft/blocked/failed; restores current facts/default wording to draft |
+| `communication.refresh` | `{id,expectedRevision}`; billing+ for draft, finance+ for blocked/failed; restores current facts/default wording to draft |
 | `communication.retry` | `{id,expectedRevision,reason}`; finance+; definite failed only; rechecks eligibility before queueing |
 | `communication.resend` | `{id,expectedRevision,reason}`; finance+; accepted/cancelled only; creates one new current draft linked by `parentMessageId`, never auto-approves |
 | `communication.resolve` | `{id,expectedRevision,outcome,providerId?,reason,evidence}`; finance+; uncertain only; outcome accepted/not_sent; accepted requires providerId; immutable resolution, not_sent becomes failed for separate retry |

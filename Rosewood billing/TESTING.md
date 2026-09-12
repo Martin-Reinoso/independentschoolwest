@@ -7,6 +7,7 @@ Evidence date: 12 September 2026. The expanded documents/communications/staff re
 | Check | Observed result |
 | --- | --- |
 | Expanded application suite | **111/111 passed** using the verified Node 24.21.0 Darwin arm64 binary, including the original ledger/PDF/export tests. |
+| GitHub Actions | **Passed** for feature commit `2f0542a`: locked install, source checks, all 111 application tests and all 22 browser workflows on Ubuntu/Node 24.21.0. [Run evidence](https://github.com/Martin-Reinoso/independentschoolwest/actions/runs/34683535975). |
 | Combined browser suite | **22/22 passed**: all 15 original workflows and seven new document/communications/staff/recovery scenarios. New screens and forms pass desktop/mobile overflow and axe checks; viewer approval/staff-management restrictions hold. |
 | PDF preview visual check | Actual receipt content, sample marker and allocation table inspected inside the protected modal in full Chromium. The seven enhancement tests use full Chromium because Playwright's separate headless shell does not display PDFs. Invoice/receipt/credit/statement renderer regressions remain in the application suite. |
 | Staff lifecycle | Admin create/update/disable/enable/reset, self password changes, session revocation, last-admin preservation, stale revisions, private CLI input and secret-safe idempotency pass. |
@@ -14,12 +15,15 @@ Evidence date: 12 September 2026. The expanded documents/communications/staff re
 | Mail adapter/worker | **9/9 pass** with injected providers only. One case runs the real live-mode synthetic ledger, outbox, PDF renderer and SES adapter together and verifies one attachment/acceptance across repeated worker runs. Disabled/demo delivery, pre-dispatch holds, ambiguous results and failed persistence are covered. |
 | HTTP integration and independent review | **5/5 new cases** cover authenticated frozen PDF downloads, role/CSRF restrictions, automatic draft preparation after issue, password reset/session revocation and disabled/demoted access during partially uploaded requests. |
 | Expanded backup/restore | **4/4 pass**, including full billing/auth/comms schema backup and independent restore. Queue/settings/holds/events/manual resolution, staff list and ledger balances match; original uncertain results and immutable guards survive. Restored mail is never sent. |
-| Local source checks | **33 JavaScript files** and local-only staff assets pass syntax checks. |
+| Local source checks | **33 JavaScript files** and local-only staff assets pass syntax checks on the pinned Node 24.21.0 runtime after final formatting. The expanded source also passed the local Node 26.7.0 check. |
+| Repository checks | **573 tracked files** pass the public-data/secret-pattern scan; all **98 tracked HTML/CSS files** have resolving local references. No runtime data, credentials or screenshots were committed. |
 | Existing enrolment | **170/170 passed again**, build succeeded; all pre-existing enrolment/pages/assets/scripts and existing `ci.yml` remain byte-identical to base `af96814`. |
 | Email visual review | Synthetic HTML reviewed at 800px and 390px widths; readable content and no mobile overflow. This is browser rendering, not inbox-client delivery testing. |
 | Persistent demo upgrade | Private online backup created before restarting the same synthetic database. New additive schema opens successfully. CLI dry run reports delivery disabled and no accepted messages. |
 
 The initial auth tests grew from 8 to 21, and the backup suite from 3 to 4. New communication and staff tables are additive; existing billing transactions and seeded permission values are preserved. A request-upload access-revocation race, inconsistent subject limits and capped queue counts found during independent review were corrected and regression-tested.
+
+Feature commit `2f0542a` is pushed to `codex/rosewood-billing`. The refreshed local demo uses the same private persistent database, backed up before upgrade. Follow-up documentation corrections clarify that automation's start date filters document issue timestamps and that finance access is required to refresh blocked/failed messages; these do not change application source.
 
 No real SES call, delivery/bounce event, family message, production deployment or enrolment mutation is represented by these tests. Provider results are explicitly synthetic. All command/API/browser fixtures use isolated databases and `example.test` recipients. See COMMUNICATIONS.md for the remaining sender, worker and delivery commissioning steps.
 
