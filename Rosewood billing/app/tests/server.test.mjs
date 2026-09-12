@@ -304,6 +304,12 @@ test('internal failures are redacted, disabled sessions denied, duplicate cookie
       .status,
     401,
   );
+  await auth.addUser({
+    name: 'Synthetic Recovery Admin',
+    email: 'recovery@example.test',
+    role: 'admin',
+    password: PASSWORD,
+  });
   auth.disableUser('admin@example.test');
   assert.equal(
     (await request('/api/session', { headers: { Cookie: session.cookie } })).status,

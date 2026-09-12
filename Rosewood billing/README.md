@@ -28,9 +28,11 @@ The demo includes three synthetic family accounts, prospective students, issued 
 - Pending payment reports, finance verification, partial payments, allocation across invoices, unapplied credit and a separate bond register.
 - Receipts, invoice voiding, credit notes, allocation release, payment reversals and evidence of refunds already made.
 - Instalment progress, ageing, account statements, PDF downloads, a receivables CSV and a controlled Xero draft-invoice export with account-specific contact mapping and export/import evidence.
+- A searchable document centre with PDF previews; reviewed email drafts with frozen attachments, invoice/receipt automation, due-date reminders, account holds, resend/recovery controls and an optional SES worker.
+- In-app staff administration, role/access changes, password resets and staff password changes, with session revocation and protection for the last active administrator.
 - Durable SQLite transactions, duplicate/retry controls, online backup and verified restore tooling; automated domain, authentication, API, PDF, export, backup and browser tests.
 
-The Xero assumption follows the user's reference to “Xerox”. This release uses exports; it makes no Xero API calls. The actual school's AU CSV template and a Xero Demo Company import still need validation before live use. It does not send invoices or reminders, collect card payments, initiate refunds, synchronise enrolment or deploy a public service.
+The Xero assumption follows the user's reference to “Xerox”. This release uses exports; it makes no Xero API calls. The actual school's AU CSV template and a Xero Demo Company import still need validation before live use. Email delivery is disabled and the demo cannot send; the implemented SES worker needs a verified sender and commissioning. Card collection, bank transfers, automatic enrolment synchronisation and public deployment remain outside this release.
 
 ## Documentation
 
@@ -38,8 +40,9 @@ The Xero assumption follows the user's reference to “Xerox”. This release us
 |---|---|
 | [Research dossier](research/README.md) | Eleven school comparators, seven pinned repositories, source quality, design lessons and accounting boundaries; committed before application code |
 | [Staff guide](STAFF-GUIDE.md) | Daily workflows, payment states and corrections |
+| [Documents and communications](COMMUNICATIONS.md) | PDF centre, email policy, queue/recovery, sender proposal and disabled-by-default SES transport |
 | [Operations](OPERATIONS.md) | Runtime setup, staff accounts, private hosting, backup/restore and live commissioning requirements |
-| [Testing and acceptance](TESTING.md) | Actual validation, B01–B22 coverage and remaining limits |
+| [Testing and acceptance](TESTING.md) | Actual validation, acceptance coverage and remaining limits |
 | [Prepared GitHub review](REVIEW.md) | Branch comparison and a ready pull-request description; API creation permission is unavailable |
 | [Architecture](ARCHITECTURE.md) | Domain model, ownership and integration decisions |
 | [API contract](API-CONTRACT.md) | Commands, permissions, revisions and idempotency |

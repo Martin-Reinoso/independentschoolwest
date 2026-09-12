@@ -5,15 +5,17 @@ import { loadConfig, prepareRuntime } from '../src/config.mjs';
 import { openDatabase } from '../src/database.mjs';
 
 const usage =
-  'Usage: npm run staff -- add --name "Staff Name" --email staff@example.test --role viewer|billing|finance|admin [--password-stdin]\n       npm run staff -- disable --email staff@example.test\n       npm run staff -- list\nPasswords are entered privately; never pass passwords in command arguments or environment variables.\n';
+  'Usage: npm run staff -- add --name "Staff Name" --email staff@example.test --role viewer|billing|finance|admin [--password-stdin]\n       npm run staff -- reset --email staff@example.test [--password-stdin]\n       npm run staff -- update --email staff@example.test [--name "Staff Name"] [--role viewer|billing|finance|admin]\n       npm run staff -- enable|disable --email staff@example.test\n       npm run staff -- list\nPasswords are entered privately; never pass passwords in command arguments or environment variables.\n';
 
 function parseArgs(args) {
   const [command, ...rest] = args;
-  if (!['add', 'disable', 'list'].includes(command)) throw new Error(usage);
+  if (!['add', 'disable', 'enable', 'update', 'reset', 'list'].includes(command))
+    throw new Error(usage);
   const options = { command };
   for (let i = 0; i < rest.length; i++) {
     const flag = rest[i];
-    if (flag === '--password-stdin' && command === 'add') options.passwordStdin = true;
+    if (flag === '--password-stdin' && ['add', 'reset'].includes(command) && !options.passwordStdin)
+      options.passwordStdin = true;
     else if (
       ['--name', '--email', '--role'].includes(flag) &&
       rest[i + 1] &&
@@ -25,7 +27,21 @@ function parseArgs(args) {
   }
   if (command === 'add' && (!options.name || !options.email || !STAFF_ROLES.includes(options.role)))
     throw new Error(usage);
-  if (command === 'disable' && !options.email) throw new Error(usage);
+  if (command !== 'list' && !options.email) throw new Error(usage);
+  const allowed = {
+    add: ['command', 'name', 'email', 'role', 'passwordStdin'],
+    reset: ['command', 'email', 'passwordStdin'],
+    update: ['command', 'email', 'name', 'role'],
+    enable: ['command', 'email'],
+    disable: ['command', 'email'],
+    list: ['command'],
+  };
+  if (
+    Object.keys(options).some((key) => !allowed[command].includes(key)) ||
+    (command === 'update' && !options.name && !options.role) ||
+    (options.role && !STAFF_ROLES.includes(options.role))
+  )
+    throw new Error(usage);
   return options;
 }
 
@@ -92,23 +108,52 @@ try {
   if (args.command === 'list') {
     for (const user of auth.listUsers())
       process.stdout.write(
-        `${user.email}\t${user.name}\t${user.role}\t${user.active ? 'active' : 'disabled'}\n`,
+        `${user.email}\t${user.name}\t${user.role}\t${user.active ? 'active' : 'disabled'}\trevision ${user.revision}\n`,
       );
   } else if (args.command === 'disable') {
     const user = auth.disableUser(args.email, operator);
     process.stdout.write(`Disabled ${user.email}; all their sessions were revoked.\n`);
+  } else if (['enable', 'update'].includes(args.command)) {
+    const user = auth.updateUser(
+      {
+        email: args.email,
+        name: args.name,
+        role: args.role,
+        ...(args.command === 'enable' ? { active: true } : {}),
+      },
+      operator,
+    );
+    process.stdout.write(
+      `Updated ${user.email}: ${user.role}, ${user.active ? 'active' : 'disabled'}, revision ${user.revision}. Role changes revoke all sessions.\n`,
+    );
   } else {
+    const target =
+      args.command === 'reset'
+        ? auth.listUsers().find((user) => user.email === args.email.trim().toLowerCase())
+        : null;
+    if (args.command === 'reset' && !target)
+      throw new Error('Usage: staff reset requires an existing staff email.');
     let password = args.passwordStdin
       ? await stdinPassword()
       : await hiddenPassword('New staff password (15–128 characters, hidden): ');
     if (!args.passwordStdin && password !== (await hiddenPassword('Repeat password (hidden): ')))
       throw new Error('The passwords do not match.');
-    const user = await auth.addUser(
-      { name: args.name, email: args.email, role: args.role, password },
-      operator,
-    );
+    const user =
+      args.command === 'reset'
+        ? await auth.resetPassword(
+            { email: target.email, expectedRevision: target.revision, password },
+            operator,
+          )
+        : await auth.addUser(
+            { name: args.name, email: args.email, role: args.role, password },
+            operator,
+          );
     password = undefined;
-    process.stdout.write(`Created ${user.email} with ${user.role} access.\n`);
+    process.stdout.write(
+      args.command === 'reset'
+        ? `Reset the password for ${user.email}; all their sessions were revoked. Account remains ${user.active ? 'active' : 'disabled'}.\n`
+        : `Created ${user.email} with ${user.role} access.\n`,
+    );
   }
 } catch (error) {
   // Only controlled operator messages; database errors must not dump SQL or credentials.

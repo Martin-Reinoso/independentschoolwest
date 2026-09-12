@@ -5,6 +5,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createAuth, AuthError } from './auth.mjs';
 import { isLoopback, loadConfig, prepareRuntime } from './config.mjs';
+import { mailStatus, loadMailConfig } from './mail.mjs';
 
 const STATIC_FILES = new Map([
   ['/', ['index.html', 'text/html; charset=utf-8']],
@@ -38,7 +39,7 @@ function securityHeaders(res, config) {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; frame-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
   );
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
@@ -110,6 +111,8 @@ export function createBillingServer({
   renderDocument,
   buildReceivablesCsv,
   buildXeroCsv,
+  communications,
+  mailConfig = loadMailConfig({ demoMode: Boolean(config.demoMode) }),
   onError = () => {},
 }) {
   const originUrl = new URL(config.origin);
@@ -178,7 +181,24 @@ export function createBillingServer({
       }
       if (method === 'GET' && pathname === '/api/state')
         return sendJson(res, 200, service.getState(actor));
-      if (method === 'POST' && pathname === '/api/commands') {
+      if (method === 'GET' && pathname === '/api/staff')
+        return sendJson(res, 200, { staff: auth.listStaff(actor) });
+      if (method === 'GET' && pathname === '/api/communications') {
+        if (!communications)
+          fail(
+            503,
+            'COMMUNICATIONS_UNAVAILABLE',
+            'Communications are not available in this runtime.',
+          );
+        return sendJson(res, 200, {
+          ...communications.getState(actor),
+          transport: mailStatus(mailConfig),
+        });
+      }
+      if (
+        method === 'POST' &&
+        ['/api/commands', '/api/communications/commands', '/api/staff/commands'].includes(pathname)
+      ) {
         const key = req.headers['idempotency-key'];
         if (typeof key !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/.test(key))
           fail(
@@ -186,7 +206,7 @@ export function createBillingServer({
             'IDEMPOTENCY_REQUIRED',
             'Supply a unique Idempotency-Key of 8 to 128 safe characters.',
           );
-        if (actor.role === 'viewer')
+        if (actor.role === 'viewer' && pathname !== '/api/staff/commands')
           fail(403, 'FORBIDDEN', 'Your staff role cannot change billing records.');
         const body = await jsonBody(req, config.maxBodyBytes || 65536);
         if (
@@ -197,8 +217,54 @@ export function createBillingServer({
           Array.isArray(body.payload)
         )
           fail(400, 'INVALID_COMMAND', 'Supply a command type and payload object.');
-        const result = service.execute(actor, { type: body.type, payload: body.payload }, key);
+        // A staff member may be disabled, demoted or reset while a slow request
+        // body is arriving. Recheck the session at the dispatch boundary.
+        const currentSession = auth.authenticate(token);
+        if (!sameSecret(req.headers['x-csrf-token'], currentSession.csrfToken))
+          fail(403, 'CSRF_REJECTED', 'The request could not be verified. Refresh and try again.');
+        actor = currentSession.user;
+        let result;
+        if (pathname === '/api/staff/commands') {
+          result = await auth.manageStaff(actor, { type: body.type, payload: body.payload }, key);
+        } else if (pathname === '/api/communications/commands') {
+          if (!communications)
+            fail(
+              503,
+              'COMMUNICATIONS_UNAVAILABLE',
+              'Communications are not available in this runtime.',
+            );
+          result = communications.execute(actor, { type: body.type, payload: body.payload }, key);
+        } else {
+          result = service.execute(actor, { type: body.type, payload: body.payload }, key);
+          if (communications && ['invoice.issue', 'payment.confirm'].includes(body.type)) {
+            try {
+              communications.prepareAutomatic();
+            } catch {
+              onError({ code: 'COMMUNICATION_PREPARATION_FAILED' });
+            }
+          }
+        }
         return sendJson(res, 200, { result });
+      }
+      const communicationDocument = pathname.match(
+        /^\/api\/communications\/([A-Za-z0-9_-]{1,100})\/document\.pdf$/,
+      );
+      if (method === 'GET' && communicationDocument) {
+        if (!communications)
+          fail(
+            503,
+            'COMMUNICATIONS_UNAVAILABLE',
+            'Communications are not available in this runtime.',
+          );
+        const bytes = await renderDocument(
+          communications.getAttachment(actor, communicationDocument[1]),
+        );
+        res.writeHead(200, {
+          'Content-Type': 'application/pdf',
+          'Content-Length': bytes.length,
+          'Content-Disposition': `attachment; filename="rosewood-email-${communicationDocument[1]}.pdf"`,
+        });
+        return res.end(bytes);
       }
       const document = pathname.match(
         /^\/api\/documents\/(invoice|receipt|credit|statement)\/([A-Za-z0-9_-]{1,100})\.pdf$/,
@@ -280,16 +346,19 @@ export async function startServer(configInput = loadConfig()) {
     { createBillingService },
     { renderDocument },
     { buildReceivablesCsv, buildXeroCsv },
+    { createCommunications },
   ] = await Promise.all([
     import('./database.mjs'),
     import('./service.mjs'),
     import('./documents.mjs'),
     import('./exports.mjs'),
+    import('./communications.mjs'),
   ]);
   const db = openDatabase(config.databasePath);
   try {
     const service = createBillingService({ db, demoMode: config.demoMode });
     const auth = createAuth({ db });
+    const communications = createCommunications({ db, service });
     const server = createBillingServer({
       service,
       auth,
@@ -297,6 +366,7 @@ export async function startServer(configInput = loadConfig()) {
       renderDocument,
       buildReceivablesCsv,
       buildXeroCsv,
+      communications,
       onError: () =>
         process.stderr.write('A billing request failed. Review the private service health.\n'),
     });
@@ -305,7 +375,7 @@ export async function startServer(configInput = loadConfig()) {
       server.once('error', reject);
       server.listen(config.port, config.host, resolve);
     });
-    return { server, config, auth, service };
+    return { server, config, auth, service, communications };
   } catch (error) {
     db.close();
     throw error;

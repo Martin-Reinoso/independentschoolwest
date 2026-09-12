@@ -1,6 +1,6 @@
 # Rosewood Billing operations
 
-Last reviewed: 12 September 2026. These procedures describe the independent billing application in `app/`. They do not deploy it or change the existing enrolment system. See [architecture](ARCHITECTURE.md), [staff guide](STAFF-GUIDE.md), and [test evidence](TESTING.md).
+Last reviewed: 12 September 2026. These procedures describe the independent billing application in `app/`. They do not deploy it or change the existing enrolment system. See [architecture](ARCHITECTURE.md), [staff guide](STAFF-GUIDE.md), [communications operations](COMMUNICATIONS.md), and [test evidence](TESTING.md).
 
 ## Runtime and installation
 
@@ -29,7 +29,7 @@ Default files are:
 | File or directory | Purpose |
 | --- | --- |
 | `~/.local/share/rosewood-billing/demo/` | Persistent private demo runtime; directory permissions 0700 |
-| `billing.sqlite` | Billing records, staff password hashes, sessions, audit, document snapshots and export manifests; permissions 0600 |
+| `billing.sqlite` | Billing records, staff password hashes, sessions, audit, document snapshots, export manifests and the communications outbox/history; permissions 0600 |
 | `billing.sqlite-wal`, `billing.sqlite-shm` | SQLite runtime files; leave them under SQLite's control |
 | `demo-credentials.txt` | Local synthetic demo login; permissions 0600 |
 
@@ -43,7 +43,7 @@ To use a different loopback port:
 BILLING_PORT=4320 BILLING_ORIGIN=http://127.0.0.1:4320 npm run demo
 ```
 
-If a demo credential file is lost, preserve the existing directory and select a **new** private demo directory to get a fresh demonstration. Removing financial database files is not the recovery procedure for a real runtime.
+Changing or resetting the demo password does not update the initial credential file; use the new password afterwards. If that file is lost, preserve the runtime and recover the named account with the operator `reset` command below. Start the recovered demo with the correct `BILLING_DATA_DIR`, `BILLING_DEMO=1` and `npm start`; the demo launcher itself still expects its original credential file. Select a new private demo directory only when a fresh demonstration is intended. Removing financial database files is not an account-recovery procedure.
 
 ## Configuration
 
@@ -77,17 +77,36 @@ Set `BILLING_DATA_DIR`, `BILLING_ORIGIN`, and the correct `BILLING_DEMO` mode be
 npm run staff -- add --name "Finance Reviewer" --email finance@example.test --role finance
 npm run staff -- list
 npm run staff -- disable --email finance@example.test
+npm run staff -- reset --email finance@example.test
+npm run staff -- enable --email finance@example.test
+npm run staff -- update --email finance@example.test --name "Finance Reviewer" --role finance
 ```
 
-Roles are `viewer`, `billing`, `finance`, and `admin`. Each staff account must be named. Add prompts twice without echoing characters; passwords must contain 15–128 characters. An existing email is not overwritten. For automation, `--password-stdin` accepts a single bounded line from an approved private secret-input mechanism. There is no password argument or password environment variable; do not put a secret into a shell command or command history.
+Roles are `viewer`, `billing`, `finance`, and `admin`. Each staff account must be named; names are limited to 120 characters. `add` and `reset` prompt twice without echoing characters; passwords must contain 15–128 characters. An existing email is not overwritten, and an account's email identity cannot be edited. `update` accepts `--name`, `--role`, or both. Resetting a disabled account's password leaves it disabled; `enable` is a separate action. `list` includes the current revision.
 
-Disabling a user revokes all their active sessions. Login errors do not reveal whether an identity exists. Throttles persist in the database: five attempts per identity and thirty per connecting network address per fifteen-minute window, with three concurrent password checks. Since the backend trusts only the loopback gateway connection, network throttling is shared by users coming through that gateway. Sessions expire after thirty minutes idle or eight hours absolute lifetime.
+For private non-interactive input, `add` and `reset` support `--password-stdin`, accepting a single bounded line from an approved private secret-input mechanism. There is no password argument or password environment variable; do not put a secret into a shell command or command history. Passwords are not sent by email. Share an initial or reset password only through the school's approved secure channel.
 
-The current operator CLI provides add, list, and disable. Password reset, re-enable, role change, and a web staff-administration screen are not implemented. Commission an approved account-recovery process before real staff onboarding; do not repair identities by hand-editing password hashes or deleting audit history.
+Administrators can also use **Staff access → Add staff member**, **Edit access** and **Reset password** in the portal. **Edit access → Staff login is active** enables or disables an account. Every signed-in role can use the **Change password** button beside their name, supplying their current password. Account changes check revisions, and the server rechecks the administrator's access before committing password work. The last active administrator cannot be disabled or demoted through either interface; create or enable another administrator first.
+
+Disabling a user, changing their role, or changing/resetting their password immediately revokes all that user's sessions. A name-only change preserves sessions. Login errors do not reveal whether an identity exists. Throttles persist in the database: five attempts per identity and thirty per connecting network address per fifteen-minute window, with a shared limit of three concurrent password operations. Current-password verification is also throttled. Since the backend trusts only the loopback gateway connection, network throttling is shared by users coming through that gateway. Sessions expire after thirty minutes idle or eight hours absolute lifetime.
+
+Local operator access remains the recovery route when no administrator can sign in. Use the selected private runtime and the commands above; do not hand-edit password hashes or delete audit history. Public registration and password-reset emails/tokens are not implemented.
+
+## Documents and communications
+
+**Documents** opens the **Document centre** for invoice, receipt, credit-note and current statement searches, **Preview PDF**, and **Download**. Eligible records also offer **Email draft**. Each email preserves its reviewed document snapshot; **Preview attachment** in the message review displays that snapshot. Downloaded files remain under the school's handling policy.
+
+**Communications** contains the review queue, message history, **Contact hold**, **Prepare automation**, and **Edit rules**. Billing staff prepare/edit drafts. Finance and administrators approve delivery, configure automatic invoice/receipt/reminder preparation, manage holds, retry definite failures, and review resends or uncertain outcomes. Review mode creates drafts; automatic mode queues eligible messages when preparation runs. Issuing an invoice or confirming a payment can trigger preparation, and the separate mail worker also prepares enabled rules. A queued message still requires an enabled transport and a running worker.
+
+Email delivery defaults to disabled, and demo mode cannot send externally even if delivery environment switches are supplied. The proposed sender is `Rosewood College Accounts <rosewood.accounts@ffe.org.au>`; this work has not created or verified that mailbox, its sending identity or DNS. Account contact permission, holds, recipient changes and document eligibility are checked before dispatch. **Accepted by provider** means that SES accepted the request; it does not establish delivery to a family's inbox.
+
+For an accepted or cancelled message, finance can choose **Prepare resend**, record a reason, and review the new draft before **Approve and queue**. An uncertain outcome has no direct retry: **Resolve provider outcome** requires external provider-log evidence and a reason. Confirmed acceptance requires the provider message reference. **Provider logs prove not accepted** records the `not_sent` outcome and moves the message to failed; **Retry failed message** is a separate reviewed action. If evidence is inconclusive, leave the outcome uncertain. These decisions and the earlier attempt remain recorded.
+
+See [COMMUNICATIONS.md](COMMUNICATIONS.md) for exact delivery configuration, worker commands, sender commissioning, reminder behaviour, provider investigation and operational limits. The web process does not submit email itself. No live email provider or sending identity was commissioned during this work.
 
 ## Backup and restore
 
-The backup command uses SQLite's online backup API, then checks integrity, foreign keys, row content, and a SHA-256 manifest. It includes committed WAL data and staff/session records. A download of a CSV or PDF is not a database backup. Backups are private and contain personal data plus credential hashes; the tool does not encrypt them or copy them off-host.
+The backup command uses SQLite's online backup API, then checks integrity, foreign keys, row content, and a SHA-256 manifest. It includes committed WAL data, staff/session records, email content/snapshots, queued messages and recorded delivery history. A download of a CSV or PDF is not a database backup. Backups are private and contain personal data plus credential hashes; the tool does not encrypt them or copy them off-host.
 
 Create and verify a uniquely named backup, with the source runtime selected explicitly:
 
@@ -100,10 +119,12 @@ npm run backup -- --verify "$BILLING_BACKUP"
 
 The parent backup directory must be private (0700), owned by the operator, and outside cloud-sync folders. A newly created private directory is supported. Existing backup filenames are never overwritten. Omitting the destination makes a timestamped file under `$BILLING_DATA_DIR/backups/`. Preserve the adjacent `.manifest.json` file. Use a school-approved encrypted off-host backup destination and retention policy when commissioning; neither is currently automated.
 
-Restore into a **new** private directory so no stale WAL files or current database can be overwritten. Stop the billing service first (Ctrl+C locally, or the commissioned service manager). Verify the chosen backup as above, then set an unused restore path:
+Restore into a **new** private directory so no stale WAL files or current database can be overwritten. Stop both the billing service and any mail worker first (Ctrl+C locally, or the commissioned service manager). Keep email delivery disabled throughout recovery. Verify the chosen backup as above, then set an unused restore path:
 
 ```sh
 export BILLING_RESTORE_DIR="$HOME/.local/share/rosewood-billing/recovery-20260912"
+export BILLING_MAIL_TRANSPORT=disabled
+export BILLING_MAIL_DELIVERY_ENABLED=0
 node --input-type=module <<'NODE'
 import { mkdirSync, copyFileSync, constants, chmodSync } from 'node:fs';
 import path from 'node:path';
@@ -145,7 +166,7 @@ npm start
 
 Use the original database's mode and the correct origin when restarting. For a demo restore, set `BILLING_DEMO=1` and use `npm start` to inspect the restored data without requiring a copied demo credential file. Staff hashes are in the backup, so the existing demo password still works. Session revocation deliberately changes the restored file after its initial manifest verification; retain the source manifest as recovery evidence and generate a new backup after validation.
 
-Check account/invoice/receipt counts, balances, bonds, unapplied credits, recent audit history and a known document. Record the backup source, restore directory, verification result and operator in the recovery log. Do not discard the previous runtime until finance has accepted parity. No in-place restore or automatic failover command is implemented.
+Check account/invoice/receipt counts, balances, bonds, unapplied credits, recent audit history and a known document. Reconcile the restored outbox with external provider logs before allowing delivery: a restored queued message may already have been accepted after the backup was taken. Do not restart the sending worker against that queue until finance has reviewed possible duplicates, applied necessary contact holds and reconciled delivery evidence. A database backup cannot roll back an email already accepted by a provider. Record the backup source, restore directory, verification result and operator in the recovery log. Do not discard the previous runtime until finance has accepted parity. No in-place restore or automatic failover command is implemented.
 
 ## HTTPS and production commissioning
 
@@ -166,4 +187,4 @@ The Dockerfile is reference packaging for Node 24.21.0; Docker was unavailable l
 - Duplicate payment/refund evidence: locate the existing transaction and verify the actual bank identifier. Do not invent a different reference to bypass the guard.
 - A ledger invariant failure requires stopping financial entry and inspecting a private verified backup plus the audit trail. Never “fix” it by deleting allocations, receipts or credits.
 
-There is no live Xero connection, bank feed, gateway charging, automatic email, parent portal, or deployment into the enrolment stack. Accounting CSV generation records an export manifest; a manually recorded import outcome is separate and does not prove payment reconciliation. The AU Xero tenant template and Demo Company import still require validation. Public enrolment health and staff-authentication endpoints were checked read-only. No family records or enrolment credentials were accessed, and no enrolment deployment or AWS mutation was performed.
+There is no live Xero connection, bank feed, gateway charging, parent portal, or deployment into the enrolment stack. Email preparation and the guarded SES worker are implemented, with external delivery disabled for this review and no live sender commissioned. Accounting CSV generation records an export manifest; a manually recorded import outcome is separate and does not prove payment reconciliation. The AU Xero tenant template and Demo Company import still require validation. Public enrolment health and staff-authentication endpoints were checked read-only. No family records or enrolment credentials were accessed, and no enrolment deployment or AWS mutation was performed.

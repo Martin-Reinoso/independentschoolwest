@@ -13,10 +13,15 @@ This is the initial implementation contract shared by the domain service, HTTP l
 | `GET /api/state` | Authorised server-calculated billing state; no-store |
 | `POST /api/commands` | Session, Origin, CSRF, `Idempotency-Key`; JSON `{type,payload}`; returns `{result}` |
 | `GET /api/documents/:kind/:id.pdf` | Protected `invoice`, `receipt`, `credit`, `statement`; snapshot-based PDF download, audited access |
+| `GET /api/communications` | All authenticated roles; `{settings,messages,events,holds,summary,transport}`; latest 300 messages/200 events, full summary counts; no secrets or lease tokens |
+| `POST /api/communications/commands` | Same Origin, session, CSRF and idempotency requirements as billing commands; returns `{result}` |
+| `GET /api/communications/:id/document.pdf` | Authenticated PDF from that message's frozen attachment facts, not current account details |
+| `GET /api/staff` | Admin only; `{staff:[{id,name,email,role,active,revision,createdAt}]}`; no hashes or sessions |
+| `POST /api/staff/commands` | Same mutation protection; asynchronous password work; admin commands plus self password change for any role |
 | `GET /api/exports/receivables.csv` | Finance/admin; formula-safe receivables report, audited |
 | `GET /api/exports/xero.csv` | Finance/admin; validated mapped issued fee invoice draft export, audited; not a completed import |
 
-No CORS wildcard or direct AWS/Xero calls. Browser sends credentials only to same-origin API. No browser-held financial persistence. Failed or missing auth is 401; disallowed role is 403; stale/duplicate/state conflict is 409; invalid data is 400; rate limiting is 429 with Retry-After. Static CSS/JS references are relative so existing repository asset checks can resolve them.
+No CORS wildcard. The web server and browser make no AWS/Xero calls; an independently configured mail worker can call SES. Browser sends credentials only to same-origin API. No browser-held financial persistence. Failed or missing auth is 401; disallowed role is 403; stale/duplicate/state conflict is 409; invalid data is 400; rate limiting is 429 with Retry-After. Static CSS/JS references are relative so existing repository asset checks can resolve them. Mutations revalidate the session and CSRF token after reading the request body, so disable/demotion during an upload cannot preserve earlier authority.
 
 ## Service boundary
 
@@ -26,6 +31,7 @@ No CORS wildcard or direct AWS/Xero calls. Browser sends credentials only to sam
 - `execute(actor, {type,payload}, idempotencyKey)` returns a serialisable command result, normally the affected entity or `{id,...}`. It checks roles itself even if invoked without HTTP.
 - `getDocument(actor, kind, id)` returns `{kind, document, account, settings, today, generatedAt, ...}` using preserved snapshot values for issued documents; this is an audited read. `today` is the Melbourne calendar date and `generatedAt` is an ISO timestamp. A `statement` additionally includes account invoices/payments/credits/refunds and computed balances. Finance service must return enough data for the document renderer without direct SQL in the PDF layer.
 - `recordExport(actor, kind, metadata)` stores a durable authorised export manifest and audits it; returns the manifest. Metadata includes invoice IDs/revisions, row/document counts, net/tax/gross totals, SHA-256, settings mapping revision and exclusions. Xero manifests also retain the exact contact mapping, account ID and account revision used for each included payer. No balance mutation.
+- `withSnapshot(actor, callback)` gives trusted internal synchronous code `{state,getDocument}` under one immediate transaction. Communications uses it to freeze and recheck consistent document facts. It is not an HTTP interface, accepts no untrusted callback, and must not perform network work or nest service transactions.
 
 Business exceptions expose `.status`, `.code`, `.message`. `src/seed.mjs` exports `seedDemo(service)` and creates obvious synthetic accounts/students/fees/documents through the service, idempotently. It creates no staff password. HTTP/auth tables use `auth_` prefix and are owned by `src/auth.mjs`, avoiding schema collisions.
 
@@ -94,3 +100,36 @@ Xero export rejects formula-like text in exact contact/account/tax mapping field
 The optional current account `xeroContactName` is an explicit accounting mapping to the exact external contact display name, separate from the immutable payer snapshot. It is trimmed, limited to 160 characters, defaults to empty, and is preserved if omitted on update; explicit empty text clears it. Xero export requires it on included accounts, checks mapping collisions across the entire current account register (including accounts absent from this file), and never infers contact identity from payer names. Finance reviews mappings before export; account maintenance uses the normal billing/finance/admin role gate.
 
 Refund uniqueness uses normalized `(reference, paidOn)` across all accounts and original receipts, independent of refund amount and incoming payment method. A refund reference identifies the actual outgoing transaction. Repeating the same outgoing refund against a cash receipt and a bank-transfer receipt is rejected. Existing immutable refund rows with an older hash format still reserve their normalized reference/date; their historical facts are not rewritten.
+
+## Communications commands and worker
+
+`createCommunications({db,service,clock?})` owns additive `comms_*` tables in the same private database. Every public command uses the financial service's trusted consistent snapshot, its own role check, durable idempotency record and immutable events. Message updates require the current `expectedRevision`. The original financial ledger and financial operation identities remain separate.
+
+| Type | Payload and authority |
+| --- | --- |
+| `communication.create` | `{kind,documentId}`; billing+; kind invoice/receipt/credit/statement; creates or returns the existing logical document email |
+| `communication.update` | `{id,expectedRevision,subject,body}`; billing+, draft only; subject 200/body 12,000 characters |
+| `communication.approve` | `{id,expectedRevision}`; finance+; current eligible draft becomes queued |
+| `communication.cancel` | `{id,expectedRevision,reason}`; billing+ for draft, finance+ for other cancellable states |
+| `communication.refresh` | `{id,expectedRevision}`; billing+; draft/blocked/failed; restores current facts/default wording to draft |
+| `communication.retry` | `{id,expectedRevision,reason}`; finance+; definite failed only; rechecks eligibility before queueing |
+| `communication.resend` | `{id,expectedRevision,reason}`; finance+; accepted/cancelled only; creates one new current draft linked by `parentMessageId`, never auto-approves |
+| `communication.resolve` | `{id,expectedRevision,outcome,providerId?,reason,evidence}`; finance+; uncertain only; outcome accepted/not_sent; accepted requires providerId; immutable resolution, not_sent becomes failed for separate retry |
+| `communication.settings` | `{expectedRevision,automaticInvoices,automaticReceipts,remindersEnabled,reminderOffsets,mode,startDate}`; finance+; mode review/automatic, calendar start date, up to 12 unique integer offsets |
+| `communication.prepare` | `{limit?}`; finance+; bounded eligible event scan |
+| `communication.hold` | `{accountId,paused,reason}`; finance+; records an account-wide outbound hold and its history |
+
+Worker-only methods are not exposed over HTTP: `prepareAutomatic()`, `claimNext()`, `validateClaim({id,attemptId,leaseToken})`, `finishAttempt({id,attemptId,leaseToken,outcome,providerId?,errorCode?,attachmentSha256?})`, and `recoverExpired()`. Claim, validate, outcome recording and lease recovery are separate bounded transactions; PDF rendering and provider calls occur outside transactions. Expired attempts become uncertain, never automatically queued. Manual resolution preserves the original attempt/result and prevents late callbacks from changing the decision. See [Communications](COMMUNICATIONS.md) for state meanings, automation, hashes and sender configuration.
+
+## Staff commands
+
+`auth.manageStaff(actor,command,key)` is asynchronous and returns `{staff,replayed}`. The safe staff projection includes `active` as a boolean and `createdAt` as epoch milliseconds (unlike domain ISO timestamps). Password-bearing commands use secret-safe idempotency verification, never plaintext passwords or unsalted fast password digests. Role, active state and revision are rechecked after password hashing.
+
+| Type | Payload and authority |
+| --- | --- |
+| `staff.create` | `{name,email,role,password}`; admin only |
+| `staff.update` | `{id,expectedRevision,name,role,active}`; admin only |
+| `staff.resetPassword` | `{id,expectedRevision,password}`; admin only; does not implicitly enable a disabled account |
+| `staff.changePassword` | `{currentPassword,password}`; any authenticated role, self only |
+
+Names are limited to 120 characters; passwords to 15–128. Disable, role changes and password reset/change revoke the target's sessions. The last active administrator cannot be disabled or demoted by either the API or operator CLI. A wrong current password returns `CURRENT_PASSWORD_FAILED` (401) while the valid session remains; the UI displays that form error without treating it as session expiry. There is no public password-reset link or email recovery endpoint.

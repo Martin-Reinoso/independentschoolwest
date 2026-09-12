@@ -39,6 +39,21 @@ Complete the school product/manual comparison, pinned open-source maps, accounti
 | B21 | Desktop/mobile/keyboard staff workflow | No horizontal page overflow; labelled controls, focus handling and accessible errors |
 | B22 | Existing enrolment checks | Original paths byte-identical to base; backend tests/build and public read-only checks pass |
 
+## Second iteration acceptance — documents, communications and access
+
+| ID | Scenario | Required outcome |
+| --- | --- | --- |
+| B23 | Find and preview a document | Search/filter centre; protected PDF opens in a closable preview and downloads; preview object URL is released |
+| B24 | Prepare/review an email | Correct account permission and current recipient required; frozen attachment and editable draft; billing cannot approve |
+| B25 | Automate invoices/receipts/reminders | Defaults off/review; start date and Melbourne offsets; repeated scans deduplicate; paid/pending/held accounts suppress reminders |
+| B26 | Safely process the outbox | One durable worker claim; recheck after rendering; disabled/demo never contacts provider; exact PDF attached |
+| B27 | Recover a lost send outcome | Unknown result becomes uncertain without auto retry; manual provider evidence retained; late callback cannot undo resolution |
+| B28 | Send another copy | Finance resend creates one new review draft linked to accepted/cancelled original; no automatic approval |
+| B29 | Manage staff accounts | Admin create/update/disable/enable/reset; passwords and roles revoke sessions; preserve one active administrator |
+| B30 | Change own password | All roles can change with current password; incorrect current password keeps valid session; successful change signs out |
+| B31 | Revoke access during an upload | A disabled or demoted user's partially uploaded request cannot dispatch using their earlier authority |
+| B32 | Review new screens on desktop/mobile | Responsive controls, keyboard, existing workflows and accessibility checks remain passing |
+
 ## Completion evidence
 
 Record actual commands, results and limitations in `TESTING.md`; include a requirement-to-test map and baseline comparison. Use only obvious synthetic identities and non-deliverable example.test addresses. Keep runtime databases, credentials and rendered personal documents outside the repository. Commit source and synthetic tests in coherent increments and push the billing branch to GitHub. Open a draft pull request for review without changing the live site or enrolment deployment.

@@ -69,6 +69,11 @@
       '<path d="M20 7v5h-5M4 17v-5h5M5.2 7a8 8 0 0 1 13.2-2L20 7M4 17l1.6 2a8 8 0 0 0 13.2-2"/>',
     link: '<path d="m10 13 4-4m-6 6-2 2a3 3 0 0 1-4-4l5-5a3 3 0 0 1 4 0m2 0 2-2a3 3 0 0 1 4 4l-5 5a3 3 0 0 1-4 0"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    documents: '<path d="M5 3h10l4 4v14H5V3Zm9 0v5h5M8 12h8m-8 4h6"/>',
+    communications: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 6 9 7 9-7"/>',
+    staff:
+      '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m14-8 2 2 4-5"/><circle cx="9" cy="7" r="4"/>',
+    key: '<circle cx="8" cy="9" r="5"/><path d="m12 13 8 8m-3-3 3-3m-6 0 3-3"/>',
     trash: '<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/>',
   };
   const icon = (name) =>
@@ -86,6 +91,13 @@
     noticeTimer,
     isLoading = false;
   const retryKeys = new Map();
+  const blobUrls = new Set();
+  const pdfDialog = $('#pdf-preview-dialog');
+  let communicationsState = null,
+    staffState = [],
+    previewController = null,
+    previewUrl = null,
+    previewFocus = null;
   const canWrite = () => ['billing', 'finance', 'admin'].includes(session?.user?.role);
   const canFinance = () => ['finance', 'admin'].includes(session?.user?.role);
   const canAdmin = () => session?.user?.role === 'admin';
@@ -199,20 +211,28 @@
     if (response.status === 204) return null;
     return response.json();
   }
-  async function command(type, payload) {
-    const fingerprint = JSON.stringify({ type, payload });
+  async function command(type, payload, endpoint = '/api/commands') {
+    const body = JSON.stringify({ type, payload });
+    const fingerprint = `${endpoint}:${body}`;
     if (!retryKeys.has(fingerprint)) retryKeys.set(fingerprint, crypto.randomUUID());
     modal?.commandFingerprints.add(fingerprint);
     if (modal) modal.requestStarted = true;
-    const response = await request('/api/commands', {
+    const response = await request(endpoint, {
       method: 'POST',
       headers: { 'X-CSRF-Token': session.csrfToken, 'Idempotency-Key': retryKeys.get(fingerprint) },
-      body: fingerprint,
+      body,
     });
     return response?.result;
   }
   async function loadState() {
-    state = await request('/api/state');
+    const [billing, communications, staff] = await Promise.all([
+      request('/api/state'),
+      request('/api/communications'),
+      canAdmin() ? request('/api/staff') : Promise.resolve({ staff: [] }),
+    ]);
+    state = billing;
+    communicationsState = communications;
+    staffState = staff.staff || [];
     for (const name of [
       'accounts',
       'students',
@@ -246,10 +266,7 @@
   }
   function handleError(error) {
     if (error.status === 401) {
-      session = null;
-      state = null;
-      closeDialog();
-      renderLogin(error.message);
+      endSession(error.message);
     } else toast(error.message, true);
   }
   function navigate(next, id = null) {
@@ -304,22 +321,29 @@
       ['plans', 'Payment plans'],
       ['batches', 'Billing runs'],
       ['fees', 'Fee catalogue'],
+      ['documents', 'Documents'],
+      ['communications', 'Communications'],
       ['reports', 'Reports & exports'],
       ['audit', 'Activity log'],
     ];
-    if (canAdmin()) navigation.push(['settings', 'Settings']);
+    if (canAdmin()) navigation.push(['staff', 'Staff access'], ['settings', 'Settings']);
     const active =
-      { account: 'accounts', invoice: 'invoices', payment: 'payments', batch: 'batches' }[screen] ||
-      screen;
+      {
+        account: 'accounts',
+        invoice: 'invoices',
+        payment: 'payments',
+        batch: 'batches',
+        communication: 'communications',
+      }[screen] || screen;
     const pageLabel = navigation.find((item) => item[0] === active)?.[1] || 'Workspace';
     const user = session.user;
-    app.innerHTML = `<div class="shell${menuOpen ? ' menu-open' : ''}"><aside class="sidebar" aria-label="Main navigation"><div class="brand"><div class="brand-mark" aria-hidden="true">R</div><div><div class="brand-name">Rosewood</div><div class="brand-sub">College · Billing</div></div></div><div class="nav-label">Workspace</div><nav class="nav">${navigation.map(([key, name], index) => `${index === 8 ? '<div class="nav-label">Management</div>' : ''}<button type="button" class="nav-button${active === key ? ' active' : ''}" data-action="navigate" data-id="${key}" ${active === key ? 'aria-current="page"' : ''}>${icon(key)}<span>${escape(name)}</span>${key === 'invoices' && state.summary.draftCount ? `<span class="nav-count">${escape(state.summary.draftCount)}</span>` : ''}</button>`).join('')}</nav><div class="sidebar-bottom"><div class="workspace-label">${icon('shield')}<span>Staff access<br><span class="small muted">Private billing workspace</span></span></div><div class="user-card"><div class="avatar" aria-hidden="true">${escape(
+    app.innerHTML = `<div class="shell${menuOpen ? ' menu-open' : ''}"><aside class="sidebar" aria-label="Main navigation"><div class="brand"><div class="brand-mark" aria-hidden="true">R</div><div><div class="brand-name">Rosewood</div><div class="brand-sub">College · Billing</div></div></div><div class="nav-label">Workspace</div><nav class="nav">${navigation.map(([key, name], index) => `${key === 'documents' ? '<div class="nav-label">Management</div>' : ''}<button type="button" class="nav-button${active === key ? ' active' : ''}" data-action="navigate" data-id="${key}" ${active === key ? 'aria-current="page"' : ''}>${icon(key)}<span>${escape(name)}</span>${key === 'invoices' && state.summary.draftCount ? `<span class="nav-count">${escape(state.summary.draftCount)}</span>` : ''}</button>`).join('')}</nav><div class="sidebar-bottom"><div class="workspace-label">${icon('shield')}<span>Staff access<br><span class="small muted">Private billing workspace</span></span></div><div class="user-card"><div class="avatar" aria-hidden="true">${escape(
       (user.name || 'Staff')
         .split(' ')
         .slice(0, 2)
         .map((n) => n[0])
         .join(''),
-    )}</div><div class="user-info"><div class="user-name">${escape(user.name)}</div><div class="user-role">${escape(user.role)}</div></div><button type="button" class="logout" data-action="logout" aria-label="Sign out">${icon('logout')}</button></div></div></aside><div class="content"><header class="topbar"><button class="icon-button mobile-menu" type="button" data-action="menu" aria-label="${menuOpen ? 'Close' : 'Open'} navigation" aria-expanded="${menuOpen}">${icon(menuOpen ? 'close' : 'menu')}</button><div class="topbar-path"><span>School administration</span>${icon('chevron')}<strong>${escape(pageLabel)}</strong></div><div class="topbar-meta"><span class="date-label">${escape(date(state.today))}</span><span><span class="status-dot"></span>Connected</span><button class="icon-button" type="button" data-action="refresh" aria-label="Refresh billing records">${icon('refresh')}</button></div></header><main id="main-content" class="main" tabindex="-1">${state.settings.demoMode ? `<div class="sample-bar">${icon('shield')}<span><strong>Demonstration workspace.</strong> Synthetic records only. Documents are marked as samples.</span></div>` : ''}${renderPage()}<div class="footer-note"><span>Rosewood College · Billing workspace</span><span>AUD · Financial dates in Melbourne time · ${escape(label(user.role))} access</span></div></main></div></div>`;
+    )}</div><div class="user-info"><div class="user-name">${escape(user.name)}</div><div class="user-role">${escape(user.role)}</div></div><button type="button" class="logout" data-action="password-change" aria-label="Change password">${icon('key')}</button><button type="button" class="logout" data-action="logout" aria-label="Sign out">${icon('logout')}</button></div></div></aside><div class="content"><header class="topbar"><button class="icon-button mobile-menu" type="button" data-action="menu" aria-label="${menuOpen ? 'Close' : 'Open'} navigation" aria-expanded="${menuOpen}">${icon(menuOpen ? 'close' : 'menu')}</button><div class="topbar-path"><span>School administration</span>${icon('chevron')}<strong>${escape(pageLabel)}</strong></div><div class="topbar-meta"><span class="date-label">${escape(date(state.today))}</span><span><span class="status-dot"></span>Connected</span><button class="icon-button" type="button" data-action="refresh" aria-label="Refresh billing records">${icon('refresh')}</button></div></header><main id="main-content" class="main" tabindex="-1">${state.settings.demoMode ? `<div class="sample-bar">${icon('shield')}<span><strong>Demonstration workspace.</strong> Synthetic records only. Documents are marked as samples.</span></div>` : ''}${renderPage()}<div class="footer-note"><span>Rosewood College · Billing workspace</span><span>AUD · Financial dates in Melbourne time · ${escape(label(user.role))} access</span></div></main></div></div>`;
     bindFilters();
   }
   function renderPage() {
@@ -348,6 +372,14 @@
         return batchPage();
       case 'fees':
         return feesPage();
+      case 'documents':
+        return documentsPage();
+      case 'communications':
+        return communicationsPage();
+      case 'communication':
+        return communicationPage();
+      case 'staff':
+        return staffPage();
       case 'reports':
         return reportsPage();
       case 'audit':
@@ -496,6 +528,7 @@
         a.name,
         `${a.code} · ${a.billingName || a.name}`,
         button('Statement', 'statement-download', a.id, '', 'download') +
+          documentControls('statement', a.id, { email: a.status === 'active' }) +
           (canWrite()
             ? button('Edit account', 'account-edit', a.id, '', 'edit') +
               button('New invoice', 'invoice-new', a.id, 'primary', 'plus')
@@ -657,7 +690,7 @@
       title(
         i.number || 'Draft invoice',
         `${accountName(i.accountId)} · ${i.description || 'School fees'}`,
-        actions,
+        actions + documentControls('invoice', i.id, { email: i.status === 'issued' }),
         'Invoice detail',
       ) +
       panel(
@@ -698,7 +731,7 @@
               ['Credit note', 'Reason', '£Amount', ''],
               credits.map(
                 (c) =>
-                  `<tr><td>${escape(c.number)}</td><td class="wrap">${escape(c.reason)}</td>${moneyCell(c.amountCents)}<td>${button('PDF', 'credit-download', c.id, 'small ghost', 'download')}</td></tr>`,
+                  `<tr><td>${escape(c.number)}</td><td class="wrap">${escape(c.reason)}</td>${moneyCell(c.amountCents)}<td><div class="row-actions document-actions">${button('PDF', 'credit-download', c.id, 'small ghost', 'download')}${documentControls('credit', c.id, { small: true })}</div></td></tr>`,
               ),
             )
           : empty('No credit notes', 'Line-specific credits preserve the original invoice.'),
@@ -768,7 +801,10 @@
       released = state.allocations.filter((a) => a.paymentId === p.id && a.releasedAt),
       refunds = state.refunds.filter((r) => r.paymentId === p.id);
     const actions =
-      (receipt ? button('Receipt PDF', 'receipt-download', receipt.id, '', 'download') : '') +
+      (receipt
+        ? button('Receipt PDF', 'receipt-download', receipt.id, '', 'download') +
+          documentControls('receipt', receipt.id, { email: !receipt.reversed })
+        : '') +
       (canFinance() && p.status === 'pending'
         ? button('Reject', 'payment-reject', p.id, 'danger') +
           button('Verify payment', 'payment-confirm', p.id, 'primary', 'check')
@@ -1061,7 +1097,7 @@
       ) +
       panel(
         'Staff access',
-        `<div class="panel-body"><p class="small muted">Named staff accounts and roles are managed by the school administrator through the restricted server operator tools. This portal does not share enrolment credentials or grant access to families.</p></div>`,
+        `<div class="panel-body"><p class="small muted">Manage named staff accounts and their roles in Staff access. Billing access is independent of the enrolment application.</p>${button('Manage staff', 'navigate', 'staff', '', 'staff')}</div>`,
       )
     );
   }
@@ -1069,7 +1105,7 @@
   // Form helpers return HTML only from escaped values and fixed markup.
   function field(name, text, type = 'text', value = '', options = {}) {
     const id = `field-${name}`,
-      attrs = `${options.required ? ' required' : ''}${options.min != null ? ` min="${escape(options.min)}"` : ''}${options.max != null ? ` max="${escape(options.max)}"` : ''}${options.step != null ? ` step="${escape(options.step)}"` : ''}${options.autocomplete ? ` autocomplete="${escape(options.autocomplete)}"` : ''}${options.placeholder ? ` placeholder="${escape(options.placeholder)}"` : ''}${options.disabled ? ' disabled' : ''}${options.maxlength ? ` maxlength="${escape(options.maxlength)}"` : ''}`;
+      attrs = `${options.required ? ' required' : ''}${options.min != null ? ` min="${escape(options.min)}"` : ''}${options.max != null ? ` max="${escape(options.max)}"` : ''}${options.step != null ? ` step="${escape(options.step)}"` : ''}${options.autocomplete ? ` autocomplete="${escape(options.autocomplete)}"` : ''}${options.placeholder ? ` placeholder="${escape(options.placeholder)}"` : ''}${options.disabled ? ' disabled' : ''}${options.maxlength ? ` maxlength="${escape(options.maxlength)}"` : ''}${options.minlength ? ` minlength="${escape(options.minlength)}"` : ''}`;
     const input =
       type === 'textarea'
         ? `<textarea id="${id}" name="${escape(name)}"${attrs}>${escape(value)}</textarea>`
@@ -1123,6 +1159,8 @@
     wide = false,
     setup,
   }) {
+    if (modal?.saving) return;
+    clearModalSecrets();
     previousFocus = document.activeElement;
     modal = { onSubmit, setup, commandFingerprints: new Set() };
     dialog.className = wide ? 'wide' : '';
@@ -1138,6 +1176,7 @@
   function closeDialog() {
     if (modal?.saving) return;
     if (dialog.open) dialog.close();
+    clearModalSecrets();
     modal = null;
     previousFocus?.isConnected && previousFocus.focus({ preventScroll: true });
   }
@@ -1177,6 +1216,11 @@
         });
       }
       const response = currentModal.response;
+      if (response?.logout) {
+        currentModal.saving = false;
+        endSession(response.message || 'Your password has changed. Sign in again.');
+        return;
+      }
       await loadState();
       currentModal.commandFingerprints.forEach((key) => retryKeys.delete(key));
       currentModal.saving = false;
@@ -1189,7 +1233,7 @@
       render();
       toast(response?.message || 'Changes saved.');
     } catch (error) {
-      if (error.status === 401) {
+      if (error.status === 401 && error.code !== 'CURRENT_PASSWORD_FAILED') {
         currentModal.saving = false;
         return handleError(error);
       }
@@ -1857,6 +1901,764 @@
       },
     });
   }
+  function clearModalSecrets() {
+    $$('input[type=password]', dialog).forEach((input) => {
+      input.value = '';
+    });
+    if (modal) {
+      modal.privateRequest = null;
+      modal.originalDisabled?.clear();
+    }
+  }
+  function releaseBlob(url) {
+    if (url) {
+      URL.revokeObjectURL(url);
+      blobUrls.delete(url);
+    }
+  }
+  function closePdfPreview() {
+    previewController?.abort();
+    previewController = null;
+    releaseBlob(previewUrl);
+    previewUrl = null;
+    if (pdfDialog.open) pdfDialog.close();
+    $('#pdf-preview-content').replaceChildren();
+    previewFocus?.isConnected && previewFocus.focus({ preventScroll: true });
+  }
+  function endSession(message = '') {
+    closePdfPreview();
+    blobUrls.forEach(releaseBlob);
+    retryKeys.clear();
+    if (modal) modal.saving = false;
+    closeDialog();
+    session = null;
+    state = null;
+    communicationsState = null;
+    staffState = [];
+    screen = 'overview';
+    recordId = null;
+    filters = {};
+    menuOpen = false;
+    renderLogin(message);
+  }
+  async function privateStaffCommand(type, payload) {
+    if (!modal) throw new Error('Open the staff form again before saving.');
+    const currentModal = modal;
+    currentModal.privateRequest ||= { type, payload, key: crypto.randomUUID() };
+    const operation = currentModal.privateRequest;
+    currentModal.requestStarted = true;
+    try {
+      const response = await request('/api/staff/commands', {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': session.csrfToken, 'Idempotency-Key': operation.key },
+        body: JSON.stringify({ type: operation.type, payload: operation.payload }),
+      });
+      currentModal.privateRequest = null;
+      $$('input[type=password]', dialog).forEach((input) => {
+        input.value = '';
+      });
+      return response.result;
+    } catch (error) {
+      if (error.status && error.status < 500) currentModal.privateRequest = null;
+      throw error;
+    }
+  }
+  const communicationCommand = (type, payload) =>
+    command(type, payload, '/api/communications/commands');
+  const documentPath = (kind, id) =>
+    `/api/documents/${encodeURIComponent(kind)}/${encodeURIComponent(id)}.pdf`;
+  const documentKey = (kind, id) => `${kind}:${id}`;
+  function splitDocumentKey(key) {
+    const position = key.indexOf(':');
+    return [key.slice(0, position), key.slice(position + 1)];
+  }
+  function documentRecords() {
+    return [
+      ...state.invoices.map((i) => ({
+        kind: 'invoice',
+        id: i.id,
+        accountId: i.accountId,
+        name: i.number || 'Draft invoice',
+        date: i.issuedAt || i.createdAt,
+        status: i.status,
+        amountCents: i.totalCents,
+        canEmail: i.status === 'issued',
+      })),
+      ...state.receipts.map((r) => ({
+        kind: 'receipt',
+        id: r.id,
+        accountId: r.accountId,
+        name: r.number,
+        date: r.issuedAt,
+        status: r.reversed ? 'reversed' : 'confirmed',
+        amountCents: r.amountCents,
+        canEmail: !r.reversed,
+      })),
+      ...state.credits.map((c) => ({
+        kind: 'credit',
+        id: c.id,
+        accountId: c.accountId,
+        name: c.number,
+        date: c.issuedAt,
+        status: 'issued',
+        amountCents: c.amountCents,
+        canEmail: true,
+      })),
+      ...state.accounts.map((a) => ({
+        kind: 'statement',
+        id: a.id,
+        accountId: a.id,
+        name: `${a.code} statement`,
+        date: state.today,
+        status: 'current',
+        amountCents: a.balanceCents,
+        canEmail: a.status === 'active',
+      })),
+    ];
+  }
+  function documentControls(kind, id, { email = true, small = false } = {}) {
+    const key = documentKey(kind, id),
+      variant = small ? 'small ghost' : '';
+    return (
+      button('Preview PDF', 'document-preview', key, variant, 'documents') +
+      (canWrite() && email
+        ? button('Email draft', 'communication-create', key, small ? 'small' : '', 'communications')
+        : '')
+    );
+  }
+  function documentsPage() {
+    const all = documentRecords(),
+      rows = all.filter(
+        (d) =>
+          (!filters.kind || d.kind === filters.kind) &&
+          (!filters.status || d.status === filters.status) &&
+          match(`${d.name} ${accountName(d.accountId)} ${d.kind}`, filters.search),
+      );
+    return (
+      title(
+        'Document centre',
+        'Find invoices, receipts, credit notes and current account statements in one place.',
+      ) +
+      `<div class="minor-grid document-summary">${['invoice', 'receipt', 'credit', 'statement'].map((kind) => `<div class="minor-card"><span>${escape(label(kind === 'credit' ? 'credit notes' : `${kind}s`))}</span><strong>${all.filter((d) => d.kind === kind).length}</strong><span>${kind === 'statement' ? 'Current account position' : 'Preserved financial records'}</span></div>`).join('')}</div>` +
+      toolbar(
+        'Search documents or accounts',
+        [
+          ['kind', 'All document types', ['invoice', 'receipt', 'credit', 'statement']],
+          [
+            'status',
+            'All document states',
+            ['draft', 'issued', 'confirmed', 'reversed', 'void', 'current'],
+          ],
+        ],
+        `${rows.length} documents`,
+      ) +
+      panel(
+        'Available documents',
+        rows.length
+          ? table(
+              ['Document', 'Billing account', 'Created / as at', 'Amount / balance', 'Status', ''],
+              rows.map(
+                (d) =>
+                  `<tr><td><span class="cell-title">${escape(d.name)}</span><span class="cell-sub">${escape(label(d.kind === 'credit' ? 'credit note' : d.kind))}</span></td><td>${escape(accountName(d.accountId))}</td><td>${escape(date(d.date))}</td>${moneyCell(d.amountCents)}<td>${badge(d.status)}</td><td><div class="row-actions document-actions">${documentControls(d.kind, d.id, { email: d.canEmail, small: true })}${button('Download', 'document-download', documentKey(d.kind, d.id), 'small', 'download')}</div></td></tr>`,
+              ),
+            )
+          : empty(
+              'No matching documents',
+              'Change the filters or create a billing record to begin.',
+            ),
+      )
+    );
+  }
+  async function previewPdf(path, titleText, filename) {
+    closePdfPreview();
+    previewFocus = document.activeElement;
+    const controller = new AbortController();
+    previewController = controller;
+    $('#pdf-preview-content').innerHTML =
+      `<header class="dialog-header"><div><h2 id="pdf-preview-title">${escape(titleText)}</h2><p>Protected PDF preview · ${escape(state.settings.demoMode ? 'Synthetic sample document' : 'School billing document')}</p></div><button class="dialog-close" type="button" data-action="pdf-close" aria-label="Close PDF preview">${icon('close')}</button></header><div class="pdf-preview-body"><p id="pdf-loading" class="loading-state" role="status">Preparing the PDF preview…</p><div id="pdf-error" class="form-error" role="alert" hidden></div><iframe id="pdf-frame" class="pdf-frame" title="${escape(titleText)}" hidden></iframe></div><footer class="dialog-footer"><span class="field-help">If your browser cannot display PDFs, download a copy.</span>${button('Close', 'pdf-close')}${button('Download PDF', 'pdf-download', '', 'primary', 'download')}</footer>`;
+    pdfDialog.showModal();
+    $('.dialog-close', pdfDialog).focus();
+    $('#pdf-preview-content').dataset.path = path;
+    $('#pdf-preview-content').dataset.filename = filename;
+    try {
+      const response = await fetch(path, {
+        credentials: 'same-origin',
+        cache: 'no-store',
+        signal: controller.signal,
+      });
+      if (!response.ok) {
+        let body;
+        try {
+          body = await response.json();
+        } catch {
+          body = {};
+        }
+        const error = new Error(body.message || 'The PDF preview could not be prepared.');
+        error.status = response.status;
+        throw error;
+      }
+      if (!response.headers.get('content-type')?.includes('application/pdf'))
+        throw new Error('The server did not return a PDF document.');
+      const blob = await response.blob();
+      if (controller.signal.aborted || previewController !== controller) return;
+      previewUrl = URL.createObjectURL(blob);
+      blobUrls.add(previewUrl);
+      $('#pdf-frame').src = previewUrl;
+      $('#pdf-frame').hidden = false;
+      $('#pdf-loading').hidden = true;
+    } catch (error) {
+      if (error.name === 'AbortError') return;
+      if (error.status === 401) return endSession(error.message);
+      if (previewController === controller) {
+        $('#pdf-loading').hidden = true;
+        $('#pdf-error').textContent = error.message;
+        $('#pdf-error').hidden = false;
+      }
+    }
+  }
+  function previewDocument(key) {
+    const [kind, id] = splitDocumentKey(key),
+      doc = documentRecords().find((d) => d.kind === kind && d.id === id);
+    if (!doc) throw new Error('This document is no longer available. Refresh and try again.');
+    return previewPdf(documentPath(kind, id), doc.name, `${doc.name}.pdf`);
+  }
+  const messageStatus = (status) =>
+    status === 'accepted' ? 'Accepted by provider' : label(status);
+  const messageBadge = (status) =>
+    `<span class="badge ${escape({ draft: '', queued: 'blue', sending: 'amber', accepted: 'teal', failed: 'red', uncertain: 'amber', blocked: 'red', cancelled: '' }[status] || '')}">${escape(messageStatus(status))}</span>`;
+  const messageById = (id) => (communicationsState?.messages || []).find((m) => m.id === id);
+  function transportNotice() {
+    const t = communicationsState?.transport || {};
+    return `<div class="notice-box ${t.enabled ? '' : 'warning'}"><strong>${t.enabled ? 'Email transport enabled' : 'Email delivery is disabled'}.</strong> ${escape(t.reason || (t.enabled ? 'Queued messages are checked again before provider submission.' : 'Staff can prepare and review messages while delivery is disabled.'))}${t.sender ? `<span class="block">Configured sender: ${escape(t.sender)}</span>` : t.proposedSender ? `<span class="block">Proposed sender: ${escape(t.proposedSender)} · not configured or verified by this workspace.</span>` : ''}<span class="block">“Accepted by provider” records provider acceptance; it does not confirm delivery to a family’s inbox.</span></div>`;
+  }
+  function communicationsPage() {
+    const c = communicationsState || {},
+      messages = c.messages || [],
+      holds = (c.holds || []).filter((h) => h.paused),
+      rows = messages.filter(
+        (m) =>
+          (!filters.status || m.status === filters.status) &&
+          (!filters.kind || m.kind === filters.kind) &&
+          match(`${m.subject} ${m.to} ${accountName(m.accountId)}`, filters.search),
+      );
+    const count = (status) =>
+      c.summary?.[`${status}Count`] ?? messages.filter((m) => m.status === status).length;
+    return (
+      title(
+        'Family communications',
+        'Prepare and review document emails, reminders and account contact holds.',
+        canFinance()
+          ? button('Contact hold', 'communication-hold', '', '', 'shield') +
+              button('Prepare automation', 'communication-prepare', '', 'primary', 'refresh')
+          : '',
+      ) +
+      transportNotice() +
+      `<div class="kpi-grid">${kpi('Drafts for review', count('draft'), 'Prepared messages awaiting approval', 'communications')}${kpi('Queued', count('queued'), 'Approved; delivery guards still apply', 'clock')}${kpi('Needs attention', count('blocked') + count('failed') + count('uncertain'), 'Blocked, failed or uncertain outcomes', 'warning')}${kpi('Provider accepted', count('accepted'), 'Provider acceptance is not delivery confirmation', 'check')}</div>` +
+      panel(
+        'Preparation rules',
+        `<div class="panel-body"><dl class="detail-grid">${detailField('Preparation mode', label(c.settings?.mode))}${detailField('New invoice emails', c.settings?.automaticInvoices ? 'Enabled' : 'Off')}${detailField('New receipt emails', c.settings?.automaticReceipts ? 'Enabled' : 'Off')}${detailField('Invoice reminders', c.settings?.remindersEnabled ? 'Enabled' : 'Off')}${detailField('Reminder days from due date', (c.settings?.reminderOffsets || []).map((n) => (n > 0 ? `+${n}` : String(n))).join(', '))}${detailField('Start date', date(c.settings?.startDate))}</dl></div>`,
+        canFinance() ? button('Edit rules', 'communication-settings', '', 'small', 'settings') : '',
+      ) +
+      (holds.length
+        ? panel(
+            'Accounts on contact hold',
+            table(
+              ['Account', 'Reason', 'Since', ''],
+              holds.map(
+                (h) =>
+                  `<tr><td>${escape(accountName(h.accountId))}</td><td class="wrap">${escape(h.reason)}</td><td>${escape(date(h.updatedAt))}</td><td>${canFinance() ? button('Review hold', 'communication-hold', h.accountId, 'small') : ''}</td></tr>`,
+              ),
+            ),
+          )
+        : '') +
+      toolbar(
+        'Search email subject, recipient or account',
+        [
+          [
+            'status',
+            'All message states',
+            [
+              'draft',
+              'queued',
+              'sending',
+              'accepted',
+              'blocked',
+              'failed',
+              'uncertain',
+              'cancelled',
+            ],
+          ],
+          ['kind', 'All message types', ['invoice', 'receipt', 'credit', 'statement', 'reminder']],
+        ],
+        `${rows.length} messages`,
+      ) +
+      panel(
+        'Message outbox',
+        rows.length
+          ? table(
+              ['Subject / account', 'Recipient', 'Document', 'Status', 'Updated', ''],
+              rows.map(
+                (m) =>
+                  `<tr><td>${listLink(m.subject, accountName(m.accountId), 'communication-open', m.id)}</td><td class="wrap">${escape(m.to)}</td><td>${escape(label(m.kind))}</td><td>${messageBadge(m.status)}</td><td>${escape(time(m.updatedAt || m.createdAt))}</td><td>${button('Review', 'communication-open', m.id, 'small ghost', 'arrow')}</td></tr>`,
+              ),
+            )
+          : empty(
+              'No messages found',
+              'Use Email draft beside a document, or prepare the enabled automation rules.',
+            ),
+      ) +
+      communicationPreparationHistory(c.events || [])
+    );
+  }
+  function communicationEventDescription(event) {
+    const d = event.details || {};
+    if (typeof d === 'string') return d;
+    if (event.action === 'communication.prepare')
+      return `${d.createdCount || 0} prepared; ${d.queuedCount || 0} queued; ${d.skippedCount || 0} ineligible; ${d.supersededCount || 0} earlier reminders replaced.${d.hasMore ? ' More eligible records remain.' : ''}`;
+    if (event.action === 'communication.hold')
+      return `${accountName(d.accountId)}: emails ${d.paused ? 'paused' : 'resumed'}. ${d.reason || ''}`;
+    if (event.action === 'communication.settings') {
+      const s = d.after || {};
+      return `Mode: ${label(s.mode)}. Invoice preparation ${s.automaticInvoices ? 'on' : 'off'}; receipt preparation ${s.automaticReceipts ? 'on' : 'off'}; reminders ${s.remindersEnabled ? 'on' : 'off'}.`;
+    }
+    if (event.action === 'communication.resolve')
+      return `${d.outcome === 'accepted' ? 'Provider acceptance confirmed' : 'Provider logs prove not accepted'}. ${d.providerId ? `Provider reference: ${d.providerId}. ` : ''}${d.reason || ''} Evidence: ${d.evidence || 'See the recorded operator review.'}`;
+    if (d.reason) return d.reason;
+    if (d.providerId)
+      return `Provider reference: ${d.providerId}${d.errorCode ? ` · ${d.errorCode}` : ''}`;
+    if (d.errorCode) return `Provider result: ${d.errorCode}`;
+    if (d.kind)
+      return `${label(d.kind)} prepared ${d.source === 'automation' ? 'from an automation rule' : 'by staff'}.`;
+    if (d.offsetDays !== undefined)
+      return `Latest reminder: ${d.offsetDays} days from the due date.`;
+    return 'Recorded in the message history.';
+  }
+  function communicationPreparationHistory(events) {
+    const rows = events.filter((e) => !e.messageId).slice(0, 12);
+    return rows.length
+      ? panel(
+          'Preparation and contact history',
+          table(
+            ['When', 'Staff / worker', 'Action', 'Recorded details'],
+            rows.map(
+              (e) =>
+                `<tr><td>${escape(time(e.createdAt))}</td><td>${escape(e.actorName || e.actorId || 'System')}</td><td>${escape(label(e.action))}</td><td class="wrap">${escape(communicationEventDescription(e))}</td></tr>`,
+            ),
+          ),
+          '',
+          'Recent rule changes, preparation results and account contact holds. Full event history remains on the server.',
+        )
+      : '';
+  }
+  function communicationPage() {
+    const m = messageById(recordId);
+    if (!m)
+      return empty(
+        'Message unavailable',
+        'Refresh the communications workspace and choose another message.',
+      );
+    const editable = m.status === 'draft' && canWrite(),
+      refreshable =
+        m.status === 'draft'
+          ? canWrite()
+          : ['blocked', 'failed'].includes(m.status) && canFinance(),
+      cancellable =
+        m.status === 'draft'
+          ? canWrite()
+          : canFinance() && ['queued', 'blocked', 'failed'].includes(m.status);
+    const controls =
+      (editable ? button('Edit draft', 'communication-edit', m.id, '', 'edit') : '') +
+      (canFinance() && m.status === 'draft'
+        ? button('Approve and queue', 'communication-approve', m.id, 'primary', 'check')
+        : '') +
+      (refreshable
+        ? button('Refresh document', 'communication-refresh', m.id, '', 'refresh')
+        : '') +
+      (canFinance() && m.status === 'failed'
+        ? button('Retry failed message', 'communication-retry', m.id, '', 'refresh')
+        : '') +
+      (cancellable ? button('Cancel message', 'communication-cancel', m.id, 'danger') : '') +
+      (canFinance() && ['accepted', 'cancelled'].includes(m.status)
+        ? button('Prepare resend', 'communication-resend', m.id, '', 'communications')
+        : '') +
+      (canFinance() && m.status === 'uncertain'
+        ? button('Resolve provider outcome', 'communication-resolve', m.id, 'primary', 'shield')
+        : '');
+    const events = (communicationsState.events || []).filter((e) => e.messageId === m.id);
+    return (
+      breadcrumb('communications', 'Communications') +
+      title(
+        m.subject,
+        `${accountName(m.accountId)} · ${label(m.kind)}`,
+        controls,
+        'Message review',
+      ) +
+      transportNotice() +
+      (m.status === 'uncertain'
+        ? '<div class="notice-box warning">The provider outcome is uncertain. Automatic retry is disabled to prevent a duplicate email. An operator must investigate the provider record.</div>'
+        : '') +
+      (m.blockReason || m.errorCode
+        ? `<div class="notice-box warning"><strong>Review required.</strong> ${escape(m.blockReason || m.errorCode)}</div>`
+        : '') +
+      panel(
+        'Email and attachment',
+        `<div class="panel-body"><div class="action-strip section-space">${messageBadge(m.status)}${button('Preview attachment', 'message-preview', m.id, 'small', 'documents')}</div><dl class="detail-grid">${detailField('Recipient', m.to)}${detailField('Account', accountName(m.accountId))}${detailField('Created', time(m.createdAt))}${detailField('Approved', time(m.approvedAt))}${detailField('Provider accepted', time(m.acceptedAt))}${detailField('Provider reference', m.providerId)}${m.parentMessageId ? detailField('Previous message reference', m.parentMessageId) : ''}</dl><div class="form-section"><h3>Subject</h3><p class="wrap">${escape(m.subject)}</p><h3>Message</h3><div class="email-body">${escape(m.body)}</div></div><div class="form-section"><h3>Document snapshot hash</h3><p class="small mono wrap">${escape(m.snapshotHash || m.attachmentHash || 'Unavailable')}</p>${m.sentAttachmentSha256 ? `<h3>Submitted PDF SHA-256</h3><p class="small mono wrap">${escape(m.sentAttachmentSha256)}</p>` : ''}<p class="field-help">The preview shows this message’s preserved attachment. Refreshing a draft updates the recipient, wording and document for a new review.</p></div></div>`,
+      ) +
+      panel(
+        'Message history',
+        events.length
+          ? table(
+              ['When', 'Staff / worker', 'Action', 'Details'],
+              events.map(
+                (e) =>
+                  `<tr><td>${escape(time(e.createdAt))}</td><td>${escape(e.actorName || e.actorId || 'System')}</td><td>${escape(label(e.action))}</td><td class="wrap">${escape(communicationEventDescription(e))}</td></tr>`,
+              ),
+            )
+          : empty(
+              'No message events',
+              'Future preparation and delivery events will be recorded here.',
+            ),
+      )
+    );
+  }
+  function communicationCreateDialog(key) {
+    const [kind, documentId] = splitDocumentKey(key),
+      doc = documentRecords().find((d) => d.kind === kind && d.id === documentId),
+      account = doc && find('accounts', doc.accountId);
+    if (!doc) throw new Error('This document is unavailable. Refresh and try again.');
+    openDialog({
+      title: 'Create an email draft',
+      description: 'Prepare an email and a preserved PDF attachment for review.',
+      body: `<div class="notice-box"><strong>${escape(doc.name)}</strong><br>${escape(account?.billingName || account?.name)}<br>${escape(account?.email || 'No billing email configured')}</div><p class="small muted">The recipient comes from this account’s billing email. Contact permission, account holds and document eligibility are checked by the server. Creating a draft does not send it.</p>`,
+      submit: 'Create email draft',
+      onSubmit: async () => {
+        const result = await communicationCommand('communication.create', { kind, documentId });
+        return {
+          navigate: 'communication',
+          id: result.id,
+          message:
+            result.status === 'draft'
+              ? 'Email draft prepared for review.'
+              : `Existing ${messageStatus(result.status).toLowerCase()} message opened.`,
+        };
+      },
+    });
+  }
+  function communicationEditDialog(id) {
+    const m = messageById(id);
+    openDialog({
+      title: 'Edit email draft',
+      description:
+        'Review the wording and preserved attachment. The recipient is controlled by the billing account.',
+      wide: true,
+      body: `<dl class="detail-grid">${detailField('Recipient', m.to)}${detailField('Document', label(m.kind))}</dl><div class="action-strip section-space">${button('Preview attachment', 'message-preview', id, 'small', 'documents')}</div><div class="field-grid">${field('subject', 'Subject', 'text', m.subject, { required: true, full: true, maxlength: 200 })}${field('body', 'Email body', 'textarea', m.body, { required: true, full: true, maxlength: 10000 })}</div>`,
+      submit: 'Save email draft',
+      onSubmit: async (form) => {
+        await communicationCommand('communication.update', {
+          id,
+          expectedRevision: m.revision,
+          subject: value(form, 'subject'),
+          body: value(form, 'body'),
+        });
+        return { message: 'Email draft updated.' };
+      },
+    });
+  }
+  function communicationAction(id, action) {
+    const m = messageById(id),
+      definitions = {
+        approve: [
+          'Approve and queue',
+          'Approval queues the reviewed message. The worker checks account permission, holds, recipient and document facts again before using the configured email transport.',
+          'Message approved for the queue.',
+        ],
+        refresh: [
+          'Refresh document',
+          'Rebuild this draft from the current account details and document. Review the refreshed recipient, wording and attachment before approval.',
+          'Message refreshed for review.',
+        ],
+        cancel: [
+          'Cancel message',
+          'Record why this message should no longer be processed.',
+          'Message cancelled.',
+        ],
+        retry: [
+          'Retry failed message',
+          'Retry only a definite failed outcome. The server checks the recipient and document before queueing again.',
+          'Failed message reviewed for retry.',
+        ],
+      };
+    const [heading, description, success] = definitions[action],
+      needsReason = ['cancel', 'retry'].includes(action);
+    openDialog({
+      title: heading,
+      description,
+      body: `<div class="notice-box"><strong>${escape(m.subject)}</strong><br>${escape(m.to)}</div>${needsReason ? field('reason', 'Reason', 'textarea', '', { required: true, maxlength: 1000 }) : ''}`,
+      submit: heading,
+      onSubmit: async (form) => {
+        const result = await communicationCommand(`communication.${action}`, {
+          id,
+          expectedRevision: m.revision,
+          ...(needsReason ? { reason: value(form, 'reason') } : {}),
+        });
+        return {
+          message: result.status === 'blocked' ? `Message blocked: ${result.blockReason}` : success,
+        };
+      },
+    });
+  }
+  function communicationResendDialog(id) {
+    const m = messageById(id);
+    openDialog({
+      title: 'Prepare a reviewed resend',
+      description:
+        'Create a new draft using the current recipient, wording and document. Its original message history remains recorded.',
+      body: `<div class="notice-box"><strong>${escape(m.subject)}</strong><br>${escape(m.to)}<br>Original status: ${escape(messageStatus(m.status))}</div>${field('reason', 'Reason for another copy', 'textarea', '', { required: true, maxlength: 1000 })}<p class="field-help">The new draft must be reviewed and approved separately before it can enter the delivery queue.</p>`,
+      submit: 'Create resend draft',
+      onSubmit: async (form) => {
+        const result = await communicationCommand('communication.resend', {
+          id,
+          expectedRevision: m.revision,
+          reason: value(form, 'reason'),
+        });
+        return {
+          navigate: 'communication',
+          id: result.id,
+          message: 'New resend draft created for review.',
+        };
+      },
+    });
+  }
+  function communicationResolveDialog(id) {
+    const m = messageById(id);
+    openDialog({
+      title: 'Resolve an uncertain provider outcome',
+      description:
+        'Inspect the external provider’s send and event logs before recording a conclusion.',
+      wide: true,
+      body: `<div class="notice-box warning">Use verified provider evidence. If the result is still unclear, leave this message uncertain. A family reporting a missing email does not prove that the provider rejected it. Recording “not accepted” returns the message to failed; retry remains a separate reviewed action.</div><div class="field-grid">${field(
+        'outcome',
+        'Verified provider outcome',
+        'select',
+        '',
+        {
+          required: true,
+          full: true,
+          options: [
+            ['', 'Select the verified outcome'],
+            ['accepted', 'Provider logs confirm acceptance'],
+            ['not_sent', 'Provider logs prove not accepted'],
+          ],
+        },
+      )}${field('providerId', 'Provider message reference', 'text', '', { full: true, maxlength: 200, help: 'Required when provider logs confirm acceptance.' })}${field('reason', 'Reason for resolving this outcome', 'textarea', '', { required: true, full: true, maxlength: 1000 })}${field('evidence', 'External provider log evidence', 'textarea', '', { required: true, full: true, maxlength: 2000, help: 'Record the log reference, checked time and finding. Do not paste credentials or access tokens.' })}</div>`,
+      submit: 'Record verified outcome',
+      onSubmit: async (form) => {
+        const outcome = value(form, 'outcome'),
+          providerId = value(form, 'providerId');
+        if (outcome === 'accepted' && !providerId)
+          throw new Error('Enter the provider message reference for confirmed acceptance.');
+        const result = await communicationCommand('communication.resolve', {
+          id,
+          expectedRevision: m.revision,
+          outcome,
+          providerId,
+          reason: value(form, 'reason'),
+          evidence: value(form, 'evidence'),
+        });
+        return {
+          message:
+            result.status === 'accepted'
+              ? 'Provider acceptance recorded. Inbox delivery is not confirmed.'
+              : 'Message marked failed from verified provider evidence. Review separately before retry.',
+        };
+      },
+    });
+  }
+  function communicationSettingsDialog() {
+    const s = communicationsState.settings;
+    openDialog({
+      title: 'Email preparation rules',
+      description:
+        'Configure document preparation and due-date reminders. Server delivery controls are managed separately.',
+      wide: true,
+      body: `<div class="field-grid">${checkField('automaticInvoices', 'Prepare email drafts for newly issued invoices', s.automaticInvoices)}${checkField('automaticReceipts', 'Prepare email drafts for newly confirmed receipts', s.automaticReceipts)}${checkField('remindersEnabled', 'Prepare invoice reminders around the due date', s.remindersEnabled)}${field(
+        'mode',
+        'Preparation mode',
+        'select',
+        s.mode,
+        {
+          options: [
+            ['review', 'Prepare drafts for staff review'],
+            ['automatic', 'Automatically queue eligible messages'],
+          ],
+        },
+      )}${field('startDate', 'Process documents from', 'date', s.startDate, { required: true })}${field('reminderOffsets', 'Reminder days from the invoice due date', 'text', (s.reminderOffsets || []).join(', '), { required: true, full: true, maxlength: 200, help: 'Comma-separated whole days. For example: -7, 0, 7, 14 means a week before, on the due date, then 7 and 14 days later.' })}</div><div class="notice-box warning form-section">Automatic mode is an ongoing instruction to queue eligible messages when preparation runs. Account contact permission, holds, document checks and the server’s delivery switch still apply.</div>`,
+      submit: 'Save preparation rules',
+      onSubmit: async (form) => {
+        const parts = value(form, 'reminderOffsets')
+          .split(',')
+          .map((n) => n.trim());
+        if (parts.some((n) => !/^[-+]?\d+$/.test(n)))
+          throw new Error('Enter comma-separated whole numbers for reminder days.');
+        await communicationCommand('communication.settings', {
+          expectedRevision: s.revision,
+          automaticInvoices: form.elements.automaticInvoices.checked,
+          automaticReceipts: form.elements.automaticReceipts.checked,
+          remindersEnabled: form.elements.remindersEnabled.checked,
+          mode: value(form, 'mode'),
+          startDate: value(form, 'startDate'),
+          reminderOffsets: parts.map(Number),
+        });
+        return { message: 'Email preparation rules saved.' };
+      },
+    });
+  }
+  function communicationHoldDialog(accountId = '') {
+    const hold = (communicationsState.holds || []).find((h) => h.accountId === accountId);
+    openDialog({
+      title: 'Account contact hold',
+      description:
+        'A contact hold prevents queued billing messages from being sent for this account.',
+      body: `<div class="field-grid">${field('accountId', 'Billing account', 'select', accountId, { required: true, full: true, options: accountOptions(), disabled: !!accountId })}${checkField('paused', 'Pause billing emails for this account', hold?.paused ?? true)}${field('reason', 'Reason for hold or release', 'textarea', '', { required: true, full: true, maxlength: 1000 })}</div>`,
+      submit: 'Save contact hold',
+      onSubmit: async (form) => {
+        await communicationCommand('communication.hold', {
+          accountId: accountId || value(form, 'accountId'),
+          paused: form.elements.paused.checked,
+          reason: value(form, 'reason'),
+        });
+        return { message: 'Account contact hold updated.' };
+      },
+    });
+  }
+  function communicationPrepareDialog() {
+    openDialog({
+      title: 'Prepare enabled email rules',
+      description:
+        'Check eligible documents and reminders against the current preparation settings.',
+      body:
+        transportNotice() +
+        '<p class="small muted">The server prevents duplicate preparation for the same rule and document. Review mode creates drafts; automatic mode queues eligible messages for guarded delivery.</p>',
+      submit: 'Prepare messages',
+      onSubmit: async () => {
+        const result = await communicationCommand('communication.prepare', {});
+        return {
+          navigate: 'communications',
+          message: `Prepared ${result.createdCount} messages; ${result.queuedCount} queued, ${result.skippedCount} ineligible. ${result.hasMore ? 'Run preparation again to continue.' : 'Review the outbox before delivery.'}`,
+        };
+      },
+    });
+  }
+  function staffPage() {
+    if (!canAdmin())
+      return empty('Administrator access required', 'Your role cannot manage staff access.');
+    const rows = staffState.filter(
+      (s) =>
+        match(`${s.name} ${s.email} ${s.role}`, filters.search) &&
+        (!filters.status || String(s.active) === filters.status),
+    );
+    return (
+      title(
+        'Staff access',
+        'Named staff accounts, role permissions and access status.',
+        button('Add staff member', 'staff-create', '', 'primary', 'plus'),
+      ) +
+      '<div class="notice-box">Viewer staff inspect records. Billing staff prepare invoices and reported payments. Finance staff verify funds, manage corrections and approve communications. Administrators also manage staff and school settings. Role changes, disabled access and password resets end that staff member’s existing sessions.</div>' +
+      toolbar(
+        'Search staff by name, email or role',
+        [
+          [
+            'status',
+            'All staff',
+            [
+              ['true', 'Active'],
+              ['false', 'Disabled'],
+            ],
+          ],
+        ],
+        `${rows.length} staff`,
+      ) +
+      panel(
+        'Staff register',
+        rows.length
+          ? table(
+              ['Name', 'Email', 'Role', 'Access', 'Created', ''],
+              rows.map(
+                (s) =>
+                  `<tr><td><span class="cell-title">${escape(s.name)}</span>${s.id === session.user.id ? '<span class="cell-sub">Your account</span>' : ''}</td><td>${escape(s.email)}</td><td>${badge(s.role)}</td><td>${badge(s.active ? 'active' : 'disabled')}</td><td>${escape(date(s.createdAt))}</td><td><div class="row-actions">${button('Edit access', 'staff-edit', s.id, 'small', 'edit')}${button('Reset password', 'staff-reset', s.id, 'small', 'key')}</div></td></tr>`,
+              ),
+            )
+          : empty('No staff match', 'Change the search or status filter.'),
+      )
+    );
+  }
+  function staffDialog(id = '') {
+    const staff = staffState.find((s) => s.id === id) || { role: 'viewer', active: true };
+    openDialog({
+      title: id ? 'Edit staff access' : 'Add a staff member',
+      description: id
+        ? 'Email identity is fixed. Changes to a role or active access end existing sessions.'
+        : 'Create a named login with only the access this staff member needs.',
+      body: `<div class="field-grid">${field('name', 'Staff name', 'text', staff.name, { required: true, full: true, maxlength: 120 })}${field('email', 'Staff email', 'email', staff.email, { required: true, full: true, disabled: !!id, maxlength: 254 })}${field('role', 'Access role', 'select', staff.role, { options: ['viewer', 'billing', 'finance', 'admin'] })}${id ? checkField('active', 'Staff login is active', staff.active) : field('password', 'Initial password', 'password', '', { required: true, full: true, minlength: 15, maxlength: 128, autocomplete: 'new-password', help: 'Use 15–128 characters. Share it through the school’s approved secure channel.' })}</div>`,
+      submit: id ? 'Save staff access' : 'Create staff login',
+      onSubmit: async (form) => {
+        const payload = { name: value(form, 'name'), role: value(form, 'role') };
+        if (id)
+          Object.assign(payload, {
+            id,
+            expectedRevision: staff.revision,
+            active: form.elements.active.checked,
+          });
+        else
+          Object.assign(payload, {
+            email: value(form, 'email'),
+            password: form.elements.password.value,
+          });
+        const result = await privateStaffCommand(id ? 'staff.update' : 'staff.create', payload);
+        if (id === session.user.id) session.user.name = result.staff.name;
+        return {
+          logout:
+            id === session.user.id &&
+            (!result.staff.active || result.staff.role !== session.user.role),
+          message: id
+            ? 'Staff access updated. Sign in again if your access changed.'
+            : 'Named staff login created.',
+        };
+      },
+    });
+  }
+  function passwordDialog(id = '') {
+    const staff = id ? staffState.find((s) => s.id === id) : null,
+      self = !id;
+    openDialog({
+      title: self ? 'Change your password' : 'Reset staff password',
+      description: self
+        ? 'Your current sessions will end after the password changes. Sign in again with the new password.'
+        : `${staff.name} · All of this staff member’s existing sessions will end.`,
+      body: `<div class="field-grid">${self ? field('currentPassword', 'Current password', 'password', '', { required: true, full: true, autocomplete: 'current-password', maxlength: 128 }) : ''}${field('password', 'New password', 'password', '', { required: true, full: true, minlength: 15, maxlength: 128, autocomplete: 'new-password', help: 'Use 15–128 characters. Passwords are never included in the activity log.' })}${field('confirmPassword', 'Confirm new password', 'password', '', { required: true, full: true, minlength: 15, maxlength: 128, autocomplete: 'new-password' })}</div>`,
+      submit: self ? 'Change password' : 'Reset password',
+      onSubmit: async (form) => {
+        if (form.elements.password.value !== form.elements.confirmPassword.value)
+          throw new Error('The new passwords do not match.');
+        await privateStaffCommand(
+          self ? 'staff.changePassword' : 'staff.resetPassword',
+          self
+            ? {
+                currentPassword: form.elements.currentPassword.value,
+                password: form.elements.password.value,
+              }
+            : { id, expectedRevision: staff.revision, password: form.elements.password.value },
+        );
+        return {
+          logout: self || id === session.user.id,
+          message: self
+            ? 'Your password changed. Sign in again with the new password.'
+            : 'Staff password reset; existing sessions ended.',
+        };
+      },
+    });
+  }
+
   async function download(path, filename) {
     try {
       const response = await fetch(path, { credentials: 'same-origin', cache: 'no-store' });
@@ -1879,7 +2681,8 @@
       document.body.append(a);
       a.click();
       a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      blobUrls.add(url);
+      setTimeout(() => releaseBlob(url), 60000);
       await loadState();
       render();
       toast('Download prepared. This does not send the document to the payer.');
@@ -1895,6 +2698,81 @@
       id = target.dataset.id || '';
     try {
       switch (action) {
+        case 'document-preview':
+          await previewDocument(id);
+          break;
+        case 'document-download': {
+          const [kind, documentId] = splitDocumentKey(id),
+            doc = documentRecords().find((d) => d.kind === kind && d.id === documentId);
+          await download(documentPath(kind, documentId), `${doc?.name || kind}.pdf`);
+          break;
+        }
+        case 'pdf-close':
+          closePdfPreview();
+          break;
+        case 'pdf-download': {
+          const container = $('#pdf-preview-content');
+          await download(container.dataset.path, container.dataset.filename);
+          break;
+        }
+        case 'communication-create':
+          communicationCreateDialog(id);
+          break;
+        case 'communication-open':
+          navigate('communication', id);
+          break;
+        case 'communication-edit':
+          communicationEditDialog(id);
+          break;
+        case 'communication-approve':
+          communicationAction(id, 'approve');
+          break;
+        case 'communication-refresh':
+          communicationAction(id, 'refresh');
+          break;
+        case 'communication-cancel':
+          communicationAction(id, 'cancel');
+          break;
+        case 'communication-retry':
+          communicationAction(id, 'retry');
+          break;
+        case 'communication-resend':
+          communicationResendDialog(id);
+          break;
+        case 'communication-resolve':
+          communicationResolveDialog(id);
+          break;
+        case 'communication-settings':
+          communicationSettingsDialog();
+          break;
+        case 'communication-hold':
+          communicationHoldDialog(id);
+          break;
+        case 'communication-prepare':
+          communicationPrepareDialog();
+          break;
+        case 'message-preview': {
+          const m = messageById(id);
+          if (!m) throw new Error('Refresh and select the message again.');
+          await previewPdf(
+            `/api/communications/${encodeURIComponent(id)}/document.pdf`,
+            `Attachment: ${m.subject}`,
+            `${m.documentKind || m.kind}-attachment.pdf`,
+          );
+          break;
+        }
+        case 'staff-create':
+          staffDialog();
+          break;
+        case 'staff-edit':
+          staffDialog(id);
+          break;
+        case 'staff-reset':
+          passwordDialog(id);
+          break;
+        case 'password-change':
+          passwordDialog();
+          break;
         case 'navigate':
           navigate(id);
           break;
@@ -1910,10 +2788,7 @@
             method: 'POST',
             headers: { 'X-CSRF-Token': session.csrfToken },
           });
-          session = null;
-          state = null;
-          closeDialog();
-          renderLogin();
+          endSession();
           break;
         case 'dialog-close':
           closeDialog();
@@ -2078,7 +2953,14 @@
   });
   dialog.addEventListener('cancel', (event) => {
     if (modal?.saving) event.preventDefault();
-    else modal = null;
+    else {
+      clearModalSecrets();
+      modal = null;
+    }
+  });
+  pdfDialog.addEventListener('cancel', (event) => {
+    event.preventDefault();
+    closePdfPreview();
   });
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && menuOpen) {

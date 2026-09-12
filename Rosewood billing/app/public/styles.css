@@ -1731,3 +1731,97 @@ dialog::backdrop {
   outline: 3px solid #67b8b1;
   outline-offset: -3px;
 }
+
+/* Document reviews and communications retain the same keyboard and small-screen affordances. */
+.document-summary {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0 0 26px;
+}
+.document-actions {
+  flex-wrap: wrap;
+  min-width: 190px;
+}
+.email-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.84rem;
+  line-height: 1.8;
+  background: #f7fafb;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 20px;
+  max-width: 860px;
+}
+.pdf-preview {
+  width: 1120px;
+  max-height: 94vh;
+}
+.pdf-preview-body {
+  min-height: 220px;
+  background: #eef2f5;
+}
+.pdf-preview-body .form-error {
+  margin: 20px;
+}
+.pdf-frame {
+  display: block;
+  width: 100%;
+  height: 70vh;
+  min-height: 300px;
+  border: 0;
+  background: white;
+}
+.pdf-preview .dialog-footer {
+  align-items: center;
+}
+.pdf-preview .dialog-footer .field-help {
+  margin-right: auto;
+}
+.field textarea[name='body'] {
+  min-height: 270px;
+}
+.sidebar .user-card {
+  gap: 7px;
+}
+.sidebar .logout {
+  flex-shrink: 0;
+}
+@media (max-width: 560px) {
+  .document-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 22px;
+  }
+  .pdf-preview {
+    max-width: calc(100vw - 16px);
+    max-height: 94vh;
+  }
+  .pdf-frame {
+    height: 66vh;
+    min-height: 240px;
+  }
+  .pdf-preview .dialog-footer {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .pdf-preview .dialog-footer .field-help {
+    flex-basis: 100%;
+    margin: 0;
+  }
+  .pdf-preview .dialog-header {
+    padding: 16px;
+  }
+  .pdf-preview .dialog-header h2 {
+    font-size: 1rem;
+    overflow-wrap: anywhere;
+  }
+  .email-body {
+    padding: 15px;
+  }
+  .document-actions {
+    min-width: 200px;
+  }
+}
+
+.panel + .toolbar {
+  margin-top: 24px;
+}

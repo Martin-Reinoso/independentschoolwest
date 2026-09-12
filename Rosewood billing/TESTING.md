@@ -1,6 +1,27 @@
 # Rosewood Billing test evidence
 
-Evidence date: 12 September 2026. The complete suite passed **64/64 on both Node 24.21.0 and Node 26.7.0**, source checks passed, existing enrolment checks passed, and sample PDFs were visually reviewed. A private backup/restore drill also preserved the complete billing state and revoked recovered sessions. The final local browser suite passed **15/15**, including desktop/mobile accessibility and failure recovery. The implementation commit `ca5c350` also passed [GitHub CI](https://github.com/Martin-Reinoso/independentschoolwest/actions/runs/34677724668) on Ubuntu with Node 24.21.0. This document distinguishes observed passes from checks that still need commissioning. See [acceptance scenarios](IMPLEMENTATION-PLAN.md) and [operating procedures](OPERATIONS.md).
+Evidence date: 12 September 2026. The expanded documents/communications/staff release passed **111/111 application tests on Node 24.21.0** and **22/22 browser tests**. Existing enrolment again passed **170/170 tests** and its deployment build. Earlier release evidence is retained separately, including its 64-test dual-runtime run, 15 browser scenarios and visual PDF/recovery review. See [acceptance scenarios](IMPLEMENTATION-PLAN.md), [communications behaviour](COMMUNICATIONS.md) and [operating procedures](OPERATIONS.md).
+
+## Second iteration evidence
+
+| Check | Observed result |
+| --- | --- |
+| Expanded application suite | **111/111 passed** using the verified Node 24.21.0 Darwin arm64 binary, including the original ledger/PDF/export tests. |
+| Combined browser suite | **22/22 passed**: all 15 original workflows and seven new document/communications/staff/recovery scenarios. New screens and forms pass desktop/mobile overflow and axe checks; viewer approval/staff-management restrictions hold. |
+| PDF preview visual check | Actual receipt content, sample marker and allocation table inspected inside the protected modal in full Chromium. The seven enhancement tests use full Chromium because Playwright's separate headless shell does not display PDFs. Invoice/receipt/credit/statement renderer regressions remain in the application suite. |
+| Staff lifecycle | Admin create/update/disable/enable/reset, self password changes, session revocation, last-admin preservation, stale revisions, private CLI input and secret-safe idempotency pass. |
+| Communications | **19/19 domain cases** cover opt-in/holds, review/automatic rules, Melbourne reminder timing, pending/settled suppression, frozen facts, concurrent worker claims, actual attachment hashes, uncertain recovery, reviewed resends and immutable manual provider resolutions. |
+| Mail adapter/worker | **9/9 pass** with injected providers only. One case runs the real live-mode synthetic ledger, outbox, PDF renderer and SES adapter together and verifies one attachment/acceptance across repeated worker runs. Disabled/demo delivery, pre-dispatch holds, ambiguous results and failed persistence are covered. |
+| HTTP integration and independent review | **5/5 new cases** cover authenticated frozen PDF downloads, role/CSRF restrictions, automatic draft preparation after issue, password reset/session revocation and disabled/demoted access during partially uploaded requests. |
+| Expanded backup/restore | **4/4 pass**, including full billing/auth/comms schema backup and independent restore. Queue/settings/holds/events/manual resolution, staff list and ledger balances match; original uncertain results and immutable guards survive. Restored mail is never sent. |
+| Local source checks | **33 JavaScript files** and local-only staff assets pass syntax checks. |
+| Existing enrolment | **170/170 passed again**, build succeeded; all pre-existing enrolment/pages/assets/scripts and existing `ci.yml` remain byte-identical to base `af96814`. |
+| Email visual review | Synthetic HTML reviewed at 800px and 390px widths; readable content and no mobile overflow. This is browser rendering, not inbox-client delivery testing. |
+| Persistent demo upgrade | Private online backup created before restarting the same synthetic database. New additive schema opens successfully. CLI dry run reports delivery disabled and no accepted messages. |
+
+The initial auth tests grew from 8 to 21, and the backup suite from 3 to 4. New communication and staff tables are additive; existing billing transactions and seeded permission values are preserved. A request-upload access-revocation race, inconsistent subject limits and capped queue counts found during independent review were corrected and regression-tested.
+
+No real SES call, delivery/bounce event, family message, production deployment or enrolment mutation is represented by these tests. Provider results are explicitly synthetic. All command/API/browser fixtures use isolated databases and `example.test` recipients. See COMMUNICATIONS.md for the remaining sender, worker and delivery commissioning steps.
 
 ## Commands and environment
 
@@ -17,7 +38,7 @@ JavaScript syntax checks use the executing Node binary. Unit/integration tests u
 
 For pinned-runtime verification, the official Node 24.21.0 Darwin arm64 archive was downloaded outside the repository, checked against the official release checksum, and executed. The archive SHA-256 was `bed7eea5325e1108f32ce5228ddd6a5f0f08a499ee42aa7442aea583702f6057`; the binary reported `v24.21.0`. Source: [official Node release](https://nodejs.org/en/blog/release/v24.21.0), accessed 12 September 2026. This establishes the runtime used, not Linux/container compatibility by itself.
 
-## Observed checks
+## Initial release checks (before the extension)
 
 | Check | Observed result / outstanding evidence |
 | --- | --- |
@@ -46,6 +67,10 @@ For pinned-runtime verification, the official Node 24.21.0 Darwin arm64 archive 
 | B20 | `tests/backup.test.mjs`, `tests/domain.test.mjs` | WAL backup, independent reopen, checksums/foreign keys, private paths/permissions, database persistence and competing allocations. |
 | B21 | `tests/browser/workflows.spec.mjs` | Staff workflows, responsive controls, keyboard/accessibility assertions and usable correction flows. |
 | B22 | Repository source comparison and enrolment checks | Billing isolation; final result belongs in release evidence below. |
+| B23–B24 | `tests/browser/enhancements.spec.mjs`, `tests/server-enhancements.test.mjs`, `tests/communications.test.mjs` | Document filters/download/Blob preview cleanup, frozen attachments, draft review, roles and contact permission. |
+| B25–B28 | `tests/communications.test.mjs`, `tests/mail.test.mjs`, enhanced browser suite | Automatic event deduplication, reminder eligibility, disabled/demo guards, worker claim/dispatch, provider ambiguity, manual evidence and reviewed resends. |
+| B29–B31 | `tests/auth.test.mjs`, `tests/server-enhancements.test.mjs`, `tests/mail-review.test.mjs`, enhanced browser suite | Staff lifecycle/password confidentiality, session revocation, last admin, and slow-request access changes. |
+| B32 | Enhanced browser suite | New workspaces and forms across desktop/mobile, keyboard and axe checks alongside all original scenarios. |
 
 The API tests include forged Host requests using raw HTTP, because Node's fetch implementation replaces a custom Host header. The corrected test verifies the server's actual host gate rather than relying on an ineffective test request. HTTPS tests verify that an untrusted or non-HTTPS proxy header is refused.
 
@@ -79,7 +104,7 @@ Public enrolment health and staff-authentication endpoints were checked read-onl
 
 ## Local delivery evidence
 
-The research dossier and initial architecture were committed and pushed as `9542d87` before application source was added. The implementation branch is `codex/rosewood-billing`, based on `af96814`. The application commit is `ca5c350`; its [remote CI run](https://github.com/Martin-Reinoso/independentschoolwest/actions/runs/34677724668) passed. Subsequent review-document updates do not change application code.
+The research dossier and initial architecture were committed and pushed as `9542d87` before application source was added. The implementation branch is `codex/rosewood-billing`, based on `af96814`. The initial application commit is `ca5c350`; its [remote CI run](https://github.com/Martin-Reinoso/independentschoolwest/actions/runs/34677724668) passed. The following paragraphs describe that initial delivery; the documents/communications/staff extension and its additional evidence are recorded above.
 
 Repository checks pass: 98 tracked HTML/CSS files have resolving local references; the implementation public-data scan checked 562 tracked files and found no private export or high-confidence secret pattern. Previous enrolment and public-site paths are byte-identical to the base. A repeated read-only live check returned HTTP 200 for the enrolment page and health endpoint, the same EOI/application form versions (2026.27/2026.28), and HTTP 401 `SESSION_REQUIRED` for the staff dashboard.
 
@@ -89,6 +114,6 @@ The 15 browser scenarios cover account/student/invoice creation, issue and parti
 
 ## Remaining commissioning limits
 
-Real-data operation still requires approved issuer/tax/fee/bank settings, named staff access and account recovery, a working MFA/private gateway, hosting/TLS and monitoring, encrypted off-host backups, AU accounting-template import validation and an approved reconciliation owner. These are not represented as completed by the local tests. The Dockerfile has not been built locally. Live accounting/enrolment adapters, parent login, collection and messaging are future scope. Automated accessibility checks and keyboard review do not replace a full assistive-technology user assessment.
+Real-data operation still requires approved issuer/tax/fee/bank settings, named staff onboarding and an operated recovery process, a working MFA/private gateway, hosting/TLS and monitoring, encrypted off-host backups, AU accounting-template import validation and an approved reconciliation owner. Email additionally needs a verified sender, monitored reply mailbox and commissioned worker/provider configuration; inbox delivery and bounce/read tracking are not established. These are not represented as completed by the local tests. The Dockerfile has not been built locally. Live accounting/enrolment adapters, parent login and collection remain future scope. Automated accessibility checks and keyboard review do not replace a full assistive-technology user assessment.
 
 Draft pull-request creation was denied by GitHub because the existing API identity lacks collaborator permission. The branch is pushed; [the prepared review](REVIEW.md) includes the comparison link and description. No PR, merge or deployment is claimed.

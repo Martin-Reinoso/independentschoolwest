@@ -1327,71 +1327,75 @@ export function createBillingService({ db, clock = () => new Date(), demoMode = 
       return result;
     });
   }
+  function projectDocument(kind, id) {
+    let document,
+      account,
+      seller,
+      extras = {};
+    if (kind === 'invoice') {
+      document = invoiceProjection(requireRow('invoices', id));
+      account =
+        document.accountSnapshot ?? accountProjection(requireRow('accounts', document.accountId));
+      seller = document.sellerSnapshot ?? settings();
+      extras = {
+        payments: all(
+          'SELECT p.* FROM billing_payments p WHERE p.accountId=?',
+          document.accountId,
+        ).map(paymentProjection),
+        credits: all('SELECT * FROM billing_credits WHERE invoiceId=?', id).map(creditProjection),
+        allocations: all(
+          'SELECT a.*,r.createdAt AS releasedAt,r.reason FROM billing_allocations a LEFT JOIN billing_allocation_releases r ON a.id=r.allocationId WHERE a.invoiceId=?',
+          id,
+        ),
+      };
+    } else if (kind === 'receipt') {
+      document = receiptProjection(requireRow('receipts', id));
+      account = document.snapshot.accountSnapshot;
+      seller = document.snapshot.sellerSnapshot;
+      extras = {
+        refunds: document.refunds,
+        payment: paymentProjection(requireRow('payments', document.paymentId)),
+      };
+    } else if (kind === 'credit') {
+      document = creditProjection(requireRow('credits', id));
+      account = document.snapshot.accountSnapshot;
+      seller = document.snapshot.sellerSnapshot;
+    } else if (kind === 'statement') {
+      const s = state();
+      account = s.accounts.find((a) => a.id === id);
+      if (!account) fail('NOT_FOUND', 'This billing account does not exist.', 404);
+      document = account;
+      seller = s.settings;
+      extras = {
+        invoices: s.invoices.filter((i) => i.accountId === id),
+        payments: s.payments.filter((p) => p.accountId === id),
+        credits: s.credits.filter((c) => c.accountId === id),
+        refunds: s.refunds.filter((r) => r.accountId === id),
+        receipts: s.receipts.filter((r) => r.accountId === id),
+        balances: {
+          balanceCents: account.balanceCents,
+          unallocatedCents: account.unallocatedCents,
+          bondHeldCents: account.bondHeldCents,
+          pendingCents: account.pendingCents,
+        },
+      };
+    } else fail('INVALID_DOCUMENT', 'That document type is not supported.', 404);
+    return {
+      kind,
+      document,
+      account,
+      settings: seller,
+      today: today(),
+      generatedAt: now(),
+      ...extras,
+    };
+  }
   function getDocument(actor, kind, id) {
     role(actor);
     return transaction(() => {
-      let document,
-        account,
-        seller,
-        extras = {};
-      if (kind === 'invoice') {
-        document = invoiceProjection(requireRow('invoices', id));
-        account =
-          document.accountSnapshot ?? accountProjection(requireRow('accounts', document.accountId));
-        seller = document.sellerSnapshot ?? settings();
-        extras = {
-          payments: all(
-            'SELECT p.* FROM billing_payments p WHERE p.accountId=?',
-            document.accountId,
-          ).map(paymentProjection),
-          credits: all('SELECT * FROM billing_credits WHERE invoiceId=?', id).map(creditProjection),
-          allocations: all(
-            'SELECT a.*,r.createdAt AS releasedAt,r.reason FROM billing_allocations a LEFT JOIN billing_allocation_releases r ON a.id=r.allocationId WHERE a.invoiceId=?',
-            id,
-          ),
-        };
-      } else if (kind === 'receipt') {
-        document = receiptProjection(requireRow('receipts', id));
-        account = document.snapshot.accountSnapshot;
-        seller = document.snapshot.sellerSnapshot;
-        extras = {
-          refunds: document.refunds,
-          payment: paymentProjection(requireRow('payments', document.paymentId)),
-        };
-      } else if (kind === 'credit') {
-        document = creditProjection(requireRow('credits', id));
-        account = document.snapshot.accountSnapshot;
-        seller = document.snapshot.sellerSnapshot;
-      } else if (kind === 'statement') {
-        const s = state();
-        account = s.accounts.find((a) => a.id === id);
-        if (!account) fail('NOT_FOUND', 'This billing account does not exist.', 404);
-        document = account;
-        seller = s.settings;
-        extras = {
-          invoices: s.invoices.filter((i) => i.accountId === id),
-          payments: s.payments.filter((p) => p.accountId === id),
-          credits: s.credits.filter((c) => c.accountId === id),
-          refunds: s.refunds.filter((r) => r.accountId === id),
-          receipts: s.receipts.filter((r) => r.accountId === id),
-          balances: {
-            balanceCents: account.balanceCents,
-            unallocatedCents: account.unallocatedCents,
-            bondHeldCents: account.bondHeldCents,
-            pendingCents: account.pendingCents,
-          },
-        };
-      } else fail('INVALID_DOCUMENT', 'That document type is not supported.', 404);
+      const document = projectDocument(kind, id);
       audit(actor, 'document.download', kind, id);
-      return {
-        kind,
-        document,
-        account,
-        settings: seller,
-        today: today(),
-        generatedAt: now(),
-        ...extras,
-      };
+      return document;
     });
   }
   function recordExport(actor, kind, metadata) {
@@ -1427,5 +1431,17 @@ export function createBillingService({ db, clock = () => new Date(), demoMode = 
     execute,
     getDocument,
     recordExport,
+    // Internal synchronous integrations share one consistent database transaction.
+    // The callback must never perform network I/O or return a Promise.
+    withSnapshot(actor, callback) {
+      role(actor);
+      if (typeof callback !== 'function') throw new TypeError('A snapshot callback is required.');
+      return transaction(() => {
+        const result = callback({ state: state(), getDocument: projectDocument });
+        if (result && typeof result.then === 'function')
+          throw new TypeError('Snapshot callbacks must be synchronous.');
+        return result;
+      });
+    },
   };
 }
