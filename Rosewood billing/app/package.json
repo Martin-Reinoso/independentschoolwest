@@ -1,0 +1,25 @@
+{
+  "name": "rosewood-billing",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.14.0"
+  },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "demo": "node scripts/start-demo.mjs",
+    "staff": "node scripts/staff.mjs",
+    "backup": "node scripts/backup.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "test:browser": "playwright test",
+    "check": "node scripts/check.mjs"
+  },
+  "dependencies": {
+    "pdfkit": "0.20.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@axe-core/playwright": "4.13.0"
+  }
+}

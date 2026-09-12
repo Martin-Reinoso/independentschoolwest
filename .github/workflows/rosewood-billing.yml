@@ -1,0 +1,44 @@
+name: Rosewood billing checks
+
+on:
+  pull_request:
+    paths:
+      - 'Rosewood billing/**'
+      - '.github/workflows/rosewood-billing.yml'
+  push:
+    branches: [main, codex/rosewood-billing]
+    paths:
+      - 'Rosewood billing/**'
+      - '.github/workflows/rosewood-billing.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  billing:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Rosewood billing/app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.21.0
+          cache: pnpm
+          cache-dependency-path: Rosewood billing/app/pnpm-lock.yaml
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install PDF verification tools
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+      - name: Check application source
+        run: pnpm check
+      - name: Domain, document, authentication, server and recovery tests
+        run: pnpm test
+      - name: Install browser
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Staff browser workflow and accessibility tests
+        run: pnpm test:browser

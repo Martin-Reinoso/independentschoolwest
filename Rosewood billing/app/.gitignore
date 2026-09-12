@@ -1,0 +1,14 @@
+node_modules/
+playwright-report/
+test-results/
+coverage/
+.env
+.env.*
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.pdf
+*.csv
+data/
+backups/

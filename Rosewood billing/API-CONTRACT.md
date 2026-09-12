@@ -20,12 +20,12 @@ No CORS wildcard or direct AWS/Xero calls. Browser sends credentials only to sam
 
 ## Service boundary
 
-`src/database.mjs` exports `openDatabase(path)` returning a `DatabaseSync` configured for relational integrity/durability and domain migrations. `src/service.mjs` exports `createBillingService({ db, clock })`. `clock` is optional and returns a Date. Service methods are synchronous; no network work occurs inside a transaction:
+`src/database.mjs` exports `openDatabase(path)` returning a `DatabaseSync` configured for relational integrity/durability and domain migrations. `src/service.mjs` exports `createBillingService({ db, clock, demoMode = false })`. `clock` is optional and returns a Date. The database retains its immutable sample/live marker and refuses the opposite mode. Service methods are synchronous; no network work occurs inside a transaction:
 
 - `getState(actor)` returns the shape below. Valid actor is `{id,name,email,role}`.
 - `execute(actor, {type,payload}, idempotencyKey)` returns a serialisable command result, normally the affected entity or `{id,...}`. It checks roles itself even if invoked without HTTP.
-- `getDocument(actor, kind, id)` returns `{kind, document, account, settings, generatedAt, ...}` using preserved snapshot values for issued documents; this is an audited read. A `statement` additionally includes account invoices/payments/credits/refunds and computed balances. Finance service must return enough data for the document renderer without direct SQL in the PDF layer.
-- `recordExport(actor, kind, metadata)` stores a durable authorised export manifest and audits it; returns the manifest. Metadata includes invoice IDs/revisions, row/document counts, net/tax/gross totals, SHA-256, mapping revision and exclusions. No balance mutation.
+- `getDocument(actor, kind, id)` returns `{kind, document, account, settings, today, generatedAt, ...}` using preserved snapshot values for issued documents; this is an audited read. `today` is the Melbourne calendar date and `generatedAt` is an ISO timestamp. A `statement` additionally includes account invoices/payments/credits/refunds and computed balances. Finance service must return enough data for the document renderer without direct SQL in the PDF layer.
+- `recordExport(actor, kind, metadata)` stores a durable authorised export manifest and audits it; returns the manifest. Metadata includes invoice IDs/revisions, row/document counts, net/tax/gross totals, SHA-256, settings mapping revision and exclusions. Xero manifests also retain the exact contact mapping, account ID and account revision used for each included payer. No balance mutation.
 
 Business exceptions expose `.status`, `.code`, `.message`. `src/seed.mjs` exports `seedDemo(service)` and creates obvious synthetic accounts/students/fees/documents through the service, idempotently. It creates no staff password. HTTP/auth tables use `auth_` prefix and are owned by `src/auth.mjs`, avoiding schema collisions.
 
@@ -36,7 +36,7 @@ Business exceptions expose `.status`, `.code`, `.message`. `src/seed.mjs` export
 | Collection | Minimum fields (additional derived fields may be supplied) |
 |---|---|
 | settings | `revision, schoolName, legalName, abn, address, email, phone, paymentInstructions, defaultDueDays, gstRegistered, taxPolicyApproved, demoMode, xeroTaxMappings` |
-| accounts | `id,code,name,billingName,email,address,contactAllowed,status,revision,createdAt,balanceCents,unallocatedCents,bondHeldCents,pendingCents` |
+| accounts | `id,code,name,billingName,email,address,contactAllowed,xeroContactName,status,revision,createdAt,balanceCents,unallocatedCents,bondHeldCents,pendingCents` |
 | students | `id,accountId,name,yearLevel,entryYear,status,enrolmentReference,revision` |
 | fees | `id,code,description,unitCents,taxCode,category,accountCode,active,revision` |
 | invoices | `id,accountId,number,status,settlementStatus,overdue,issueDate,dueDate,year,term,description,lines,subtotalCents,discountCents,taxCents,totalCents,paidCents,creditedCents,balanceCents,revision,accountSnapshot,sellerSnapshot,createdAt,issuedAt` |
@@ -57,14 +57,14 @@ Business exceptions expose `.status`, `.code`, `.message`. `src/seed.mjs` export
 
 | Type | Payload |
 |---|---|
-| `account.create` | `name,billingName,email,address,contactAllowed` (email/address optional until live issue) |
-| `account.update` | `id,expectedRevision,name,billingName,email,address,contactAllowed,status` |
+| `account.create` | `name,billingName,email,address,contactAllowed,xeroContactName` (email/address optional until live issue) |
+| `account.update` | `id,expectedRevision,name,billingName,email,address,contactAllowed,xeroContactName,status` |
 | `student.create` | `accountId,name,yearLevel,entryYear,status` |
 | `student.update` | `id,expectedRevision,name,yearLevel,entryYear,status` (no silent account move) |
 | `student.link` | `id,expectedRevision,enrolmentReference` (empty clears), `reason` |
 | `fee.create` / `fee.update` | `code,description,unitCents,taxCode,category,accountCode,active`; update adds `id,expectedRevision` |
 | `invoice.create` | `accountId,issueDate,dueDate,year,term,description,lines` |
-| `invoice.update` | Same editable fields + `id,expectedRevision`; draft only |
+| `invoice.update` | Same editable fields + `id,expectedRevision`; draft only. Explicit save of a batch draft refreshes its payer/seller snapshot to current configuration; original batch preview and period claims remain unchanged |
 | `invoice.issue` | `id,expectedRevision` |
 | `invoice.void` | `id,reason`; finance/admin only, no allocations/credits |
 | `payment.record` | `accountId,purpose,amountCents,paidOn,method,reference`; always pending |
@@ -73,18 +73,24 @@ Business exceptions expose `.status`, `.code`, `.message`. `src/seed.mjs` export
 | `payment.allocate` | `id,allocations:[{invoiceId,amountCents}]`; confirmed fee funds only |
 | `payment.release` | `id` (payment), `allocationId,reason`; releases whole active allocation |
 | `payment.reverse` | `id,reason`; no existing refunds; release all active allocations |
-| `payment.refund` | `id,amountCents,paidOn,reference,reason`; already completed refund evidence; limited to unapplied/held funds |
+| `payment.refund` | `id,amountCents,paidOn,reference,reason`; already completed outgoing refund evidence, unique normalized reference/date across original payments; limited to unapplied/held funds |
 | `credit.create` | `invoiceId,lines:[{invoiceLineId,amountCents}],reason`; positive gross credit amounts targeted to original lines, bounded by line remaining credit capacity and invoice outstanding; cumulative tax rounding preserves the original line tax exactly |
 | `plan.create` | `invoiceId,instalments:[{dueDate,amountCents}]`; one plan per invoice; exact total and ordered dates |
-| `batch.preview` | `label,studentIds,feeIds,year,term,issueDate,dueDate`; groups selected students per account, snapshots current prices/identities, no invoice issue |
+| `batch.preview` | `label,studentIds,feeIds,year,term,issueDate,dueDate`; groups selected students per account, snapshots current prices/identities, no invoice issue. New live previews require complete seller/payer setup and approved tax policy |
 | `batch.commit` | `id` (batch); generates its reviewed drafts exactly once |
 | `export.recordImport` | `id,importReference,reason`; finance/admin, marks manual external import evidence only; does not claim reconciliation |
 | `settings.update` | Full settings + `expectedRevision`; admin only, settings demoMode controlled by server environment rather than browser |
 
-Each invoice line input is `{studentId?,description,quantity,unitCents,discountCents,taxCode,category,accountCode}`. A per-line discount is an absolute amount for the extended quantity, not a percentage. Backend validates student belongs to account, computes net/tax/gross and rejects unsafe/negative values. Fee lookup is optional; staff may enter a custom line. Reissued PDFs preserve historical names, descriptions, prices, tax classification and instructions.
+Each invoice line input is `{id?,studentId?,description,quantity,unitCents,discountCents,taxCode,category,accountCode}`; an update retains the line IDs belonging to that draft. A per-line discount is an absolute amount for the extended quantity, not a percentage. Backend validates student belongs to account, computes net/tax/gross and rejects unsafe/negative values. Fee lookup is optional; staff may enter a custom line. Reissued PDFs preserve historical names, descriptions, prices, tax classification and instructions.
+
+An untouched batch draft retains its original preview facts. If seller/payer setup was incomplete in an older preview, or tax policy changes before issue, staff complete configuration and explicitly open/save the draft, review the refreshed draft, then issue it using the new revision. This refresh changes only the unissued draft. The original batch snapshot, student/fee/year/term claims and any previously issued document remain unchanged. A fresh batch cannot circumvent an existing period claim.
 
 The first UI may stage more complex operations on detail screens; all commands above need server tests and usable staff controls before claiming full implementation. Any deferred surface is recorded explicitly in delivery evidence rather than hidden behind a nonfunctional action.
 
-Confirmation refuses duplicate evidence across staff/keys using the normalized `(purpose, method, reference, paidOn, amountCents)` identity across accounts, preventing a transfer recorded twice from becoming two receipts. Rejected claims do not consume evidence; reversed confirmed records retain the claim so corrections remain traceable. A source reference must identify the actual transaction; a reused generic family reference requires a distinct bank transaction identifier before confirmation. All financial dates are valid calendar dates and received/refunded dates cannot be in the future. Non-demo issuance requires configured seller/payer identity and explicit `taxPolicyApproved`; GST_10 is prohibited when `gstRegistered` is false. Taxable registration selection requires a valid ABN but is an operator assertion, not external ABN verification.
+Confirmation refuses duplicate evidence across staff/keys using the normalized `(method, reference, paidOn)` identity across accounts and fee/bond purposes (regardless of amount), preventing a transfer recorded twice from becoming two receipts. Rejected claims do not consume evidence; reversed confirmed records retain the claim so corrections remain traceable. A source reference must identify the actual transaction; a reused generic family reference requires a distinct bank transaction identifier before confirmation. All financial dates are valid calendar dates and received/refunded dates cannot be in the future. Non-demo issuance requires configured seller/payer identity and explicit `taxPolicyApproved`; GST_10 is prohibited when `gstRegistered` is false. Taxable registration selection requires a valid ABN but is an operator assertion, not external ABN verification.
 
 Xero export rejects formula-like text in exact contact/account/tax mapping fields, requires a mapping for every included tax code and an account code per line, and excludes/flags drafts, voids and invoices with credits. Original invoice exports are not an aged-debt sync. The manifest includes exclusions and the UI warns that later corrections require separate accounting review. Real AU tenant template/Demo Company validation remains outstanding.
+
+The optional current account `xeroContactName` is an explicit accounting mapping to the exact external contact display name, separate from the immutable payer snapshot. It is trimmed, limited to 160 characters, defaults to empty, and is preserved if omitted on update; explicit empty text clears it. Xero export requires it on included accounts, checks mapping collisions across the entire current account register (including accounts absent from this file), and never infers contact identity from payer names. Finance reviews mappings before export; account maintenance uses the normal billing/finance/admin role gate.
+
+Refund uniqueness uses normalized `(reference, paidOn)` across all accounts and original receipts, independent of refund amount and incoming payment method. A refund reference identifies the actual outgoing transaction. Repeating the same outgoing refund against a cash receipt and a bank-transfer receipt is rejected. Existing immutable refund rows with an older hash format still reserve their normalized reference/date; their historical facts are not rewritten.

@@ -1,0 +1,11 @@
+node_modules
+test-results
+playwright-report
+tests
+*.sqlite*
+*.db*
+*.pdf
+*.csv
+.env*
+data
+backups
