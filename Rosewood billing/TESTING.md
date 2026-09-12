@@ -1,6 +1,6 @@
 # Rosewood Billing test evidence
 
-Evidence date: 12 September 2026. The complete suite passed **64/64 on both Node 24.21.0 and Node 26.7.0**, source checks passed, existing enrolment checks passed, and sample PDFs were visually reviewed. A private backup/restore drill also preserved the complete billing state and revoked recovered sessions. The final local browser suite passed **15/15**, including desktop/mobile accessibility and failure recovery. Remote CI is pending the implementation push. This document distinguishes observed passes from checks that still need commissioning. See [acceptance scenarios](IMPLEMENTATION-PLAN.md) and [operating procedures](OPERATIONS.md).
+Evidence date: 12 September 2026. The complete suite passed **64/64 on both Node 24.21.0 and Node 26.7.0**, source checks passed, existing enrolment checks passed, and sample PDFs were visually reviewed. A private backup/restore drill also preserved the complete billing state and revoked recovered sessions. The final local browser suite passed **15/15**, including desktop/mobile accessibility and failure recovery. The implementation commit `ca5c350` also passed [GitHub CI](https://github.com/Martin-Reinoso/independentschoolwest/actions/runs/34677724668) on Ubuntu with Node 24.21.0. This document distinguishes observed passes from checks that still need commissioning. See [acceptance scenarios](IMPLEMENTATION-PLAN.md) and [operating procedures](OPERATIONS.md).
 
 ## Commands and environment
 
@@ -30,7 +30,7 @@ For pinned-runtime verification, the official Node 24.21.0 Darwin arm64 archive 
 | PDF page rendering, text/totals and visual inspection | **Passed**: 4 sample artifacts / 5 pages visually reviewed—one-page invoice, receipt and credit; two-page statement. Automated 150-line address and 120-line reason tests preserve text and prevent footer collisions; Melbourne date cases pass. |
 | Backup/restore | **Passed** in the aggregate suite and the manual private recovery drill below. |
 | Existing enrolment regression | **170/170 passed**, and its pnpm build succeeded. `git diff` against base `af96814` is empty for prior enrolment/pages/assets/scripts and the existing `ci.yml`; the billing workflow is separate. |
-| GitHub Actions | Workflow is present; remote result **pending final pushed commit**. |
+| GitHub Actions | **Passed** on implementation `ca5c350`: locked install, source checks, application tests and Chromium/axe workflows on Ubuntu/Node 24.21.0. [Run evidence](https://github.com/Martin-Reinoso/independentschoolwest/actions/runs/34677724668). |
 | Docker / production deployment / AU Xero import | **Not tested or commissioned**. No live accounting, email, bank payment, enrolment data or AWS mutation was used. |
 
 ## Requirement-to-test map
@@ -79,9 +79,9 @@ Public enrolment health and staff-authentication endpoints were checked read-onl
 
 ## Local delivery evidence
 
-The research dossier and initial architecture were committed and pushed as `9542d87` before application source was added. The implementation branch is `codex/rosewood-billing`, based on `af96814`. Final GitHub check links are recorded after the implementation push.
+The research dossier and initial architecture were committed and pushed as `9542d87` before application source was added. The implementation branch is `codex/rosewood-billing`, based on `af96814`. The application commit is `ca5c350`; its [remote CI run](https://github.com/Martin-Reinoso/independentschoolwest/actions/runs/34677724668) passed. Subsequent review-document updates do not change application code.
 
-Repository checks pass: 98 tracked HTML/CSS files have resolving local references; the public-data scan finds no private export or high-confidence secret pattern. Previous enrolment and public-site paths are byte-identical to the base. A repeated read-only live check returned HTTP 200 for the enrolment page and health endpoint, the same EOI/application form versions (2026.27/2026.28), and HTTP 401 `SESSION_REQUIRED` for the staff dashboard.
+Repository checks pass: 98 tracked HTML/CSS files have resolving local references; the implementation public-data scan checked 562 tracked files and found no private export or high-confidence secret pattern. Previous enrolment and public-site paths are byte-identical to the base. A repeated read-only live check returned HTTP 200 for the enrolment page and health endpoint, the same EOI/application form versions (2026.27/2026.28), and HTTP 401 `SESSION_REQUIRED` for the staff dashboard.
 
 The local review portal runs at `http://127.0.0.1:4318` using a private persistent synthetic database. Desktop and mobile overview screenshots were inspected; no real family data was rendered. Four sample PDFs can be reproduced with `node scripts/generate-samples.mjs`; the renderer prints its private temporary output directory. The delivered invoice, receipt and credit each have one page; the statement has two. Additional independent long-document cases used 150-line payer addresses, 100-line seller addresses/payment instructions and 120-line credit reasons, preserving all markers within page bounds.
 
@@ -90,3 +90,5 @@ The 15 browser scenarios cover account/student/invoice creation, issue and parti
 ## Remaining commissioning limits
 
 Real-data operation still requires approved issuer/tax/fee/bank settings, named staff access and account recovery, a working MFA/private gateway, hosting/TLS and monitoring, encrypted off-host backups, AU accounting-template import validation and an approved reconciliation owner. These are not represented as completed by the local tests. The Dockerfile has not been built locally. Live accounting/enrolment adapters, parent login, collection and messaging are future scope. Automated accessibility checks and keyboard review do not replace a full assistive-technology user assessment.
+
+Draft pull-request creation was denied by GitHub because the existing API identity lacks collaborator permission. The branch is pushed; [the prepared review](REVIEW.md) includes the comparison link and description. No PR, merge or deployment is claimed.

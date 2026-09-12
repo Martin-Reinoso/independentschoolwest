@@ -40,6 +40,7 @@ The Xero assumption follows the user's reference to “Xerox”. This release us
 | [Staff guide](STAFF-GUIDE.md) | Daily workflows, payment states and corrections |
 | [Operations](OPERATIONS.md) | Runtime setup, staff accounts, private hosting, backup/restore and live commissioning requirements |
 | [Testing and acceptance](TESTING.md) | Actual validation, B01–B22 coverage and remaining limits |
+| [Prepared GitHub review](REVIEW.md) | Branch comparison and a ready pull-request description; API creation permission is unavailable |
 | [Architecture](ARCHITECTURE.md) | Domain model, ownership and integration decisions |
 | [API contract](API-CONTRACT.md) | Commands, permissions, revisions and idempotency |
 
