@@ -1,0 +1,136 @@
+{
+  "retrieved_date": "2026-09-12",
+  "timezone": "Australia/Melbourne",
+  "method": "Official git repositories; pinned static source inspection. Upstream suites not executed.",
+  "repositories": {
+    "education": {
+      "repository": "frappe/education",
+      "sha": "71aada478bf682f6d034fd4caa6f2f5438b5ace9",
+      "branch_at_retrieval": "develop",
+      "commit_time": "2026-06-05T15:45:42+03:00",
+      "commit_subject": "Merge pull request #437 from frappe/feat/permissions",
+      "inspected_files_cited": [
+        "education/education/api.py",
+        "education/education/doctype/fee_component/fee_component.json",
+        "education/education/doctype/fee_schedule/fee_schedule.json",
+        "education/education/doctype/fee_schedule/fee_schedule.py",
+        "education/education/doctype/fee_schedule/test_fee_schedule.py",
+        "education/education/doctype/fee_structure/fee_structure.py",
+        "frontend/src/pages/Fees.vue",
+        "license.txt"
+      ]
+    },
+    "erpnext": {
+      "repository": "frappe/erpnext",
+      "sha": "bec627c3eba9bef369b64faadebde23ae3776217",
+      "branch_at_retrieval": "develop",
+      "commit_time": "2026-09-12T06:55:42+05:30",
+      "commit_subject": "refactor(manufacturing): rename secondary item valuation type to \"% of Component Cost\" (#59021)",
+      "inspected_files_cited": [
+        "erpnext/accounts/doctype/payment_entry/payment_entry.py",
+        "erpnext/accounts/doctype/payment_entry/test_payment_entry.py",
+        "erpnext/accounts/doctype/payment_entry_reference/payment_entry_reference.json",
+        "erpnext/accounts/doctype/payment_ledger_entry/payment_ledger_entry.py",
+        "license.txt"
+      ]
+    },
+    "gibbon": {
+      "repository": "GibbonEdu/core",
+      "sha": "912cb5abc73a047f0c0ad64d26c398067e38a6eb",
+      "branch_at_retrieval": "v31.0.00",
+      "commit_time": "2026-09-09T13:33:33+08:00",
+      "commit_subject": "Timetable: improved CourseGateway tio include courses without departments (#2156)",
+      "inspected_files_cited": [
+        "LICENSE",
+        "gibbon.sql",
+        "modules/Finance/invoices_manage_editProcess.php",
+        "modules/Finance/invoices_manage_issueProcess.php",
+        "modules/Finance/invoices_payOnlineProcess.php",
+        "modules/Finance/moduleFunctions.php",
+        "src/Domain/Finance/InvoiceGateway.php",
+        "tests/acceptance/Finance/ManageInvoicesCept.php"
+      ]
+    },
+    "rosariosis": {
+      "repository": "francoisjacquet/rosariosis",
+      "sha": "e159aec090c5b8cc25ac8955bb83621252d3d685",
+      "branch_at_retrieval": "mobile",
+      "commit_time": "2026-09-03T12:13:11+02:00",
+      "commit_subject": "Fix cumulative GPA calculation: N/A grade (empty GPA value) does not affect GPA",
+      "inspected_files_cited": [
+        "LICENSE",
+        "README.md",
+        "modules/Student_Billing/MassAssignFees.php",
+        "modules/Student_Billing/Statements.php",
+        "modules/Student_Billing/StudentBalances.php",
+        "modules/Student_Billing/StudentFees.php",
+        "modules/Student_Billing/StudentPayments.php",
+        "modules/Student_Billing/functions.inc.php",
+        "rosariosis.sql"
+      ]
+    },
+    "odoo": {
+      "repository": "odoo/odoo",
+      "sha": "c50a4e0513e5247f1b680ccbb5c0d27795a10b55",
+      "branch_at_retrieval": "19.0",
+      "commit_time": "2026-09-12T02:13:54Z",
+      "commit_subject": "[FIX] mail: fix non-deterministic incomplete channel test",
+      "inspected_files_cited": [
+        "LICENSE",
+        "addons/account/models/account_move.py",
+        "addons/account/models/account_move_line.py",
+        "addons/account/models/account_partial_reconcile.py",
+        "addons/account/models/account_payment.py",
+        "addons/account/report/account_invoice_report.py",
+        "addons/account/tests/test_account_move_reconcile.py",
+        "addons/account/tests/test_account_payment_duplicate.py",
+        "addons/payment/models/payment_transaction.py",
+        "addons/payment/tests/test_payment_transaction.py"
+      ]
+    },
+    "invoiceninja": {
+      "repository": "invoiceninja/invoiceninja",
+      "sha": "d69e2acf6a42574fea96c3c9f5c9414c22fa2891",
+      "branch_at_retrieval": "v5-stable",
+      "commit_time": "2026-09-12T10:05:56+10:00",
+      "commit_subject": "Merge pull request #12271 from turbo124/v5-stable",
+      "inspected_files_cited": [
+        "LICENSE",
+        "app/Http/Requests/Payment/StorePaymentRequest.php",
+        "app/Models/Activity.php",
+        "app/Models/Invoice.php",
+        "app/Models/Payment.php",
+        "app/Models/Paymentable.php",
+        "app/Services/Invoice/ApplyNumber.php",
+        "app/Services/Invoice/GetInvoicePdf.php",
+        "app/Services/Payment/RefundPayment.php",
+        "app/Services/Payment/UpdateInvoicePayment.php",
+        "database/migrations/2014_10_13_000000_create_users_table.php",
+        "database/migrations/2022_09_30_235337_add_idempotency_key_to_payments.php",
+        "tests/Feature/Payments/CreditRefundDoubleSpendTest.php",
+        "tests/Feature/Payments/StorePaymentValidationTest.php",
+        "tests/Feature/Payments/UnappliedPaymentRefundTest.php",
+        "tests/Unit/PaymentDrivers/Stripe/FindPaymentByStripeReferenceTest.php"
+      ]
+    },
+    "akaunting": {
+      "repository": "akaunting/akaunting",
+      "sha": "80f98363cf8f5e89db3203daa74263b5bdeb9848",
+      "branch_at_retrieval": "master",
+      "commit_time": "2026-09-11T22:43:49+01:00",
+      "commit_subject": "Merge branch 'master' of github.com:akaunting/akaunting",
+      "inspected_files_cited": [
+        "LICENSE.txt",
+        "app/Jobs/Banking/CreateBankingDocumentTransaction.php",
+        "app/Jobs/Banking/SplitTransaction.php",
+        "app/Jobs/Document/CancelDocument.php",
+        "app/Jobs/Document/CreateDocument.php",
+        "app/Jobs/Document/CreateDocumentHistory.php",
+        "app/Models/Document/Document.php",
+        "tests/Feature/Banking/DocumentTransactionsTest.php",
+        "tests/Feature/Banking/SplitTransactionTest.php",
+        "tests/Feature/Document/CancelDocumentTest.php"
+      ]
+    }
+  }
+}

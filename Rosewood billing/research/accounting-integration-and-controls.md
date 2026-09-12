@@ -1,0 +1,110 @@
+# Accounting integration, Australian invoicing, and billing controls
+
+Research date: **12 September 2026**. All URLs below were accessed on that date. This is a product and engineering design record, not a determination of Rosewood's tax treatment. “Xero” is a working interpretation of the user's “Xerox”; the actual accounting product and organisation remain unconfirmed. No accounting connection or family record was accessed.
+
+## Recommended boundary
+
+Build a school receivables application that owns billing accounts, student references, fee plans, issued document snapshots, payment verification, allocations, and staff activity. Preserve Xero as the future general ledger and accounting reconciliation system. First provide reviewable accounting exports; live synchronisation is a later adapter with explicit ownership rules. This boundary is a design recommendation derived from the sources below, not a Xero requirement.
+
+Enrolment is an optional identity source. Billing must work for prospect students and manually created billing accounts before anyone is enrolled. A guardian, student, and debtor are different entities: the same debtor can pay for siblings; one student can have multiple independently addressed debtors. Link an enrolment application by a stable external ID plus source name only after an explicit staff match. Never use a name or email address alone as a permanent relationship key, and never write billing state back into the enrolment submission during the initial implementation.
+
+## Source map: accounting manuals and contracts
+
+| ID | Official source | Evidence reviewed and concrete build implication |
+| --- | --- | --- |
+| X01 | [Xero Accounting API overview](https://developer.xero.com/documentation/api/accounting/overview) | Accounting includes distinct invoices, contacts, payments, credit notes and reports. Keep these as separate records and map external IDs rather than flattening them into a single paid flag. |
+| X02 | [Invoice status guidance](https://developer.xero.com/documentation/best-practices/user-experience/invoice-status/) | Draft and submitted invoices do not create journals; authorised invoices do, and can receive payments. Local draft/exported/issued states must be distinguished from Xero approval. Export success is not accounting approval or delivery. |
+| X03 | [Types and codes](https://developer.xero.com/documentation/api/accounting/types/) | ACCREC identifies customer invoices. AUTHORISED includes partly paid invoices. Model document lifecycle separately from balance-derived labels such as partially paid and overdue; never map AUTHORISED to fully paid. |
+| X04 | [Payments API](https://developer.xero.com/documentation/api/accounting/payments) | Payments refer to an invoice or another accounting document, have an amount, account, date, reference and reconciliation indicator. Payments cannot be edited, only created or reversed. Store original evidence and compensating reversals; do not overwrite historical payment amounts. IsReconciled may be set for conversion use, so a recorded payment alone is not proof of a bank match. |
+| X05 | [Credit Notes API](https://developer.xero.com/documentation/api/accounting/creditnotes) | Authorised credits are allocated to invoices; creation and allocation are separate operations. Refunds use Payments. Keep credit issuance, application to debt, and cash refund distinct. |
+| X06 | [Import customer invoices — Xero Central](https://central.xero.com/0/article/Import-customer-invoices-US) | Accessible official manual describes CSV drafts, one invoice line per row, repeated invoice number for multiple lines, unique numbers across documents, and exact contact/account/tax names. Use export batches with totals and a stable number. This accessible page is US-specific: its date format must not be copied into an AU export. |
+| X07 | [AU invoice-import manual](https://central.xero.com/0/article/Import-customer-invoices-AU) | Official AU URL resolved but returned no readable body in this research environment. Download the actual AU tenant template and validate an import into a Demo Company before claiming production compatibility. Do not silently substitute US dates. |
+| X08 | [Import customer credit notes — AU](https://central.xero.com/0/article/Import-a-customer-credit-note-AU) | AU manual specifies DD/MM/YYYY, draft import, negative unit prices for credits, and tenant sales tax display names. A CSV TaxType value is a display name; an API TaxType is a code. Keep both mappings. |
+| X09 | [Tax Rates API](https://developer.xero.com/documentation/api/accounting/taxrates) | Tax definitions belong to the organisation and include type, status, effective rate and account applicability. Configuration must map the school's fee tax codes to active revenue-compatible Xero taxes and accounts. Do not assume a universal account code or infer tax class from a rate alone. |
+| X10 | [Idempotent requests](https://developer.xero.com/documentation/guides/idempotent-requests/idempotency/) | Xero mutation keys last six minutes, and repeating a key with changed request data is rejected. Implement durable local idempotency and external IDs; the provider cache alone cannot prevent duplicate invoices after a delayed retry. Inspect external state after an ambiguous outcome. |
+| X11 | [OAuth scopes](https://developer.xero.com/documentation/guides/oauth2/scopes/) | New granular scopes cover invoices and payments separately; broad scopes are being retired. Future read sync should request only needed read scopes and settings/contact access. Scopes are additive; a permission reduction requires revocation and new consent. |
+| X12 | [Granular scopes FAQ](https://developer.xero.com/faq/granular-scopes) | New apps since 2 March 2026 use granular scopes. Xero recommends a separate test app and Demo Company. Use those before any live adapter commissioning. |
+| X13 | [API changelog](https://developer.xero.com/changelog) | At this research date, classic ExpenseClaims/Receipts decommissioning is scheduled for February 2027; Receipts is not the school customer payment receipt facility. Generate school receipts from confirmed payments locally. Recheck current deprecations before adapter development. |
+| X14 | [Webhook manual](https://developer.xero.com/documentation/guides/webhooks/overview/) | Validate the raw-body HMAC SHA-256 signature, reject invalid signatures, and respond promptly; failed delivery retries can end with a disabled webhook. Queue verified events, deduplicate them, and use periodic reconciliation as recovery. A webhook signals that a resource changed; refresh the authoritative resource before changing a balance. |
+| X15 | [Efficient retrieval](https://developer.xero.com/documentation/api/efficient-data-retrieval) | Use supported pagination, modified-since retrieval and optimised filters. Maintain a last-success time, retry state and a visible stale-data warning. A failed sync must not clear existing debt or reset payments. |
+| X16 | [Official Accounting OpenAPI repository](https://github.com/XeroAPI/Xero-OpenAPI/blob/master/xero_accounting.yaml) | Located the official machine-readable contract. The browser did not expose the large YAML body; this was a repository location check, not a schema audit. Pin a commit and inspect invoice/payment/credit/contact schemas when building the adapter. |
+
+## Ownership and reconciliation design
+
+The following is the proposed first-release operating contract, subject to the school's finance workflow being configured before live use:
+
+| Concern | Initial application authority | Later Xero boundary |
+| --- | --- | --- |
+| Student and family billing relationship | Local billing IDs; optional source reference | Map the debtor account to Xero ContactID; avoid creating one contact per child automatically. |
+| Fees and discounts | Versioned fee definitions and invoice-line snapshots | Explicit account/tax mappings; school-approved chart of accounts. |
+| Issued invoice | Immutable local number, issue date, debtor address, lines and totals | Map one local invoice to one tenant/InvoiceID. Imported draft remains a draft in Xero until approved there. |
+| Payment claim | Pending evidence; does not reduce balance | A screenshot, reference or verbal report does not establish reconciliation. |
+| Confirmed receipt of money | Named finance staff verification of bank/accounting evidence | Later distinguish Xero-recorded payment from bank-reconciled payment, and record freshness/source. |
+| Amount owing | Issued total minus active verified allocations minus credit allocations | Reconciliation report compares local and Xero totals; disagreement enters an exception queue. |
+| Ledger, bank reconciliation and statutory accounts | Outside initial app | Xero/accountant retains authority; no automatic journals or bank edits. |
+
+Use an export ledger: batch ID, creation time, actor, exact invoice versions, row count, document count, net/tax/gross totals, file hash, mapping version and status. “Exported” only means a file was generated. Staff must separately record the external import result. Re-export the same immutable snapshot; never silently invent new invoice numbers to bypass duplicate detection.
+
+Later adapter mutations need an outbox committed atomically with the business event. Save tenant ID, operation ID, payload hash, attempts, external ID, and reconciliation result. Treat network timeouts as unknown outcomes and inspect before retrying. Do not let both systems edit the same issued financial fields; resolve changes as credits or explicit exceptions. Initial CSV export cannot automatically discover payments made in Xero and must say so in the UI.
+
+## Australian invoice and tax evidence
+
+| ID | Official source | What was established; product implication |
+| --- | --- | --- |
+| A01 | [ATO tax invoices](https://www.ato.gov.au/businesses-and-organisations/gst-excise-and-indirect-taxes/gst/tax-invoices) and [official printable content](https://www.ato.gov.au/api/public/content/0-1e92db95-a75c-4f4e-a3d4-39f43b1a3b25) | Official indexed content identifies invoice intention, seller identity/ABN, issue date, sale details, GST amount and taxable extent; invoices of at least $1,000 also identify the buyer or buyer ABN. Direct full-page rendering failed. Design templates with all these fields, subject to finance verification of the current ATO page before actual issuance. |
+| A02 | [GST Act section 29-70, ATO legal database](https://www.ato.gov.au/law/view/document?LocID=%22PAC%2F19990055%2F29-70%282%29%22) | Official indexed legislative text supports supplier-issued invoice requirements and recipient identity/ABN threshold. This does not establish Rosewood's GST registration or legal invoicing entity. |
+| A03 | [GSTR 2000/30, consolidated PDF indexed at 23 August 2023](https://www.ato.gov.au/law/view/pdf?DocID=GST%2FGSTR200030%2FNAT%2FATO%2F00001&PiT=20230823000000&filename=law%2Fview%2Fpdf%2Fpbr%2Fgstr2000-030c3.pdf) and [ATO ruling entry](https://www.ato.gov.au/law/view/document?LocID=%22GST%2FGSTR200030%2FNAT%2FATO%2Ffp60%22&PiT=20170421000001) | Official indexed ruling passages distinguish qualifying education-related supplies, administrative services and other goods/services. The ruling includes mixed-fee apportionment examples. Make tax selection explicit per fee/line, retain its basis and effective version, and support mixed tax treatment on one invoice. These historical point-in-time URLs require currency review before live tax configuration. |
+| A04 | [ATO GST records printable guidance](https://www.ato.gov.au/api/public/content/0-9354073c-055a-4d41-bd51-b7d9e6b4e834) | Official indexed content describes a five-year GST record retention rule. Configure a retention policy with the school's accountant and records owner; do not interpret that general rule as permission to delete student or corporate records automatically. |
+
+Do not ship production defaults that decide whether tuition, application fees, enrolment deposits, uniforms, levies or donations are taxable. A zero rate can represent different legal/accounting categories. Store classification separately from numeric rate; require a finance-approved fee catalogue. The initial demo can demonstrate configurable GST-free and GST examples while clearly identifying them as synthetic.
+
+An issued document should snapshot issuer legal name, trading name, ABN where applicable, contact/address, debtor identity/address, student reference, invoice number, issue/due dates, currency, description, quantity, price, discount, line tax classification, net/GST/gross totals, payment reference and instructions. Label it Invoice or Tax Invoice according to the configured issuer/tax policy; do not assert registration by template wording alone.
+
+A receipt should identify the original confirmed payment, receipt number, payer, verification/source reference, received date, amount and currency, allocations and remaining balance. It proves the payment recorded, not a new sale. Partial-payment receipts must not imply that the full invoice was paid. If a payment is reversed, retain the original receipt and show a reversal notice linked to it. Deposits, customer credits and refunds need separate balances; a refund is not a negative invoice line applied indiscriminately.
+
+## Money and document invariants
+
+These are application design decisions, not statements of accounting law:
+
+1. Use AUD initially. Persist monetary totals as integer cents with checked bounds. Accept decimal input through a strict decimal parser; reject exponent notation, excessive precision, NaN, infinity and unsafe integers. Avoid binary floating-point arithmetic for tax/discount calculations. Define one rounding rule and use integer/rational or decimal arithmetic for its intermediates.
+2. Allocate an invoice/receipt/credit sequence in the same database transaction that creates the document. Unique constraints prevent duplicate numbers. Issue snapshots remain stable if names, fee prices or tax mappings later change.
+3. Compute balances from active allocation entries. Never allow payments plus credits to exceed the invoice's open balance or allocations to exceed the verified payment. Keep unallocated customer money separate rather than silently losing it.
+4. Reverse by adding a reasoned, linked compensating record. Forbid re-reversal, allocation to void documents, cross-account allocation without an explicit supported transfer, and deletion of issued records.
+5. Derive overdue status from the local business date, due date and remaining amount. Store financial dates as date-only fields; store audit timestamps in UTC and display Australia/Melbourne. A promised instalment is neither received money nor an independent duplicate debt.
+6. Every mutation checks the current state and expected version inside a transaction. Idempotency binds actor, operation and payload hash; retries return the original result and changed-payload reuse fails.
+
+## Staff security and deployment baseline
+
+| ID | Official source | Application requirement |
+| --- | --- | --- |
+| S01 | [OWASP Authorization](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html) | Enforce permission checks server-side for every route and document. Deny unknown actions. Object access applies to PDFs/exports too. Test both horizontal and vertical access failures; hiding buttons is insufficient. |
+| S02 | [OWASP Transaction Authorization](https://cheatsheetseries.owasp.org/cheatsheets/Transaction_Authorization_Cheat_Sheet.html) | Recheck allowed state and significant transaction data at execution. Staff must see amount, target account/invoice and effect before confirming a reversal or allocation. A changed payload invalidates a prior approval. |
+| S03 | [OWASP Logging](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html) | Log attributable business changes and authentication/authorisation failures. Do not log passwords, tokens, full bank details or unnecessary student data. Operational logs and the financial audit ledger serve different purposes. |
+| S04 | [OWASP Password Storage](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html) | Prefer Argon2id where available; scrypt is an alternative. Current recommended scrypt settings include N=2^17,r=8,p=1 or the documented memory/CPU tradeoffs. Store algorithm parameters and unique salt with the hash. Benchmark the selected configuration. |
+| S05 | [Node crypto documentation](https://nodejs.org/api/crypto.html#cryptoscryptpassword-salt-keylen-options-callback) | Use asynchronous scrypt with explicit work parameters/maxmem and cryptographic random salt. Node factory defaults are not the OWASP recommended profile. Bound login concurrency and throttle before expensive hashing. Use constant-time comparison of equal-length digest buffers. |
+| S06 | [OWASP Session Management](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html) | Server-managed opaque sessions, session regeneration at login, expiry and revocation; production cookies Secure, HttpOnly, explicit SameSite, host-only and Path=/. Keep credentials out of localStorage and URLs. |
+| S07 | [OWASP CSRF Prevention](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html) | Protect unsafe requests with a session-bound CSRF token and strict origin verification. SameSite is additional defence, particularly because sibling subdomains can still be same-site. GET routes must not issue or mutate financial documents. |
+| S08 | [OWASP CSV Injection](https://owasp.org/www-community/attacks/CSV_Injection) | Untrusted CSV cells can become spreadsheet formulas. Quote/escape separators and prevent formula prefixes in human reports. For strict accounting imports, reject unsafe text with an actionable error instead of silently changing a tenant contact name or account code. |
+| S09 | [SQLite isolation](https://sqlite.org/isolation.html) | Use short transactions, appropriate write locking, foreign keys and uniqueness constraints. BEGIN IMMEDIATE can acquire the writer lock before a read-modify-write balance operation. Avoid awaiting network work inside transactions and avoid interleaving operations on one connection. |
+| S10 | [SQLite Online Backup API](https://sqlite.org/backup.html) | Take a consistent SQLite backup using a supported backup mechanism; copying only the main file during a live WAL workload is not a backup plan. Test restore, integrity and document/balance parity. |
+
+Suggested roles are **viewer** (status and documents), **finance** (drafts, issue, verified allocations, exports), and **administrator** (staff/configuration plus finance authority). Distinct staff identities are mandatory; no shared demo password in production. Reversals and fee/tax/configuration changes require explicit reason and named actor. True two-person approval, if the school requires it, needs an independent approval record and a check that the approver is a different person; separate role names alone do not implement segregation of duties.
+
+For the first local implementation, an independent Node service and SQLite file on a local persistent disk provide an understandable transactional boundary. Serve its staff UI and API from one origin; keep all database, backups, session material and generated private documents outside the static public directory. Bind development to loopback by default. No enrolment cookie, API credential, DynamoDB table, route or deployment script needs to be reused.
+
+Before public operation, configure a separate HTTPS deployment, named accounts with MFA/SSO or an appropriate MFA mechanism, secret storage, durable storage/backups, monitoring and recovery procedure. A single-host SQLite deployment must remain single-host unless the storage architecture changes. Do not present a local demo as deployed or production-ready. No automatic invoice emails, bank transactions or accounting writes are part of the first export-only build.
+
+## Verification scenarios to carry into implementation
+
+- Issue invoice, make partial verified payment, apply a credit, finish payment, and reverse one payment; every displayed balance, receipt and audit entry agrees.
+- Pending/claimed payment leaves debt unchanged. Receipt generation rejects unverified and reversed payments. Reprinting preserves the original number and facts.
+- Two simultaneous payment allocations cannot overpay one invoice. Duplicate issue/payment requests create one result; reused idempotency key with changed content fails.
+- Zero-decimal/negative/huge/exponential inputs, mixed-tax lines and half-cent rounding cases behave deterministically. Credits cannot exceed the available debt or credit balance.
+- Viewer cannot issue, allocate, reverse, change configuration, access staff administration or evade checks through direct HTTP requests. Disabled/expired users lose session access.
+- Missing/incorrect CSRF, hostile origin, guessed document IDs, HTML in names and spreadsheet-formula prefixes fail safely.
+- Restart and backup restore preserve ledger totals, unique sequences, immutable snapshots, links and audit records. A failed export/sync remains visible without changing balances.
+- Synthetic CSV is checked against the actual AU Xero template and Demo Company before labelling the export as validated. Production tax/issuer/bank settings remain unconfirmed until configured.
+
+## Evidence limits and follow-up
+
+Official indexed content was used where ATO and some Xero pages could not render directly. The ATO ruling links expose historical point-in-time versions; their present currency and Rosewood-specific applicability have not been established. The large official Xero OpenAPI file was located but not audited. No claims here imply that Xero has been connected or an import tested. Finance still needs to confirm the accounting product, issuer/ABN/GST status, fee and deposit treatment, payment verification policy, account/tax mappings and live document sequence before real billing.

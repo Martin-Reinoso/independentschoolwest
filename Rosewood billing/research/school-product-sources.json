@@ -1,0 +1,472 @@
+{
+  "schema_version": 1,
+  "research_date": "2026-09-12",
+  "scope": "School product manuals and clearly distinguished evidence/access gaps",
+  "notes": [
+    "Null vendor_document_date means no complete date verified in inspected text.",
+    "Source content and vendor screenshots are not redistributed.",
+    "This manifest records research access, not current operational capability or API compatibility."
+  ],
+  "sources": [
+    {
+      "id": "A1",
+      "product": "Arbor",
+      "title": "Creating invoices",
+      "url": "https://support.arbor-education.com/hc/en-us/articles/360002935178-Creating-invoices",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": "2025-03-20",
+      "evidence_type": "official_operational_documentation",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "A2",
+      "product": "Arbor",
+      "title": "Reviewing, cancelling and crediting invoices",
+      "url": "https://support.arbor-education.com/hc/en-us/articles/212025145-Reviewing-cancelling-and-crediting-invoices",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": "2023-03-30",
+      "evidence_type": "official_operational_documentation",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "A3",
+      "product": "Arbor",
+      "title": "Providing an invoice or receipt showing payment",
+      "url": "https://support.arbor-education.com/hc/en-us/articles/4405377817105-Can-I-give-a-parent-an-invoice-or-receipt-showing-they-have-paid",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": "2024-09-03",
+      "evidence_type": "official_operational_documentation",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "B1",
+      "product": "Blackbaud Tuition Management",
+      "title": "Edit Billing Details",
+      "url": "https://webfiles-sc1.blackbaud.com/files/support/helpfiles/tuition-management/content/st-edit-billing-details.html",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "official_operational_documentation",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "B2",
+      "product": "Blackbaud Tuition Management",
+      "title": "Apply Fees & Discounts",
+      "url": "https://webfiles-sc1.blackbaud.com/files/support/helpfiles/tuition-management/content/st-family-fee-discount.html",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "official_operational_documentation",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "B3",
+      "product": "Blackbaud Tuition Management",
+      "title": "Reports",
+      "url": "https://webfiles-sc1.blackbaud.com/files/support/helpfiles/tuition-management/content/st-reports.html",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "official_operational_documentation",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "B4",
+      "product": "Blackbaud Tuition Management",
+      "title": "Enrolment contract integration: payer experience",
+      "url": "https://webfiles-sc1.blackbaud.com/files/support/helpfiles/education/k12/full-help/content/ems-smart-users.html",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "official_operational_documentation",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "M1",
+      "product": "Bromcom",
+      "title": "Accounts Receivable User Guide",
+      "url": "https://docs.bromcom.com/knowledge-base/accounts-receivable-user-guide/",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": "2026-08-17",
+      "evidence_type": "official_documentation_index",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "M2",
+      "product": "Bromcom",
+      "title": "Add a Sales Invoice in MAT Finance",
+      "url": "https://docs.bromcom.com/knowledge-base/how-to-add-a-sales-invoice-in-mat-finance/",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": "2024-03-14",
+      "evidence_type": "official_operational_documentation",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "M3",
+      "product": "Bromcom",
+      "title": "Process an Invoice Receipt",
+      "url": "https://docs.bromcom.com/knowledge-base/how-to-process-an-invoice-receipt-in-accounts-receivable/",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": "2026-06-12",
+      "evidence_type": "official_operational_documentation",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "M4",
+      "product": "Bromcom",
+      "title": "Process a Credit Note",
+      "url": "https://docs.bromcom.com/knowledge-base/how-to-process-a-credit-note-in-accounts-receivable/",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": "2026-04-17",
+      "evidence_type": "official_operational_documentation",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "M5",
+      "product": "Bromcom",
+      "title": "Process a Refund",
+      "url": "https://docs.bromcom.com/knowledge-base/how-to-process-a-refund-in-accounts-receivable/",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": "2026-04-17",
+      "evidence_type": "official_operational_documentation",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "M6",
+      "product": "Bromcom",
+      "title": "Create a Customer Statement",
+      "url": "https://docs.bromcom.com/knowledge-base/how-to-create-a-customer-statement-in-accounts-receivable/",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": "2026-06-04",
+      "evidence_type": "official_operational_documentation",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "C1",
+      "product": "Compass",
+      "title": "Billing Setup Guide",
+      "url": "https://home.compass.education/hubfs/Billing%20Setup%20Guide.pdf",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "official_operational_documentation",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "C2",
+      "product": "Compass",
+      "title": "Billing Management hub",
+      "url": "https://www.compass.education/compass-billing-management/",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "official_training_hub_and_feature_index",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "C3a",
+      "product": "Compass",
+      "title": "Troubleshooting Failed Payment Plans",
+      "url": "https://files.compass.education/external/bc11a8b2523197c206726d573b44b5a45fed693358f4b472c654aa65ac102545",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "viewer_only_preview_error",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "C3b",
+      "product": "Compass",
+      "title": "Adding Unallocated Funds/Credit",
+      "url": "https://files.compass.education/external/7e6e38e3d9a4dbbc49d31d45794b6422a207e333b98a653bce43de20421b7026",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "viewer_only_preview_error",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "C3c",
+      "product": "Compass",
+      "title": "Generating Receipts",
+      "url": "https://files.compass.education/external/e1c69fff288e2b62745eebfd2b5ef1b754e2ced069f1676d4444c9d6ace20bcb",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "viewer_only_preview_error",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "C3d",
+      "product": "Compass",
+      "title": "Guide to Billing Dashboard",
+      "url": "https://files.compass.education/external/bea9510d428543e67ab10653e8660f0737524aa9ca158a04d1fb810fc89a7170",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "viewer_only_preview_error",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "C3e",
+      "product": "Compass",
+      "title": "Billing Checklist",
+      "url": "https://home.compass.education/hubfs/Billing%20Checklist.pdf",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "initial_pdf_metadata_then_403",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "F1",
+      "product": "FACTS",
+      "title": "Australian caregiver payment-plan FAQ",
+      "url": "https://factsmgt.com/caregiver-faqs-ftm/",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "official_operational_documentation",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "F2",
+      "product": "FACTS",
+      "title": "Tuition Management Implementation Milestone Checklist",
+      "url": "https://factsmgt.com/wp-content/uploads/FACTS_Welcome_Kit_Milestone_Checklist.pdf",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "official_operational_documentation",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "F3",
+      "product": "FACTS",
+      "title": "Support",
+      "url": "https://factsmgt.com/support/",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "official_support_access_boundary",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "K1",
+      "product": "Schoolbox",
+      "title": "Schoolbox integration checklist, published by TASS",
+      "url": "https://tasshub.kb.tassweb.com.au/documentation/schoolbox-integration-checklist",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "official_partner_integration_manual",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "K2",
+      "product": "Schoolbox",
+      "title": "Database/SIS Administrator",
+      "url": "https://help.schoolbox.com.au/homepage/2911",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "login_redirect",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "S1",
+      "product": "Sentral",
+      "title": "How to Receive a Payment on an Invoice",
+      "url": "https://help.sentral.com.au/modules/payments/faq/1810471",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "official_operational_documentation",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "S2",
+      "product": "Sentral",
+      "title": "Apply an Instalment Plan to a Debtor",
+      "url": "https://help.sentral.com.au/modules/payments/faq/1810477",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "official_operational_documentation",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "S3",
+      "product": "Sentral",
+      "title": "Automatically push invoices to Xero",
+      "url": "https://help.sentral.com.au/modules/payments/faq/1912489",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "official_operational_documentation",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "S4",
+      "product": "Sentral",
+      "title": "Xero overpayments and prepayments in Sentral",
+      "url": "https://help.sentral.com.au/modules/fees%26billing/faq/2013614",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "official_operational_documentation",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "S5",
+      "product": "Sentral",
+      "title": "NSW DoE Finance FAQ index",
+      "url": "https://help.sentral.com.au/index.php/modules/finance/faq/2014205",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "official_documentation_index",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "Y1",
+      "product": "Synergetic",
+      "title": "Debtor Instalments",
+      "url": "https://synergetic.help.tes.com/support/solutions/articles/75000141113-debtor-instalments",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "official_operational_documentation",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "Y2",
+      "product": "Synergetic",
+      "title": "Split Payments tab, v65",
+      "url": "https://static.synergetic.net.au/v65/w65_html/1259.html",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": "2013-10-15",
+      "evidence_type": "official_historical_manual",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "Y3",
+      "product": "Synergetic",
+      "title": "Outstanding tab, v67",
+      "url": "https://static.synergetic.net.au/v67/w67_html/1295.html",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": "2016-09-16",
+      "evidence_type": "official_historical_manual",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "Y4",
+      "product": "Synergetic",
+      "title": "Community Portal & Payments FAQ",
+      "url": "https://synergetic.help.tes.com/support/solutions/articles/75000142057-synergetic-community-portal-payments",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "official_url_resolved_content_incompletely_read",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "T1",
+      "product": "TASS",
+      "title": "Auto Account Billing Checklist",
+      "url": "https://tasshub.kb.tassweb.com.au/documentation/auto-account-billing-checklist",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "official_operational_documentation",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "T2",
+      "product": "TASS",
+      "title": "Split Billing Accounts",
+      "url": "https://tasshub.kb.tassweb.com.au/documentation/pac-split-billing-accounts",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "official_operational_documentation",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "T3",
+      "product": "TASS",
+      "title": "Receipts",
+      "url": "https://tasshub.kb.tassweb.com.au/documentation/pac-receipts",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "official_operational_documentation",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "T4",
+      "product": "TASS",
+      "title": "Electronic Receipts Processing",
+      "url": "https://tasshub.kb.tassweb.com.au/documentation/pac-electronic-receipts-processing",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "official_operational_documentation",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "T5",
+      "product": "TASS",
+      "title": "Parent Account Inquiry",
+      "url": "https://tasshub.kb.tassweb.com.au/documentation/pac-parent-account-inquiry",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "official_operational_documentation",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "T6",
+      "product": "TASS",
+      "title": "Enrolment Detailed Entry",
+      "url": "https://tasshub.kb.tassweb.com.au/documentation/enr-detailed-entry-for-enrolment-applications",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "official_operational_documentation",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "T7",
+      "product": "TASS",
+      "title": "How to Reverse Fee Receipts",
+      "url": "https://tasshub.kb.tassweb.com.au/documentation/how-to-reverse-fee-receipts",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "official_operational_documentation",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "V1",
+      "product": "Veracross",
+      "title": "Veracross Tuition Management",
+      "url": "https://www.veracross.com/veracross-tuition-management/",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "official_marketing_with_manual_access_gap",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "V2",
+      "product": "Veracross",
+      "title": "Support",
+      "url": "https://www.veracross.com/support/",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "official_login_boundary",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "V3",
+      "product": "Veracross",
+      "title": "VC Pay Payer Support",
+      "url": "https://community.veracross.com/s/payersupport",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "shell_no_readable_manual",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "I1",
+      "product": "iSAMS",
+      "title": "iSAMS Fee Billing Manager",
+      "url": "https://www.isams.com/platform/modules/feebilling/",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "official_marketing_with_manual_access_gap",
+      "mapping_file": "school-products.md"
+    },
+    {
+      "id": "I2",
+      "product": "iSAMS",
+      "title": "Support",
+      "url": "https://support.isams.com/",
+      "accessed_on": "2026-09-12",
+      "vendor_document_date": null,
+      "evidence_type": "fetch_error",
+      "mapping_file": "school-products.md"
+    }
+  ]
+}
