@@ -2645,9 +2645,14 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     const taskHash = sha256(rawTask);
     const email = normalizeEmail(body.email);
     const task = await store.getSignatureTask(taskHash);
-    for (const [key, limit, seconds] of [[`sign-cooldown:${taskHash}:${sha256(email)}`, 1, 30], [`sign-task:${taskHash}`, 5, 1800], [`sign-email:${sha256(email)}`, 5, 1800]]) if (!await store.checkRateLimit(key, limit, seconds)) throw appError(429, "OTP_RATE_LIMIT", "Please wait before requesting another verification code.");
+    for (const [key, limit, seconds] of [[`sign-cooldown:${taskHash}:${sha256(email)}`, 1, 30], [`sign-task:${taskHash}`, 5, 1800]]) if (!await store.checkRateLimit(key, limit, seconds)) throw appError(429, "OTP_RATE_LIMIT", "Please wait before requesting another verification code.");
     const app = task ? await store.getApplication(task.applicationId) : null;
     const control = app && task ? signerControl(app, task.guardianId, task) : null;
+    // A private, current link and matching invited email may acknowledge completion,
+    // without disclosing the child or application or consuming a sibling's email quota.
+    const alreadySigned = task?.status === "signed" && task.expiresAt > clock() && task.email === email && control?.contactPermission && control.taskTokenHash === taskHash && control.currentEmail === email && control.signatureStatus === "complete" && task.revisionHash === app.revisionHash && app.signatures?.some(signature => signature.guardianId === task.guardianId && signature.revisionHash === task.revisionHash);
+    if (alreadySigned) return { signingStatus: "already_signed", message: "Your signature has already been recorded for this application. To sign for another child, open that child's separate signature-request email." };
+    if (!await store.checkRateLimit(`sign-email:${sha256(email)}`, 5, 1800)) throw appError(429, "OTP_RATE_LIMIT", "Please wait before requesting another verification code.");
     const valid = task && task.status === "invited" && task.expiresAt > clock() && task.email === email && app?.status === "pending_signatures" && control?.contactPermission && control.taskTokenHash === taskHash && control.currentEmail === email && control.signatureStatus === "pending";
     const challengeId = id("challenge");
     if (valid) {
@@ -2655,7 +2660,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
       await store.putChallenge({ id: challengeId, purpose: "application_signature", subjectHash: taskHash, email, applicationId: task.applicationId, guardianId: task.guardianId, taskGeneration: task.generation || 1, codeHmac: hmac(otpSecret, `${challengeId}:${verificationCode}`), attempts: 0, maxAttempts: 5, createdAt: clock(), expiresAt: clock() + 600_000, ttl: Math.floor((clock() + 86400_000) / 1000) });
       await mailer.send({ to: email, ...signatureOtp({ code: verificationCode }), tags: { workflow: "application", message_type: "signature_otp", record_id: app.id } });
     }
-    return { challengeId, expiresInSeconds: 600, resendAfterSeconds: 30, message: "If the signing request and email address match, a verification code has been sent." };
+    return { challengeId, expiresInSeconds: 600, resendAfterSeconds: 30, message: "If this signing request is awaiting your signature and the email address matches, a verification code has been sent." };
   }
 
   async function markSignatureOpened(event) {

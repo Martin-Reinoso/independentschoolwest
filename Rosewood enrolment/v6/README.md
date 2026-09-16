@@ -1,5 +1,15 @@
 # Rosewood Enrolment V6
 
+## Completed signing links (2026-09-16)
+
+EOI `2026.28` and Application `2026.29` preserve all existing question and answer
+contracts. A current, unexpired signed link with the matching invited email now shows
+**Signature already recorded**, with guidance to open each child's separate email.
+This acknowledgement creates no OTP or session and does not consume the shared email
+OTP allowance. Per-link and cooldown limits remain enforced. Unknown, expired,
+revoked, mismatched and contact-suppressed links retain the generic response.
+Submitted records and historical form definitions remain unchanged.
+
 ## Family-grouped reviewed communications (2026-09-03)
 
 The staff **Family communications** workspace can prepare the reusable **Application

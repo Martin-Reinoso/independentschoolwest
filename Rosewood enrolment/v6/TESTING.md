@@ -2028,3 +2028,16 @@ meeting record was created, changed or sent during release verification.
 - Existing production staff mailboxes and role mappings were preserved exactly. The
   new family-template endpoints remain restricted to `admin` and `admissions`; current
   viewer accounts were not granted send access.
+
+## Completed signing-link correction — 16 September 2026
+
+- Node 22.23.2: 175 automated backend tests pass, including completed-task privacy,
+  preservation of the sibling email allowance, contact/expiry/revocation boundaries,
+  unchanged pending OTP limits and retained link/cooldown limits.
+- All 55 preceding immutable definition hashes match the pre-change release. EOI
+  2026.28 / Application 2026.29 preserve their preceding question contracts.
+- Synthetic browser checks cover the completed screen, keyboard submission and focus,
+  desktop and 390px mobile layout. The local preview uses a mock endpoint and sends no
+  email or production request.
+- Static-reference and public-data gates pass. The deployment build validates pinned
+  asset hashes and imports the packaged Lambda handler.

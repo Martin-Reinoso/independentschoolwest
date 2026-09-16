@@ -103,8 +103,8 @@ deliberately creating a new version.
 Current launch contracts:
 
 ```text
-EOI:                      rosewood-eoi-2026.27
-Application:              rosewood-application-2026.28
+EOI:                      rosewood-eoi-2026.28
+Application:              rosewood-application-2026.29
 Application-link request: rosewood-application-link-request-2026.1
 Community enquiry:       rosewood-community-enquiry-2026.1
 ```
@@ -382,3 +382,12 @@ projection rebuild after verifying backups and destination workbook IDs.
 - Submitted snapshots and signatures retain the pinned version/hash.
 - Sheet columns are appended without shifting existing data.
 - Backup and restore procedures remain valid after the schema change.
+
+## Completed signing-link release (2026-09-16)
+
+EOI 2026.28 / Application 2026.29 pin the signing completion guidance and compatible
+family client. Their question contracts equal EOI 2026.27 / Application 2026.28. All
+55 preceding definition hashes are unchanged. The existing editable-record upgrade
+path remains in place; this release requires no data migration or submitted-record
+updates. Completion acknowledgement requires the current private task, matching email,
+contact permission and matching frozen signature evidence; it grants no session.

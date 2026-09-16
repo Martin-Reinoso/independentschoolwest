@@ -7,7 +7,7 @@
   const root = document.querySelector("#signing-root");
   const error = document.querySelector("#signing-error");
   const status = document.querySelector("#signing-status");
-  const state = { step: 0, email: "", code: "", challengeId: "", sessionToken: "", context: null, signed: false, resendAt: 0 };
+  const state = { step: 0, email: "", code: "", challengeId: "", sessionToken: "", context: null, signed: false, alreadySigned: false, resendAt: 0 };
   const labels = ["Verify identity", "Review application", "Sign", "Complete"];
 
   function esc(value) { return String(value ?? "").replace(/[&<>'"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]); }
@@ -37,8 +37,9 @@
 
   function identity() {
     if (!taskToken) return `<div class="notice legal-note"><strong>Private signing link required</strong><p>Open the unique link in the Rosewood College signature-request email.</p></div>`;
+    if (state.alreadySigned) return `<div class="signing-complete"><div class="success-mark" aria-hidden="true">&#10003;</div><h2 tabindex="-1" data-completed-heading>Signature already recorded</h2><p>Your signature has already been recorded for this application. No verification code is needed for this link.</p><div class="status-card"><strong>Signing for another child?</strong><p>Open that child's separate signature-request email and use its signing button. If your inbox groups the emails together, expand the individual messages to find the correct request.</p></div><p>You can close this page safely.</p></div>`;
     if (!state.challengeId) return `<div class="section-intro"><p class="eyebrow">Identity</p><h2>Verify your email</h2><p class="lead">Enter the email address that received this private signing request.</p></div><label class="field"><span>Email <span class="required">*</span></span><input name="email" type="email" autocomplete="email" value="${esc(state.email)}" required></label>${actions("Send verification code", false)}`;
-    return `<div class="section-intro"><p class="eyebrow">Identity</p><h2>Enter your code</h2><p class="lead">A six-digit code has been sent to the invited email address and expires after 10 minutes.</p></div><label class="field"><span>Verification code <span class="required">*</span></span><input name="code" inputmode="numeric" maxlength="6" value="${esc(state.code)}" required></label><p class="resend-status" aria-live="polite">Use the most recent code sent by Rosewood College.</p><div class="inline-actions"><button type="button" class="button button-secondary" data-resend>Resend code</button></div>${actions("Verify and continue")}`;
+    return `<div class="section-intro"><p class="eyebrow">Identity</p><h2>Enter your code</h2><p class="lead">If this signing request is awaiting your signature and the email address matches, a six-digit code will be emailed. The code expires after 10 minutes.</p></div><label class="field"><span>Verification code <span class="required">*</span></span><input name="code" inputmode="numeric" maxlength="6" value="${esc(state.code)}" required></label><p class="resend-status" aria-live="polite">Use the most recent code sent by Rosewood College. Each child has a separate signature-request email; open the correct message if your inbox groups them together.</p><div class="inline-actions"><button type="button" class="button button-secondary" data-resend>Resend code</button></div>${actions("Verify and continue")}`;
   }
 
   function reviewGroup(group) {
@@ -70,10 +71,12 @@
   }
 
   function render() {
-    document.querySelector("#signing-steps").innerHTML = labels.map((label, index) => `<li class="${index === state.step ? "is-current" : index < state.step ? "is-complete" : ""}">${index + 1}. ${label}</li>`).join("");
+    const progressStep = state.alreadySigned ? 3 : state.step;
+    document.querySelector("#signing-steps").innerHTML = labels.map((label, index) => `<li class="${index === progressStep ? "is-current" : index < progressStep ? "is-complete" : ""}">${index + 1}. ${label}</li>`).join("");
     root.innerHTML = [identity, review, sign, complete][state.step]();
     clearError();
     if (state.step === 2) bindCanvas();
+    if (state.alreadySigned) root.querySelector("[data-completed-heading]").focus();
   }
 
   function bindCanvas() {
@@ -93,13 +96,15 @@
 
   async function requestCode() {
     const result = await api("/v6/application/signatures/request-code", { taskToken, email: state.email });
-    state.challengeId = result.challengeId;
-    state.resendAt = Date.now() + result.resendAfterSeconds * 1000;
+    state.alreadySigned = result.signingStatus === "already_signed";
+    state.challengeId = state.alreadySigned ? "" : result.challengeId;
+    state.resendAt = state.alreadySigned ? 0 : Date.now() + result.resendAfterSeconds * 1000;
+    setStatus(state.alreadySigned ? "Signature already recorded" : "Check your email", state.alreadySigned ? "No code is needed for this link" : "Use the correct child's signing request", state.alreadySigned);
   }
 
   form.addEventListener("submit", async event => {
     event.preventDefault(); clearError();
-    if (!form.reportValidity()) return;
+    if (state.alreadySigned || !form.reportValidity()) return;
     const button = root.querySelector('button[type="submit"]');
     button.disabled = true;
     try {
@@ -114,7 +119,14 @@
     if (event.target.closest("[data-back]")) { state.step = Math.max(0, state.step - 1); render(); }
     if (event.target.closest("[data-resend]")) {
       if (Date.now() < state.resendAt) return showError("Please wait before requesting another code.");
-      try { await requestCode(); root.querySelector(".resend-status").textContent = "A new code has been sent if the signing request and email match."; } catch (caught) { showError(caught.message); }
+      const button = event.target.closest("[data-resend]");
+      button.disabled = true;
+      try {
+        await requestCode();
+        if (state.alreadySigned) render();
+        else root.querySelector(".resend-status").textContent = "If this request is awaiting your signature and the email matches, a new code has been sent. Use the separate signing request for each child.";
+      } catch (caught) { showError(caught.message); }
+      finally { button.disabled = false; }
     }
   });
 

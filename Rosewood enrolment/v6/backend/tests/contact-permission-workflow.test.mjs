@@ -529,3 +529,103 @@ test("DynamoDB conditions bind signing and correction to the current task genera
   assert.match(source, /ConditionExpression: "#data\.\#status = :invited"/);
   assert.match(source, /attribute_not_exists\(PK\)/);
 });
+
+function completedSigningFixture() {
+  const result = fixture();
+  const app = result.store.applications.get(result.app.id);
+  const task = result.store.tasks.get(result.task.tokenHash);
+  task.status = "signed";
+  app.status = "submitted";
+  app.signerControls[1].signatureStatus = "complete";
+  app.signatures.push({ id: "signature-additional", guardianId: task.guardianId, revisionHash: task.revisionHash });
+  return result;
+}
+
+test("completed signing links acknowledge only completion without consuming sibling email allowance or mutating records", async () => {
+  const { app, store, sent, service, taskToken, task } = completedSigningFixture();
+  const before = structuredClone(store.applications.get(app.id));
+  const requestedLimits = [];
+  store.checkRateLimit = async key => { requestedLimits.push(key); return !key.startsWith("sign-email:"); };
+  const response = await service(request("/v6/application/signatures/request-code", "POST", { taskToken, email: task.email.toUpperCase() }));
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(JSON.parse(response.body), {
+    signingStatus: "already_signed",
+    message: "Your signature has already been recorded for this application. To sign for another child, open that child's separate signature-request email."
+  });
+  assert.equal(requestedLimits.some(key => key.startsWith("sign-email:")), false);
+  assert.equal(store.challenges.size, 0);
+  assert.equal(sent.length, 0);
+  assert.equal(store.sessions.size, 0);
+  assert.deepEqual(store.applications.get(app.id), before);
+  assert.equal(store.outbox.length, 0);
+});
+
+test("checking a completed sibling link leaves the shared allowance available for a pending sibling", async () => {
+  const { store, sent, service, taskToken, task } = completedSigningFixture();
+  const sibling = application();
+  sibling.app.id = "app-synthetic-sibling";
+  sibling.taskToken = "synthetic-pending-sibling-signing-token";
+  sibling.task.tokenHash = hash(sibling.taskToken);
+  sibling.task.applicationId = sibling.app.id;
+  sibling.app.signerControls[1].taskTokenHash = sibling.task.tokenHash;
+  store.applications.set(sibling.app.id, sibling.app);
+  store.tasks.set(sibling.task.tokenHash, sibling.task);
+  let emailRequests = 4;
+  store.checkRateLimit = async key => !key.startsWith("sign-email:") || ++emailRequests <= 5;
+  for (let i = 0; i < 3; i++) {
+    const completed = await service(request("/v6/application/signatures/request-code", "POST", { taskToken, email: task.email }));
+    assert.equal(JSON.parse(completed.body).signingStatus, "already_signed");
+  }
+  const pending = await service(request("/v6/application/signatures/request-code", "POST", { taskToken: sibling.taskToken, email: task.email }));
+  assert.equal(pending.statusCode, 200);
+  assert.ok(JSON.parse(pending.body).challengeId);
+  assert.equal(emailRequests, 5);
+  assert.equal(sent.length, 1);
+  assert.equal([...store.challenges.values()][0].applicationId, sibling.app.id);
+  const capped = await service(request("/v6/application/signatures/request-code", "POST", { taskToken: sibling.taskToken, email: task.email }));
+  assert.equal(capped.statusCode, 429);
+  assert.equal(sent.length, 1);
+});
+
+test("completed acknowledgement fails closed for mismatched, expired, revoked, suppressed or inconsistent signing evidence", async () => {
+  const cases = [
+    ["wrong email", context => { context.email = "different@example.test"; }],
+    ["unknown link", context => { context.taskToken = "synthetic-unknown-token"; }],
+    ["expired", context => { context.storedTask.expiresAt = NOW; }],
+    ["revoked", context => { context.storedTask.status = "revoked"; }],
+    ["no contact", context => { context.control.contactPermission = false; }],
+    ["replaced link", context => { context.control.taskTokenHash = "replacement-task-hash"; }],
+    ["changed email", context => { context.control.currentEmail = "replacement@example.test"; }],
+    ["pending control", context => { context.control.signatureStatus = "pending"; }],
+    ["missing evidence", context => { context.storedApp.signatures = []; }],
+    ["other revision", context => { context.storedTask.revisionHash = "another-revision"; }]
+  ];
+  let genericResponse;
+  for (const [label, change] of cases) {
+    const context = completedSigningFixture();
+    context.storedApp = context.store.applications.get(context.app.id);
+    context.storedTask = context.store.tasks.get(context.task.tokenHash);
+    context.control = context.storedApp.signerControls[1];
+    context.email = context.task.email;
+    change(context);
+    const response = await context.service(request("/v6/application/signatures/request-code", "POST", { taskToken: context.taskToken, email: context.email }));
+    assert.equal(response.statusCode, 200, label);
+    const { challengeId, ...body } = JSON.parse(response.body);
+    assert.ok(challengeId, label);
+    genericResponse ||= body;
+    assert.deepEqual(body, genericResponse, label);
+    assert.equal(context.store.challenges.size, 0, label);
+    assert.equal(context.sent.length, 0, label);
+  }
+});
+
+test("completed signing acknowledgements retain per-link and cooldown throttles", async () => {
+  for (const prefix of ["sign-cooldown:", "sign-task:"]) {
+    const { store, sent, service, taskToken, task } = completedSigningFixture();
+    store.checkRateLimit = async key => !key.startsWith(prefix);
+    const response = await service(request("/v6/application/signatures/request-code", "POST", { taskToken, email: task.email }));
+    assert.equal(response.statusCode, 429);
+    assert.equal(JSON.parse(response.body).error, "OTP_RATE_LIMIT");
+    assert.equal(sent.length, 0);
+  }
+});
