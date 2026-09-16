@@ -1,5 +1,24 @@
 # V6 Recovery Runbook
 
+## Guardian reports a missing signing OTP
+
+1. Identify the specific child's Application and current signer task using restricted,
+   projection-limited metadata. Siblings have separate signature-request links.
+2. Distinguish invitation delivery, an actual OTP challenge/send, and a generic code
+   request response. A generic success response alone is not evidence of an email.
+3. Compare task status/expiry, current task hash, matching invited email, contact
+   permission, signature evidence and per-task/email rate counters. Do not print tokens,
+   code HMACs, full addresses or family answers in ordinary output or Git.
+4. For a completed task, direct the guardian to the other child's separate email. If
+   messages are grouped, expand them individually. From Application 2026.29, a current
+   completed task plus matching email shows **Signature already recorded** and does not
+   consume the shared email OTP allowance; link/cooldown throttles still apply.
+5. For an actual send, correlate its SES handoff and delivery feedback. Mail-server
+   delivery does not prove inbox placement. Preserve limits and contact restrictions;
+   do not create a duplicate application, bypass OTP or reopen a completed signature.
+6. Do not send a replacement invitation or OTP during a read-only investigation.
+   A resend is a separate, expressly authorised family communication.
+
 ## Reviewed family communications
 
 - The main DynamoDB table is authoritative for the `FAMILY_COMM` master, recipient

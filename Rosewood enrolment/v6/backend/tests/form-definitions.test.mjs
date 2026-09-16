@@ -104,7 +104,7 @@ test("the current release keeps earlier contracts addressable and changes only p
   assert.equal(v25.formVersion, "rosewood-application-2026.25");
   assert.equal(v26.formVersion, "rosewood-application-2026.26");
   assert.equal(v27.formVersion, "rosewood-application-2026.27");
-  assert.equal(current.formVersion, "rosewood-application-2026.28");
+  assert.equal(current.formVersion, "rosewood-application-2026.29");
   assert.deepEqual(v13.contract, previous.contract);
   assert.deepEqual(v13.contract, v11.contract);
   assert.deepEqual(v13.contract, v12.contract);
@@ -136,7 +136,7 @@ test("the current release keeps earlier contracts addressable and changes only p
   assert.equal(v24Eoi.formVersion, "rosewood-eoi-2026.24");
   assert.equal(v25Eoi.formVersion, "rosewood-eoi-2026.25");
   assert.equal(v26Eoi.formVersion, "rosewood-eoi-2026.26");
-  assert.equal(currentEoi.formVersion, "rosewood-eoi-2026.27");
+  assert.equal(currentEoi.formVersion, "rosewood-eoi-2026.28");
   assert.deepEqual(currentEoi.contract, previousEoi.contract);
   assert.deepEqual(currentEoi.contract, v11Eoi.contract);
   assert.deepEqual(currentEoi.contract, v12Eoi.contract);
@@ -151,4 +151,11 @@ test("the current release keeps earlier contracts addressable and changes only p
   assert.ok(!current.contract.requiredFields.includes("previous_school_attended"));
   assert.deepEqual(current.contract.retiredInterfaceFields, ["previous_school_attended", "previous_school_name", "previous_school_year_level"]);
   assert.equal(current.contract.optionalSurveyFields.length, 11);
+});
+
+test("completed signing release preserves preceding immutable definitions and question contracts", () => {
+  assert.equal(getFormDefinition("eoi", "rosewood-eoi-2026.27").definitionHash, "70c88842c3f6c5da1319cc22f0aca2f468db0fff4d2fe878d9c4cbb990059159");
+  assert.deepEqual(currentFormDefinition("eoi").contract, getFormDefinition("eoi", "rosewood-eoi-2026.27").contract);
+  assert.equal(getFormDefinition("application", "rosewood-application-2026.28").definitionHash, "575b612709bde463cd6d7e2e19c260c09a3be3082a10aa575b6e883a9a7af14c");
+  assert.deepEqual(currentFormDefinition("application").contract, getFormDefinition("application", "rosewood-application-2026.28").contract);
 });
