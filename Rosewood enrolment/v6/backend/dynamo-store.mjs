@@ -1,3 +1,5 @@
+import { activeInvitationAccess, invitationHasNoExpiry, invitationTtlAttributes } from "./invitation-access.mjs";
+import { SCHEMA_VERSION } from "./schema.mjs";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DeleteCommand, DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand, ScanCommand, TransactWriteCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 
@@ -609,8 +611,8 @@ export class DynamoStore {
 
   async createInvitation({ invitation, tokenHash, application, revisionRecord, outboxEvents, auditEvents = [], applicationRequest = null, requestEmailIndex = null, idempotency = null }) {
     const actions = [
-      { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE#${tokenHash}`), entity: "invitation", ttl: Math.floor(invitation.expiresAt / 1000) + 86400, data: invitation }, ConditionExpression: "attribute_not_exists(PK)" } },
-      { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE_ID#${invitation.id}`), entity: "invitation_index", ttl: Math.floor(invitation.expiresAt / 1000) + 86400, data: invitation }, ConditionExpression: "attribute_not_exists(PK)" } },
+      { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE#${tokenHash}`), entity: "invitation", ...invitationTtlAttributes(invitation), data: invitation }, ConditionExpression: "attribute_not_exists(PK)" } },
+      { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE_ID#${invitation.id}`), entity: "invitation_index", ...invitationTtlAttributes(invitation), data: invitation }, ConditionExpression: "attribute_not_exists(PK)" } },
       { Put: { TableName: this.tableName, Item: { ...this.key(`APP#${application.id}`, "CURRENT"), entity: "application", data: application }, ConditionExpression: "attribute_not_exists(PK)" } },
       this.revisionAction(application.id, revisionRecord)
     ];
@@ -632,7 +634,7 @@ export class DynamoStore {
   }
 
   async reissueInvitationForApplicationRequest({ invitation, previousTokenHash, previousInvitationExists = true, tokenHash, applicationRequest, requestEmailIndex, idempotency, outboxEvents, auditEvents = [] }) {
-    const ttl = Math.floor(invitation.expiresAt / 1000) + 86400;
+    const lifetime = invitationTtlAttributes(invitation);
     const indexCondition = previousInvitationExists
       ? previousTokenHash
         ? {
@@ -648,8 +650,8 @@ export class DynamoStore {
       : { ConditionExpression: "attribute_not_exists(PK)" };
     const actions = [
       ...(previousTokenHash ? [{ Delete: { TableName: this.tableName, Key: this.key(`INVITE#${previousTokenHash}`) } }] : []),
-      { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE#${tokenHash}`), entity: "invitation", ttl, data: invitation }, ConditionExpression: "attribute_not_exists(PK)" } },
-      { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE_ID#${invitation.id}`), entity: "invitation_index", ttl, data: invitation }, ...indexCondition } },
+      { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE#${tokenHash}`), entity: "invitation", ...lifetime, data: invitation }, ConditionExpression: "attribute_not_exists(PK)" } },
+      { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE_ID#${invitation.id}`), entity: "invitation_index", ...lifetime, data: invitation }, ...indexCondition } },
       { Put: { TableName: this.tableName, Item: { ...this.key(`APP_REQUEST#${applicationRequest.id}`), entity: "application_request", data: applicationRequest }, ConditionExpression: "attribute_not_exists(PK)" } },
       { Put: { TableName: this.tableName, Item: { ...this.key(`APP_REQUEST_EMAIL#${requestEmailIndex.emailHash}`), entity: "application_request_email_index", data: requestEmailIndex }, ConditionExpression: "attribute_not_exists(PK) OR #data.#invitationId = :invitationId", ExpressionAttributeNames: { "#data": "data", "#invitationId": "invitationId" }, ExpressionAttributeValues: { ":invitationId": invitation.id } } },
       { Put: { TableName: this.tableName, Item: { ...this.key(`IDEMPOTENCY#${idempotency.keyHash}`), entity: "idempotency", ttl: idempotency.ttl, data: idempotency }, ConditionExpression: "attribute_not_exists(PK)" } },
@@ -670,12 +672,12 @@ export class DynamoStore {
   }
 
   async rotateInvitation({ invitation, previousTokenHash, tokenHash, outboxEvents, auditEvents = [] }) {
-    const ttl = Math.floor(invitation.expiresAt / 1000) + 86400;
+    const lifetime = invitationTtlAttributes(invitation);
     try {
       await this.client.send(new TransactWriteCommand({ TransactItems: [
         { Delete: { TableName: this.tableName, Key: this.key(`INVITE#${previousTokenHash}`), ConditionExpression: "attribute_exists(PK)" } },
-        { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE#${tokenHash}`), entity: "invitation", ttl, data: invitation }, ConditionExpression: "attribute_not_exists(PK)" } },
-        { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE_ID#${invitation.id}`), entity: "invitation_index", ttl, data: invitation }, ConditionExpression: "#data.#tokenHash = :previous", ExpressionAttributeNames: { "#data": "data", "#tokenHash": "tokenHash" }, ExpressionAttributeValues: { ":previous": previousTokenHash } } },
+        { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE#${tokenHash}`), entity: "invitation", ...lifetime, data: invitation }, ConditionExpression: "attribute_not_exists(PK)" } },
+        { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE_ID#${invitation.id}`), entity: "invitation_index", ...lifetime, data: invitation }, ConditionExpression: "#data.#tokenHash = :previous", ExpressionAttributeNames: { "#data": "data", "#tokenHash": "tokenHash" }, ExpressionAttributeValues: { ":previous": previousTokenHash } } },
         ...this.outboxActions(outboxEvents),
         ...this.auditActions(auditEvents)
       ] }));
@@ -684,7 +686,7 @@ export class DynamoStore {
   }
 
   async renewInvitationAccess({ invitation, previousInvitation = null, tokenHash, expectedApplication, outboxEvents, auditEvents = [] }) {
-    const ttl = Math.floor(invitation.expiresAt / 1000) + 86400;
+    const lifetime = invitationTtlAttributes(invitation);
     const indexCondition = previousInvitation
       ? previousInvitation.tokenHash
         ? {
@@ -707,8 +709,8 @@ export class DynamoStore {
         ExpressionAttributeValues: { ":invitationId": expectedApplication.invitationId, ":status": expectedApplication.status, ":revision": expectedApplication.revision }
       } },
       ...(previousInvitation?.tokenHash ? [{ Delete: { TableName: this.tableName, Key: this.key(`INVITE#${previousInvitation.tokenHash}`) } }] : []),
-      { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE#${tokenHash}`), entity: "invitation", ttl, data: invitation }, ConditionExpression: "attribute_not_exists(PK)" } },
-      { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE_ID#${invitation.id}`), entity: "invitation_index", ttl, data: invitation }, ...indexCondition } },
+      { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE#${tokenHash}`), entity: "invitation", ...lifetime, data: invitation }, ConditionExpression: "attribute_not_exists(PK)" } },
+      { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE_ID#${invitation.id}`), entity: "invitation_index", ...lifetime, data: invitation }, ...indexCondition } },
       ...this.outboxActions(outboxEvents),
       ...this.auditActions(auditEvents)
     ];
@@ -722,26 +724,48 @@ export class DynamoStore {
   }
 
   async addApplicationToInvitation({ invitation, expectedFamilyRevision, application, revisionRecord, outboxEvents, auditEvents = [] }) {
-    const ttl = Math.floor(invitation.expiresAt / 1000) + 86400;
+    const lifetime = invitationTtlAttributes(invitation);
     const revisionCondition = expectedFamilyRevision === 0
       ? "attribute_not_exists(#data.#familyRevision) OR #data.#familyRevision = :familyRevision"
       : "#data.#familyRevision = :familyRevision";
     const invitationCondition = {
-      ConditionExpression: `#data.#tokenHash = :tokenHash AND (${revisionCondition})`,
-      ExpressionAttributeNames: { "#data": "data", "#tokenHash": "tokenHash", "#familyRevision": "familyRevision" },
-      ExpressionAttributeValues: { ":tokenHash": invitation.tokenHash, ":familyRevision": expectedFamilyRevision }
+      ConditionExpression: `#data.#tokenHash = :tokenHash AND (${revisionCondition}) AND (attribute_not_exists(#data.#expiryPolicy) OR #data.#expiryPolicy = :expiryPolicy)`,
+      ExpressionAttributeNames: { "#data": "data", "#tokenHash": "tokenHash", "#familyRevision": "familyRevision", "#expiryPolicy": "expiryPolicy" },
+      ExpressionAttributeValues: { ":tokenHash": invitation.tokenHash, ":familyRevision": expectedFamilyRevision, ":expiryPolicy": invitation.expiryPolicy || "" }
     };
     try {
       await this.client.send(new TransactWriteCommand({ TransactItems: [
         { Put: { TableName: this.tableName, Item: { ...this.key(`APP#${application.id}`, "CURRENT"), entity: "application", data: application }, ConditionExpression: "attribute_not_exists(PK)" } },
         this.revisionAction(application.id, revisionRecord),
-        { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE#${invitation.tokenHash}`), entity: "invitation", ttl, data: invitation }, ...invitationCondition } },
-        { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE_ID#${invitation.id}`), entity: "invitation_index", ttl, data: invitation }, ...invitationCondition } },
+        { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE#${invitation.tokenHash}`), entity: "invitation", ...lifetime, data: invitation }, ...invitationCondition } },
+        { Put: { TableName: this.tableName, Item: { ...this.key(`INVITE_ID#${invitation.id}`), entity: "invitation_index", ...lifetime, data: invitation }, ...invitationCondition } },
         ...this.outboxActions(outboxEvents),
         ...this.auditActions(auditEvents)
       ] }));
       return { invitation, application };
     } catch (error) { if (conditional(error)) throw conflict("The family invitation changed before the child application could be added. Refresh and try again."); throw error; }
+  }
+
+  // Operator-only migration: never rotate tokens, create access or modify Applications.
+  async removeInvitationExpiry({ invitation, actorId, outboxEvents = [] }) {
+    if (invitationHasNoExpiry(invitation)) return { changed: false };
+    const now = this.now();
+    if (!activeInvitationAccess(invitation, now) || typeof invitation.expiresAt !== "number") throw conflict("Only a currently valid invitation can lose its expiry.");
+    if (!actorId || outboxEvents.some(event => event.kind !== "sheet")) throw new Error("Migration requires an actor and permits reporting events only.");
+    const occurredAt = new Date(now).toISOString();
+    const audit = { eventId: `invitation-lifetime-${invitation.id}`, workflow: "operations", recordId: invitation.applicationId, invitationId: invitation.id, type: "application.invitation_expiry_removed", schemaVersion: SCHEMA_VERSION, occurredAt, actorType: "staff", actorId, details: { previousExpiresAt: invitation.expiresAt, expiryPolicy: "none" } };
+    const updates = [`INVITE#${invitation.tokenHash}`, `INVITE_ID#${invitation.id}`].map(PK => ({ Update: {
+      TableName: this.tableName, Key: this.key(PK),
+      UpdateExpression: "SET #data.#policy = :none, #data.#expiresAt = :null, #data.#changedAt = :at REMOVE #ttl",
+      // Compare the complete small invitation map, so neither index can race a resend or sibling update.
+      ConditionExpression: "#data = :expected AND #data.#expiresAt > :now",
+      ExpressionAttributeNames: { "#data": "data", "#policy": "expiryPolicy", "#expiresAt": "expiresAt", "#changedAt": "expiryRemovedAt", "#ttl": "ttl" },
+      ExpressionAttributeValues: { ":expected": invitation, ":none": "none", ":null": null, ":at": occurredAt, ":now": now }
+    } }));
+    try {
+      await this.client.send(new TransactWriteCommand({ TransactItems: [...updates, ...this.auditActions([audit]), ...this.outboxActions(outboxEvents)] }));
+      return { changed: true };
+    } catch (error) { if (conditional(error)) throw conflict("Invitation changed or an index is missing; re-read before retrying migration."); throw error; }
   }
 
   async putChallenge(challenge) {

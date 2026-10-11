@@ -165,8 +165,8 @@ Decision date: 7 August 2026
 - No EOI is automatically linked, even when the email matches. EOI prefill remains an
   explicit staff decision through the EOI-linked invitation workflow.
 - A repeat request uses the same invitation and Application identifiers, rotates the
-  private token and sends a new 14-day link. It must not reopen a submitted child
-  application or create a duplicate family application.
+  private token and sends a replacement link without automatic expiry. It must not
+  reopen a submitted child application or create a duplicate family application.
 - Public responses are generic. Server-side idempotency, bot friction and network and
   hashed-email throttles run before records or email are created.
 - The permanent launch-capacity limits allow up to 100 public Application-link
@@ -211,7 +211,9 @@ Decision date: 7 August 2026
   invitation. The launch safety limit is eight child applications per invitation.
 - The backend retains the original `applicationId` on an invitation and also records
   `applicationIds` so earlier one-child records remain compatible.
-- Invitations and resends expire 14 days after they are issued.
+- From 11 October 2026, Application invitations, resends and renewals have no automatic
+  expiry, as explicitly requested by the user. Replacement links still rotate the
+  token; revoked, expired legacy and missing invitations do not become valid automatically.
 - An editable application with an active invitation uses **Resend**, which rotates the
   current token. An editable application whose invitation access is expired, inactive
   or missing uses the separate **Renew access** operation.
@@ -221,7 +223,8 @@ Decision date: 7 August 2026
   active invitation or a non-editable application.
 - Direct and deliberately EOI-linked invitations use separate approved email variants.
   Both use the subject `Invitation to Apply for Enrolment at Rosewood College`, a
-  private `BEGIN APPLICATION` button, enrolment contact details and the exact expiry.
+  private `BEGIN APPLICATION` button, enrolment contact details and the link lifetime
+  (no automatic expiry for new links).
   The HTML contains the private URL only in the button; the plain-text alternative
   contains the URL once. The visible sender is
   `Rosewood College Enrolment <enrolment@ffe.org.au>`.

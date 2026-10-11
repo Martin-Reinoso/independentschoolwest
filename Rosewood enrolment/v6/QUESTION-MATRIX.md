@@ -204,3 +204,8 @@ Rosewood issues an offer and the family accepts it, the future post-offer Enrolm
 Agreement/onboarding workflow must request that permission explicitly before any
 previous institution is contacted. It must have its own form version, audit event and
 consent evidence; it must not infer consent from the institution name supplied here.
+
+
+## Application invitation lifetime — 11 October 2026
+
+11 October 2026: Application invitation access has no automatic expiry for new or explicitly migrated valid links. This changes no question, answer requirement, consent rule, form version, signature lifetime or verification-code lifetime.

@@ -367,3 +367,36 @@ completion in DynamoDB or the authorised staff portal before taking action.
 Run a synthetic DynamoDB restore drill at least annually and after material storage
 changes. Restore to new resources, verify encryption and counts, test the projection
 dry run, and clean up only after approval. Never use a real family record as a canary.
+
+
+## Remove automatic Application invitation expiry (11 October 2026)
+
+Deploy the compatible backend first. Create and verify AVAILABLE on-demand backups
+of both the main and audit tables before applying the metadata migration. Run from
+`backend` using credentials for the verified production account and Sydney region:
+
+```text
+node scripts/remove-invitation-expiry.mjs --table=MAIN_TABLE --audit-table=AUDIT_TABLE
+node scripts/remove-invitation-expiry.mjs --table=MAIN_TABLE --audit-table=AUDIT_TABLE --apply --actor=OPERATOR --confirm=REMOVE_VALID_INVITATION_EXPIRY
+```
+
+Dry-run prints aggregate counts only. Apply selects only retained, active, unexpired
+Application invitations with numeric legacy expiries. The two invitation indexes are
+updated in one conditional transaction with an audit and a reporting-only outbox event.
+The transaction compares the existing invitation maps and expiry, removes both TTLs,
+sets `expiryPolicy: "none"` / `expiresAt: null`, and preserves the current token, family
+identity, child membership and all Application records. A concurrent resend, sibling
+addition or deleted index produces a conflict; re-read and rerun, never force an old
+snapshot. Reruns skip permanent links. Missing or already expired/revoked links require
+the existing deliberate renewal flow; they must not be resurrected by the migration.
+
+Confirm a subsequent dry-run has no candidates, both indexes agree and have no TTL,
+Application metadata/digests are unchanged, the audit exists, and reporting-only work
+has drained. No replacement email or OTP is sent by this script. Old email copy can
+still mention the former date; the retained URL now follows the stored lifetime.
+
+Do not roll back to a backend that treats null expiry as expired after migration.
+Prefer a forward fix preserving `invitation-access.mjs`. If a full rollback is needed,
+use the restricted backup/audit previous expiries and conditional updates on only the
+unchanged migrated tokens; assess dates that have since passed before restoring them.
+Do not restore a table over live production or re-enable a revoked/replaced token.

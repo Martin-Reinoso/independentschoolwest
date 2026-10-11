@@ -697,6 +697,9 @@ test("resending rotates the invitation token and invalidates the previous hash",
   assert.equal(store.rotated.previousTokenHash, "old-token-hash");
   assert.notEqual(store.rotated.tokenHash, "old-token-hash");
   assert.equal(store.rotated.invitation.tokenHash, store.rotated.tokenHash);
+  assert.equal(store.rotated.invitation.expiryPolicy, "none");
+  assert.equal(store.rotated.invitation.expiresAt, null);
+  assert.equal(result.expiresAt, "");
   assert.equal(store.rotated.outboxEvents[0].kind, "email");
 });
 
@@ -767,6 +770,8 @@ test("renewing an expired invitation revokes its retained token and preserves fa
   const store = new StaffStore();
   const created = await createApplicationInvitation({ store, recipientEmail: "family@example.com", firstName: "Alex", applicationUrl: "https://ffe.org.au/form", clock: () => now });
   const expiredInvitation = store.invitationIds.get(created.invitationId);
+  delete expiredInvitation.expiryPolicy;
+  expiredInvitation.expiresAt = now + 14 * 86400_000;
   const secondApplication = { ...structuredClone(store.applications.get(created.applicationId)), id: "app-second-child", studentId: "student-second", revision: 5, values: { app_guardian_0_first: "Alex", app_guardian_0_email: "family@example.com", student_first: "Second" } };
   store.applications.set(secondApplication.id, secondApplication);
   expiredInvitation.applicationIds = [created.applicationId, secondApplication.id];
@@ -778,6 +783,8 @@ test("renewing an expired invitation revokes its retained token and preserves fa
   const replacement = store.invitationIds.get(created.invitationId);
 
   assert.equal(store.invitations.has(expiredInvitation.tokenHash), false);
+  assert.equal(replacement.expiryPolicy, "none");
+  assert.equal(replacement.expiresAt, null);
   assert.deepEqual(new Set(replacement.applicationIds), new Set([created.applicationId, secondApplication.id]));
   assert.equal(store.applications.get(secondApplication.id).revision, 5);
   assert.equal(store.applications.size, 2);
@@ -1002,4 +1009,53 @@ test("principal meeting schedules use private invitations and atomically create 
   const staffMeetings = JSON.parse((await service(event("/v6/staff/meetings", "GET", null, sessionToken))).body);
   assert.equal(staffMeetings.series[0].invitations[0].booking.id, firstBooking.id);
   assert.equal(staffMeetings.series[0].invitations[0].booking.revision, 2);
+});
+
+test("permanent application links work after six months while OTP expiry, email matching and revocation remain enforced", async () => {
+  let now = clock();
+  const { service, store, sent } = staffService({ clockFn: () => now });
+  // Model the real store's challenge expiry/consumption boundary, unlike the broad staff fixture.
+  store.consumeChallenge = async (id, digest, time) => {
+    const challenge = store.challenges.get(id);
+    if (!challenge || challenge.expiresAt <= time || challenge.codeHmac !== digest || challenge.consumedAt) return null;
+    challenge.consumedAt = time;
+    return challenge;
+  };
+  const created = await createApplicationInvitation({ store, recipientEmail: "synthetic@example.test", firstName: "Synthetic", applicationUrl: "https://ffe.org.au/form", clock: () => now });
+  const invitationToken = new URL(created.invitationUrl).searchParams.get("invite");
+  now += 180 * 86400_000;
+  const requestCode = async email => JSON.parse((await service(event("/v6/application/access/request-code", "POST", { invitationToken, email }))).body);
+  const verifyCode = (challengeId, code) => service(event("/v6/application/access/verify-code", "POST", { invitationToken, challengeId, code }));
+  await requestCode("wrong@example.test");
+  assert.equal(sent.length, 0);
+  const expired = await requestCode("synthetic@example.test");
+  const oldCode = sent.at(-1).text.match(/\b\d{6}\b/)[0];
+  now += 600_001;
+  assert.equal((await verifyCode(expired.challengeId, oldCode)).statusCode, 401);
+  const active = await requestCode("synthetic@example.test");
+  const currentCode = sent.at(-1).text.match(/\b\d{6}\b/)[0];
+  assert.equal((await verifyCode(active.challengeId, currentCode)).statusCode, 200);
+  assert.equal((await verifyCode(active.challengeId, currentCode)).statusCode, 401);
+  const revoked = await requestCode("synthetic@example.test");
+  const revokedCode = sent.at(-1).text.match(/\b\d{6}\b/)[0];
+  store.invitations.get(store.invitationIds.get(created.invitationId).tokenHash).status = "revoked";
+  assert.equal((await verifyCode(revoked.challengeId, revokedCode)).statusCode, 401);
+  const before = sent.length;
+  await requestCode("synthetic@example.test");
+  assert.equal(sent.length, before);
+});
+
+test("legacy expired and malformed invitations cannot request a code", async () => {
+  for (const expiry of [{ expiresAt: clock() - 1 }, { expiresAt: null }, { expiresAt: null, expiryPolicy: "unexpected" }, { expiresAt: clock() + 1000, expiryPolicy: "none" }]) {
+    const { service, store, sent } = staffService();
+    const created = await createApplicationInvitation({ store, recipientEmail: "synthetic@example.test", firstName: "Synthetic", applicationUrl: "https://ffe.org.au/form", clock });
+    const invitation = store.invitations.get(store.invitationIds.get(created.invitationId).tokenHash);
+    delete invitation.expiryPolicy;
+    Object.assign(invitation, expiry);
+    const invitationToken = new URL(created.invitationUrl).searchParams.get("invite");
+    const response = await service(event("/v6/application/access/request-code", "POST", { invitationToken, email: "synthetic@example.test" }));
+    assert.equal(response.statusCode, 200); // Preserve anti-enumeration response.
+    assert.equal(sent.length, 0);
+    assert.equal(store.challenges.size, 0);
+  }
 });

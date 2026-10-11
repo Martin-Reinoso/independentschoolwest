@@ -2041,3 +2041,13 @@ meeting record was created, changed or sent during release verification.
   email or production request.
 - Static-reference and public-data gates pass. The deployment build validates pinned
   asset hashes and imports the packaged Lambda handler.
+
+
+## Application invitation lifetime — 11 October 2026
+
+181 automated tests pass, including six-month invitation reuse, ten-minute OTP expiry
+and replay rejection, wrong-email and revoked-link rejection, malformed/expired legacy
+access, all five invitation write paths omitting TTL, token rotation, sibling policy
+race protection, and atomic audited valid-link migration with conflict handling.
+No frontend assets or immutable form contracts change. Production release and migration
+evidence is recorded separately after verification.

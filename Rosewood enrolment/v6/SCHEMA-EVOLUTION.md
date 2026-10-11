@@ -391,3 +391,8 @@ family client. Their question contracts equal EOI 2026.27 / Application 2026.28.
 path remains in place; this release requires no data migration or submitted-record
 updates. Completion acknowledgement requires the current private task, matching email,
 contact permission and matching frozen signature evidence; it grants no session.
+
+
+## Application invitation lifetime — 11 October 2026
+
+The 11 October 2026 backend-only invitation change adds `expiryPolicy: "none"`, nullable `expiresAt` and an optional `expiryRemovedAt` audit timestamp to Application invitation metadata. It removes the top-level TTL from both `INVITE#…/META` and `INVITE_ID#…/META`. This does not change a form definition, browser asset, Application answer, revision, signature or document. Legacy records retain their original expiry until explicitly migrated or renewed. Sibling writes condition on the expiry policy to reject stale pre-migration copies.
