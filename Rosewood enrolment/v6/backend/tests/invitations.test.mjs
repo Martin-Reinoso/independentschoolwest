@@ -19,7 +19,11 @@ test("direct invitation creates an application without an EOI link", async () =>
   assert.equal(store.created.application.values.app_guardian_0_email, "family@example.com");
   assert.equal(store.created.application.values.student_first, undefined);
   assert.deepEqual(store.created.invitation.applicationIds, [result.applicationId]);
-  assert.equal(store.created.invitation.expiresAt, clock() + 14 * 86400_000);
+  assert.equal(store.created.invitation.expiresAt, null);
+  assert.equal(store.created.invitation.expiryPolicy, "none");
+  const email = store.created.outboxEvents.find(event => event.kind === "email");
+  assert.match(email.payload.text, /does not expire automatically/);
+  assert.ok(store.created.outboxEvents.filter(event => event.kind === "sheet").every(event => !JSON.stringify(event).includes("1970-01-01")));
   assert.match(result.invitationUrl, /^https:\/\/ffe\.org\.au\/form\?workflow=application&invite=/);
 });
 

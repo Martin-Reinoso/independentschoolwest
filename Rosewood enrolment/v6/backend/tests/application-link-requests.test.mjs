@@ -42,6 +42,8 @@ class RequestStore {
   async findInvitationByRecipientEmail(email) { return [...this.invitationIds.values()].find(invitation => invitation.recipientEmail === email) || null; }
   async createInvitation(value) {
     if (value.idempotency && this.idempotency.has(value.idempotency.keyHash)) return { deduplicated: true, result: this.idempotency.get(value.idempotency.keyHash).result };
+    assert.equal(value.invitation.expiryPolicy, "none");
+    assert.equal(value.invitation.expiresAt, null);
     this.invitations.set(value.tokenHash, structuredClone(value.invitation));
     this.invitationIds.set(value.invitation.id, structuredClone(value.invitation));
     this.applications.set(value.application.id, structuredClone(value.application));
@@ -54,6 +56,8 @@ class RequestStore {
   async reissueInvitationForApplicationRequest(value) {
     if (this.idempotency.has(value.idempotency.keyHash)) return { deduplicated: true, result: this.idempotency.get(value.idempotency.keyHash).result };
     if (value.previousTokenHash) this.invitations.delete(value.previousTokenHash);
+    assert.equal(value.invitation.expiryPolicy, "none");
+    assert.equal(value.invitation.expiresAt, null);
     this.invitations.set(value.tokenHash, structuredClone(value.invitation));
     this.invitationIds.set(value.invitation.id, structuredClone(value.invitation));
     this.requests.set(value.applicationRequest.id, structuredClone(value.applicationRequest));

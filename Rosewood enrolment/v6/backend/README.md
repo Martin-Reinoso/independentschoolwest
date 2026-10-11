@@ -314,3 +314,8 @@ files do not belong in Git or command output.
 
 See `../ARCHITECTURE-HARDENING.md`, `../RECOVERY-RUNBOOK.md` and
 `../STAFF-PORTAL-RUNBOOK.md`.
+
+
+## Application invitation lifetime — 11 October 2026
+
+Application access uses explicit `expiryPolicy: "none"` with `expiresAt: null`; both invitation indexes omit DynamoDB TTL. Missing/malformed legacy expiry fails closed. Staff displays access as active and reporting `expires_at` is blank. Only link lifetime and email guidance change; form questions and pinned browser assets are unchanged. See `../RECOVERY-RUNBOOK.md` for the one-time valid-link migration.

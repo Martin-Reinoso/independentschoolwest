@@ -324,3 +324,8 @@ releases. `V6.19-CHANGE-MAP.md` records enrolment planning and
 `V6.21-CHANGE-MAP.md` records the planning identity and density refinement.
 `V6.26-CHANGE-MAP.md` records the separate prospective-family cohort-planning release.
 `V6.28-CHANGE-MAP.md` records the reviewed family-communication release.
+
+
+## Application invitation lifetime — 11 October 2026
+
+Application invitation links issued, resent or renewed from 11 October 2026 have no automatic expiry. Currently valid older links can be migrated in place without emailing families. Replaced/revoked links remain invalid and expired/deleted older links still need renewal. OTP codes, sessions, signature links and principal-meeting links retain their separate lifetimes.

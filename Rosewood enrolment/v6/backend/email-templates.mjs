@@ -26,7 +26,7 @@ export function applicationInvitation({ firstName, studentName, entryLevel, entr
   const greeting = firstName || "Parent/Guardian";
   const assistance = "If you require assistance or have questions, please do not hesitate to get in touch at enrolment@ffe.org.au.";
   const signoff = "Kind regards,\n\nRosewood College Enrolment Team";
-  const expiry = `This private invitation expires on ${expiresAt}.`;
+  const expiry = expiresAt ? `This private invitation expires on ${expiresAt}.` : "This private invitation does not expire automatically. If you request a replacement link, use the newest email.";
   const directIntro = "Thank you for considering Rosewood College for your child’s education.";
   const directInvite = "We are pleased to invite you to begin an Application for Enrolment using the private link below. When prompted, please enter the same email address that received this invitation.";
   const requestedInvite = "You recently requested an Application for Enrolment link. Please use the private link below to begin. When prompted, enter the same email address that received this message.";
