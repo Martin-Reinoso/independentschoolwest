@@ -1,5 +1,16 @@
 # Offer acceptance: completion, testing and deployment proposal
 
+## Production release checkpoint
+
+The acceptance implementation is now deployed to AWS and GitHub Pages through PR #56,
+with real offer issuance **off** and content approval blank. EOI `2026.29` / Application `2026.30`
+are live; no production family was selected or emailed. Actual isolated integration,
+14 delivered test messages, signed PDF checks, retry/recovery and 283 tests pass.
+See [current release and operating evidence](PRODUCTION-RELEASE-2026-11-08.md).
+Earlier local-only, inactive-runtime and pending-Google statements below are historical.
+Final substantive agreement adoption and deliberate real-family issuance remain separate.
+
+
 ## Current live checkpoint
 
 The Google grant and isolated live staff/primary/secondary journey are complete.
@@ -39,7 +50,7 @@ and the previously verified cached contents-page numbers may differ; the new
 All75 rendered pages are checked against the reviewed preceding copies. Only18 address
 regions differ (each under70 pixels high); the other57 pages are pixel-identical.
 Extracted text differs only by the street address. All18 changed regions were visually
-inspected; all140 heading/outline and122 contents-link checks pass with zero stale
+inspected; all 140 heading/outline and122 contents-link checks pass with zero stale
 numbers. The original Student Code map is retained unchanged, including its previously
 noted source label limitations; no map redraw or substantive policy change is implied.
 
@@ -51,7 +62,7 @@ These are publication copies, not replacements for controlled originals. No remo
 website or AWS runtime was updated in this checkpoint.
 
 281 backend tests and the locked build pass. Desktop/mobile download checks verify
-all14 hashes and7 actual Word downloads at1440/390/320; both-guardian mocked journeys
+all 14 hashes and7 actual Word downloads at1440/390/320; both-guardian mocked journeys
 pass with unchanged fictional Applications. Static references and content projections
 pass. Private evidence uses bridge-road-* under the existing restricted review root.
 The Google policy consent and credential-creation approvals have now been received;

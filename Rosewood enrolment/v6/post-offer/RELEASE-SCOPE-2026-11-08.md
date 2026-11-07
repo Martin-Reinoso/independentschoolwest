@@ -1,5 +1,16 @@
 # Provisional-offer release scope
 
+## Production release checkpoint
+
+The acceptance implementation is now deployed to AWS and GitHub Pages through PR #56,
+with real offer issuance **off** and content approval blank. EOI `2026.29` / Application `2026.30`
+are live; no production family was selected or emailed. Actual isolated integration,
+14 delivered test messages, signed PDF checks, retry/recovery and 283 tests pass.
+See [current release and operating evidence](PRODUCTION-RELEASE-2026-11-08.md).
+Earlier local-only, inactive-runtime and pending-Google statements below are historical.
+Final substantive agreement adoption and deliberate real-family issuance remain separate.
+
+
 ## Current live checkpoint
 
 The Google grant and isolated live staff/primary/secondary journey are complete.
@@ -57,7 +68,7 @@ The deployed inactive runtime is commit `c46a705`. The newer local Bridge Road
 publication candidate passes281 backend tests, locked build,
 policy-download checks and desktop/mobile both-signature journeys pass locally.
 It includes the checksum-pinned Student Code map and optional pinned policy-download
-controls; the newer local draft pins all14 verified Bridge Road publication files.
+controls; the newer local draft pins all 14 verified Bridge Road publication files.
 The isolated AWS stack still runs c46a705, verified against its artifact
 and runtime-module bytes. All 28 resources and parameters remain unchanged; readiness,
 delivery and issuance stay off. This is not active Google/email/signing evidence.
