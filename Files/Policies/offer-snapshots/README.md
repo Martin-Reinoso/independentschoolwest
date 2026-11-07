@@ -4,7 +4,7 @@ These are exact, checksum-named images extracted from verified controlled policy
 originals for the unpublished provisional-offer candidate. Private controlled originals
 and signature images do not belong in this directory. Reviewed publication copies of
 policy PDFs/Word documents may be added only after the outstanding publication review,
-using checksum-named paths pinned in the agreement. None are published yet.
+using checksum-named paths pinned in the agreement. Fourteen reviewed publication files are included locally, pending remote deployment.
 
 The Student Code map is the original `word/media/image2.png` from evidence
 C.4.4.iih, source DOCX SHA-256
@@ -21,8 +21,8 @@ by any still-pending earlier offers. Completed acceptance PDFs retain their orig
 stored bytes.
 
 This is fidelity evidence, not publication approval. The original map contains
-cramped/clipped callout text. The policy originals still contain the Alfred Road
-address; publication/address decisions remain open. See
+cramped/clipped callout text. Controlled originals retain Alfred Road; the user authorised 456 Bridge Road,
+Cobblebank for publication copies. Those copies are verified and pinned locally. See
 `Rosewood enrolment/v6/post-offer/POLICY-SOURCE-VERIFICATION-2026-11-08.md`.
 
 Policy download metadata is `sourceDownloads: { sourceSha256, pdf, docx }`, with
@@ -31,4 +31,11 @@ policy snapshot. Paths are `Files/Policies/offer-snapshots/<slug>-<sha256>.<form
 The release build verifies exact bytes and format signatures. Keep publication copies
 and their manifests tied to the reviewed policy version; never silently replace a file.
 Private staging instructions are in `v6/scripts/prepare-offer-policy-downloads.py` and
-the policy source-verification record. The current contract has no download metadata.
+the policy source-verification record. The current local contract pins all seven PDF/Word pairs and their publication DOCX hashes.
+
+Publication address decision: 8 November 2026, “Use 456 Bridge Road, Cobblebank”.
+Only the street address and already-corrected contents page numbers differ from the
+controlled source packages. `sourceSha256` retains original provenance;
+`publicationSha256` matches the downloadable DOCX, and PDF/DOCX hashes are fixed in
+`sourceDownloads`. Original map graphics are unchanged. These assets are ready for the
+planned release; adding them here does not deploy them or enable real offer issuance.

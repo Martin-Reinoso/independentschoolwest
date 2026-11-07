@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Stage private policy download review files; never publish or alter the agreement.
 
-Accepts controlled originals and contents-only corrected copies. Rechecks the actual
+Accepts controlled originals, contents-only copies, or verified user-approved
+Bridge Road publication copies pinned by publicationSha256. Rechecks the actual
 Word/PDF contents, source identity and report checksums before copying any file.
 Publication approval (including address/map review) is a separate release step.
 """
@@ -10,6 +11,7 @@ import importlib.util
 import json
 import re
 from pathlib import Path
+from policy_publication import verify_publication_copy
 
 spec = importlib.util.spec_from_file_location('contents', Path(__file__).with_name('check-policy-contents.py'))
 contents = importlib.util.module_from_spec(spec)
@@ -38,7 +40,12 @@ def main():
         pdf = args.rendered/code/(original.stem+'.pdf')
         if not record['byteIdenticalToCatalogue'] or contents.digest(original) != record['sha256'] or record['sha256'] != policy['sourceSha256']:
             raise ValueError('Controlled original does not match the policy: ' + code)
-        contents.verify_contents_only_copy(original, docx)
+        if policy.get('publicationSha256'):
+            verify_publication_copy(original,docx)
+            if contents.digest(docx) != policy['publicationSha256']:
+                raise ValueError('Publication copy differs from policy snapshot: '+code)
+        else:
+            contents.verify_contents_only_copy(original, docx)
         checked = contents.check(docx, pdf, sum(b[0] == 'h' for b in policy['sourceStructure']))
         if checked['contentsCorrections'] or any(checked[k] != report[code][k] for k in checked) or report[code]['controlledOriginalSha256'] != policy['sourceSha256']:
             raise ValueError('Policy copies or their review evidence changed: ' + code)

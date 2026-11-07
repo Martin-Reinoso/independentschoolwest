@@ -5,9 +5,8 @@
 The fourteen-section draft is now integrated across the backend contract, online
 reader and signed PDF, generated from `post-offer/agreement-draft.json`. Runtime
 `c46a705` is deployed to the separate inactive test stack; it is not on production.
-The seven policy originals and all 75 pages are verified. Private contents-corrected
-PDF/Word copies exist; public download metadata remains absent pending publication
-review. Final wording approval is still open: implementation is not policy adoption.
+The seven policy originals and all 75 pages are verified. User-approved Bridge Road publication copies and pinned PDF/Word download metadata
+are now included in the local release candidate. Final wording approval is still open: implementation is not policy adoption.
 
 The current registration introduction is exactly:
 

@@ -23,7 +23,8 @@ including actual isolated Google/AWS/email tests, policy downloads and deploymen
 The production template adds no resource, table, bucket, key, subscription or schedule.
 The new synthetic template is deployed only as a distinct test stack. No production
 data migration or report replay is part of this release. Private principal-signature
-bytes, credentials, controlled Word/PDF originals and test exports stay outside Git.
+bytes, credentials, controlled Word/PDF originals and test exports stay outside Git. User-authorised
+address-corrected policy publication copies are included as pinned site assets.
 
 ## Explicitly separated
 
@@ -40,11 +41,12 @@ upstream content, not an acceptance change.
 
 ## Evidence and remaining gates
 
-The latest acceptance runtime is commit `c46a705`: 280 backend tests, locked build,
+The deployed inactive runtime is commit `c46a705`. The newer local Bridge Road
+publication candidate passes281 backend tests, locked build,
 policy-download checks and desktop/mobile both-signature journeys pass locally.
 It includes the checksum-pinned Student Code map and optional pinned policy-download
-controls; the actual PDF/Word publication metadata is still absent pending review.
-The isolated AWS stack now runs this exact candidate, verified against its artifact
+controls; the newer local draft pins all14 verified Bridge Road publication files.
+The isolated AWS stack still runs c46a705, verified against its artifact
 and runtime-module bytes. All 28 resources and parameters remain unchanged; readiness,
 delivery and issuance stay off. This is not active Google/email/signing evidence.
 See [inactive deployment checks](../backend/INACTIVE-TEST-DEPLOYMENT-2026-11-08.md).

@@ -21,3 +21,8 @@ Live signing uses the server-frozen packet. Candidate frontend assets are pinned
 All previously released EOI/Application definitions remain unchanged. The old
 V6 acceptance/signing frames remain their historical previews on production. Use the
 new candidate offer page for review; do not claim that it is already live.
+
+The user-approved Bridge Road address is applied to seven publication policy copies.
+The local contract pins their PDF/Word downloads and provenance; controlled originals
+remain untouched. Google policy/credential approvals are complete; actual scoped grant
+and live testing remain. See the newest source-verification checkpoint.

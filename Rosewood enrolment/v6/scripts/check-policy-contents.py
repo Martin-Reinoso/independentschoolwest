@@ -15,6 +15,7 @@ from zipfile import ZipFile
 import pdfplumber
 from lxml import etree
 from pypdf import PdfReader
+from policy_publication import verify_publication_copy
 
 W = '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
 NS = {'w': W[1:-1]}
@@ -149,7 +150,11 @@ def main():
         checked = original
         if args.review_copies:
             checked = args.review_copies/original.name
-            verify_contents_only_copy(original,checked)
+            if policy.get('publicationSha256'):
+                verify_publication_copy(original,checked)
+                assert digest(checked) == policy['publicationSha256'], 'Publication copy hash differs'
+            else:
+                verify_contents_only_copy(original,checked)
         pdf = args.rendered/code/(original.stem+'.pdf')
         report[code] = check(checked, pdf, sum(b[0] == 'h' for b in policy['sourceStructure']),
                              args.copies/original.name if args.copies else None)

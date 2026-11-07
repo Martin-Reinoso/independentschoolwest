@@ -22,6 +22,7 @@ const downloadFailure = () => new Error('A frozen policy download is unavailable
 
 export function validatePolicyDownload(policy, format, bytes) {
  const downloads = policy.sourceDownloads, file = downloads?.[format];
+ if (policy.publicationSha256 && downloads?.docx?.sha256 !== policy.publicationSha256) throw downloadFailure();
  if (!['pdf','docx'].includes(format) || !downloads || !/^[a-f0-9]{64}$/.test(policy.sourceSha256) || downloads.sourceSha256 !== policy.sourceSha256 || !file || !/^[a-f0-9]{64}$/.test(file.sha256) || !/^Files\/Policies\/offer-snapshots\/[a-z0-9-]+-[a-f0-9]{64}\.(pdf|docx)$/.test(file.assetPath) || !file.assetPath.endsWith('-'+file.sha256+'.'+format)) throw downloadFailure();
  if (!Buffer.isBuffer(bytes) || !bytes.length || bytes.length > 20_000_000 || file.bytes !== bytes.length || createHash('sha256').update(bytes).digest('hex') !== file.sha256) throw downloadFailure();
  if (format === 'pdf' ? bytes.subarray(0,5).toString() !== '%PDF-' : bytes.subarray(0,4).toString('hex') !== '504b0304') throw downloadFailure();

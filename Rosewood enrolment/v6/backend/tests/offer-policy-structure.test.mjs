@@ -21,7 +21,10 @@ test('source-derived policy structure preserves every frozen line and numbered h
   const policy=OFFER_CONTRACT.policies[index],lines=policy.text.split(/\r?\n/),covered=[];
   assert.equal(policy.sourceEvidenceCode,code);
   assert.match(policy.sourceSha256,/^[a-f0-9]{64}$/);
-  assert.equal(crypto.createHash('sha256').update(policy.text.trim()).digest('hex'),textHash,'the verified source wording must not change');
+  assert.match(policy.publicationSha256,/^[a-f0-9]{64}$/);
+  assert.doesNotMatch(policy.text,/Alfred/);
+  assert.equal((policy.text.match(/456 Bridge Road/g)||[]).length,code==='C.4.1.iiw'?0:1);
+  assert.equal(crypto.createHash('sha256').update(policy.text.trim().replace('456 Bridge Road','108-134 Alfred Road')).digest('hex'),textHash,'only the approved address may differ from the verified source wording');
   for(const [kind,start,count] of policy.sourceStructure)for(let i=start;i<start+count+(kind==='table'?1:0);i++)covered.push(i);
   assert.equal(new Set(covered).size,covered.length,'no duplicated source lines');
   assert.deepEqual(covered.sort((a,b)=>a-b),lines.flatMap((line,i)=>line.trim()?[i]:[]));
@@ -56,7 +59,9 @@ test('Student Code appendix retains the exact source map in place and rejects un
 });
 
 test('policy downloads preserve older snapshots and pin both formats to the exact policy source',()=>{
- assert.equal(reader.renderDownloads(OFFER_CONTRACT.policies[0]),'');
+ assert.equal(reader.renderDownloads({title:'Retained older policy'}),'');
+ assert.match(reader.renderDownloads(OFFER_CONTRACT.policies[0]),/View policy PDF/);
+ const stale=structuredClone(OFFER_CONTRACT.policies[0]);stale.publicationSha256='0'.repeat(64);assert.throws(()=>reader.renderDownloads(stale),/Invalid frozen policy downloads/);
  const policy={title:'Policy & details',sourceSha256:'a'.repeat(64),sourceDownloads:{sourceSha256:'a'.repeat(64)}};
  for(const format of ['pdf','docx'])policy.sourceDownloads[format]={assetPath:`Files/Policies/offer-snapshots/parent-code-${'b'.repeat(64)}.${format}`,sha256:'b'.repeat(64),bytes:100};
  const html=reader.renderDownloads(policy);

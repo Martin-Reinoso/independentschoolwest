@@ -1,5 +1,37 @@
 # Provisional offer policy source verification
 
+## Bridge Road publication copies — user decision applied
+
+The user instructed “Use 456 Bridge Road, Cobblebank” on 8 November 2026. Seven
+publication DOCX copies and PDFs now use that address, retaining the existing state/
+postcode layout. Six cover pages change; ICT's header changes on its twelve pages.
+The controlled originals remain private and unchanged. Only that approved address
+and the previously verified cached contents-page numbers may differ; the new
+`policy_publication.py` verifier rejects other package/XML changes.
+
+All75 rendered pages are checked against the reviewed preceding copies. Only18 address
+regions differ (each under70 pixels high); the other57 pages are pixel-identical.
+Extracted text differs only by the street address. All18 changed regions were visually
+inspected; all140 heading/outline and122 contents-link checks pass with zero stale
+numbers. The original Student Code map is retained unchanged, including its previously
+noted source label limitations; no map redraw or substantive policy change is implied.
+
+The local candidate now contains14 immutable publication assets (5,111,907 bytes) and
+pins their paths/hashes/byte counts in each policy's sourceDownloads. Original source
+hashes remain in sourceSha256; publicationSha256 pins the address-corrected DOCX.
+The mapper and download build verify this provenance; online body text is aligned.
+These are publication copies, not replacements for controlled originals. No remote
+website or AWS runtime was updated in this checkpoint.
+
+281 backend tests and the locked build pass. Desktop/mobile download checks verify
+all14 hashes and7 actual Word downloads at1440/390/320; both-guardian mocked journeys
+pass with unchanged fictional Applications. Static references and content projections
+pass. Private evidence uses bridge-road-* under the existing restricted review root.
+The Google policy consent and credential-creation approvals have now been received;
+those old blockers are resolved. Actual scoped account consent, live provider tests,
+exact agreement review and production rollout remain.
+
+
 ## Policy download controls and private staging — latest
 
 The local reader now supports PDF and Word links pinned to the exact policy source,

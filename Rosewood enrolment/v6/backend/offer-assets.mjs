@@ -1,7 +1,7 @@
 // Unpublished offer candidate assets; update with its immutable definition.
 export const OFFER_ASSET_HASHES = {
   "pages/rosewood-family-portal.js": "e877a7b9540c10a6b7e3cb0e2bab3934db2f2bce2977ecfa1e7ace21a6cfd1fe",
-  "pages/rosewood-enrolment-offer-terms-v1.js": "1fc12f4c6a9a21eac419ac9d59bb3441bb921f2515dc8829befedb2135c390ca",
+  "pages/rosewood-enrolment-offer-terms-v1.js": "88c0baff019a01836ca5b7b868ef6ffdd95f4ad8a52ed8c557daff265a08eb3b",
   "pages/rosewood-enrolment-offer-v1.css": "cb43ffc066e434daab0724b15a477dce5b9cf87a530937224f3b4c014518c672",
   "pages/rosewood-enrolment-offer-v1.html": "48105936fa4ffb12bfb95df9634ef7e491782cbec17366402397e94c8607e5a3",
   "pages/rosewood-enrolment-offer-v1.js": "d50a12b35a94e123e32d17ff1de717d6a584e6ce0ec71ab9000ad8618e7bb605",
@@ -11,5 +11,5 @@ export const OFFER_ASSET_HASHES = {
   "pages/rosewood-enrolment-v6.css": "cbcaab23c01798ca068370e9ccbfed074a4cc2ab830c161bc446ce2a2f402d98",
   "pages/rosewood-enrolment-admin-v6.css": "efc086d3ec2e242a3a545232f054413595cc7b8fb03e40f4f90ba417bfcc3bfe",
   "pages/rosewood-enrolment-acceptance-v1.css": "93cdea43dce679ed795194ce72f5e85c931dba9d9e547110b5ca110edb76a2dd",
-  "pages/rosewood-enrolment-offer-policy-reader.js": "b55afbc63ab71c28f78b9615b08721a5b0a206e5397a1c9003ced7a6bbc6cb21"
+  "pages/rosewood-enrolment-offer-policy-reader.js": "b83854986aa469b8e08de5c657cfa16ad9e631d8e509fdb00d7508ca2033b2e6"
 };

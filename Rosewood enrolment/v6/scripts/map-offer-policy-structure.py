@@ -13,6 +13,7 @@ from docx import Document
 from docx.oxml.ns import qn
 from docx.table import Table
 from docx.text.paragraph import Paragraph
+from policy_publication import verify_publication_copy, OLD_STREET, NEW_STREET
 
 CODES = ['C.2.2.iif','C.4.4.iih','C.4.2.iib','C.4.1.iiw','C.4.4.iia','C.4.4.iic','C.4.1.iva']
 DECORATIVE_LOGO = 'f1d19f86c1758f38adefd96413d54909cbc807d855c0fe486aa1828ebbb91db5'
@@ -131,6 +132,7 @@ def main():
     parser.add_argument('--verification',type=Path,required=True)
     parser.add_argument('--source',type=Path,default=Path(__file__).resolve().parents[1]/'post-offer/agreement-draft.json')
     parser.add_argument('--write',action='store_true')
+    parser.add_argument('--publication-copies',type=Path,help='Copies with only the approved Bridge Road address and cached contents corrections')
     args=parser.parse_args()
     report=json.loads(args.verification.read_text())
     source=json.loads(args.source.read_text())
@@ -140,7 +142,18 @@ def main():
         path=args.originals/Path(record['relativePath']).name
         digest=hashlib.sha256(path.read_bytes()).hexdigest()
         assert record['byteIdenticalToCatalogue'] and digest==record['sha256']==record['catalogueSha256']
-        document=Document(path)
+        publication_digest = None
+        if args.publication_copies:
+            publication = args.publication_copies/path.name
+            verify_publication_copy(path,publication)
+            publication_digest = hashlib.sha256(publication.read_bytes()).hexdigest()
+            expected_count = 0 if code == 'C.4.1.iiw' else 1
+            assert policy['text'].count(OLD_STREET) + policy['text'].count(NEW_STREET) == expected_count
+            policy['text'] = policy['text'].replace(OLD_STREET,NEW_STREET)
+            document=Document(publication)
+        else:
+            assert not policy.get('publicationSha256'), 'Use the verified publication copy for this snapshot'
+            document=Document(path)
         assert next(p.text.strip() for p in document.paragraphs if p.style.name=='Title')==policy['title']
         blocks,figures,assets=structure(document,policy)
         policy['sourceStructure']=blocks
@@ -148,6 +161,11 @@ def main():
         policy['sourceSha256']=digest
         policy['sourceEvidenceCode']=code
         policy['sourceSnapshot']='Controlled original verified 8 November 2026; original wording retained'
+        if publication_digest:
+            policy['publicationSha256']=publication_digest
+            policy['sourceSnapshot']='Controlled original verified 8 November 2026; publication address changed to 456 Bridge Road, Cobblebank as instructed by the user; policy wording otherwise retained'
+            if 'sourceDownloads' in policy:
+                assert policy['sourceDownloads']['docx']['sha256'] == publication_digest, 'Downloads need a fresh publication package'
         print(code, 'mapped',len(blocks),'blocks;',sum(b[0]=='h' for b in blocks),'numbered headings')
         if args.write:
             root=Path(__file__).resolve().parents[3]
@@ -160,7 +178,7 @@ def main():
                     target.write_bytes(blob)
     if args.write:
         args.source.write_text(json.dumps(source,ensure_ascii=False,indent=2)+'\n')
-        print('Updated local draft structure/provenance and verified figures; text unchanged. Regenerate projections before use.')
+        print('Updated local draft structure/provenance and verified figures; publication address applied only when explicitly selected. Regenerate projections before use.')
 
 
 if __name__=='__main__':

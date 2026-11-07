@@ -72,6 +72,7 @@
     const downloads = policy.sourceDownloads;
     if (downloads === undefined) return '';
     if (!downloads || !/^[a-f0-9]{64}$/.test(policy.sourceSha256) || downloads.sourceSha256 !== policy.sourceSha256) throw Error('Invalid frozen policy downloads.');
+    if (policy.publicationSha256 && downloads.docx?.sha256 !== policy.publicationSha256) throw Error('Invalid frozen policy downloads.');
     const links = ['pdf', 'docx'].map(format => {
       const file = downloads[format];
       if (!file || !/^[a-f0-9]{64}$/.test(file.sha256) || !Number.isInteger(file.bytes) || file.bytes < 1 || file.bytes > 20_000_000 || !/^Files\/Policies\/offer-snapshots\/[a-z0-9-]+-[a-f0-9]{64}\.(pdf|docx)$/.test(file.assetPath) || !file.assetPath.endsWith('-' + file.sha256 + '.' + format)) throw Error('Invalid frozen policy downloads.');

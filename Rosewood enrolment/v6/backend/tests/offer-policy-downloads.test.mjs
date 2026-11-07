@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {createHash} from 'node:crypto';
+import {OFFER_CONTRACT} from '../offer-contract.mjs';
 import {validatePolicyDownload,verifyPolicyDownloads} from '../offer-policy-assets.mjs';
 
 test('download release verification rejects altered bytes, source versions, formats and paths',()=>{
@@ -20,4 +21,8 @@ test('download release verification rejects altered bytes, source versions, form
  }
  assert.doesNotThrow(()=>verifyPolicyDownloads({}));
  assert.throws(()=>verifyPolicyDownloads(policy),/ENOENT/,'missing published files stop the build');
+});
+
+test('all seven publication downloads match the frozen address-corrected policy copies',()=>{
+ for(const policy of OFFER_CONTRACT.policies){assert.doesNotThrow(()=>verifyPolicyDownloads(policy));const stale=structuredClone(policy);stale.publicationSha256='0'.repeat(64);assert.throws(()=>verifyPolicyDownloads(stale));}
 });
