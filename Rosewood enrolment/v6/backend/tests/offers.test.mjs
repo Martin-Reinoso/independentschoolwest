@@ -237,3 +237,14 @@ test('detail save is atomic with unsigned offer, source, active primary task and
  assert.ok(actions.some(item=>item.Put?.Item.SK==='DETAILS#2'&&item.Put.ConditionExpression==='attribute_not_exists(PK)'));
  assert.ok(!actions.some(item=>item.Put?.Item.PK.startsWith('APP#')||item.Update?.Key.PK.startsWith('APP#')||item.Put?.Item.entity==='outbox'));
 });
+
+test('offer access sends provisional-offer OTP wording in both email formats',async()=>{
+ const h=harness();await h.issue();await h.login();
+ const email=h.mail.at(-1);
+ assert.equal(email.tags.message_type,'offer_otp');
+ for(const body of [email.text,email.html]){
+  assert.match(body,/access your provisional offer of enrolment/);
+  assert.match(body,/10 minutes/);
+  assert.doesNotMatch(body,/Application for Enrolment/);
+ }
+});

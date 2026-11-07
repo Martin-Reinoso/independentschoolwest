@@ -1,46 +1,20 @@
 # Current provisional-offer release gates
 
-Reviewed against inactive runtime `9647377` and the newer local Bridge Road candidate on
-8 November 2026. **The full goal is not complete.** No live test email has been sent;
-production remains unchanged. This table distinguishes local evidence from provider
-integration and school policy approval.
+8 November 2026. The isolated live journey is complete; the full goal is still in
+progress. Production remains unchanged and real offer issuance stays off.
 
-| Requirement | Current evidence | Remaining action |
+| Requirement | Verified | Remaining |
 | --- | --- | --- |
-| Confirmed primary/secondary form and family overview | Current source and mocked browser journeys at 1440/390/320; editable primary details, locked emails, read-only secondary, both signatures, exact stored PDF and unchanged fictional Application | Repeat the complete journey against isolated real providers |
-| Wording and fourteen sections consistent across outputs | `agreement-draft.json`; generated-content check; 282-test suite; current introduction matches user wording | Resolve proposed substantive clauses in `FOURTEEN-SECTION-REVIEW-NOTES.md`; do not enable real issue on an unapproved content hash |
-| Seven full policies and downloadable versions | Source hashes; 140 headings; 75 pages inspected; exact Student Code map; private 14-file package; download/return browser checks | Bridge Road decision applied;14 publication files are bound locally and checked. Deploy pinned files with the release; original map remains unchanged |
-| Isolated runtime and recipient boundary | Stack UPDATE_COMPLETE on 9647377; 28 distinct resources unchanged; 18 deployed-role IAM cases; email/readiness/issuance off; tables empty; actual health/fictional OTP fail closed | Configure separately scoped Google test storage and test-only secrets; then activate only the authorised synthetic workflow |
-| Google test account/app | User completed policy consent; test OAuth client created on explicit approval, stored privately; requested scope restricted to drive.file | APIs and sole test audience configured; actual scoped account grant awaits action-time approval |
-| Actual emails, attachments, feedback and recovery | Unit/provider-mocked tests only; no actual-email ledger or live signed-record evidence exists | After Google setup, run staff issue → primary → secondary → completion, sibling/denial/retry/recovery cases; receive only at the authorised personal inbox; record Gmail/SES/PDF evidence |
-| Production release and recovery | Scope separated, clean commits, default-off feature gates, documented backend-first approach | After integration/publication gates, capture current rollback baseline, review change set, deploy disabled, publish pinned assets, verify live hashes and no offer notifications |
-| Monitoring and operational completion | Candidate checks all 14 policy downloads and source map for missing/changed bytes; 282 tests and locked build pass | Verify production health/alarms and two scheduled canary intervals after rollout; deliver final evidence and operating instructions |
+| Google isolation | Exact drive.file grant; five production destinations denied; two private test folders and three Sheets | Disable test delivery after final recheck; retain credential expiry guidance |
+| AWS isolation | 28 preserved test resources; 18 IAM cases; exact inbox only; no Slack/alarm recipients | Reverify final code update |
+| Both-guardian sibling journey | Two children, four signatures, staged secondary invitation, editable primary/readonly secondary, unchanged Applications | Recheck two small wording/display fixes |
+| Emails and PDFs | 13 expected and delivered; Gmail attachments equal reviewed/portal/Drive bytes | One final corrected OTP test |
+| Denial/idempotency/recovery | Invalid access rejected; repeated signature creates nothing; real projection failure/recovery passed | Verify separate restored test table |
+| Policies | Seven full readers, 14 pinned Bridge Road downloads and original source map; layout/hash tests pass | Publish and verify exact assets |
+| Content approval | Fourteen-section draft consistently pinned | Real issuance remains blocked until exact substantive content is approved; this does not block disabled deployment |
+| Production release | Clean scope separated from unrelated operations repairs | Review rollback baseline/change set, deploy disabled, publish assets, verify live contracts and two scheduled canary intervals |
 
-## Immediate dependency
-
-The user approved Google's policy and creation of the dedicated OAuth client. Both are
-complete. Continue API/audience configuration and the actual app-file-only account
-consent; do not repeat the resolved policy/credential approvals. The client has no
-account grant or refresh token yet. The browser tool requires confirmation at the
-actual new-access grant. Google testing must still precede production rollout.
-
-## Next authorised sequence after consent
-
-Complete the dedicated test app and obtain only `drive.file` access, with the distinct
-client pinned to the test runtime. Create only app-owned test folders and three Sheets;
-prove production IDs are inaccessible using metadata requests. Configure new test
-HMAC secrets and the authorised private principal signature without copying production
-credentials. Recheck environment and exact recipient restrictions before activating
-synthetic traffic. Use fictional logical identities; never use the real Application
-associated with the personal test inbox. Disable test delivery/schedule after the run.
-
-## Evidence references
-
-- [Completion specification and detailed test matrix](COMPLETION-TEST-AND-DEPLOYMENT-PLAN-2026-11-08.md)
-- [Actual inactive AWS deployment](../backend/INACTIVE-TEST-DEPLOYMENT-2026-11-08.md)
-- [Google/environment isolation](../backend/SYNTHETIC-TEST-ENVIRONMENT.md)
-- [Policy sources and private publication copies](POLICY-SOURCE-VERIFICATION-2026-11-08.md)
-- [Release scope and excluded operations repairs](RELEASE-SCOPE-2026-11-08.md)
-
-No additional implementation change is justified merely to replace the missing live
-integration evidence. Complete the remaining actual provider flow; add implementation changes only for an evidenced defect or gap.
+See [actual live evidence](LIVE-INTEGRATION-2026-11-08.md),
+[completion plan](COMPLETION-TEST-AND-DEPLOYMENT-PLAN-2026-11-08.md),
+and [release scope](RELEASE-SCOPE-2026-11-08.md).
+No repeat Google consent or additional address/map approval is needed for the authorised work.

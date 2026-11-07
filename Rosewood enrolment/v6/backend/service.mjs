@@ -6,7 +6,7 @@ import { activeInvitationAccess, invitationExpiryMs, invitationExpiryIso } from 
 import { APPLICATION_REQUEST_CONTRACT } from "./application-request-contract.mjs";
 import { COMMUNITY_ENQUIRY_CONTRACT } from "./community-enquiry-contract.mjs";
 import { buildApplicationReview } from "./application-review.mjs";
-import { applicationComplete, applicationInvitation, applicationOtp, applicationSubmitted, communityEnquiryNotification, eoiAcknowledgement, meetingBookingConfirmation, meetingBookingInvitation, signatureInvitation, signatureOtp, staffCaseEmail, staffOtp } from "./email-templates.mjs";
+import { applicationComplete, applicationInvitation, applicationOtp, applicationSubmitted, communityEnquiryNotification, eoiAcknowledgement, meetingBookingConfirmation, meetingBookingInvitation, offerOtp, signatureInvitation, signatureOtp, staffCaseEmail, staffOtp } from "./email-templates.mjs";
 import { FAMILY_COMMUNICATION_TEMPLATE, familyCommunicationContentHash, familyCommunicationVariant, renderFamilyCommunication } from "./family-communication-templates.mjs";
 import { currentFormDefinition, FORM_DEFINITIONS, getFormDefinition, recordFormReference } from "./form-definitions.mjs";
 import { CONTACT_PERMISSION_NO, CONTACT_PERMISSION_YES, SCHEMA_VERSION, contactPermissionAllowed, formReleaseAtLeast, normalizeEmail, safeText, sanitizeApplication, splitApplication, truthy, validateApplicationForSubmission, validateEoi } from "./schema.mjs";
@@ -2911,7 +2911,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     ,["POST /v6/meetings/book", bookMeeting]
   ]);
 
-  for (const [route, action] of createOfferRoutes({ store, drive, mailer, env, clock, parseBody, requireStaffSession, requireSession, networkFingerprint, signatureBytes, createAuditEvent, emailOutbox, applicationOtp, dispatchOutbox })) routes.set(route, action);
+  for (const [route, action] of createOfferRoutes({ store, drive, mailer, env, clock, parseBody, requireStaffSession, requireSession, networkFingerprint, signatureBytes, createAuditEvent, emailOutbox, offerOtp, dispatchOutbox })) routes.set(route, action);
 
   async function handler(event) {
     const origin = headers(event).origin || allowedOrigins[0];

@@ -9,7 +9,7 @@
  const labels={access:'Secure access',verify:'Verify your email',children:'Your children',student:'Student details',guardian:'Parent/guardian details',review:'Review submitted details',conditions:'Conditions of enrolment',signature:'Acceptance and signature',result:'Acceptance record',policy:'Policy reader'};
  function notice(message=''){$('notice').textContent=message;$('notice').hidden=!message;if(message)$('notice').focus();}
  function show(next,{focus=true,scroll=true}={}){
-  stage=next;Object.keys(labels).forEach(id=>$(id).hidden=id!==next);notice();$('step-title').textContent=labels[next];
+  stage=next;if(next==='access'||next==='verify')$('save-state').textContent='Email verification required';else if(next==='children')$('save-state').textContent=preview?'Interactive preview':'Verified guardian access';Object.keys(labels).forEach(id=>$(id).hidden=id!==next);notice();$('step-title').textContent=labels[next];
   document.querySelector('.story-kicker').textContent=next==='children'?'Rosewood College enrolment':'Provisional offer of enrolment';
   document.querySelector('.story-content h1').textContent=next==='children'?'Your family’s next steps.':'Accept a provisional offer.';
   document.querySelector('.story-copy').textContent=next==='children'?"View each child's application and provisional offer in one place.":'Check your details, review the agreement and accept the provisional offer for each child.';

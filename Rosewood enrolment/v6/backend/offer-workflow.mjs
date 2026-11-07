@@ -63,7 +63,7 @@ export async function offerTaskAccess(store, task, now, {all=false}={}) {
 }
 
 export function createOfferRoutes(c) {
- const {store,drive,mailer,env,clock,parseBody,requireStaffSession,requireSession,networkFingerprint,signatureBytes,createAuditEvent,emailOutbox,applicationOtp,dispatchOutbox}=c;
+ const {store,drive,mailer,env,clock,parseBody,requireStaffSession,requireSession,networkFingerprint,signatureBytes,createAuditEvent,emailOutbox,offerOtp,dispatchOutbox}=c;
  const iso=()=>new Date(clock()).toISOString();
  const page=env.ENROLMENT_OFFER_PAGE_URL || 'https://ffe.org.au/pages/rosewood-enrolment-offer-v1.html';
  const audit=(record,type,actor,details={})=>createAuditEvent({workflow:'enrolment_offer',recordId:record.id,type,at:iso(),actorType:actor.scope==='staff'?'staff':'family',actorId:actor.email,details});
@@ -139,7 +139,7 @@ export function createOfferRoutes(c) {
    enabled();const body=parseBody(event,10000),tokenHash=hash(text(body.invite,1000)),recipient=email(body.email);
    for(const [key,limit,seconds] of [[`offer-net:${networkFingerprint(event)}`,100,1800],[`offer-cooldown:${tokenHash}:${hash(recipient)}`,1,30],[`offer-task:${tokenHash}`,5,1800],[`offer-email:${hash(recipient)}`,5,1800]])if(!await store.checkRateLimit(key,limit,seconds))throw failure(429,'OTP_RATE_LIMIT','Please wait before requesting another verification code.');
    const task=await store.getOfferTask(tokenHash),children=await available(task),challengeId=`challenge-${crypto.randomUUID()}`;
-   if(children.length && task.email===recipient){const code=String(crypto.randomInt(0,1000000)).padStart(6,'0');await store.putChallenge({id:challengeId,purpose:'enrolment_offer',subjectHash:tokenHash,email:recipient,codeHmac:crypto.createHmac('sha256',env.OTP_HMAC_SECRET).update(`${challengeId}:${code}`).digest('hex'),attempts:0,maxAttempts:5,createdAt:clock(),expiresAt:clock()+600000,ttl:Math.floor((clock()+86400000)/1000)});await mailer.send({to:recipient,...applicationOtp({code}),tags:{workflow:'enrolment_offer',message_type:'offer_otp',record_id:task.familyId}});}
+   if(children.length && task.email===recipient){const code=String(crypto.randomInt(0,1000000)).padStart(6,'0');await store.putChallenge({id:challengeId,purpose:'enrolment_offer',subjectHash:tokenHash,email:recipient,codeHmac:crypto.createHmac('sha256',env.OTP_HMAC_SECRET).update(`${challengeId}:${code}`).digest('hex'),attempts:0,maxAttempts:5,createdAt:clock(),expiresAt:clock()+600000,ttl:Math.floor((clock()+86400000)/1000)});await mailer.send({to:recipient,...offerOtp({code}),tags:{workflow:'enrolment_offer',message_type:'offer_otp',record_id:task.familyId}});}
    return {challengeId,expiresInSeconds:600,resendAfterSeconds:30,message:'If the private invitation and email match, a code has been sent.'};
  }
  async function verifyCode(event) {

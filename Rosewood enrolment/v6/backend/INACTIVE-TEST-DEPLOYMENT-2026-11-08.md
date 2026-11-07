@@ -1,5 +1,15 @@
 # Inactive synthetic acceptance deployment
 
+## Current live checkpoint
+
+The Google grant and isolated live staff/primary/secondary journey are complete.
+Both fictional children have two signatures; all 13 expected test emails were delivered.
+Actual Gmail letter and signed-record bytes match their reviewed/stored counterparts.
+Original Applications are unchanged. Read [live integration evidence](../post-offer/LIVE-INTEGRATION-2026-11-08.md).
+Production is unchanged; real issuance stays off. Earlier inactive/pending-consent
+checkpoints below are historical and superseded by that report. Final test fixes,
+recovery validation and the disabled production rollout are still in progress.
+
 ## Runtime update to 9647377 — latest
 
 The Bridge Road policy candidate is now deployed to the isolated test stack from

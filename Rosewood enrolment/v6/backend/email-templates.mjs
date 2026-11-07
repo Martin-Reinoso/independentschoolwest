@@ -46,6 +46,12 @@ export function applicationOtp({ code }) {
   return { subject, text, html: frame(`<h1 style="font:700 28px Georgia,serif">Verification code</h1><p>Enter this code to continue your Application for Enrolment:</p><p style="font:700 36px 'Courier New',monospace;letter-spacing:.16em">${code}</p><p>This code expires in 10 minutes. Do not share it.</p>`) };
 }
 
+export function offerOtp({ code }) {
+  const subject = `${code} is your Rosewood College verification code`;
+  const text = `Enter ${code} to access your provisional offer of enrolment. This code expires in 10 minutes. Do not share it.`;
+  return { subject, text, html: frame(`<h1 style="font:700 28px Georgia,serif">Verification code</h1><p>Enter this code to access your provisional offer of enrolment:</p><p style="font:700 36px 'Courier New',monospace;letter-spacing:.16em">${code}</p><p>This code expires in 10 minutes. Do not share it.</p>`) };
+}
+
 export function communityEnquiryNotification({ reference, name, email, interest, message, submittedAt }) {
   const subject = `New Rosewood College enquiry - ${interest}`;
   const content = message || "No message was provided.";

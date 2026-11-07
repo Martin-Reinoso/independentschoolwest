@@ -1,5 +1,15 @@
 # Offer acceptance: completion, testing and deployment proposal
 
+## Current live checkpoint
+
+The Google grant and isolated live staff/primary/secondary journey are complete.
+Both fictional children have two signatures; all 13 expected test emails were delivered.
+Actual Gmail letter and signed-record bytes match their reviewed/stored counterparts.
+Original Applications are unchanged. Read [live integration evidence](LIVE-INTEGRATION-2026-11-08.md).
+Production is unchanged; real issuance stays off. Earlier inactive/pending-consent
+checkpoints below are historical and superseded by that report. Final test fixes,
+recovery validation and the disabled production rollout are still in progress.
+
 ## Latest monitoring gap correction
 
 The existing offer canary checked page markers but did not fetch the fourteen pinned
