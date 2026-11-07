@@ -1,5 +1,20 @@
 # Offer acceptance: completion, testing and deployment proposal
 
+## Latest monitoring gap correction
+
+The existing offer canary checked page markers but did not fetch the fourteen pinned
+policy downloads or original Student Code map. The candidate now fetches these public
+assets with GET only and verifies bounded byte lengths, SHA-256 and file signatures.
+Tests cover missing files, same-size corruption of PDF/DOCX/map, and oversized content.
+All 282 backend tests, frozen-lockfile install/build, static references and public-data
+checks pass. The first build attempt had a local pnpm PATH error; correcting PATH
+produced the successful bundle without source changes.
+This extends `PublicFormAvailability` when offer monitoring is enabled. With issuance
+still off during initial production rollout, offer-specific checks stay gated; verify
+published assets manually against their pinned hashes before any later activation.
+The five existing checks, their alarm routing and non-writing behavior remain intact.
+
+
 ## Bridge Road publication copies — user decision applied
 
 The user instructed “Use 456 Bridge Road, Cobblebank” on 8 November 2026. Seven

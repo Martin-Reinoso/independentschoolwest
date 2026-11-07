@@ -3,6 +3,8 @@ import { DynamoStore } from "./dynamo-store.mjs";
 import { currentFormDefinition } from "./form-definitions.mjs";
 import { APPLICATION_REQUEST_CONTRACT } from "./application-request-contract.mjs";
 import { COMMUNITY_ENQUIRY_CONTRACT } from "./community-enquiry-contract.mjs";
+import { OFFER_CONTRACT } from "./offer-contract.mjs";
+import { validatePolicyDownload, validatePolicyFigure } from "./offer-policy-assets.mjs";
 
 const METRIC_NAMESPACE = "Rosewood/Enrolment";
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -120,6 +122,47 @@ async function checkPublicAssets({ fetchImpl, siteBaseUrl, offersEnabled }) {
     for (const marker of asset.markers) {
       if (!body.includes(marker)) throw new Error(`${asset.path.split("?")[0]} is missing an expected release marker.`);
     }
+  }));
+  if (offersEnabled) await checkOfferPolicyAssets({ fetchImpl, siteBaseUrl });
+}
+
+async function readPinnedAsset(response, expectedBytes) {
+  const reader = response.body?.getReader();
+  if (!reader || !Number.isSafeInteger(expectedBytes) || expectedBytes < 1 || expectedBytes > 20_000_000) {
+    throw new Error("A frozen policy asset has invalid size metadata or no response body.");
+  }
+  const chunks = [];
+  let length = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      length += value.byteLength;
+      if (length > expectedBytes) throw new Error("A frozen policy asset exceeds its pinned size.");
+      chunks.push(value);
+    }
+  } finally {
+    await reader.cancel();
+    reader.releaseLock();
+  }
+  if (length !== expectedBytes) throw new Error("A frozen policy asset does not match its pinned size.");
+  return Buffer.concat(chunks, length);
+}
+
+async function checkOfferPolicyAssets({ fetchImpl, siteBaseUrl }) {
+  const assets = OFFER_CONTRACT.policies.flatMap(policy => [
+    ...["pdf", "docx"].map(format => ({ file: policy.sourceDownloads?.[format], validate: bytes => validatePolicyDownload(policy, format, bytes) })),
+    ...(policy.sourceFigures || []).map(figure => ({ file: figure, validate: bytes => validatePolicyFigure(figure, bytes) }))
+  ]);
+  // Only pinned public snapshots are read. No family document or storage ID is used.
+  for (const { file } of assets) {
+    if (!file || !/^Files\/Policies\/offer-snapshots\/[a-z0-9-]+-[a-f0-9]{64}\.(pdf|docx|png)$/.test(file.assetPath)) {
+      throw new Error("A frozen policy asset is missing its local publication path.");
+    }
+  }
+  await Promise.all(assets.map(async ({ file, validate }) => {
+    const response = await fetchResponse(fetchImpl, `${siteBaseUrl}/${file.assetPath}`);
+    validate(await readPinnedAsset(response, file.bytes));
   }));
 }
 

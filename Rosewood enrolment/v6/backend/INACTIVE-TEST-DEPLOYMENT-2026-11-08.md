@@ -1,5 +1,27 @@
 # Inactive synthetic acceptance deployment
 
+## Runtime update to 9647377 — latest
+
+The Bridge Road policy candidate is now deployed to the isolated test stack from
+clean commit `9647377` (the policy implementation is `e17a885`). Package size is
+16,931,483 bytes. Both change-set views were reviewed: the only changed property
+is Lambda's code key; three unchanged dependent references are reevaluated.
+
+The stack is UPDATE_COMPLETE, Lambda Active/Successful. Post-update checks confirm
+all 28 physical resource IDs and every parameter are unchanged, actual Lambda code
+matches the uploaded artifact, five runtime modules match the source, and the original
+Student Code map matches its hash. Both tables are empty before and after health and
+fictional staff-OTP checks, which return 503 SYNTHETIC_RUNTIME_NOT_AVAILABLE with
+no-store. Delivery, readiness, offers and the outbox schedule remain disabled.
+Separate SES feedback retains all seven event types and its sole Lambda subscriber;
+the four test alarms have no notification actions. No actual email or production
+write occurred. Private evidence: synthetic-inactive-stack-9647377-private.json and
+synthetic-update-full-review-9647377-private.json.
+
+The newer policy-download canary change is local only at this checkpoint. Google
+policy/client creation is resolved; the actual drive.file account grant is pending.
+
+
 ## Runtime update to c46a705 — latest
 
 Verified 8 November 2026 at 07:39 Melbourne time. The existing isolated test stack

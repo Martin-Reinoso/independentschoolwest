@@ -1,6 +1,6 @@
 # Current provisional-offer release gates
 
-Reviewed against inactive runtime `c46a705` and the newer local Bridge Road candidate on
+Reviewed against inactive runtime `9647377` and the newer local Bridge Road candidate on
 8 November 2026. **The full goal is not complete.** No live test email has been sent;
 production remains unchanged. This table distinguishes local evidence from provider
 integration and school policy approval.
@@ -8,13 +8,13 @@ integration and school policy approval.
 | Requirement | Current evidence | Remaining action |
 | --- | --- | --- |
 | Confirmed primary/secondary form and family overview | Current source and mocked browser journeys at 1440/390/320; editable primary details, locked emails, read-only secondary, both signatures, exact stored PDF and unchanged fictional Application | Repeat the complete journey against isolated real providers |
-| Wording and fourteen sections consistent across outputs | `agreement-draft.json`; generated-content check; 281-test suite; current introduction matches user wording | Resolve proposed substantive clauses in `FOURTEEN-SECTION-REVIEW-NOTES.md`; do not enable real issue on an unapproved content hash |
+| Wording and fourteen sections consistent across outputs | `agreement-draft.json`; generated-content check; 282-test suite; current introduction matches user wording | Resolve proposed substantive clauses in `FOURTEEN-SECTION-REVIEW-NOTES.md`; do not enable real issue on an unapproved content hash |
 | Seven full policies and downloadable versions | Source hashes; 140 headings; 75 pages inspected; exact Student Code map; private 14-file package; download/return browser checks | Bridge Road decision applied;14 publication files are bound locally and checked. Deploy pinned files with the release; original map remains unchanged |
-| Isolated runtime and recipient boundary | Stack UPDATE_COMPLETE on c46a705; 28 distinct resources unchanged; 18 deployed-role IAM cases; email/readiness/issuance off; tables empty; actual health/fictional OTP fail closed | Configure separately scoped Google test storage and test-only secrets; then activate only the authorised synthetic workflow |
-| Google test account/app | User completed policy consent; test OAuth client created on explicit approval, stored privately; requested scope restricted to drive.file | Finish test API/account setup and obtain action-time approval for the actual scoped account grant |
+| Isolated runtime and recipient boundary | Stack UPDATE_COMPLETE on 9647377; 28 distinct resources unchanged; 18 deployed-role IAM cases; email/readiness/issuance off; tables empty; actual health/fictional OTP fail closed | Configure separately scoped Google test storage and test-only secrets; then activate only the authorised synthetic workflow |
+| Google test account/app | User completed policy consent; test OAuth client created on explicit approval, stored privately; requested scope restricted to drive.file | APIs and sole test audience configured; actual scoped account grant awaits action-time approval |
 | Actual emails, attachments, feedback and recovery | Unit/provider-mocked tests only; no actual-email ledger or live signed-record evidence exists | After Google setup, run staff issue → primary → secondary → completion, sibling/denial/retry/recovery cases; receive only at the authorised personal inbox; record Gmail/SES/PDF evidence |
 | Production release and recovery | Scope separated, clean commits, default-off feature gates, documented backend-first approach | After integration/publication gates, capture current rollback baseline, review change set, deploy disabled, publish pinned assets, verify live hashes and no offer notifications |
-| Monitoring and operational completion | Candidate canary/queue checks and recovery design exist | Verify production health/alarms and two scheduled canary intervals after rollout; deliver final evidence and operating instructions |
+| Monitoring and operational completion | Candidate checks all 14 policy downloads and source map for missing/changed bytes; 282 tests and locked build pass | Verify production health/alarms and two scheduled canary intervals after rollout; deliver final evidence and operating instructions |
 
 ## Immediate dependency
 
@@ -43,4 +43,4 @@ associated with the personal test inbox. Disable test delivery/schedule after th
 - [Release scope and excluded operations repairs](RELEASE-SCOPE-2026-11-08.md)
 
 No additional implementation change is justified merely to replace the missing live
-integration evidence. Preserve the tested candidate instead of completing the remaining actual provider flow.
+integration evidence. Complete the remaining actual provider flow; add implementation changes only for an evidenced defect or gap.

@@ -213,13 +213,61 @@ test("production canary detects a protected workflow route that does not fail cl
   assert.equal(result.checks.find(check => check.name === "ApplicationWorkflowAvailability").available, false);
 });
 
-test('enabled family offers are checked against real candidate assets and protected GET routes only',async()=>{
- const {readFile}=await import('node:fs/promises');const seen=[];const fallback=healthyFetch();
- const result=await runProductionCanary({env:{PUBLIC_SITE_BASE_URL:SITE,PUBLIC_API_BASE_URL:API,ENROLMENT_OFFERS_ENABLED:'true'},metricsClient:capturingMetricsClient(),operationalStore:operationalStore(),fetchImpl:async(input,options={})=>{
-   const url=new URL(input);seen.push({path:url.pathname,method:options.method||'GET'});
-   if(url.origin===SITE && /(?:rosewood-enrolment-offer(?:s-admin|-terms)?-v1|rosewood-enrolment-acceptance-v1|rosewood-enrolment-offer-policy-reader)\.(html|js|css)$/.test(url.pathname))return response(await readFile(new URL('../../../../'+url.pathname.slice(1),import.meta.url),'utf8'));
-   if(url.origin===API && url.pathname==='/v6/health'){const data=await (await fallback(input,options)).json();data.features.conditionalOffers=true;return response(data);}
-   if(url.origin===API && ['/v6/offers/context','/v6/staff/offers'].includes(url.pathname))return response({error:'SESSION_REQUIRED'},{status:401});
-   return fallback(input,options);
- }});assert.ok(result.checks.every(c=>c.available));assert.ok(seen.every(r=>r.method==='GET'));assert.ok(seen.some(r=>r.path==='/v6/offers/context'));
+async function offerCanary({ alterAsset } = {}) {
+  const { readFile } = await import('node:fs/promises');
+  const seen = [], fallback = healthyFetch();
+  const result = await runProductionCanary({
+    env: { PUBLIC_SITE_BASE_URL: SITE, PUBLIC_API_BASE_URL: API, ENROLMENT_OFFERS_ENABLED: 'true' },
+    metricsClient: capturingMetricsClient(), operationalStore: operationalStore(),
+    fetchImpl: async (input, options = {}) => {
+      const url = new URL(input);
+      seen.push({ path: url.pathname, method: options.method || 'GET' });
+      if (url.origin === SITE && url.pathname.startsWith('/Files/Policies/offer-snapshots/')) {
+        const bytes = await readFile(new URL('../../../../' + url.pathname.slice(1), import.meta.url));
+        return alterAsset?.(url.pathname, bytes) || new Response(bytes);
+      }
+      if (url.origin === SITE && /(?:rosewood-enrolment-offer(?:s-admin|-terms)?-v1|rosewood-enrolment-acceptance-v1|rosewood-enrolment-offer-policy-reader)\.(html|js|css)$/.test(url.pathname)) {
+        return response(await readFile(new URL('../../../../' + url.pathname.slice(1), import.meta.url), 'utf8'));
+      }
+      if (url.origin === API && url.pathname === '/v6/health') {
+        const data = await (await fallback(input, options)).json();
+        data.features.conditionalOffers = true;
+        return response(data);
+      }
+      if (url.origin === API && ['/v6/offers/context', '/v6/staff/offers'].includes(url.pathname)) {
+        return response({ error: 'SESSION_REQUIRED' }, { status: 401 });
+      }
+      return fallback(input, options);
+    }
+  });
+  return { result, seen };
+}
+
+test('enabled offers verify all pinned policy downloads, the map and protected GET routes', async () => {
+  const { result, seen } = await offerCanary();
+  assert.ok(result.checks.every(check => check.available));
+  assert.ok(seen.every(request => request.method === 'GET'));
+  assert.ok(seen.some(request => request.path === '/v6/offers/context'));
+  const files = seen.filter(request => request.path.startsWith('/Files/Policies/offer-snapshots/'));
+  assert.equal(files.length, 15);
+  assert.equal(files.filter(request => request.path.endsWith('.pdf')).length, 7);
+  assert.equal(files.filter(request => request.path.endsWith('.docx')).length, 7);
+  assert.equal(files.filter(request => request.path.endsWith('.png')).length, 1);
+});
+
+test('offer monitoring rejects missing, corrupted and oversized published policy assets', async () => {
+  for (const mode of ['missing', 'corrupt-pdf', 'corrupt-docx', 'corrupt-map', 'oversize']) {
+    const { result } = await offerCanary({ alterAsset(path, bytes) {
+      const extension = mode === 'corrupt-docx' ? '.docx' : mode === 'corrupt-map' ? '.png' : '.pdf';
+      if (!path.endsWith(extension)) return;
+      if (mode === 'missing') return new Response('missing', { status: 404 });
+      if (mode === 'oversize') return new Response(Buffer.concat([bytes, Buffer.from('x')]));
+      const changed = Buffer.from(bytes);
+      changed[changed.length - 1] ^= 1;
+      return new Response(changed);
+    } });
+    const check = result.checks.find(item => item.name === 'PublicFormAvailability');
+    assert.equal(check.available, false, mode);
+    assert.ok(result.checks.filter(item => item.name !== 'PublicFormAvailability').every(item => item.available));
+  }
 });

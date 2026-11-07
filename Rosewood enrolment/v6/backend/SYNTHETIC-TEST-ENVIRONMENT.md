@@ -2,7 +2,7 @@
 
 Status on 8 November 2026: the separate inactive test stack was created and verified.
 See [deployment evidence](INACTIVE-TEST-DEPLOYMENT-2026-11-08.md) for the latest state.
-Its current runtime is `c46a705`, applied through a reviewed code-only update with
+Its current runtime is `9647377`, applied through a reviewed code-only update with
 all resources and parameters unchanged. It was initially created from clean
 commit `3fb2453`, with 28 additions and no production updates. The actual role matches
 the resolved template exactly, has no extra attached/inline policies, and passes all
@@ -83,7 +83,8 @@ name **Rosewood Offer Test**, number `836042484839`), under the authorised perso
 account. The user completed the Google policy consent and explicitly approved the
 **Rosewood Offer Test Local Integration** desktop OAuth credential. It is created
 and stored only in the private runtime, with `drive.file` as the sole requested scope.
-Both Drive and Sheets APIs are verified enabled. The app remains External/testing;
+Both Drive and Sheets APIs are verified enabled. The sole test user is the authorised
+personal account. The app remains External/testing;
 no billing upgrade or publication was performed. Actual account access/refresh-token
 consent and creation of test storage remain pending. Do not repeat the resolved
 policy or credential-creation approvals.
