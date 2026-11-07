@@ -8,6 +8,21 @@ record change was performed while preparing this plan.
 
 ## Execution checkpoint — 8 November 2026
 
+### All original policy pages reviewed — latest
+
+All 75 original policy pages have now been visually checked. Read
+[policy source evidence](POLICY-SOURCE-VERIFICATION-2026-11-08.md).
+Review identified 28 stale contents-page numbers across five conversions.
+Separate private review copies correct only those cached fields; rerender/recheck
+proves all 122 contents links and page numbers agree, all 140 outline headings are
+accounted for, and the other 70 page images are pixel-identical. All five changed
+contents pages were visually inspected. Controlled originals remain unchanged.
+
+No policy copy is published: the address decision and source map's cramped labels
+remain open. Download packaging/links, Google consent/scoped setup, live Gmail tests,
+exact agreement review and production rollout remain incomplete. This checkpoint
+does not change the AWS test deployment, application code or family records.
+
 ### Policy appendix image — latest local correction
 
 The Student Code's source map was omitted by text-only extraction. The local reader,

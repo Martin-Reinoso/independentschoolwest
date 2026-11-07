@@ -40,10 +40,12 @@ upstream content, not an acceptance change.
 
 ## Evidence and remaining gates
 
-After separation, all 275 remaining backend tests pass on Node 22.23.4. The previous
-277 total included the two now-separate reporting tests. No frontend or frozen policy
-wording changed during separation, so the earlier desktop/mobile, both-signature and
-exact stored-PDF browser evidence still applies to those assets.
+The latest acceptance runtime checkpoint is local commit `692feaa`: 278 backend
+tests, the locked build and desktop/mobile both-signature journeys pass. It adds the
+exact checksum-pinned Student Code appendix map to the reader and signed PDF.
+The running inactive AWS artifact remains `3fb2453`, with the `e793e7f`
+environment-key configuration fix. Do not confuse local test results with deployed
+code or live integration evidence.
 
 All seven current controlled originals match their catalogue bytes. Metadata review
 found school/exporter names, an empty bibliography element and internal PDF contents
@@ -51,7 +53,11 @@ links; no embedded files or external relationships. **All seven originals have t
 old Alfred Road address**: six in the body/cover, ICT in its header. This corrects the
 earlier body-only conclusion about ICT. The source files have not been altered.
 
-Remaining: finish original-download visual QA and resolve the source address; review
+All 75 original pages are now visually inspected. Private review copies correct
+28 stale contents references, with all 70 non-contents-changed page images identical.
+See the policy verification report for exact evidence and remaining map-label issues.
+
+Remaining: resolve the source address/map publication and add verified download links; review
 the exact draft agreement; complete the pending Google test-app consent/access setup;
 configure the verified isolated resources; run real approved-Gmail delivery and recovery
 tests; deploy backend/frontend with family issuance off; verify production health,

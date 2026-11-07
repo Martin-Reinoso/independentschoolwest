@@ -1,13 +1,15 @@
 # Conditional offer implementation
 
 The user wants terms in the online form and digital signatures, not a Word agreement.
-The acceptance portal has no upload step. The current candidate is local, incomplete and
-not deployed. Follow the [completion plan and execution checkpoint](COMPLETION-TEST-AND-DEPLOYMENT-PLAN-2026-11-08.md)
+The acceptance portal has no upload step. The current candidate is incomplete and not
+deployed to production. An earlier candidate runs in a separate inactive AWS test stack.
+Follow the [completion plan and execution checkpoint](COMPLETION-TEST-AND-DEPLOYMENT-PLAN-2026-11-08.md)
 for current status; older chronological notes are not evidence of completion.
 See [implementation and release notes](../POST-OFFER-IMPLEMENTATION-2026-11-08.md).
 
 `agreement-draft.json` is now the single content source for all fourteen reviewed
-sections, seven cached policy bodies, provisional notice and declarations. Run
+sections, seven verified policy bodies and the exact Student Code appendix image,
+provisional notice and declarations. Run
 `backend/scripts/generate-offer-content.mjs` to generate the backend contract and both
 browser projections; `--check` verifies parity. Generation does not approve draft
 policy departures. Exact content-hash approval and issuance remain disabled by default.

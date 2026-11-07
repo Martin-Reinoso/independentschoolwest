@@ -1,5 +1,45 @@
 # Provisional offer policy source verification
 
+## Complete original-page QA and contents correction — latest
+
+All **75 pages** of the seven original conversions have now been visually inspected.
+Body text and registers are readable, with no observed body clipping or overlap.
+The inherited bullet spacing is inconsistent. The previously recorded Student Code
+map label defects remain; no diagram or policy wording was changed.
+
+The original conversions retained 28 stale contents page numbers: Parent 10,
+Student 1, Behaviour 2, Suspension 7 and Complaints 8. Child Safety needed no
+correction. ICT has no contents list. All 140 PDF outline headings are accounted for;
+the 122 contents links in the six documents target the correct actual heading pages,
+but their displayed cached numbers were not all current.
+
+`scripts/check-policy-contents.py` verifies original checksums, matches contents to
+PDF outlines, checks actual link targets and displayed page numbers, and can prepare
+separate copies changing only cached contents page-number fields. It verifies all
+other package entries and canonical document XML remain unchanged. The originals
+are never overwritten. Use `--review-copies` after rendering the prepared copies;
+`--copies` and `--review-copies` are deliberately separate operations.
+
+All seven private review copies are prepared and rendered. Rechecking proves zero
+remaining contents mismatches. Only the five contents pages differ visually; the
+other **70 pages are pixel-identical** to the fully reviewed original renders.
+All five changed contents pages were also visually inspected. Child Safety and ICT
+copies are byte-identical to their originals.
+
+These are not published download assets. All seven still retain the Alfred Road
+address pending the requested publication decision, and the original map defect
+requires publication review. Do not label the five corrected copies as byte-identical
+originals. No source wording, contract, backend runtime, production record or external
+document changed in this checkpoint. Remaining work is publication/address resolution,
+download packaging/links, scoped Google setup, live email/signature tests, exact
+agreement review and production rollout.
+
+Private evidence: `policy-visual-review-private.json`,
+`policy-contents-{review,copies,recheck,final}-private.json`,
+`contents-review-copies/` and `contents-review-render/` under
+`offer-terms-review-20261108`. The recheck includes per-page changed pixel bounds;
+the final report separately verifies originals, copy-only changes and rendered links.
+
 ## Appendix image correction — latest
 
 Visual review found that text-only extraction omitted the Student Code's Appendix A
