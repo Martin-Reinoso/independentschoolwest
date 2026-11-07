@@ -78,14 +78,15 @@ feedback configuration and disabled schedule before enabling any traffic.
 
 ## Google isolation
 
-An empty Google Cloud project was created under the user's personal Google account:
-`rosewood-offer-test-20261108` (display name **Rosewood Offer Test**, number
-`836042484839`). No billing upgrade, OAuth credential, user grant, Drive folder or
-Sheet has been created. The app configuration form is prepared with the user's
-personal contact address and External/testing audience. Its final Google API
-Services User Data Policy checkbox is unticked, awaiting the specific confirmation
-requested in chat. Browser confirmation rules require action-time approval for
-accepting those terms and, separately, granting new security-sensitive access.
+The dedicated Google Cloud project is `rosewood-offer-test-20261108` (display
+name **Rosewood Offer Test**, number `836042484839`), under the authorised personal
+account. The user completed the Google policy consent and explicitly approved the
+**Rosewood Offer Test Local Integration** desktop OAuth credential. It is created
+and stored only in the private runtime, with `drive.file` as the sole requested scope.
+Both Drive and Sheets APIs are verified enabled. The app remains External/testing;
+no billing upgrade or publication was performed. Actual account access/refresh-token
+consent and creation of test storage remain pending. Do not repeat the resolved
+policy or credential-creation approvals.
 
 Use a distinct OAuth client/project and only
 `https://www.googleapis.com/auth/drive.file`. Do not reuse the production app client
@@ -93,8 +94,8 @@ or broad Drive/Sheets refresh token. The production grant was inspected in memor
 and has broad Drive/Sheets scopes; it is unsuitable for this environment. No shared
 drives were listed, so a new service account has no suitable shared-drive file owner.
 
-After consent, enable Drive and Sheets APIs, create the test client and restrict its
-testing audience. Authorise only app-file access, then create separate folders and
+Restrict testing to the authorised personal account. At the actual account grant,
+confirm only app-file access, then create separate folders and
 three Sheets with that client. Verify the granted scope and verify that known
 production folder/Sheet IDs are inaccessible using metadata-only requests. Never
 read family documents to demonstrate denial. Keep tokens in the private runtime
