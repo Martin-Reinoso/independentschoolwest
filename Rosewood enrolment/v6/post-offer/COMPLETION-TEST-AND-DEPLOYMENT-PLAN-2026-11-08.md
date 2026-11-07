@@ -8,6 +8,20 @@ record change was performed while preparing this plan.
 
 ## Execution checkpoint — 8 November 2026
 
+### Policy appendix image — latest local correction
+
+The Student Code's source map was omitted by text-only extraction. The local reader,
+contract and signed PDF now include the exact checksum-pinned source image; the
+deployment builder packages it and PDF generation rejects missing/altered bytes.
+All 278 tests, locked build and 1440/390/320 connected synthetic journeys pass.
+Read [policy source evidence](POLICY-SOURCE-VERIFICATION-2026-11-08.md) for exact
+checks, full-size map review and remaining source defects. Original-policy visual
+QA is now 36/75 pages complete. No publication address decision has been received.
+
+This correction has not been uploaded to the inactive AWS stack or production.
+Google consent and scoped storage, live Gmail testing, source publication review,
+exact agreement review, deployment and monitoring remain open. No real email sent.
+
 ### Inactive AWS test deployment — latest
 
 The separate test stack is now deployed and verified inactive. Read

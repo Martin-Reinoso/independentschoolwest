@@ -1,5 +1,6 @@
 import {createOfferPdf, pdfHash} from './offer-pdf.mjs';
 import {offerContentHash} from './offer-content-hash.mjs';
+import {policyFigureBytes} from './offer-policy-assets.mjs';
 
 export const OFFER_RECORD_FILE_NAME='Rosewood-signed-acceptance.pdf';
 const date=value=>new Intl.DateTimeFormat('en-AU',{dateStyle:'long',timeStyle:'short',timeZone:'Australia/Melbourne'}).format(new Date(value));
@@ -40,7 +41,20 @@ export async function renderOfferRecordPdf(offer, signatureImages) {
   doc.heading('Terms and Conditions of Enrolment',{size:17});
   doc.paragraph(p.contract.introduction.text);
   for(const section of p.contract.sections){doc.heading(`${section.id}. ${section.title}`);for(const text of section.paragraphs)doc.paragraph(text);}
-  for(const policy of p.contract.policies){doc.newPage();doc.heading(policy.title,{size:17});doc.paragraph('Policy text included in the accepted agreement',{size:8.5});doc.paragraph(policy.text,{size:9,gap:8});}
+  for(const policy of p.contract.policies){
+    doc.newPage();doc.heading(policy.title,{size:17});doc.paragraph('Policy text included in the accepted agreement',{size:8.5});
+    const lines=policy.text.split(/\r?\n/),figures=(policy.sourceStructure||[]).filter(block=>block[0]==='figure'),seen=new Set();
+    let cursor=0;
+    for(const [,start,count,index] of figures){
+      if(!Number.isInteger(start)||start<cursor||start>lines.length||count!==0||!Number.isInteger(index)||seen.has(index)||!policy.sourceFigures?.[index])throw invalid();
+      if(start>cursor)doc.paragraph(lines.slice(cursor,start).join('\n'),{size:9,gap:8});
+      const figure=policy.sourceFigures[index];
+      await doc.figure(policyFigureBytes(figure),figure.caption);
+      seen.add(index);cursor=start;
+    }
+    if(seen.size!==(policy.sourceFigures||[]).length)throw invalid();
+    if(cursor<lines.length)doc.paragraph(lines.slice(cursor).join('\n'),{size:9,gap:8});
+  }
   doc.newPage();doc.heading('Record verification');
   doc.paragraph('This is a copy of the agreement and electronic signatures retained securely by the College. It does not confirm commencement or request payment.');
   doc.paragraph(`Agreement content SHA-256: ${offer.packetHash}\nContract SHA-256: ${offer.contractHash}\nRecord updated: ${date(offer.updatedAt)}`,{size:8});

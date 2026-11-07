@@ -79,6 +79,13 @@ export async function createOfferPdf({title,timestamp,subtitle='Provisional enro
     ensure(nameHeight+(bytes?85:0)+captionHeight+5);
     paragraph(name,{strong:true,size:11});if(bytes)await signature(bytes);paragraph(caption,{size:8.5});
   }
+  async function figure(bytes,caption){
+    const image=await pdf.embedPng(bytes),scale=Math.min(width/image.width,360/image.height);
+    const height=image.height*scale,captionHeight=lines(caption,8.5,regular).length*8.5*1.45+8;
+    ensure(height+captionHeight+20);
+    page.drawImage(image,{x:left,y:y-height,width:image.width*scale,height});
+    y-=height+12;paragraph(caption,{size:8.5});
+  }
   async function finish(){
     const total=pdf.getPageCount();
     for(const [index,p] of pdf.getPages().entries()){
@@ -90,5 +97,5 @@ export async function createOfferPdf({title,timestamp,subtitle='Provisional enro
     if(bytes.length>OFFER_PDF_MAX_BYTES)throw failure('PDF_SIZE_LIMIT','The signed record exceeds the document size limit.');
     return {bytes,sha256:pdfHash(bytes),contentType:'application/pdf',pages:total};
   }
-  return {paragraph,heading,signature,signatureEntry,newPage,ensure,finish};
+  return {paragraph,heading,signature,signatureEntry,figure,newPage,ensure,finish};
 }

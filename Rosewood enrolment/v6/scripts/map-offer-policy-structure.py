@@ -3,7 +3,7 @@
 
 Requires explicit private originals and their read-only verification report. Does not
 download files, publish documents or alter controlled Word originals. --write updates
-only the local draft source; regenerate its JS projections and asset hashes afterwards.
+only the local draft source and checksum-named figures; regenerate projections afterwards.
 """
 import argparse
 import hashlib
@@ -15,6 +15,14 @@ from docx.table import Table
 from docx.text.paragraph import Paragraph
 
 CODES = ['C.2.2.iif','C.4.4.iih','C.4.2.iib','C.4.1.iiw','C.4.4.iia','C.4.4.iic','C.4.1.iva']
+DECORATIVE_LOGO = 'f1d19f86c1758f38adefd96413d54909cbc807d855c0fe486aa1828ebbb91db5'
+MAP_SHA = 'e273b2e02bd71657345e6cddc8131cf4bbc7a37b49f4e48cfd4a6f539d03870d'
+MAP_PATH = f'Files/Policies/offer-snapshots/student-code-site-supervision-map-{MAP_SHA}.png'
+MAP_FIGURE = {
+    'assetPath': MAP_PATH, 'sha256': MAP_SHA, 'width': 2200, 'height': 1600, 'bytes': 350808,
+    'caption': 'Appendix A: Site Supervision Map',
+    'alt': 'Site supervision map showing active play, arrival and movement, indoor supervision, restricted areas and emergency access, with supervision points SP1 to SP5.'
+}
 
 
 def numbering(document, paragraph):
@@ -39,9 +47,10 @@ def numbering(document, paragraph):
 
 
 def structure(document, policy):
+    assert not document.element.body.xpath('.//w:pict|.//w:object|.//w:txbxContent'), 'Review legacy image, embedded object or text box'
     lines = policy['text'].splitlines()
     cursor, table_index, top, child = 0, 0, 0, 0
-    blocks, covered = [], set()
+    blocks, covered, figures, assets = [], set(), [], {}
 
     def paragraph_span(text, title=False):
         nonlocal cursor
@@ -61,6 +70,20 @@ def structure(document, policy):
         if element.tag == qn('w:p'):
             p = Paragraph(element, document)
             text = p.text.strip()
+            for image in p._p.xpath('.//a:blip'):
+                assert not image.get(qn('r:link')), 'Review externally linked policy image'
+                part = document.part.related_parts[image.get(qn('r:embed'))]
+                blob = part.blob
+                digest = hashlib.sha256(blob).hexdigest()
+                if digest == DECORATIVE_LOGO:
+                    continue
+                assert digest == MAP_SHA and policy['title'] == 'Student Code of Conduct Policy', 'Review unmapped policy image'
+                assert not text and not figures, 'Review inline or repeated policy figure'
+                assert blob[:8] == b'\x89PNG\r\n\x1a\n' and len(blob) == MAP_FIGURE['bytes']
+                assert (int.from_bytes(blob[16:20], 'big'), int.from_bytes(blob[20:24], 'big')) == (2200,1600)
+                blocks.append(['figure',cursor,0,len(figures)])
+                figures.append(dict(MAP_FIGURE))
+                assets[MAP_PATH] = blob
             if not text:
                 continue
             style = p.style.name
@@ -83,6 +106,7 @@ def structure(document, policy):
             else:
                 blocks.append(['title' if style=='Title' else 'p',*span])
         elif element.tag == qn('w:tbl'):
+            assert not element.xpath('.//a:blip'), 'Review policy image inside table'
             table_index += 1
             table = Table(element, document)
             marker = lines.index(f'[TABLE {table_index}]')
@@ -91,12 +115,14 @@ def structure(document, policy):
             blocks.append(['table',marker,len(rows)])
             covered.update(range(marker,marker+1+len(rows)))
         elif element.tag == qn('w:sdt'):
+            assert not list(element.iter(qn('a:blip'))), 'Review image inside structured content'
             fields=' '.join(node.text or '' for node in element.iter(qn('w:instrText')))
             assert fields.strip().startswith('TOC '), 'Review non-contents structured content'
         elif element.tag not in [qn('w:sectPr'),qn('w:bookmarkStart'),qn('w:bookmarkEnd')]:
             raise ValueError('Review unsupported document block')
     assert covered == {i for i,line in enumerate(lines) if line.strip()}, 'Frozen policy text is not covered exactly'
-    return blocks
+    assert len(figures) == (1 if policy['title'] == 'Student Code of Conduct Policy' else 0), 'Policy figure missing'
+    return blocks, figures, assets
 
 
 def main():
@@ -116,15 +142,25 @@ def main():
         assert record['byteIdenticalToCatalogue'] and digest==record['sha256']==record['catalogueSha256']
         document=Document(path)
         assert next(p.text.strip() for p in document.paragraphs if p.style.name=='Title')==policy['title']
-        blocks=structure(document,policy)
+        blocks,figures,assets=structure(document,policy)
         policy['sourceStructure']=blocks
+        policy['sourceFigures']=figures
         policy['sourceSha256']=digest
         policy['sourceEvidenceCode']=code
         policy['sourceSnapshot']='Controlled original verified 8 November 2026; original wording retained'
         print(code, 'mapped',len(blocks),'blocks;',sum(b[0]=='h' for b in blocks),'numbered headings')
+        if args.write:
+            root=Path(__file__).resolve().parents[3]
+            for relative,blob in assets.items():
+                target=root/relative
+                target.parent.mkdir(parents=True,exist_ok=True)
+                if target.exists():
+                    assert target.read_bytes() == blob, 'Immutable policy figure changed'
+                else:
+                    target.write_bytes(blob)
     if args.write:
         args.source.write_text(json.dumps(source,ensure_ascii=False,indent=2)+'\n')
-        print('Updated local draft structure/provenance only; text unchanged. Regenerate projections before use.')
+        print('Updated local draft structure/provenance and verified figures; text unchanged. Regenerate projections before use.')
 
 
 if __name__=='__main__':

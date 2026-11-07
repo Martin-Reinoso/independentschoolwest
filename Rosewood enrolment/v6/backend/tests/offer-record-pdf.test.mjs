@@ -1,15 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {PDFDocument} from 'pdf-lib';
+import {PDFDocument,PDFName,PDFRawStream} from 'pdf-lib';
 import {makeOfferPacket} from '../offer-workflow.mjs';
 import {renderOfferRecordPdf} from '../offer-record-pdf.mjs';
 import {pdfHash,validateOfferSignature} from '../offer-pdf.mjs';
 import {offerContentHash} from '../offer-content-hash.mjs';
+import {policyFigureBytes,validatePolicyFigure} from '../offer-policy-assets.mjs';
+import {OFFER_CONTRACT} from '../offer-contract.mjs';
 import {application,schedule,drawing,harness} from './helpers/offer-harness.mjs';
 
 const png=Buffer.from(drawing.split(',')[1],'base64'),now=Date.parse('2026-11-08T00:00:00Z');
 function fixture(){
- const prepared=makeOfferPacket(application(),schedule,now);
+ const prepared=structuredClone(makeOfferPacket(application(),schedule,now));
  const offer={...prepared,id:'synthetic-offer',createdAt:new Date(now).toISOString(),updatedAt:new Date(now+60000).toISOString(),revision:3,status:'signed_conditional',contractHash:offerContentHash(prepared.packet.contract)};
  offer.signatures=offer.signers.map((s,i)=>({id:`synthetic-signature-${i}`,signerId:s.id,signerName:s.name,signedAt:offer.updatedAt,packetHash:offer.packetHash,contractHash:offer.contractHash,imageSha256:pdfHash(png),reviewAcknowledged:true,conditionsAcknowledged:true,termsAcknowledged:true,electronicConsent:true}));
  return {offer,images:new Map(offer.signatures.map(s=>[s.id,png]))};
@@ -20,10 +22,28 @@ test('signed PDF has bounded pages, embedded fonts and images, deterministic byt
  const {offer,images}=fixture(),result=await renderOfferRecordPdf(offer,images),pdf=await PDFDocument.load(result.bytes);
  assert.equal(result.fileName,'Rosewood-signed-acceptance.pdf');assert.equal(result.sha256,pdfHash(result.bytes));assert.ok(result.bytes.length<2_000_000);assert.ok(pdf.getPageCount()>10);assert.ok(pdf.getPageCount()<120);
  assert.equal(pdf.catalog.has((await import('pdf-lib')).PDFName.of('OpenAction')),false);
+ const maps=pdf.context.enumerateIndirectObjects().filter(([,obj])=>obj instanceof PDFRawStream&&obj.dict.get(PDFName.of('Subtype'))===PDFName.of('Image')&&obj.dict.get(PDFName.of('Width'))?.asNumber()===2200&&obj.dict.get(PDFName.of('Height'))?.asNumber()===1600);
+ assert.equal(maps.length,1,'the signed record must embed the full source appendix map');
  const again=await renderOfferRecordPdf(offer,images);assert.equal(again.sha256,result.sha256);
  // Map key order may change on a DynamoDB round trip; signed content must not.
  const reorder=value=>Array.isArray(value)?value.map(reorder):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).reverse().map(([k,v])=>[k,reorder(v)])):value;
  const reordered=await renderOfferRecordPdf(reorder(offer),images);assert.equal(reordered.sha256,result.sha256);
+});
+
+test('frozen policy figures reject altered bytes, missing assets, dimensions and unreferenced images',async()=>{
+ const figure=OFFER_CONTRACT.policies[1].sourceFigures[0],bytes=policyFigureBytes(figure);
+ assert.equal(pdfHash(bytes),figure.sha256);
+ const changed=Buffer.from(bytes);changed[100]^=1;
+ assert.throws(()=>validatePolicyFigure(figure,changed),e=>e.code==='POLICY_FIGURE_UNAVAILABLE');
+ assert.throws(()=>validatePolicyFigure({...figure,width:1},bytes),e=>e.code==='POLICY_FIGURE_UNAVAILABLE');
+ assert.throws(()=>policyFigureBytes({...figure,assetPath:'../../private.png'}),e=>e.code==='POLICY_FIGURE_UNAVAILABLE');
+ const hash='0'.repeat(64);
+ assert.throws(()=>policyFigureBytes({...figure,sha256:hash,assetPath:'Files/Policies/offer-snapshots/missing-'+hash+'.png'}),e=>e.code==='POLICY_FIGURE_UNAVAILABLE');
+ const {offer,images}=fixture();
+ offer.packet.contract.policies[1].sourceStructure=offer.packet.contract.policies[1].sourceStructure.filter(b=>b[0]!=='figure');
+ offer.packetHash=offerContentHash(offer.packet);offer.contractHash=offerContentHash(offer.packet.contract);
+ offer.signatures.forEach(s=>{s.packetHash=offer.packetHash;s.contractHash=offer.contractHash;});
+ await assert.rejects(()=>renderOfferRecordPdf(offer,images),e=>e.code==='OFFER_EVIDENCE_MISMATCH');
 });
 
 test('signed PDF rejects altered agreement, wrong image, duplicate signer and incomplete evidence',async()=>{

@@ -40,3 +40,17 @@ test('policy renderer escapes source text and retains legacy frozen text support
  assert.match(reader.renderPolicy({text:'Purpose\nLegacy policy'}).html,/Legacy policy/);
  assert.throws(()=>reader.renderPolicy({text:'one line',sourceStructure:[['p',2,1]]}),/Invalid/);
 });
+
+test('Student Code appendix retains the exact source map in place and rejects unsafe figure paths',()=>{
+ const policy=structuredClone(OFFER_CONTRACT.policies[1]),figure=policy.sourceFigures[0];
+ assert.equal(policy.sourceFigures.length,1);
+ assert.equal(figure.sha256,'e273b2e02bd71657345e6cddc8131cf4bbc7a37b49f4e48cfd4a6f539d03870d');
+ const body=reader.renderPolicy(policy);
+ assert.equal((body.html.match(/<img /g)||[]).length,1);
+ assert.ok(body.html.indexOf('<figure')>body.html.indexOf('Appendix A: Site Supervision Map'));
+ assert.ok(body.html.includes('../'+figure.assetPath));assert.match(body.html,/width="2200" height="1600"/);
+ figure.alt='<script>bad()</script>';assert.ok(reader.renderPolicy(policy).html.includes('&lt;script&gt;'));
+ for(const unsafe of ['https://example.test/map.png','../../private.png','Files/Policies/offer-snapshots/map-'+ '0'.repeat(64)+'.png']){
+  figure.assetPath=unsafe;assert.throws(()=>reader.renderPolicy(policy),/Invalid frozen policy figure/);
+ }
+});

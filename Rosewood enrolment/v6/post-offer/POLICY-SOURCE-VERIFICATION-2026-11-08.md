@@ -1,5 +1,39 @@
 # Provisional offer policy source verification
 
+## Appendix image correction — latest
+
+Visual review found that text-only extraction omitted the Student Code's Appendix A
+site-supervision map. It is now included in the local reader and signed-record PDF,
+using the exact 350,808-byte, 2200 × 1600 PNG from the controlled original.
+Image SHA-256:
+`e273b2e02bd71657345e6cddc8131cf4bbc7a37b49f4e48cfd4a6f539d03870d`.
+
+The mapper now accounts for body images, explicitly excludes the verified decorative
+cover logo, and rejects unmapped figures, legacy images, embedded objects, text boxes
+and images within tables/structured content. The contract includes compact figure
+metadata and placement, with no base64 data or changes to existing policy prose.
+The reader includes a responsive image and full-size link. PDF generation verifies
+local bytes, checksum, dimensions and placement; unavailable or altered images fail
+closed. The deployment bundle includes the verified image.
+
+All 278 backend tests pass, including new figure integrity and PDF-embedding tests.
+The locked build and packaged-image read pass. Browser journeys at 1440, 390 and
+320 pixels include the fully loaded map, all seven policy texts, return state,
+both guardian signatures and exact stored/downloaded PDF equality, with zero external
+requests and unchanged fictional Application records. The regenerated synthetic
+acceptance PDF is 49 pages / 434,885 bytes; its two signature images and one source
+map are present. All terms/policy text and page bounds pass automated checks.
+All pages were rendered and contact-sheet layout reviewed, with the new map and
+adjacent page inspected at full size. This is local synthetic evidence only.
+
+All 36 original pages of Parent Code (13), ICT (12) and Student Code (11) have now
+been visually inspected. Remaining original page QA: Child Safety 9, Behaviour 10,
+Suspension 8 and Complaints 12. The Student Code's original map has cramped/clipped
+callout labels; preserve the exact source and resolve publication suitability with
+the document owner. No address change or corrected diagram is authorised yet.
+No controlled originals, production resources or family records were changed.
+The AWS test stack still runs the earlier inactive artifact; this correction is local.
+
 The seven controlled Word originals were read from the school Google Drive on
 8 November 2026. Each was located through the exact parent path under
 `VRQA Submission/RC_Submission_Evidence`, downloaded through a bounded read-only
@@ -74,7 +108,7 @@ The non-cloud private review directory `offer-terms-review-20261108` contains:
 - `verify-policy-originals.py`: read-only source retrieval/verification. OAuth tokens
   remain in process memory and are not saved or logged.
 
-Parent Code pages 1, 2 and 13 and ICT pages 1, 2 and 12 have been visually inspected.
+See the latest checkpoint above for the expanded original-page visual review.
 The private metadata and page-boundary review reports supplement those images;
 automated bounds checks are not a substitute for visual inspection. All-page
 review, any conversion issues, source-address reconciliation, final download names,

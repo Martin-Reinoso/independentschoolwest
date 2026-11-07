@@ -1764,7 +1764,8 @@ export const OFFER_CONTRACT = {
         ]
       ],
       "sourceSha256": "83a080f98d87819d18a789e60d2172ee967cf6958bc9e5cc2a4748f267d66408",
-      "sourceEvidenceCode": "C.2.2.iif"
+      "sourceEvidenceCode": "C.2.2.iif",
+      "sourceFigures": []
     },
     {
       "title": "Student Code of Conduct Policy",
@@ -3096,10 +3097,27 @@ export const OFFER_CONTRACT = {
           1,
           1,
           "7"
+        ],
+        [
+          "figure",
+          227,
+          0,
+          0
         ]
       ],
       "sourceSha256": "932efba1853f7cc9823b2e2a354cffee3ab6610f239b6073eb2ec7b1f5ef5a96",
-      "sourceEvidenceCode": "C.4.4.iih"
+      "sourceEvidenceCode": "C.4.4.iih",
+      "sourceFigures": [
+        {
+          "assetPath": "Files/Policies/offer-snapshots/student-code-site-supervision-map-e273b2e02bd71657345e6cddc8131cf4bbc7a37b49f4e48cfd4a6f539d03870d.png",
+          "sha256": "e273b2e02bd71657345e6cddc8131cf4bbc7a37b49f4e48cfd4a6f539d03870d",
+          "width": 2200,
+          "height": 1600,
+          "bytes": 350808,
+          "caption": "Appendix A: Site Supervision Map",
+          "alt": "Site supervision map showing active play, arrival and movement, indoor supervision, restricted areas and emergency access, with supervision points SP1 to SP5."
+        }
+      ]
     },
     {
       "title": "Child Safety Code of Conduct Policy",
@@ -4299,7 +4317,8 @@ export const OFFER_CONTRACT = {
         ]
       ],
       "sourceSha256": "1141a422a9fb651887eca0fe1f835cb0c82692485fa61555ecaa84d053791627",
-      "sourceEvidenceCode": "C.4.2.iib"
+      "sourceEvidenceCode": "C.4.2.iib",
+      "sourceFigures": []
     },
     {
       "title": "ICT Acceptable Use Agreement",
@@ -5953,7 +5972,8 @@ export const OFFER_CONTRACT = {
         ]
       ],
       "sourceSha256": "b592e26cf19a8ea92b0c1bd159722a25dfb1adfeecf8cbded925d570760b59ab",
-      "sourceEvidenceCode": "C.4.1.iiw"
+      "sourceEvidenceCode": "C.4.1.iiw",
+      "sourceFigures": []
     },
     {
       "title": "Student Behaviour Management Policy",
@@ -6942,7 +6962,8 @@ export const OFFER_CONTRACT = {
         ]
       ],
       "sourceSha256": "17548af80a482099bb6bc9c171a31df25949092a49e8a9bd638d9739ff7e5d35",
-      "sourceEvidenceCode": "C.4.4.iia"
+      "sourceEvidenceCode": "C.4.4.iia",
+      "sourceFigures": []
     },
     {
       "title": "Suspension and Expulsion Procedure",
@@ -7768,7 +7789,8 @@ export const OFFER_CONTRACT = {
         ]
       ],
       "sourceSha256": "fbb4b32516abeb78ec68232d9a1698d63de6da92b1dac6b2cd63ba4e8f5c3552",
-      "sourceEvidenceCode": "C.4.4.iic"
+      "sourceEvidenceCode": "C.4.4.iic",
+      "sourceFigures": []
     },
     {
       "title": "Complaints and Grievances Policy",
@@ -9193,7 +9215,8 @@ export const OFFER_CONTRACT = {
         ]
       ],
       "sourceSha256": "103181940de45f8c0a95686d476fd18236ada90163b702aa680e2076e57f8e7c",
-      "sourceEvidenceCode": "C.4.1.iva"
+      "sourceEvidenceCode": "C.4.1.iva",
+      "sourceFigures": []
     }
   ],
   "introduction": {

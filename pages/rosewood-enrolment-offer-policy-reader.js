@@ -32,6 +32,14 @@
     let listDepth=-1;
     const closeList=()=>{if(listDepth>=0)output.push('</li></ul>'.repeat(listDepth+1));listDepth=-1;};
     for(const [kind,start,count,level,number] of policy.sourceStructure){
+      if(kind==='figure'){
+        const figure=policy.sourceFigures?.[level];
+        if(!Number.isInteger(start)||start<0||start>lines.length||count!==0||!Number.isInteger(level)||!figure||!/^Files\/Policies\/offer-snapshots\/[a-z0-9-]+-[a-f0-9]{64}\.png$/.test(figure.assetPath)||!/^[a-f0-9]{64}$/.test(figure.sha256)||!figure.assetPath.endsWith('-'+figure.sha256+'.png')||![figure.width,figure.height].every(n=>Number.isInteger(n)&&n>0&&n<=4096))throw Error('Invalid frozen policy figure.');
+        closeList();
+        const url='../'+figure.assetPath;
+        output.push(`<figure class="policy-source-figure"><a href="${escape(url)}" target="_blank" rel="noopener noreferrer"><img src="${escape(url)}" width="${figure.width}" height="${figure.height}" alt="${escape(figure.alt)}"></a><figcaption>${escape(figure.caption)} · <a href="${escape(url)}" target="_blank" rel="noopener noreferrer">Open map full size</a></figcaption></figure>`);
+        continue;
+      }
       if(!Number.isInteger(start)||!Number.isInteger(count)||start<0||count<1||start+count>lines.length)throw Error('Invalid frozen policy structure.');
       const text=lines.slice(start,start+count).join('\n');
       if(kind==='li'){

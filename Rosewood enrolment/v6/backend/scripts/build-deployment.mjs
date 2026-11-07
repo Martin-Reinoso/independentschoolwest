@@ -7,6 +7,8 @@ import { currentFormDefinition } from "../form-definitions.mjs";
 import { OFFER_ASSET_HASHES } from "../offer-assets.mjs";
 import { APPLICATION_REQUEST_CONTRACT } from "../application-request-contract.mjs";
 import {OFFER_LETTER_LOGO_SHA256} from '../offer-letter-assets.mjs';
+import {OFFER_CONTRACT} from '../offer-contract.mjs';
+import {policyFigureBytes} from '../offer-policy-assets.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.join(root, "lambda-dist");
@@ -17,6 +19,7 @@ const retiredAssetPaths = {
   "pages/rosewood-application-link-request.js": "Rosewood enrolment/v6/historical-assets/application-link-request-2026.1/rosewood-application-link-request.js.source"
 };
 files.push("email-delivery-policy.mjs", "synthetic-runtime.mjs", "offer-emails.mjs", "offer-details.mjs", "offer-pdf.mjs", "offer-record-pdf.mjs", "offer-content-hash.mjs", "offer-letter-assets.mjs", "family-portal.mjs");
+files.push("offer-policy-assets.mjs");
 
 function run(command, args) {
   const result = spawnSync(command, args, { cwd: output, env: process.env, encoding: "utf8", stdio: "inherit" });
@@ -46,6 +49,11 @@ assertFormAssets();
 rmSync(output, { recursive: true, force: true });
 mkdirSync(output, { recursive: true });
 for (const file of files) copyFileSync(path.join(root, file), path.join(output, file));
+mkdirSync(path.join(output,'policy-assets'));
+for(const policy of OFFER_CONTRACT.policies)for(const figure of policy.sourceFigures||[]){
+  policyFigureBytes(figure);
+  copyFileSync(path.join(repositoryRoot,figure.assetPath),path.join(output,'policy-assets',figure.sha256+'.png'));
+}
 mkdirSync(path.join(output,'pdf-assets'));
 for(const file of ['NotoSans-Regular.ttf','NotoSans-Bold.ttf','NotoSerif-Regular.ttf','OFL.txt'])copyFileSync(path.join(root,'pdf-assets',file),path.join(output,'pdf-assets',file));
 const emblem=path.join(repositoryRoot,'img/rosewood-emblem-corrected-transparent.png');
