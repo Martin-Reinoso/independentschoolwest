@@ -8,6 +8,22 @@ record change was performed while preparing this plan.
 
 ## Execution checkpoint — 8 November 2026
 
+### Inactive AWS test deployment — latest
+
+The separate test stack is now deployed and verified inactive. Read
+[actual deployment evidence](../backend/INACTIVE-TEST-DEPLOYMENT-2026-11-08.md).
+Runtime code is clean commit `3fb2453`; the environment-key correction is `e793e7f`.
+All 28 resources are separate, the deployed role passes 18 policy simulations, and
+the artifact checksum matches. A real HTTP 502 startup defect was diagnosed through
+direct Lambda invocation and corrected by using the test key for environment encryption.
+The strict outside-key denial was preserved. The stack is `UPDATE_COMPLETE`.
+
+Live health and fictional staff-OTP requests now return the intended unready 503;
+both synthetic tables remained empty. Email, offers and scheduled delivery remain
+disabled. No actual email, family record access or production update occurred.
+Google consent/scoped storage, active integration tests, policy download/address
+review, exact agreement review and production release remain outstanding.
+
 ### Release scope and download metadata — current
 
 See [current release scope](RELEASE-SCOPE-2026-11-08.md). The reporting/SNS repairs

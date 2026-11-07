@@ -1,6 +1,8 @@
 # Isolated provisional-offer integration environment
 
-Status on 8 November 2026: the separate inactive test stack was created from clean
+Status on 8 November 2026: the separate inactive test stack was created and verified.
+See [deployment evidence](INACTIVE-TEST-DEPLOYMENT-2026-11-08.md) for the latest state.
+It was created from clean
 commit `3fb2453`, with 28 additions and no production updates. The actual role matches
 the resolved template exactly, has no extra attached/inline policies, and passes all
 18 principal-policy simulations. Google consent/configuration and live email tests
@@ -10,8 +12,10 @@ The first live request exposed a startup defect missed by simulation: Lambda's d
 environment key is outside the role's deliberate KMS boundary, causing KMS access denial
 and HTTP 502 before handler execution. The candidate now explicitly uses the test
 stack's own key for Lambda environment encryption. The outside-key denial is retained;
-six focused isolation tests pass. Applying this one-resource update and repeating the
-live unready-endpoint check remain required. This finding does not affect production.
+six focused isolation tests pass. The reviewed update from `e793e7f` is now applied:
+the stack is `UPDATE_COMPLETE`, and live health and fictional staff-OTP requests both
+return the intended 503 before any record is created. The Lambda code checksum matches
+the reviewed artifact. This finding and correction do not affect production.
 
 The separated acceptance candidate passed all 275 backend tests and the locked build;
 the new encryption-boundary regression brings the suite to 276. No actual test email
@@ -108,8 +112,9 @@ distinct. Compare them with the production configuration in preflight.
 ## Activation and evidence still required
 
 1. Complete Google consent/credential setup and create test-only storage/reporting.
-2. Review the generated template and clean bundle, create the separate AWS stack
-   inactive, then independently verify its IAM and resource boundary.
+2. The separate inactive AWS stack and actual-role verification are complete. Inspect
+   its current state before any continuation; do not recreate it. Further configuration
+   uses a reviewed UPDATE change set with all test-only boundaries preserved.
 3. Provision newly generated OTP/network HMAC secrets, scoped Google credentials
    and the authorised private principal-signature crop. Do not put any of these
    in Git, template parameters, command-line literals, Pages or Lambda source.

@@ -1,7 +1,9 @@
 # Provisional-offer release scope
 
-Current scope checkpoint, 8 November 2026. Implementation is local and unpublished;
-production offers remain disabled. The completion plan retains the full objective,
+Current scope checkpoint, 8 November 2026. The implementation is unpublished to
+production; the separate inactive test stack is deployed and verified. Production
+offers remain disabled. See [test deployment evidence](../backend/INACTIVE-TEST-DEPLOYMENT-2026-11-08.md).
+The completion plan retains the full objective,
 including actual isolated Google/AWS/email tests, policy downloads and deployment.
 
 ## Included
@@ -51,7 +53,7 @@ earlier body-only conclusion about ICT. The source files have not been altered.
 
 Remaining: finish original-download visual QA and resolve the source address; review
 the exact draft agreement; complete the pending Google test-app consent/access setup;
-create and verify isolated resources; run real approved-Gmail delivery and recovery
+configure the verified isolated resources; run real approved-Gmail delivery and recovery
 tests; deploy backend/frontend with family issuance off; verify production health,
 canary cycles, live hashes and rollback evidence. A local commit or passing mocked
 browser journey is not evidence that those deployment/integration gates are complete.
