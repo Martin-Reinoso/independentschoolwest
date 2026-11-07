@@ -1,8 +1,22 @@
 # Rosewood V6 Backend
 
-This service implements Expression of Interest and Application for Enrolment only.
-Offer acceptance, decline and the post-offer Enrolment Agreement remain separate,
-preview-only workflows.
+## Conditional offers local candidate
+
+The isolated integration template, credential boundary and completed live tests are
+documented in [synthetic test environment](SYNTHETIC-TEST-ENVIRONMENT.md). This is a
+separate test stack; never use the production template unchanged for email testing.
+The seven controlled policy originals now have current byte verification and the
+reader uses their actual heading/list/table structure; see
+[policy source verification](../post-offer/POLICY-SOURCE-VERIFICATION-2026-11-08.md).
+All fourteen pinned publication downloads use the approved 456 Bridge Road address; controlled originals remain unchanged.
+
+Separate family offer routes, PDF attachments, child selection, delivery/access tracking and independent signature records have been implemented locally, with issuance disabled by default. The reviewed contract and policy sources still require release verification. Existing Application signing remains independent. See [implementation and release notes](../POST-OFFER-IMPLEMENTATION-2026-11-08.md).
+
+
+The deployed baseline implements EOI and Application. This local candidate additionally
+implements conditional offer acceptance behind disabled-by-default release controls.
+The old V6 acceptance/decline/agreement frames remain non-writing previews. Local
+frontend contracts are EOI `.29` / Application `.30`; all old definitions are retained.
 
 ## Authoritative Data Boundary
 

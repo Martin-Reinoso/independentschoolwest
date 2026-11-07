@@ -17,6 +17,8 @@
 .status-pill.is-pending { color: #8c452f; background: #f7e9e3; }
 .status-pill.is-complete { color: var(--success); background: #eaf6f0; }
 .child-application-list { display: grid; gap: .8rem; margin: 1rem 0; }
+.child-application-action { display: grid; gap: .5rem; }
+.child-application-main { min-width: 0; overflow-wrap: anywhere; }
 .child-application-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 1rem; align-items: center; padding: 1rem; border: 1px solid var(--line); border-radius: 14px; background: white; box-shadow: 0 8px 22px rgba(21,35,59,.04); }
 .child-application-icon { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; color: var(--navy); background: var(--sky-pale); font-weight: 900; }
 .child-application-main h4 { margin: 0 0 .6rem; color: var(--navy); font: 600 1.3rem Baskerville, serif; }
@@ -224,6 +226,9 @@ body:not(.no-environment-ribbon).policy-reader-open .policy-reader-toolbar { top
 .policy-document h3:first-of-type { margin-top: 2rem; }
 .policy-document h3 > span, .policy-document h4 > span { color: var(--terracotta-dark); font-size: .72em; }
 .policy-document p { margin: 0 0 1rem; }
+.policy-source-figure { margin: 1.5rem 0; }
+.policy-source-figure img { display: block; width: 100%; max-width: 100%; height: auto; }
+.policy-source-figure figcaption { margin-top: .65rem; font-size: .85rem; color: var(--muted); }
 .policy-document ul { margin: .4rem 0 1.15rem; padding-left: 1.4rem; }
 .policy-document ul ul { margin: .45rem 0 .3rem; }
 .policy-document li { margin: 0 0 .48rem; padding-left: .25rem; }
@@ -306,7 +311,7 @@ body:not(.no-environment-ribbon).policy-reader-open .policy-reader-toolbar { top
   .policy-document h3 { margin-top: 2.2rem; font-size: 1.75rem; }
   .policy-document h4 { margin-top: 1.65rem; font-size: 1.35rem; }
   .policy-table-wrap { overflow: visible; }
-  .policy-register, .policy-register tbody, .policy-register tr, .policy-register th, .policy-register td { display: block; width: 100%; }
+  .policy-register, .policy-register caption, .policy-register tbody, .policy-register tr, .policy-register th, .policy-register td { display: block; width: 100%; }
   .policy-register th { padding-bottom: .2rem; border-top: 1px solid var(--line); }
   .policy-register td { padding-top: .2rem; border-top: 0; }
   .policy-reader-footer .button { width: 100%; min-width: 0; }

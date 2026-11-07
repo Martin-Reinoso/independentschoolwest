@@ -1,9 +1,12 @@
 import crypto from "node:crypto";
+import { createEmailDeliveryPolicy, guardEmailOutboxStore, guardEmailSender } from "./email-delivery-policy.mjs";
+import { createOfferRoutes, offerTaskAccess } from "./offer-workflow.mjs";
+import { createFamilyPortal, validatePortalAnchor, portalApplicationAllowed } from "./family-portal.mjs";
 import { activeInvitationAccess, invitationExpiryMs, invitationExpiryIso } from "./invitation-access.mjs";
 import { APPLICATION_REQUEST_CONTRACT } from "./application-request-contract.mjs";
 import { COMMUNITY_ENQUIRY_CONTRACT } from "./community-enquiry-contract.mjs";
 import { buildApplicationReview } from "./application-review.mjs";
-import { applicationComplete, applicationInvitation, applicationOtp, applicationSubmitted, communityEnquiryNotification, eoiAcknowledgement, meetingBookingConfirmation, meetingBookingInvitation, signatureInvitation, signatureOtp, staffCaseEmail, staffOtp } from "./email-templates.mjs";
+import { applicationComplete, applicationInvitation, applicationOtp, applicationSubmitted, communityEnquiryNotification, eoiAcknowledgement, meetingBookingConfirmation, meetingBookingInvitation, offerOtp, signatureInvitation, signatureOtp, staffCaseEmail, staffOtp } from "./email-templates.mjs";
 import { FAMILY_COMMUNICATION_TEMPLATE, familyCommunicationContentHash, familyCommunicationVariant, renderFamilyCommunication } from "./family-communication-templates.mjs";
 import { currentFormDefinition, FORM_DEFINITIONS, getFormDefinition, recordFormReference } from "./form-definitions.mjs";
 import { CONTACT_PERMISSION_NO, CONTACT_PERMISSION_YES, SCHEMA_VERSION, contactPermissionAllowed, formReleaseAtLeast, normalizeEmail, safeText, sanitizeApplication, splitApplication, truthy, validateApplicationForSubmission, validateEoi } from "./schema.mjs";
@@ -765,6 +768,9 @@ export async function queueMissingGuardianSignatureInvitations({ store, applicat
 }
 
 export function createService({ store, artifacts, drive, sheets, mailer, slack = { enabled: false }, env, clock = () => Date.now() }) {
+  const emailDeliveryPolicy = createEmailDeliveryPolicy(env);
+  store = guardEmailOutboxStore(store, emailDeliveryPolicy);
+  mailer = guardEmailSender(mailer, emailDeliveryPolicy);
   artifacts ||= drive;
   const allowUnscannedGoogleDocuments = String(env.ALLOW_UNSCANNED_GOOGLE_DOCUMENTS || "false") === "true";
   const allowedOrigins = String(env.ALLOWED_ORIGINS || "https://ffe.org.au").split(",").map(value => value.trim()).filter(Boolean);
@@ -817,6 +823,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
       if (!feedback) continue;
       const index = await store.getEmailMessage?.(feedback.messageId);
       const tracking = index?.tracking;
+      if(feedback.messageType==='offer_family_invitation' && tracking?.kind!=='offer_family_invitation')throw new Error('Offer email delivery correlation is not available yet.');
       if (SIGNATURE_EMAIL_TYPES.has(feedback.messageType) && tracking?.kind !== "signature_request") {
         throw new Error("Signature email delivery correlation is not available yet.");
       }
@@ -838,6 +845,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
       if (tracking?.kind === "family_case_message") {
         await store.recordFamilyMessageDelivery?.({ messageId: tracking.familyMessageId, recipientCopyId: tracking.recipientCopyId, deliveryStatus: feedback.deliveryStatus, deliveryRank: feedback.deliveryRank, at: feedback.occurredAt, messageIdFromProvider: feedback.messageId });
       }
+      if(tracking?.kind==='offer_family_invitation')await store.recordOfferDelivery({tokenHash:tracking.taskTokenHash,status:feedback.deliveryStatus,rank:feedback.deliveryRank,at:feedback.occurredAt});
       const audit = {
         eventId: `ses-${feedback.eventId}`,
         occurredAt: feedback.occurredAt,
@@ -905,9 +913,13 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     const tokenHash = sha256(raw);
     let session = await store.getSession(tokenHash);
     const now = clock();
-    if (!session || session.scope !== scope || session.expiresAt <= now) throw appError(401, "SESSION_EXPIRED", "Your secure session has expired. Verify your email address again.");
-    if (["application", "application_family", "application_status"].includes(scope)) {
+    if (!session || !(Array.isArray(scope) ? scope : [scope]).includes(session.scope) || session.expiresAt <= now) throw appError(401, "SESSION_EXPIRED", "Your secure session has expired. Verify your email address again.");
+    scope = session.scope;
+    const anchor = await validatePortalAnchor({ store, session, now });
+    if (["application", "application_family", "application_status", "enrolment_offer"].includes(scope)) {
       const absoluteExpiresAt = Number(session.absoluteExpiresAt || Number(session.createdAt) + APPLICATION_SESSION_ABSOLUTE_MS);
+      if (absoluteExpiresAt <= now) throw appError(401, "SESSION_EXPIRED", "Your secure session has expired. Verify your email address again.");
+      if (anchor && !await store.touchSession(session.portalAnchor, { expiresAt: Math.min(now + APPLICATION_SESSION_IDLE_MS, anchor.absoluteExpiresAt), absoluteExpiresAt: anchor.absoluteExpiresAt, lastActivityAt: now, now, ttl: Math.floor((anchor.absoluteExpiresAt + 86400_000) / 1000) })) throw appError(401, "SESSION_EXPIRED", "Your secure session has expired. Verify your email address again.");
       const expiresAt = Math.min(now + APPLICATION_SESSION_IDLE_MS, absoluteExpiresAt);
       session = await store.touchSession(tokenHash, { expiresAt, absoluteExpiresAt, lastActivityAt: now, now, ttl: Math.floor((absoluteExpiresAt + 86400_000) / 1000) });
       if (!session) throw appError(401, "SESSION_EXPIRED", "Your secure session has expired. Verify your email address again.");
@@ -916,12 +928,16 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
       session = await store.touchSession(tokenHash, { expiresAt, absoluteExpiresAt: expiresAt, lastActivityAt: now, now, ttl: Math.floor((expiresAt + 60 * 60_000) / 1000) });
       if (!session) throw appError(401, "SESSION_EXPIRED", "Your secure session has expired. Verify your email address again.");
     }
-    return session;
+    return { ...session, tokenHash };
   }
 
   async function logoutSession(event) {
     const raw = safeText(headers(event).authorization, 1000).replace(/^Bearer\s+/i, "");
-    if (raw) await store.deleteSession(sha256(raw));
+    if (raw) {
+      const session = await store.getSession(sha256(raw));
+      if (session?.portalAnchor && parseBody(event, 5000).endFamilyAccess === true) await store.deleteSession(session.portalAnchor);
+      await store.deleteSession(sha256(raw));
+    }
     return { signedOut: true };
   }
 
@@ -1416,6 +1432,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     const familyApplications = store.listApplicationsByInvitationId ? await store.listApplicationsByInvitationId(app.invitationId) : [app];
     const communications = store.listCaseMessages ? await store.listCaseMessages(app.id, 200) : [];
     const familyCommunications = await familyMessageViews(app.invitationId);
+    const offerFamilies = env.ENROLMENT_OFFERS_ENABLED === "true" && store.listOfferFamilies ? (await store.listOfferFamilies()).filter(f => f.invitationId === app.invitationId) : [];
     const recipients = [...permittedCaseRecipients(app).values()].map(recipient => ({ ...recipient, maskedEmail: maskEmail(recipient.email) }));
     const selectableFamilyApplications = familyApplications.filter(item => FAMILY_COMMUNICATION_STATUSES.has(item.status));
     const familyRecipients = familyRecipientIntersection(selectableFamilyApplications);
@@ -1437,7 +1454,8 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
         recipients: familyRecipients.recipients,
         excludedRecipientCount: familyRecipients.excludedCount,
         template: FAMILY_COMMUNICATION_TEMPLATE,
-        communications: familyCommunications
+        communications: familyCommunications,
+        offers: offerFamilies.map(f => ({createdAt:f.createdAt,childCount:f.offerIds.length}))
       }
     };
   }
@@ -2260,23 +2278,31 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
   }
 
   async function getFamilyContext(event) {
-    const { invitation } = await requireFamilyInvitation(event);
-    return { family: await familyApplicationContext(invitation), idleTimeoutSeconds: APPLICATION_SESSION_IDLE_MS / 1000 };
+    const { invitation, session } = await requireFamilyInvitation(event);
+    const family = await familyApplicationContext(invitation);
+    if (env.ENROLMENT_OFFERS_ENABLED === "true") family.portal = await familyPortal.context(event);
+    if (session.portalAnchor) {
+      const permitted = new Set((family.portal?.children || []).filter(child => child.applicationAction).map(child => child.applicationId));
+      family.applications = family.applications.filter(child => permitted.has(child.applicationId));
+    }
+    return { family, idleTimeoutSeconds: APPLICATION_SESSION_IDLE_MS / 1000 };
   }
 
-  async function issueApplicationSession(invitation, application, email) {
+  async function issueApplicationSession(invitation, application, email, sourceSession) {
+    if (sourceSession?.portalAnchor && !portalApplicationAllowed(application, email)) throw appError(403, "APPLICATION_ACCESS_DENIED", "This application is not available through your verified access.");
     const rawSession = token();
     const createdAt = clock();
-    const absoluteExpiresAt = createdAt + APPLICATION_SESSION_ABSOLUTE_MS;
-    await store.putSession({ tokenHash: sha256(rawSession), scope: "application", applicationId: application.id, invitationId: invitation.id, email, createdAt, lastActivityAt: createdAt, expiresAt: createdAt + APPLICATION_SESSION_IDLE_MS, absoluteExpiresAt, ttl: Math.floor((absoluteExpiresAt + 86400_000) / 1000) });
+    const absoluteExpiresAt = sourceSession?.portalAnchor ? sourceSession.absoluteExpiresAt : createdAt + APPLICATION_SESSION_ABSOLUTE_MS;
+    await store.putSession({ tokenHash: sha256(rawSession), scope: "application", applicationId: application.id, invitationId: invitation.id, email, createdAt, lastActivityAt: createdAt, expiresAt: Math.min(createdAt + APPLICATION_SESSION_IDLE_MS, absoluteExpiresAt), absoluteExpiresAt, ...(sourceSession?.portalAnchor ? { portalAnchor: sourceSession.portalAnchor } : {}), ttl: Math.floor((absoluteExpiresAt + 86400_000) / 1000) });
     return rawSession;
   }
 
-  async function issueStatusSession(invitation, application, email) {
+  async function issueStatusSession(invitation, application, email, sourceSession) {
+    if (sourceSession?.portalAnchor && !portalApplicationAllowed(application, email)) throw appError(403, "APPLICATION_ACCESS_DENIED", "This application is not available through your verified access.");
     const rawSession = token();
     const createdAt = clock();
-    const absoluteExpiresAt = createdAt + APPLICATION_SESSION_ABSOLUTE_MS;
-    await store.putSession({ tokenHash: sha256(rawSession), scope: "application_status", applicationId: application.id, invitationId: invitation.id, email, applicantContactId: application.contactId, createdAt, lastActivityAt: createdAt, expiresAt: createdAt + APPLICATION_SESSION_IDLE_MS, absoluteExpiresAt, ttl: Math.floor((absoluteExpiresAt + 86400_000) / 1000) });
+    const absoluteExpiresAt = sourceSession?.portalAnchor ? sourceSession.absoluteExpiresAt : createdAt + APPLICATION_SESSION_ABSOLUTE_MS;
+    await store.putSession({ tokenHash: sha256(rawSession), scope: "application_status", applicationId: application.id, invitationId: invitation.id, email, applicantContactId: application.contactId, createdAt, lastActivityAt: createdAt, expiresAt: Math.min(createdAt + APPLICATION_SESSION_IDLE_MS, absoluteExpiresAt), absoluteExpiresAt, ...(sourceSession?.portalAnchor ? { portalAnchor: sourceSession.portalAnchor } : {}), ttl: Math.floor((absoluteExpiresAt + 86400_000) / 1000) });
     return rawSession;
   }
 
@@ -2287,13 +2313,14 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     if (!invitationApplicationIds(invitation).includes(applicationId)) throw appError(403, "APPLICATION_ACCESS_DENIED", "This application does not belong to the verified family invitation.");
     let application = await store.getApplication(applicationId);
     if (!application || application.invitationId !== invitation.id) throw appError(404, "APPLICATION_NOT_FOUND", "The selected application was not found.");
+    if (session.portalAnchor && !portalApplicationAllowed(application, session.email)) throw appError(403, "APPLICATION_ACCESS_DENIED", "This application is not available through your verified access.");
     if (!["invited", "in_progress"].includes(application.status || "invited")) throw appError(409, "APPLICATION_NOT_EDITABLE", "This child application has already been submitted and cannot be reopened.");
     application = await upgradeEditableApplication(application);
     const definition = requireRecordDefinition(application, "application", body);
     await ensureDefinition(store, "application", definition.formVersion);
-    const sessionToken = await issueApplicationSession(invitation, application, session.email);
+    const sessionToken = await issueApplicationSession(invitation, application, session.email, session);
     await recordAudit(createAuditEvent({ workflow: "application", recordId: application.id, invitationId: invitation.id, type: "application.selected", at: nowIso(), actorId: application.contactId, stage: "selector" }));
-    return { sessionToken, expiresInSeconds: APPLICATION_SESSION_IDLE_MS / 1000, idleTimeoutSeconds: APPLICATION_SESSION_IDLE_MS / 1000, absoluteTimeoutSeconds: APPLICATION_SESSION_ABSOLUTE_MS / 1000, context: applicationContext(application) };
+    return { sessionToken, ...(session.portalAnchor ? { absoluteExpiresAt: session.absoluteExpiresAt } : {}), expiresInSeconds: APPLICATION_SESSION_IDLE_MS / 1000, idleTimeoutSeconds: APPLICATION_SESSION_IDLE_MS / 1000, absoluteTimeoutSeconds: APPLICATION_SESSION_ABSOLUTE_MS / 1000, context: applicationContext(application) };
   }
 
   async function selectApplicationStatus(event) {
@@ -2303,10 +2330,11 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     if (!invitationApplicationIds(invitation).includes(applicationId)) throw appError(403, "APPLICATION_ACCESS_DENIED", "This application does not belong to the verified family invitation.");
     const application = await store.getApplication(applicationId);
     if (!application || application.invitationId !== invitation.id) throw appError(404, "APPLICATION_NOT_FOUND", "The selected application was not found.");
+    if (session.portalAnchor && !portalApplicationAllowed(application, session.email)) throw appError(403, "APPLICATION_ACCESS_DENIED", "This application is not available through your verified access.");
     if (["invited", "in_progress"].includes(application.status || "invited")) throw appError(409, "APPLICATION_NOT_SUBMITTED", "This application is still editable. Open it from the family application list.");
-    const sessionToken = await issueStatusSession(invitation, application, session.email);
+    const sessionToken = await issueStatusSession(invitation, application, session.email, session);
     await recordAudit(createAuditEvent({ workflow: "application", recordId: application.id, invitationId: invitation.id, type: "application.status_viewed", at: nowIso(), actorId: application.contactId, stage: "status" }));
-    return { sessionToken, expiresInSeconds: APPLICATION_SESSION_IDLE_MS / 1000, idleTimeoutSeconds: APPLICATION_SESSION_IDLE_MS / 1000, absoluteTimeoutSeconds: APPLICATION_SESSION_ABSOLUTE_MS / 1000, status: statusContext(application) };
+    return { sessionToken, ...(session.portalAnchor ? { absoluteExpiresAt: session.absoluteExpiresAt } : {}), expiresInSeconds: APPLICATION_SESSION_IDLE_MS / 1000, idleTimeoutSeconds: APPLICATION_SESSION_IDLE_MS / 1000, absoluteTimeoutSeconds: APPLICATION_SESSION_ABSOLUTE_MS / 1000, status: statusContext(application) };
   }
 
   async function getApplicationStatus(event) {
@@ -2470,8 +2498,8 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
       ];
       await store.addApplicationToInvitation({ invitation: nextInvitation, expectedFamilyRevision, application, revisionRecord: applicationRevision(application, { kind: "created", values, savedAt: createdAt, changed: Object.keys(values).sort() }), outboxEvents: operations.map(operation => sheetOutbox(operation, clock())), auditEvents: [audit] });
     }
-    const sessionToken = await issueApplicationSession(invitation, application, session.email);
-    return { sessionToken, expiresInSeconds: APPLICATION_SESSION_IDLE_MS / 1000, idleTimeoutSeconds: APPLICATION_SESSION_IDLE_MS / 1000, absoluteTimeoutSeconds: APPLICATION_SESSION_ABSOLUTE_MS / 1000, context: applicationContext(application), family: await familyApplicationContext(await store.getInvitationById(invitation.id)) };
+    const sessionToken = await issueApplicationSession(invitation, application, session.email, session);
+    return { sessionToken, ...(session.portalAnchor ? { absoluteExpiresAt: session.absoluteExpiresAt } : {}), expiresInSeconds: APPLICATION_SESSION_IDLE_MS / 1000, idleTimeoutSeconds: APPLICATION_SESSION_IDLE_MS / 1000, absoluteTimeoutSeconds: APPLICATION_SESSION_ABSOLUTE_MS / 1000, context: applicationContext(application), family: await familyApplicationContext(await store.getInvitationById(invitation.id)) };
   }
 
   async function getContext(event) {
@@ -2626,8 +2654,8 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
       throw error;
     }
     await dispatchOutbox(50);
-    const statusSessionToken = await issueStatusSession(invitation || { id: app.invitationId }, next, session.email);
-    return { applicationId: app.id, reference, status, requiresStaffReview, statusSessionToken, expiresInSeconds: APPLICATION_SESSION_IDLE_MS / 1000, idleTimeoutSeconds: APPLICATION_SESSION_IDLE_MS / 1000, absoluteTimeoutSeconds: APPLICATION_SESSION_ABSOLUTE_MS / 1000, statusContext: statusContext(next) };
+    const statusSessionToken = await issueStatusSession(invitation || { id: app.invitationId }, next, session.email, session);
+    return { applicationId: app.id, reference, status, requiresStaffReview, statusSessionToken, ...(session.portalAnchor ? { absoluteExpiresAt: session.absoluteExpiresAt } : {}), expiresInSeconds: APPLICATION_SESSION_IDLE_MS / 1000, idleTimeoutSeconds: APPLICATION_SESSION_IDLE_MS / 1000, absoluteTimeoutSeconds: APPLICATION_SESSION_ABSOLUTE_MS / 1000, statusContext: statusContext(next) };
   }
 
   async function requestSignatureCode(event) {
@@ -2750,6 +2778,15 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
       if (!claimed) continue;
       try {
         const tracking = item.data.kind === "email" ? item.data.payload?._tracking : null;
+        if (['offer_family_invitation','offer_family_receipt'].includes(tracking?.kind)) {
+          const task=await store.getOfferTask(tracking.taskTokenHash);
+          const access=await offerTaskAccess(store,task,clock(),{all:tracking.kind==='offer_family_invitation'});
+          const deliverable=task?.familyId===tracking.familyId && task.email===item.data.payload.to && access.length>0 && (!tracking.offerId || access.some(x=>x.offer.id===tracking.offerId));
+          if(!deliverable){
+            if(tracking.kind==='offer_family_invitation')await store.recordOfferDelivery({tokenHash:tracking.taskTokenHash,status:'suppressed',rank:100,at:nowIso()});
+            await store.completeOutbox(item,{suppressed:true,reason:'offer_contact_unavailable'});completed+=1;continue;
+          }
+        }
         if (tracking?.kind === "signature_request") {
           const [task, app] = await Promise.all([store.getSignatureTask(tracking.taskTokenHash), store.getApplication(tracking.applicationId)]);
           const control = app && signerControl(app, tracking.guardianId, task);
@@ -2761,7 +2798,22 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
           }
         }
         let result;
-        if (item.data.kind === "email") result = await mailer.send(item.data.payload);
+        if (item.data.kind === "email") {
+          const payload={...item.data.payload};
+          if(payload._offerLetter){
+            const ref=payload._offerLetter,family=await store.getOfferFamily(ref.familyId);
+            const account=family?.accounts.find(a=>a.tokenHash===tracking?.taskTokenHash);
+            if(tracking?.kind!=='offer_family_invitation' || !account?.primary || family.id!==tracking.familyId || family.letterFileId!==ref.fileId || family.letterHash!==ref.sha256)throw new Error('Offer attachment reference is invalid.');
+            const data=await drive.readOfferLetter(ref);payload.attachments=[{fileName:'Rosewood-offer.pdf',contentType:'application/pdf',data}];
+          }
+          if(payload._offerRecord){
+            const ref=payload._offerRecord,offer=await store.getOffer(ref.offerId),saved=offer?.acceptanceRecord;
+            if(payload._offerLetter || tracking?.kind!=='offer_family_receipt' || payload.tags?.message_type!=='offer_complete' || tracking.offerId!==ref.offerId || tracking.familyId!==offer?.familyId || offer?.status!=='signed_conditional' || !saved || ['offerId','revision','packetHash','fileId','sha256'].some(key=>saved[key]!==ref[key]) || ref.packetHash!==offer.packetHash)throw new Error('Acceptance attachment reference is invalid.');
+            const data=await drive.readOfferRecord(ref);payload.attachments=[{fileName:'Rosewood-signed-acceptance.pdf',contentType:'application/pdf',data}];
+          }
+          result=await mailer.send(payload);
+          if(tracking?.kind==='offer_family_invitation')await store.recordOfferDelivery({tokenHash:tracking.taskTokenHash,status:'accepted_by_ses',rank:SES_FEEDBACK_RANK.accepted_by_ses,at:nowIso()});
+        }
         else if (item.data.kind === "sheet") result = await sheets.apply(item.data.payload);
         else if (item.data.kind === "slack") result = await slack.send(item.data.payload);
         else throw new Error(`Unsupported outbox event kind: ${item.data.kind}`);
@@ -2796,8 +2848,11 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     return { examined: items.length, completed, failed };
   }
 
+  const familyPortal = createFamilyPortal({ store, env, clock, requireSession, parseBody });
   const routes = new Map([
-    ["GET /v6/health", async () => ({ status: "ok", schemaVersion: SCHEMA_VERSION, formVersions: { eoi: currentFormDefinition("eoi").formVersion, application: currentFormDefinition("application").formVersion, applicationLinkRequest: APPLICATION_REQUEST_CONTRACT.formVersion, communityEnquiry: COMMUNITY_ENQUIRY_CONTRACT.formVersion }, features: { communityEnquiries: true, cohortPlanning: true, familyCommunications: true } })],
+    ["GET /v6/family/context", familyPortal.context],
+    ["POST /v6/family/open", familyPortal.open],
+    ["GET /v6/health", async () => ({ status: "ok", schemaVersion: SCHEMA_VERSION, formVersions: { eoi: currentFormDefinition("eoi").formVersion, application: currentFormDefinition("application").formVersion, applicationLinkRequest: APPLICATION_REQUEST_CONTRACT.formVersion, communityEnquiry: COMMUNITY_ENQUIRY_CONTRACT.formVersion }, features: { communityEnquiries: true, cohortPlanning: true, familyCommunications: true, conditionalOffers: env.ENROLMENT_OFFERS_ENABLED === "true" } })],
     ["POST /v6/session/logout", logoutSession],
     ["POST /v6/staff/access/request-code", requestStaffCode],
     ["POST /v6/staff/access/verify-code", verifyStaffCode],
@@ -2855,6 +2910,8 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     ,["GET /v6/meetings/context", getMeetingContext]
     ,["POST /v6/meetings/book", bookMeeting]
   ]);
+
+  for (const [route, action] of createOfferRoutes({ store, drive, mailer, env, clock, parseBody, requireStaffSession, requireSession, networkFingerprint, signatureBytes, createAuditEvent, emailOutbox, offerOtp, dispatchOutbox })) routes.set(route, action);
 
   async function handler(event) {
     const origin = headers(event).origin || allowedOrigins[0];

@@ -1,4 +1,4 @@
-import { GoogleAccessTokenProvider } from "./google-auth.mjs";
+import { GoogleAccessTokenProvider, GOOGLE_APP_FILES_SCOPE } from "./google-auth.mjs";
 
 const SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 
@@ -46,7 +46,7 @@ function cell(value) {
 
 export class GoogleSheetsStore {
   constructor({ auth, eoiSpreadsheetId, applicationSpreadsheetId, operationsSpreadsheetId, fetchImpl = fetch }) {
-    this.tokenProvider = new GoogleAccessTokenProvider({ ...auth, scope: SHEETS_SCOPE, fetchImpl });
+    this.tokenProvider = new GoogleAccessTokenProvider({ ...auth, scope: auth?.restrictedToAppFiles ? GOOGLE_APP_FILES_SCOPE : SHEETS_SCOPE, fetchImpl });
     this.ids = { eoi: eoiSpreadsheetId, application: applicationSpreadsheetId, operations: operationsSpreadsheetId };
     this.fetch = fetchImpl;
     this.readyHeaders = new Set();

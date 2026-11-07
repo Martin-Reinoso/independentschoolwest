@@ -1,5 +1,10 @@
 # Rosewood V6 Application Workflow and Data Process Map
 
+## 8 November 2026 conditional-offer candidate
+
+Not deployed: staff family/child selection → exact email/PDF/agreement preview → explicit reviewed family issue → one primary offer email with letter plus separate required-guardian requests → private email OTP → authorised child selector → concise terms/policy readers → independent per-child signatures → signed_conditional. Staff track queued/sent/delivered, verified portal/child access and signature completion independently. No acceptance-stage uploads. This does not create an enrolled/commenced status or payment obligation by itself. See [candidate architecture and limits](POST-OFFER-IMPLEMENTATION-2026-11-08.md); the older V6 preview routes remain unchanged.
+
+
 Document date: 2 September 2026
 Implementation: Rosewood Enrolment V6
 Audience: Rosewood leadership, admissions, governance, privacy, records management,
@@ -1157,3 +1162,14 @@ signature revision hashes also retain the form version and definition hash. See
 - `TESTING.md` - frontend, backend, email and recovery evidence
 - `RELEASE-BLOCKERS.md` - governance and production gates
 - `backend/README.md` - technical backend contract
+
+## 8 November local alignment update
+
+The existing staff portal now owns the Enrolment offers workspace; Family communications
+links its family's offer history. Issue → primary email/PDF → primary signatures for
+selected children → recipient-scoped additional requests → independent child signatures
+→ separate completion receipts. Correction review pauses signing; signed records are
+available through verified download. Separate offer records never rewrite Applications.
+The request-reporting adapter/header and targeted rebuild are now implemented locally;
+this does not mean the historic production reporting failures have been reconciled.
+See POST-OFFER-IMPLEMENTATION-2026-11-08.md for authority and release boundaries.

@@ -112,3 +112,7 @@ test("staff previews use encrypted non-identifying objects and five-minute signe
   assert.match(signed[1].input.ResponseContentDisposition, /^attachment/);
   assert.equal(result.expiresAt, "2026-09-01T00:05:00.000Z");
 });
+
+test('offer letters snapshots and signatures use the restricted Drive adapter directly',async()=>{
+ const calls=[];const drive=Object.fromEntries(['storeOfferLetter','readOfferLetter','storeOfferSignature','storeOfferSnapshot'].map(method=>[method,async input=>{calls.push({method,input});return {ok:true};}]));const store=new StagedGoogleDriveStore({drive,bucketName:'synthetic-staging',kmsKeyId:'synthetic-kms'});for(const method of Object.keys(drive))assert.deepEqual(await store[method]({id:'synthetic'}),{ok:true});assert.equal(calls.length,4);
+});

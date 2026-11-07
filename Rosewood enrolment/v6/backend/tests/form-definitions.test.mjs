@@ -33,7 +33,7 @@ test("the launch contracts remain addressable with their original hashes", () =>
 test("the current contracts pin every policy-reader release asset", () => {
   for (const workflow of ["eoi", "application"]) {
     const hashes = currentFormDefinition(workflow).source.frontendAssetHashes;
-    assert.equal(Object.keys(hashes).length, 21);
+    assert.equal(Object.keys(hashes).length, 30);
     assert.equal(hashes["pages/rosewood-enrolment-languages.js"], "7dccdcbdef9a218290de171bb55c19354bfdb3b6821b86cf139854ca8e68d273");
     assert.equal(hashes["pages/rosewood-enrolment-v5.css"], "ca05a7270013368efe0e13bb39c8417518e13430372f926b5959fe0b6e1fe881");
     assert.equal(hashes["pages/rosewood-enrolment-policies-v6.js"], "8bf2abedcf2b9aa70e6ff55b3d837a96604dc06784d8f46b68b637056a4ce095");
@@ -104,7 +104,7 @@ test("the current release keeps earlier contracts addressable and changes only p
   assert.equal(v25.formVersion, "rosewood-application-2026.25");
   assert.equal(v26.formVersion, "rosewood-application-2026.26");
   assert.equal(v27.formVersion, "rosewood-application-2026.27");
-  assert.equal(current.formVersion, "rosewood-application-2026.29");
+  assert.equal(current.formVersion, "rosewood-application-2026.30");
   assert.deepEqual(v13.contract, previous.contract);
   assert.deepEqual(v13.contract, v11.contract);
   assert.deepEqual(v13.contract, v12.contract);
@@ -136,7 +136,7 @@ test("the current release keeps earlier contracts addressable and changes only p
   assert.equal(v24Eoi.formVersion, "rosewood-eoi-2026.24");
   assert.equal(v25Eoi.formVersion, "rosewood-eoi-2026.25");
   assert.equal(v26Eoi.formVersion, "rosewood-eoi-2026.26");
-  assert.equal(currentEoi.formVersion, "rosewood-eoi-2026.28");
+  assert.equal(currentEoi.formVersion, "rosewood-eoi-2026.29");
   assert.deepEqual(currentEoi.contract, previousEoi.contract);
   assert.deepEqual(currentEoi.contract, v11Eoi.contract);
   assert.deepEqual(currentEoi.contract, v12Eoi.contract);

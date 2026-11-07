@@ -18,6 +18,14 @@ export class StagedGoogleDriveStore {
     this.clock = clock;
   }
 
+  storeOfferLetter(input) { return this.drive.storeOfferLetter(input); }
+  readOfferLetter(input) { return this.drive.readOfferLetter(input); }
+  storeOfferSignature(input) { return this.drive.storeOfferSignature(input); }
+  readOfferSignature(input) { return this.drive.readOfferSignature(input); }
+  storeOfferRecord(input) { return this.drive.storeOfferRecord(input); }
+  readOfferRecord(input) { return this.drive.readOfferRecord(input); }
+  storeOfferSnapshot(input) { return this.drive.storeOfferSnapshot(input); }
+
   storeEoiSnapshot(input) {
     return this.drive.storeEoiSnapshot(input);
   }

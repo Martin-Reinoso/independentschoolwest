@@ -1,0 +1,1119 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Rosewood synthetic acceptance tests; separate resources; delivery disabled until configured",
+  "Parameters": {
+    "EnrolmentOffersEnabled": {
+      "Type": "String",
+      "Default": "false",
+      "AllowedValues": [
+        "false",
+        "true"
+      ]
+    },
+    "EnrolmentOfferApprovedHash": {
+      "Type": "String",
+      "Default": "",
+      "AllowedPattern": "^([a-f0-9]{64})?$",
+      "Description": "SHA-256 of the exact reviewed offer contract; blank prevents issuing"
+    },
+    "SenderEmail": {
+      "Type": "String",
+      "Default": "enrolment@ffe.org.au",
+      "AllowedValues": [
+        "enrolment@ffe.org.au"
+      ]
+    },
+    "SenderName": {
+      "Type": "String",
+      "Default": "Rosewood College Enrolment"
+    },
+    "GoogleEoiFolderId": {
+      "Type": "String",
+      "Default": "unconfigured",
+      "AllowedPattern": "^[A-Za-z0-9_-]{10,}$"
+    },
+    "GoogleApplicationFolderId": {
+      "Type": "String",
+      "Default": "unconfigured",
+      "AllowedPattern": "^[A-Za-z0-9_-]{10,}$"
+    },
+    "GoogleEoiSpreadsheetId": {
+      "Type": "String",
+      "Default": "unconfigured",
+      "AllowedPattern": "^[A-Za-z0-9_-]{10,}$"
+    },
+    "GoogleApplicationSpreadsheetId": {
+      "Type": "String",
+      "Default": "unconfigured",
+      "AllowedPattern": "^[A-Za-z0-9_-]{10,}$"
+    },
+    "GoogleOperationsSpreadsheetId": {
+      "Type": "String",
+      "Default": "unconfigured",
+      "AllowedPattern": "^[A-Za-z0-9_-]{10,}$"
+    },
+    "SyntheticReady": {
+      "Type": "String",
+      "Default": "false",
+      "AllowedValues": [
+        "false",
+        "true"
+      ]
+    },
+    "SyntheticGoogleClientId": {
+      "Type": "String",
+      "Default": ""
+    },
+    "TestEmailDestination": {
+      "Type": "String",
+      "Default": "frjativa@gmail.com",
+      "AllowedValues": [
+        "frjativa@gmail.com"
+      ]
+    },
+    "EmailDeliveryMode": {
+      "Type": "String",
+      "Default": "disabled",
+      "AllowedValues": [
+        "disabled",
+        "test"
+      ]
+    },
+    "OutboxScheduleState": {
+      "Type": "String",
+      "Default": "DISABLED",
+      "AllowedValues": [
+        "DISABLED",
+        "ENABLED"
+      ]
+    }
+  },
+  "Resources": {
+    "RosewoodKey": {
+      "Type": "AWS::KMS::Key",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "Description": "Rosewood enrolment records and backups",
+        "EnableKeyRotation": true,
+        "PendingWindowInDays": 30,
+        "KeyPolicy": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "EnableAccountAdministration",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
+                }
+              },
+              "Action": "kms:*",
+              "Resource": "*"
+            }
+          ]
+        }
+      }
+    },
+    "RosewoodKeyAlias": {
+      "Type": "AWS::KMS::Alias",
+      "Properties": {
+        "AliasName": {
+          "Fn::Sub": "alias/${AWS::StackName}-records"
+        },
+        "TargetKeyId": {
+          "Ref": "RosewoodKey"
+        }
+      }
+    },
+    "RosewoodTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "BillingMode": "PAY_PER_REQUEST",
+        "DeletionProtectionEnabled": true,
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "PK",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "SK",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "PK",
+            "KeyType": "HASH"
+          },
+          {
+            "AttributeName": "SK",
+            "KeyType": "RANGE"
+          }
+        ],
+        "PointInTimeRecoverySpecification": {
+          "PointInTimeRecoveryEnabled": true
+        },
+        "SSESpecification": {
+          "SSEEnabled": true,
+          "SSEType": "KMS",
+          "KMSMasterKeyId": {
+            "Fn::GetAtt": [
+              "RosewoodKey",
+              "Arn"
+            ]
+          }
+        },
+        "TimeToLiveSpecification": {
+          "AttributeName": "ttl",
+          "Enabled": true
+        },
+        "TableName": {
+          "Fn::Sub": "${AWS::StackName}-records"
+        }
+      }
+    },
+    "RosewoodAuditTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "BillingMode": "PAY_PER_REQUEST",
+        "DeletionProtectionEnabled": true,
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "PK",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "SK",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "PK",
+            "KeyType": "HASH"
+          },
+          {
+            "AttributeName": "SK",
+            "KeyType": "RANGE"
+          }
+        ],
+        "PointInTimeRecoverySpecification": {
+          "PointInTimeRecoveryEnabled": true
+        },
+        "SSESpecification": {
+          "SSEEnabled": true,
+          "SSEType": "KMS",
+          "KMSMasterKeyId": {
+            "Fn::GetAtt": [
+              "RosewoodKey",
+              "Arn"
+            ]
+          }
+        },
+        "TableName": {
+          "Fn::Sub": "${AWS::StackName}-audit"
+        }
+      }
+    },
+    "RosewoodDocumentStagingBucket": {
+      "Type": "AWS::S3::Bucket",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "aws:kms",
+                "KMSMasterKeyID": {
+                  "Fn::GetAtt": [
+                    "RosewoodKey",
+                    "Arn"
+                  ]
+                }
+              },
+              "BucketKeyEnabled": true
+            }
+          ]
+        },
+        "CorsConfiguration": {
+          "CorsRules": [
+            {
+              "AllowedHeaders": [
+                "*"
+              ],
+              "AllowedMethods": [
+                "PUT"
+              ],
+              "AllowedOrigins": [
+                "http://127.0.0.1:8767"
+              ],
+              "ExposedHeaders": [
+                "ETag",
+                "x-amz-checksum-sha256"
+              ],
+              "MaxAge": 3000
+            }
+          ]
+        },
+        "LifecycleConfiguration": {
+          "Rules": [
+            {
+              "Id": "RemoveTemporaryUploads",
+              "Status": "Enabled",
+              "ExpirationInDays": 1,
+              "AbortIncompleteMultipartUpload": {
+                "DaysAfterInitiation": 1
+              }
+            }
+          ]
+        },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "BucketName": {
+          "Fn::Sub": "${AWS::StackName}-${AWS::AccountId}-staging"
+        }
+      }
+    },
+    "RosewoodDocumentStagingBucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "RosewoodDocumentStagingBucket"
+        },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "DenyInsecureTransport",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "s3:*",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "RosewoodDocumentStagingBucket",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Sub": "${RosewoodDocumentStagingBucket.Arn}/*"
+                }
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": false
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "RosewoodSesEventsKey": {
+      "Type": "AWS::KMS::Key",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "Description": "Rosewood SES delivery event notifications",
+        "EnableKeyRotation": true,
+        "PendingWindowInDays": 30,
+        "KeyPolicy": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "EnableAccountAdministration",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
+                }
+              },
+              "Action": "kms:*",
+              "Resource": "*"
+            },
+            {
+              "Sid": "AllowSesEncryptedEventPublishing",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ses.amazonaws.com"
+              },
+              "Action": [
+                "kms:Decrypt",
+                "kms:GenerateDataKey"
+              ],
+              "Resource": "*",
+              "Condition": {
+                "StringEquals": {
+                  "AWS:SourceAccount": {
+                    "Ref": "AWS::AccountId"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "RosewoodSesEventsTopic": {
+      "Type": "AWS::SNS::Topic",
+      "Properties": {
+        "DisplayName": "Rosewood enrolment SES delivery events",
+        "KmsMasterKeyId": {
+          "Fn::GetAtt": [
+            "RosewoodSesEventsKey",
+            "Arn"
+          ]
+        }
+      }
+    },
+    "RosewoodSesEventsTopicPolicy": {
+      "Type": "AWS::SNS::TopicPolicy",
+      "Properties": {
+        "Topics": [
+          {
+            "Ref": "RosewoodSesEventsTopic"
+          }
+        ],
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "SesDeliveryEvents",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ses.amazonaws.com"
+              },
+              "Action": "sns:Publish",
+              "Resource": {
+                "Ref": "RosewoodSesEventsTopic"
+              },
+              "Condition": {
+                "StringEquals": {
+                  "AWS:SourceAccount": {
+                    "Ref": "AWS::AccountId"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "RosewoodSesConfigurationSet": {
+      "Type": "AWS::SES::ConfigurationSet",
+      "Properties": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-transactional"
+        }
+      }
+    },
+    "RosewoodSesEventDestination": {
+      "Type": "AWS::SES::ConfigurationSetEventDestination",
+      "DependsOn": "RosewoodSesEventsTopicPolicy",
+      "Properties": {
+        "ConfigurationSetName": {
+          "Ref": "RosewoodSesConfigurationSet"
+        },
+        "EventDestination": {
+          "Name": "RosewoodSesDeliveryFeedback",
+          "Enabled": true,
+          "MatchingEventTypes": [
+            "send",
+            "delivery",
+            "deliveryDelay",
+            "bounce",
+            "complaint",
+            "reject",
+            "renderingFailure"
+          ],
+          "SnsDestination": {
+            "TopicARN": {
+              "Ref": "RosewoodSesEventsTopic"
+            }
+          }
+        }
+      }
+    },
+    "RosewoodLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Sub": "/aws/lambda/${AWS::StackName}-service"
+        },
+        "RetentionInDays": 90
+      }
+    },
+    "RosewoodOutboxPermanentFailureMetric": {
+      "Type": "AWS::Logs::MetricFilter",
+      "Properties": {
+        "LogGroupName": {
+          "Ref": "RosewoodLogGroup"
+        },
+        "FilterPattern": "\"Rosewood outbox permanently failed\"",
+        "MetricTransformations": [
+          {
+            "MetricNamespace": {
+              "Fn::Sub": "Rosewood/Synthetic/${AWS::StackName}"
+            },
+            "MetricName": "OutboxPermanentFailures",
+            "MetricValue": "1",
+            "DefaultValue": 0
+          }
+        ]
+      }
+    },
+    "RosewoodEmailDeliveryFailureMetric": {
+      "Type": "AWS::Logs::MetricFilter",
+      "Properties": {
+        "LogGroupName": {
+          "Ref": "RosewoodLogGroup"
+        },
+        "FilterPattern": "\"Rosewood transactional email delivery failed\"",
+        "MetricTransformations": [
+          {
+            "MetricNamespace": {
+              "Fn::Sub": "Rosewood/Synthetic/${AWS::StackName}"
+            },
+            "MetricName": "TransactionalEmailDeliveryFailures",
+            "MetricValue": "1",
+            "DefaultValue": 0
+          }
+        ]
+      }
+    },
+    "RosewoodRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "RosewoodV6Runtime",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Sid": "AuthoritativeRecords",
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:GetItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:UpdateItem",
+                    "dynamodb:DeleteItem",
+                    "dynamodb:Query",
+                    "dynamodb:Scan",
+                    "dynamodb:ConditionCheckItem"
+                  ],
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "RosewoodTable",
+                      "Arn"
+                    ]
+                  }
+                },
+                {
+                  "Sid": "AppendOnlyAudit",
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:PutItem",
+                    "dynamodb:Query"
+                  ],
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "RosewoodAuditTable",
+                      "Arn"
+                    ]
+                  }
+                },
+                {
+                  "Sid": "EncryptedRecordsKeyUse",
+                  "Effect": "Allow",
+                  "Action": [
+                    "kms:Decrypt",
+                    "kms:DescribeKey",
+                    "kms:Encrypt",
+                    "kms:GenerateDataKey",
+                    "kms:ReEncryptFrom",
+                    "kms:ReEncryptTo"
+                  ],
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "RosewoodKey",
+                      "Arn"
+                    ]
+                  }
+                },
+                {
+                  "Sid": "TemporaryDocumentStaging",
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:DeleteObject",
+                    "s3:GetObject",
+                    "s3:PutObject"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "${RosewoodDocumentStagingBucket.Arn}/pending/*"
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "secretsmanager:GetSecretValue",
+                  "Resource": {
+                    "Ref": "SyntheticConfigSecret"
+                  }
+                },
+                {
+                  "Sid": "SendTransactionalEmail",
+                  "Effect": "Allow",
+                  "Action": "ses:SendEmail",
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/ffe.org.au"
+                    },
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/${SenderEmail}"
+                    },
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:configuration-set/${RosewoodSesConfigurationSet}"
+                    }
+                  ],
+                  "Condition": {
+                    "StringEquals": {
+                      "ses:FromAddress": {
+                        "Ref": "SenderEmail"
+                      }
+                    },
+                    "ForAllValues:StringEquals": {
+                      "ses:Recipients": [
+                        {
+                          "Ref": "TestEmailDestination"
+                        }
+                      ]
+                    },
+                    "Null": {
+                      "ses:Recipients": "false"
+                    }
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "${RosewoodLogGroup.Arn}:*"
+                  }
+                },
+                {
+                  "Sid": "DenyOtherEmailRecipients",
+                  "Effect": "Deny",
+                  "Action": "ses:*",
+                  "Resource": "*",
+                  "Condition": {
+                    "ForAnyValue:StringNotEquals": {
+                      "ses:Recipients": [
+                        {
+                          "Ref": "TestEmailDestination"
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "Sid": "DenyUnboundedEmail",
+                  "Effect": "Deny",
+                  "Action": "ses:*",
+                  "Resource": "*",
+                  "Condition": {
+                    "Null": {
+                      "ses:Recipients": "true"
+                    }
+                  }
+                },
+                {
+                  "Sid": "DenyOtherEmailTransports",
+                  "Effect": "Deny",
+                  "Action": [
+                    "ses:SendRawEmail",
+                    "ses:SendBulkEmail",
+                    "ses:SendBulkTemplatedEmail",
+                    "ses:SendTemplatedEmail"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Sid": "DenyOutsideTestDatabase",
+                  "Effect": "Deny",
+                  "Action": "dynamodb:*",
+                  "NotResource": [
+                    {
+                      "Fn::GetAtt": [
+                        "RosewoodTable",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "RosewoodAuditTable",
+                        "Arn"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "Sid": "DenyOutsideTestStorage",
+                  "Effect": "Deny",
+                  "Action": "s3:*",
+                  "NotResource": [
+                    {
+                      "Fn::GetAtt": [
+                        "RosewoodDocumentStagingBucket",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::Sub": "${RosewoodDocumentStagingBucket.Arn}/pending/*"
+                    }
+                  ]
+                },
+                {
+                  "Sid": "DenyOutsideTestSecrets",
+                  "Effect": "Deny",
+                  "Action": "secretsmanager:*",
+                  "NotResource": [
+                    {
+                      "Ref": "SyntheticConfigSecret"
+                    }
+                  ]
+                },
+                {
+                  "Sid": "DenyOutsideTestEncryption",
+                  "Effect": "Deny",
+                  "Action": "kms:*",
+                  "NotResource": [
+                    {
+                      "Fn::GetAtt": [
+                        "RosewoodKey",
+                        "Arn"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "RosewoodFunction": {
+      "Type": "AWS::Lambda::Function",
+      "DependsOn": "RosewoodLogGroup",
+      "Properties": {
+        "FunctionName": {
+          "Fn::Sub": "${AWS::StackName}-service"
+        },
+        "Runtime": "nodejs22.x",
+        "Handler": "index.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "RosewoodRole",
+            "Arn"
+          ]
+        },
+        "Timeout": 60,
+        "MemorySize": 768,
+        "ReservedConcurrentExecutions": 2,
+        "Code": "lambda-dist/",
+        "Environment": {
+          "Variables": {
+            "ENROLMENT_OFFERS_ENABLED": {
+              "Ref": "EnrolmentOffersEnabled"
+            },
+            "ENROLMENT_OFFER_APPROVED_HASH": {
+              "Ref": "EnrolmentOfferApprovedHash"
+            },
+            "ROSEWOOD_TABLE_NAME": {
+              "Ref": "RosewoodTable"
+            },
+            "ROSEWOOD_AUDIT_TABLE_NAME": {
+              "Ref": "RosewoodAuditTable"
+            },
+            "ROSEWOOD_ARTIFACT_STORE_MODE": "google_drive",
+            "ALLOW_UNSCANNED_GOOGLE_DOCUMENTS": "true",
+            "ROSEWOOD_CONFIG_SECRET_ARN": {
+              "Ref": "SyntheticConfigSecret"
+            },
+            "SENDER_EMAIL": {
+              "Ref": "SenderEmail"
+            },
+            "SENDER_NAME": {
+              "Ref": "SenderName"
+            },
+            "REPLY_TO_EMAIL": {
+              "Ref": "TestEmailDestination"
+            },
+            "COMMUNITY_ENQUIRY_NOTIFICATION_EMAIL": "staff@rosewood-offer.test",
+            "SES_CONFIGURATION_SET_MANAGED": {
+              "Ref": "RosewoodSesConfigurationSet"
+            },
+            "GOOGLE_EOI_FOLDER_ID": {
+              "Ref": "GoogleEoiFolderId"
+            },
+            "GOOGLE_APPLICATION_FOLDER_ID": {
+              "Ref": "GoogleApplicationFolderId"
+            },
+            "GOOGLE_EOI_SPREADSHEET_ID": {
+              "Ref": "GoogleEoiSpreadsheetId"
+            },
+            "GOOGLE_APPLICATION_SPREADSHEET_ID": {
+              "Ref": "GoogleApplicationSpreadsheetId"
+            },
+            "GOOGLE_OPERATIONS_SPREADSHEET_ID": {
+              "Ref": "GoogleOperationsSpreadsheetId"
+            },
+            "DOCUMENT_STAGING_BUCKET": {
+              "Ref": "RosewoodDocumentStagingBucket"
+            },
+            "RECORDS_KMS_KEY_ARN": {
+              "Fn::GetAtt": [
+                "RosewoodKey",
+                "Arn"
+              ]
+            },
+            "ALLOWED_ORIGINS": "http://127.0.0.1:8767",
+            "STAFF_EMAILS": "staff@rosewood-offer.test",
+            "STAFF_ROLES": "staff@rosewood-offer.test=admin",
+            "APPLICATION_PAGE_URL": "http://127.0.0.1:8767/pages/rosewood-enrolment-v6.html",
+            "APPLICATION_SIGNING_PAGE_URL": "http://127.0.0.1:8767/pages/rosewood-application-sign-v6.html",
+            "MEETING_BOOKING_PAGE_URL": "http://127.0.0.1:8767/pages/rosewood-enrolment-meeting-v1.html",
+            "STAFF_PORTAL_URL": "http://127.0.0.1:8767/pages/rosewood-enrolment-admin-v6.html",
+            "PUBLIC_SITE_BASE_URL": "http://127.0.0.1:8767",
+            "PUBLIC_API_BASE_URL": "",
+            "SYNTHETIC_STACK_NAME": {
+              "Ref": "AWS::StackName"
+            },
+            "SYNTHETIC_READY": {
+              "Ref": "SyntheticReady"
+            },
+            "SYNTHETIC_GOOGLE_CLIENT_ID": {
+              "Ref": "SyntheticGoogleClientId"
+            },
+            "EMAIL_DELIVERY_MODE": {
+              "Ref": "EmailDeliveryMode"
+            },
+            "EMAIL_TEST_DESTINATION": {
+              "Fn::If": [
+                "EmailTestMode",
+                {
+                  "Ref": "TestEmailDestination"
+                },
+                ""
+              ]
+            },
+            "EMAIL_TEST_IDENTITIES": {
+              "Fn::If": [
+                "EmailTestMode",
+                "alex@rosewood-offer.test,taylor@rosewood-offer.test,staff@rosewood-offer.test",
+                ""
+              ]
+            },
+            "SLACK_PENDING_WEBHOOK_URL": "",
+            "SLACK_COMPLETION_WEBHOOK_URL": "",
+            "SLACK_WEBHOOK_URL": "",
+            "ENROLMENT_OFFER_PAGE_URL": "http://127.0.0.1:8767/pages/rosewood-enrolment-offer-v1.html"
+          }
+        },
+        "KmsKeyArn": {
+          "Fn::GetAtt": [
+            "RosewoodKey",
+            "Arn"
+          ]
+        }
+      }
+    },
+    "RosewoodFunctionUrl": {
+      "Type": "AWS::Lambda::Url",
+      "Properties": {
+        "TargetFunctionArn": {
+          "Ref": "RosewoodFunction"
+        },
+        "AuthType": "NONE"
+      }
+    },
+    "RosewoodFunctionUrlPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "RosewoodFunction"
+        },
+        "Action": "lambda:InvokeFunctionUrl",
+        "Principal": "*",
+        "FunctionUrlAuthType": "NONE"
+      }
+    },
+    "RosewoodFunctionUrlInvokePermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "RosewoodFunction"
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "*",
+        "InvokedViaFunctionUrl": true
+      }
+    },
+    "RosewoodOutboxSchedule": {
+      "Type": "AWS::Events::Rule",
+      "Properties": {
+        "Description": "Retry Rosewood V6 email, Slack notification and Google Sheets projection operations",
+        "ScheduleExpression": "rate(1 minute)",
+        "State": {
+          "Ref": "OutboxScheduleState"
+        },
+        "Targets": [
+          {
+            "Arn": {
+              "Fn::GetAtt": [
+                "RosewoodFunction",
+                "Arn"
+              ]
+            },
+            "Id": "RosewoodV6Outbox"
+          }
+        ]
+      }
+    },
+    "RosewoodOutboxPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "RosewoodFunction"
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "events.amazonaws.com",
+        "SourceArn": {
+          "Fn::GetAtt": [
+            "RosewoodOutboxSchedule",
+            "Arn"
+          ]
+        }
+      }
+    },
+    "RosewoodSesEventsSubscription": {
+      "Type": "AWS::SNS::Subscription",
+      "DependsOn": "RosewoodSesEventsPermission",
+      "Properties": {
+        "Protocol": "lambda",
+        "Endpoint": {
+          "Fn::GetAtt": [
+            "RosewoodFunction",
+            "Arn"
+          ]
+        },
+        "TopicArn": {
+          "Ref": "RosewoodSesEventsTopic"
+        }
+      }
+    },
+    "RosewoodSesEventsPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "RosewoodFunction"
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "sns.amazonaws.com",
+        "SourceArn": {
+          "Ref": "RosewoodSesEventsTopic"
+        }
+      }
+    },
+    "RosewoodErrorsAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "Rosewood V6 Lambda errors",
+        "Namespace": "AWS/Lambda",
+        "MetricName": "Errors",
+        "Dimensions": [
+          {
+            "Name": "FunctionName",
+            "Value": {
+              "Ref": "RosewoodFunction"
+            }
+          }
+        ],
+        "Statistic": "Sum",
+        "Period": 300,
+        "EvaluationPeriods": 1,
+        "Threshold": 1,
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "TreatMissingData": "notBreaching"
+      }
+    },
+    "RosewoodThrottlesAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "Rosewood V6 Lambda was throttled and may not have completed a family or staff request",
+        "Namespace": "AWS/Lambda",
+        "MetricName": "Throttles",
+        "Dimensions": [
+          {
+            "Name": "FunctionName",
+            "Value": {
+              "Ref": "RosewoodFunction"
+            }
+          }
+        ],
+        "Statistic": "Sum",
+        "Period": 300,
+        "EvaluationPeriods": 1,
+        "Threshold": 1,
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "TreatMissingData": "notBreaching"
+      }
+    },
+    "RosewoodEmailDeliveryFailureAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "Amazon SES reported a bounce, complaint, rejection or rendering failure for a Rosewood transactional email",
+        "Namespace": {
+          "Fn::Sub": "Rosewood/Synthetic/${AWS::StackName}"
+        },
+        "MetricName": "TransactionalEmailDeliveryFailures",
+        "Statistic": "Sum",
+        "Period": 300,
+        "EvaluationPeriods": 1,
+        "Threshold": 1,
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "TreatMissingData": "notBreaching"
+      }
+    },
+    "RosewoodOutboxPermanentFailureAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "A Rosewood email, Slack notification or Google Sheets projection exhausted all delivery attempts",
+        "Namespace": {
+          "Fn::Sub": "Rosewood/Synthetic/${AWS::StackName}"
+        },
+        "MetricName": "OutboxPermanentFailures",
+        "Statistic": "Sum",
+        "Period": 300,
+        "EvaluationPeriods": 1,
+        "Threshold": 1,
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "TreatMissingData": "notBreaching"
+      }
+    },
+    "SyntheticConfigSecret": {
+      "Type": "AWS::SecretsManager::Secret",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-config"
+        },
+        "KmsKeyId": {
+          "Fn::GetAtt": [
+            "RosewoodKey",
+            "Arn"
+          ]
+        },
+        "SecretString": "{\"PROVISIONING_STATUS\":\"AWAITING_TEST_GOOGLE_IDENTITY\"}"
+      }
+    }
+  },
+  "Outputs": {
+    "FunctionUrl": {
+      "Value": {
+        "Fn::GetAtt": [
+          "RosewoodFunctionUrl",
+          "FunctionUrl"
+        ]
+      }
+    },
+    "FunctionName": {
+      "Value": {
+        "Ref": "RosewoodFunction"
+      }
+    },
+    "TableName": {
+      "Value": {
+        "Ref": "RosewoodTable"
+      }
+    },
+    "AuditTableName": {
+      "Value": {
+        "Ref": "RosewoodAuditTable"
+      }
+    },
+    "DocumentStagingBucketName": {
+      "Value": {
+        "Ref": "RosewoodDocumentStagingBucket"
+      }
+    },
+    "KmsKeyArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "RosewoodKey",
+          "Arn"
+        ]
+      }
+    },
+    "SesConfigurationSetName": {
+      "Value": {
+        "Ref": "RosewoodSesConfigurationSet"
+      }
+    },
+    "SesEventsTopicArn": {
+      "Value": {
+        "Ref": "RosewoodSesEventsTopic"
+      }
+    },
+    "ConfigSecretArn": {
+      "Value": {
+        "Ref": "SyntheticConfigSecret"
+      }
+    },
+    "RuntimeRoleArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "RosewoodRole",
+          "Arn"
+        ]
+      }
+    }
+  },
+  "Conditions": {
+    "EmailTestMode": {
+      "Fn::Equals": [
+        {
+          "Ref": "EmailDeliveryMode"
+        },
+        "test"
+      ]
+    }
+  }
+}

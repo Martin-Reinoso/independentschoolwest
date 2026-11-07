@@ -88,5 +88,5 @@ test("the application welcome presents optional internal policy links without a 
   assert.match(source, /state\.values/);
   assert.match(css, /\.policy-reader-toolbar \{ position: sticky/);
   assert.match(css, /body\.policy-reader-open \.story-panel \{ display: none/);
-  assert.match(css, /\.policy-register, \.policy-register tbody/);
+  assert.match(css, /\.policy-register, \.policy-register caption, \.policy-register tbody/);
 });

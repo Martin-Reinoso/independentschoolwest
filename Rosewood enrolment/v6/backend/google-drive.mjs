@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
-import { GoogleAccessTokenProvider } from "./google-auth.mjs";
+import { GoogleAccessTokenProvider, GOOGLE_APP_FILES_SCOPE } from "./google-auth.mjs";
+import {OFFER_PDF_MAX_BYTES, checkSignaturePng, pdfHash} from './offer-pdf.mjs';
 
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive";
 const PREVIEW_MIME_TYPES = new Set(["application/pdf", "image/png", "image/jpeg"]);
@@ -19,7 +20,7 @@ function hasExpectedFileSignature(data, mimeType) {
 export class GoogleDriveStore {
   constructor({ auth, eoiFolderId, applicationFolderId, fetchImpl = fetch }) {
     this.storageProvider = "google_drive";
-    this.tokenProvider = new GoogleAccessTokenProvider({ ...auth, scope: DRIVE_SCOPE, fetchImpl });
+    this.tokenProvider = new GoogleAccessTokenProvider({ ...auth, scope: auth?.restrictedToAppFiles ? GOOGLE_APP_FILES_SCOPE : DRIVE_SCOPE, fetchImpl });
     this.eoiFolderId = eoiFolderId;
     this.applicationFolderId = applicationFolderId;
     this.fetch = fetchImpl;
@@ -52,6 +53,54 @@ export class GoogleDriveStore {
 
   storeEoiSnapshot({ eoiId, snapshot }) {
     return this.createFile({ folderId: this.eoiFolderId, name: `${eoiId}.json`, mimeType: "application/json", data: JSON.stringify(snapshot, null, 2), properties: { rosewoodWorkflow: "eoi", rosewoodEoiId: eoiId } });
+  }
+
+  storeOfferLetter({familyId,data,sha256}) {
+    if(!Buffer.isBuffer(data)||data.length>OFFER_PDF_MAX_BYTES||!data.subarray(0,5).equals(Buffer.from('%PDF-'))||pdfHash(data)!==sha256)throw new Error('Invalid offer letter PDF.');
+    return this.createFile({folderId:this.applicationFolderId,name:`${familyId}-letter.pdf`,mimeType:'application/pdf',data,properties:{rosewoodWorkflow:'enrolment_offer',rosewoodFamilyOfferId:familyId,rosewoodArtifact:'offer_letter',rosewoodChecksum:sha256}});
+  }
+  async readOfferLetter({familyId,fileId,sha256}) {
+    const url=`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`;
+    const meta=await (await this.request(`${url}?fields=id,mimeType,size,parents,appProperties,trashed`)).json();
+    if(meta.trashed || meta.mimeType!=='application/pdf' || !meta.parents?.includes(this.applicationFolderId) || meta.appProperties?.rosewoodWorkflow!=='enrolment_offer' || meta.appProperties?.rosewoodFamilyOfferId!==familyId || meta.appProperties?.rosewoodArtifact!=='offer_letter' || meta.appProperties?.rosewoodChecksum!==sha256 || !Number.isSafeInteger(Number(meta.size)) || Number(meta.size)<1 || Number(meta.size)>OFFER_PDF_MAX_BYTES)throw new Error('Offer letter ownership validation failed.');
+    const response=await this.request(`${url}?alt=media`);const chunks=[];let size=0;
+    for await(const chunk of response.body){size+=chunk.length;if(size>OFFER_PDF_MAX_BYTES)throw new Error('Offer letter exceeds size limit.');chunks.push(chunk);}
+    const data=Buffer.concat(chunks);if(data.length!==Number(meta.size) || !data.subarray(0,5).equals(Buffer.from('%PDF-')) || crypto.createHash('sha256').update(data).digest('hex')!==sha256)throw new Error('Offer letter integrity validation failed.');return data;
+  }
+
+  storeOfferSignature({ offerId, signerId, signatureId, data }) {
+    checkSignaturePng(data);
+    return this.createFile({ folderId: this.applicationFolderId, name: `${offerId}-${signatureId}.png`, mimeType: 'image/png', data, properties: { rosewoodWorkflow: 'enrolment_offer', rosewoodOfferId: offerId, rosewoodSignerId: signerId, rosewoodSignatureId:signatureId, rosewoodChecksum:pdfHash(data), rosewoodArtifact: 'signature' } });
+  }
+
+  storeOfferRecord({offerId,revision,packetHash,data,sha256}) {
+    if(!Buffer.isBuffer(data)||data.length>OFFER_PDF_MAX_BYTES||!data.subarray(0,5).equals(Buffer.from('%PDF-'))||pdfHash(data)!==sha256)throw new Error('Invalid acceptance PDF.');
+    return this.createFile({folderId:this.applicationFolderId,name:`${offerId}-acceptance-${revision}.pdf`,mimeType:'application/pdf',data,properties:{rosewoodWorkflow:'enrolment_offer',rosewoodOfferId:offerId,rosewoodRevision:String(revision),rosewoodPacketHash:packetHash,rosewoodChecksum:sha256,rosewoodArtifact:'acceptance_record'}});
+  }
+
+  async readOfferArtifact({fileId,sha256,properties,mimeType,limit}) {
+    const url=`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`;
+    const meta=await (await this.request(`${url}?fields=id,mimeType,size,parents,appProperties,trashed`)).json();
+    const size=Number(meta.size),expected={rosewoodWorkflow:'enrolment_offer',rosewoodChecksum:sha256,...properties};
+    if(!/^[a-f0-9]{64}$/.test(sha256||'') || meta.trashed || meta.mimeType!==mimeType || !meta.parents?.includes(this.applicationFolderId) || !Number.isSafeInteger(size) || size<1 || size>limit || Object.entries(expected).some(([k,v])=>!v||meta.appProperties?.[k]!==v))throw new Error('Offer artifact ownership validation failed.');
+    const response=await this.request(`${url}?alt=media`),chunks=[];let count=0;
+    for await(const chunk of response.body){count+=chunk.length;if(count>limit)throw new Error('Offer artifact exceeds size limit.');chunks.push(chunk);}
+    const data=Buffer.concat(chunks);
+    if(data.length!==size || pdfHash(data)!==sha256 || !hasExpectedFileSignature(data,mimeType))throw new Error('Offer artifact integrity validation failed.');
+    if(mimeType==='image/png')checkSignaturePng(data);
+    return data;
+  }
+
+  readOfferSignature({offerId,signerId,signatureId,fileId,sha256}) {
+    return this.readOfferArtifact({fileId,sha256,mimeType:'image/png',limit:500_000,properties:{rosewoodOfferId:offerId,rosewoodSignerId:signerId,rosewoodSignatureId:signatureId,rosewoodArtifact:'signature'}});
+  }
+
+  readOfferRecord({offerId,revision,packetHash,fileId,sha256}) {
+    return this.readOfferArtifact({fileId,sha256,mimeType:'application/pdf',limit:OFFER_PDF_MAX_BYTES,properties:{rosewoodOfferId:offerId,rosewoodRevision:String(revision),rosewoodPacketHash:packetHash,rosewoodArtifact:'acceptance_record'}});
+  }
+
+  storeOfferSnapshot({ offerId, revision, snapshot }) {
+    return this.createFile({ folderId: this.applicationFolderId, name: `${offerId}-revision-${revision}.json`, mimeType: 'application/json', data: JSON.stringify(snapshot), properties: { rosewoodWorkflow: 'enrolment_offer', rosewoodOfferId: offerId, rosewoodRevision: String(revision), rosewoodArtifact: 'snapshot' } });
   }
 
   storeApplicationSnapshot({ applicationId, revision, snapshot }) {

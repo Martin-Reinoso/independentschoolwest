@@ -2,6 +2,15 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: Rosewood College V6 EOI and Application for Enrolment service
 
 Parameters:
+  EnrolmentOffersEnabled:
+    Type: String
+    Default: "false"
+    AllowedValues: ["false", "true"]
+  EnrolmentOfferApprovedHash:
+    Type: String
+    Default: ""
+    AllowedPattern: "^([a-f0-9]{64})?$"
+    Description: SHA-256 of the exact reviewed offer contract; blank prevents issuing
   ConfigSecretArn:
     Type: String
   SenderEmail:
@@ -464,7 +473,6 @@ Resources:
                   - dynamodb:DeleteItem
                   - dynamodb:Query
                   - dynamodb:Scan
-                  - dynamodb:TransactWriteItems
                   - dynamodb:ConditionCheckItem
                 Resource: !GetAtt RosewoodTable.Arn
               - Sid: AppendOnlyAudit
@@ -472,7 +480,6 @@ Resources:
                 Action:
                   - dynamodb:PutItem
                   - dynamodb:Query
-                  - dynamodb:TransactWriteItems
                 Resource: !If
                   - CreateAuditTable
                   - !GetAtt RosewoodAuditTable.Arn
@@ -534,6 +541,8 @@ Resources:
       Code: lambda-dist/
       Environment:
         Variables:
+          ENROLMENT_OFFERS_ENABLED: !Ref EnrolmentOffersEnabled
+          ENROLMENT_OFFER_APPROVED_HASH: !Ref EnrolmentOfferApprovedHash
           ROSEWOOD_TABLE_NAME: !Ref RosewoodTable
           ROSEWOOD_AUDIT_TABLE_NAME: !If [CreateAuditTable, !Ref RosewoodAuditTable, !Ref ExistingAuditTableName]
           ROSEWOOD_ARTIFACT_STORE_MODE: google_drive

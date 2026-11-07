@@ -1,0 +1,73 @@
+/* Non-writing Option 1 prototype. Reuse the existing family design. */
+.acceptance-review .offer-content,.acceptance-review #review-progress { scroll-margin-top: 140px; }
+.acceptance-review [hidden] { display: none !important; }
+.acceptance-review .progress ol { overflow: visible; }
+.acceptance-review .progress li { min-width: 0; flex: 1; }
+.acceptance-review .progress button { width: 100%; min-height: 44px; border: 0; border-radius: 9px; padding: .5rem .25rem; background: transparent; color: var(--muted); font-size: .75rem; cursor: pointer; }
+.acceptance-review .progress button[aria-current="step"] { color: var(--navy); background: var(--sky-pale); font-weight: 700; }
+.acceptance-review .progress-track span { width: 0; }
+.acceptance-review .progress[data-stage="guardian"] .progress-track span { width: 33.333%; }
+.acceptance-review .progress[data-stage="conditions"] .progress-track span { width: 66.666%; }
+.acceptance-review .progress[data-stage="signature"] .progress-track span { width: 100%; }
+.acceptance-review .text-action { color: var(--navy); background: transparent; border: none; padding: .45rem 0; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; font: inherit; font-size: .85rem; }
+.acceptance-review #student > .text-action { margin-bottom: 1.5rem; }
+.acceptance-review .field-grid { margin: 1.6rem 0; }
+.acceptance-review .offered-place,.acceptance-review .offer-facts { margin: 1.8rem 0; padding: 1.2rem 1.4rem; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+.acceptance-review .offered-place p:last-child { color: var(--muted); font-size: .85rem; margin-bottom: 0; }
+.acceptance-review .step-actions { display: flex; flex-wrap: wrap; gap: .7rem; align-items: center; margin-top: 2rem; }
+.acceptance-review .guardian-details { margin: 1.2rem 0; padding: 1.3rem; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+.acceptance-review .guardian-details summary { cursor: pointer; color: var(--navy); font-weight: 700; }
+.acceptance-review .guardian-details summary small { display: block; color: var(--muted); font-size: .78rem; font-weight: 400; margin: .4rem 0 0 1rem; }
+.acceptance-review .guardian-details .field-grid { margin-bottom: .6rem; }
+.acceptance-review .email-display { padding: .8rem 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
+.acceptance-review .email-display strong,.acceptance-review .email-display span { display: block; }
+.acceptance-review .email-display strong { font-size: .8rem; }
+.acceptance-review .email-display p { color: var(--muted); font-size: .78rem; }
+.acceptance-review .offer-facts h3 { margin-top: 0; }
+.acceptance-review .offer-facts dl,.acceptance-review .signature-summary { display: grid; grid-template-columns: 150px 1fr; gap: .7rem 1rem; }
+.acceptance-review dt { font-size: .83rem; color: var(--muted); }
+.acceptance-review dd { margin: 0; overflow-wrap: anywhere; }
+.acceptance-review .terms-heading { margin-top: 2.5rem; }
+.acceptance-review .terms-heading h3 { margin-bottom: .4rem; }
+.acceptance-review .terms-tools { display: flex; gap: 1.4rem; }
+.acceptance-review .draft-note { font-size: .8rem; color: var(--muted); }
+.acceptance-review .fine-print { color: #626262; font-family: Arial,Helvetica,sans-serif; font-size: 14px; line-height: 1.5; padding: 1rem 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.acceptance-review .fine-print h4 { color: inherit; font: 700 1em/1.5 Arial,Helvetica,sans-serif; margin: 1rem 0 .25rem; }
+.acceptance-review .fine-print section:first-child h4 { margin-top: 0; }
+.acceptance-review .fine-print p { margin: .35rem 0; }
+.acceptance-review .fine-print.enlarged { font-size: 18px; line-height: 1.65; }
+.acceptance-review .policy-readers > p { font-size: .9rem; color: var(--muted); }
+.acceptance-review .policy-readers details { border-bottom: 1px solid var(--line); padding: .8rem 0; }
+.acceptance-review .policy-readers summary { color: var(--navy); font-size: .9rem; cursor: pointer; }
+.acceptance-review .policy-copy { white-space: pre-line; font-size: 14px; color: #626262; line-height: 1.5; padding: .8rem 0; overflow-wrap: anywhere; }
+.acceptance-review .signature-name { margin: 1.5rem 0; }
+.acceptance-review #preview-signature { width: 100%; display: block; touch-action: none; }
+.acceptance-review #signature-feedback { color: var(--muted); font-size: .85rem; }
+.acceptance-review dialog { width: min(520px,calc(100% - 2rem)); border: 1px solid var(--line); border-radius: 16px; padding: 1.8rem; color: var(--navy); background: var(--cream,#fffdf9); }
+.acceptance-review dialog::backdrop { background: #10223b80; }
+@media(max-width:640px) {
+  body.acceptance-review { padding-top: 78px; }
+  .acceptance-review .preview-ribbon { height: 78px; min-height: 78px; justify-content: center; font-size: .73rem; line-height: 1.4; }
+  body.acceptance-review .form-header { top: 78px; }
+  .acceptance-review .offer-content,.acceptance-review #review-progress { scroll-margin-top: 150px; }
+  .acceptance-review .progress-meta { flex-wrap: wrap; gap: .3rem; }
+  .acceptance-review .progress button { font-size: .68rem; }
+  .acceptance-review .offer-facts dl,.acceptance-review .signature-summary { grid-template-columns: 1fr; gap: .3rem; }
+  .acceptance-review dd { margin-bottom: .6rem; }
+  .acceptance-review .fine-print,.acceptance-review .policy-copy { font-size: 15px; }
+  .acceptance-review .fine-print.enlarged { font-size: 18px; }
+  .acceptance-review .guardian-details { padding: 1rem; }
+  .acceptance-review .step-actions .button { flex: 1 1 auto; }
+}
+@media print {
+  .acceptance-review .story-panel,.acceptance-review .preview-ribbon,.acceptance-review .form-header,.acceptance-review .progress,.acceptance-review .form-footer,.acceptance-review .skip-link,.acceptance-review button,.acceptance-review .step-actions,.acceptance-review .declaration,.acceptance-review dialog { display: none !important; }
+  .acceptance-review #family-form > section { display: none !important; }
+  .acceptance-review #family-form #conditions { display: block !important; }
+  .acceptance-review .page-shell,.acceptance-review .form-panel,.acceptance-review .offer-content { display: block; width: 100%; padding: 0; margin: 0; }
+  .acceptance-review .fine-print { font-size: 10pt; color: #444; }
+  .acceptance-review .fine-print h4 { break-after: avoid; }
+}
+
+.acceptance-review .provisional-notice { margin: 1.2rem 0; padding: 1rem 1.2rem; border-left: 4px solid var(--navy); background: var(--sky-pale); color: var(--navy); font-size: 1rem; line-height: 1.6; }
+.acceptance-review .provisional-notice h4 { margin: 0 0 .4rem; font: inherit; font-weight: 700; }
+.acceptance-review .provisional-notice p { margin: 0; }

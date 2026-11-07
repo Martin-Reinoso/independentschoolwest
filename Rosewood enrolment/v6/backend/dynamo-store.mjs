@@ -33,6 +33,82 @@ export class DynamoStore {
   }
 
   getEoi(id) { return this.get(`EOI#${id}`); }
+  getOffer(id) { return this.get(`OFFER#${id}`); }
+  getOfferTask(tokenHash) { return this.get(`OFFER_TASK#${tokenHash}`); }
+  async getOfferByApplication(id) { const link = await this.get(`OFFER_APPLICATION#${id}`); return link ? this.getOffer(link.offerId) : null; }
+  async listOffers() { return (await this.scanEntities(['enrolment_offer'])).map(item => item.data); }
+
+  getOfferFamily(id) { return this.get(`OFFER_FAMILY#${id}`); }
+  async listOfferFamilies() { return (await this.scanEntities(['offer_family'])).map(x=>x.data); }
+  async issueOfferFamily({family,offers,tasks,applications,outboxEvents=[],auditEvents=[]}) {
+    const put=(PK,entity,data,SK='META')=>({Put:{TableName:this.tableName,Item:{...this.key(PK,SK),entity,data},ConditionExpression:'attribute_not_exists(PK)'}});
+    const actions=[...applications.map(a=>this.offerApplicationCondition(a)),put(`OFFER_FAMILY#${family.id}`,'offer_family',family)];
+    for(const offer of offers){
+      actions.push(put(`OFFER#${offer.id}`,'enrolment_offer',offer),put(`OFFER#${offer.id}`,'offer_issued_snapshot',{packet:offer.packet,packetHash:offer.packetHash,createdAt:offer.createdAt,createdBy:offer.createdBy},'ISSUED'));
+      const link=put(`OFFER_APPLICATION#${offer.applicationId}`,'offer_application_link',{offerId:offer.id});
+      if(offer.previousOfferId){Object.assign(link.Put,{ConditionExpression:'#d.#id = :id',ExpressionAttributeNames:{'#d':'data','#id':'offerId'},ExpressionAttributeValues:{':id':offer.previousOfferId}});actions.push({ConditionCheck:{TableName:this.tableName,Key:this.key(`OFFER#${offer.previousOfferId}`),ConditionExpression:'#d.#s = :s AND size(#d.#signatures) = :zero',ExpressionAttributeNames:{'#d':'data','#s':'status','#signatures':'signatures'},ExpressionAttributeValues:{':s':'withdrawn',':zero':0}}});}
+      actions.push(link);
+    }
+    actions.push(...tasks.map(t=>put(`OFFER_TASK#${t.tokenHash}`,'offer_task',{...t,childOpenedAt:{}})),...this.outboxActions(outboxEvents),...this.auditActions(auditEvents));
+    if(actions.length>100)throw new Error('Offer transaction exceeds supported family size.');
+    try{await this.client.send(new TransactWriteCommand({TransactItems:actions}));}catch(error){if(conditional(error))throw conflict('The family or offer changed. Refresh before sending.');throw error;}
+  }
+  async replaceOfferFamilyTask({family,expectedRevision,previousTokenHash,task,applications,outboxEvents=[],auditEvents=[]}) {
+    const actions=[...applications.map(a=>this.offerApplicationCondition(a)),
+      {Put:{TableName:this.tableName,Item:{...this.key(`OFFER_FAMILY#${family.id}`),entity:'offer_family',data:family},ConditionExpression:'#d.#r = :r',ExpressionAttributeNames:{'#d':'data','#r':'revision'},ExpressionAttributeValues:{':r':expectedRevision}}},
+      {Update:{TableName:this.tableName,Key:this.key(`OFFER_TASK#${previousTokenHash}`),UpdateExpression:'SET #d.#s = :revoked',ConditionExpression:'#d.#s = :active',ExpressionAttributeNames:{'#d':'data','#s':'status'},ExpressionAttributeValues:{':revoked':'revoked',':active':'active'}}},
+      {Put:{TableName:this.tableName,Item:{...this.key(`OFFER_TASK#${task.tokenHash}`),entity:'offer_task',data:task},ConditionExpression:'attribute_not_exists(PK)'}},...this.outboxActions(outboxEvents),...this.auditActions(auditEvents)];
+    try{await this.client.send(new TransactWriteCommand({TransactItems:actions}));}catch(error){if(conditional(error))throw conflict('The family invitation changed. Refresh before resending.');throw error;}
+  }
+  async recordOfferAccess({tokenHash,offerId,at,auditEvent}) {
+    const names={'#d':'data','#s':'status','#opened':'portalOpenedAt'};let update='SET #d.#opened = if_not_exists(#d.#opened, :at)';
+    if(offerId){names['#children']='childOpenedAt';names['#child']=offerId;update='SET #d.#children.#child = if_not_exists(#d.#children.#child, :at)';}
+    await this.client.send(new TransactWriteCommand({TransactItems:[{Update:{TableName:this.tableName,Key:this.key(`OFFER_TASK#${tokenHash}`),UpdateExpression:update,ConditionExpression:'#d.#s = :active',ExpressionAttributeNames:Object.fromEntries(Object.entries(names).filter(([k])=>k!=='#opened'||!offerId)),ExpressionAttributeValues:{':at':at,':active':'active'}}},...this.auditActions([auditEvent])]}));
+  }
+  async recordOfferDelivery({tokenHash,status,rank,at}) {
+    try{await this.client.send(new UpdateCommand({TableName:this.tableName,Key:this.key(`OFFER_TASK#${tokenHash}`),UpdateExpression:'SET #d.#s = :s, #d.#r = :r, #d.#at = :at',ConditionExpression:'attribute_exists(PK) AND (attribute_not_exists(#d.#r) OR #d.#r <= :r)',ExpressionAttributeNames:{'#d':'data','#s':'deliveryStatus','#r':'deliveryRank','#at':'deliveryAt'},ExpressionAttributeValues:{':s':status,':r':rank,':at':at}}));}catch(error){if(!conditional(error))throw error;}
+  }
+
+  offerApplicationCondition(app) {
+    return { ConditionCheck: { TableName: this.tableName, Key: this.key(`APP#${app.id}`, 'CURRENT'), ConditionExpression: '#d.#r = :r AND #d.#s = :s AND (attribute_not_exists(#d.#c) OR #d.#c = :c)', ExpressionAttributeNames: { '#d':'data', '#r':'revisionHash', '#s':'status', '#c':'signatureControlRevision' }, ExpressionAttributeValues: { ':r':app.revisionHash, ':s':app.status, ':c':Number(app.signatureControlRevision || 0) } } };
+  }
+
+  async signOffer({offer,family,expectedFamilyRevision,tasks=[],applications,expectedRevision,expectedApplication,taskTokenHash,signature,outboxEvents=[],auditEvents=[]}) {
+    const actions=[...(applications||[expectedApplication]).map(app=>this.offerApplicationCondition(app)),
+      {ConditionCheck:{TableName:this.tableName,Key:this.key(`OFFER_TASK#${taskTokenHash}`),ConditionExpression:'#d.#s = :s',ExpressionAttributeNames:{'#d':'data','#s':'status'},ExpressionAttributeValues:{':s':'active'}}},
+      {Put:{TableName:this.tableName,Item:{...this.key(`OFFER#${offer.id}`),entity:'enrolment_offer',data:offer},ConditionExpression:'#d.#r = :r AND #d.#s = :s',ExpressionAttributeNames:{'#d':'data','#r':'revision','#s':'status'},ExpressionAttributeValues:{':r':expectedRevision,':s':'awaiting_signatures'}}},
+      {Put:{TableName:this.tableName,Item:{...this.key(`OFFER#${offer.id}`,`SIGNATURE#${signature.signerId}`),entity:'offer_signature',data:signature},ConditionExpression:'attribute_not_exists(PK)'}},
+      ...this.outboxActions(outboxEvents),...this.auditActions(auditEvents)];
+    if(family)actions.push({Put:{TableName:this.tableName,Item:{...this.key(`OFFER_FAMILY#${family.id}`),entity:'offer_family',data:family},ConditionExpression:'#d.#r = :r',ExpressionAttributeNames:{'#d':'data','#r':'revision'},ExpressionAttributeValues:{':r':expectedFamilyRevision}}});
+    actions.push(...tasks.map(task=>({Put:{TableName:this.tableName,Item:{...this.key(`OFFER_TASK#${task.tokenHash}`),entity:'offer_task',data:task},ConditionExpression:'attribute_not_exists(PK)'}})));
+    try {await this.client.send(new TransactWriteCommand({TransactItems:actions}));}
+    catch(error){if(conditional(error))throw conflict('The offer changed before signing completed. Reopen the offer to check its status.');throw error;}
+  }
+
+  async saveOfferDetails({offer,family,expectedRevision,expectedFamilyRevision,expectedApplication,taskTokenHash,auditEvents=[]}) {
+    const actions=[this.offerApplicationCondition(expectedApplication),
+      {ConditionCheck:{TableName:this.tableName,Key:this.key(`OFFER_TASK#${taskTokenHash}`),ConditionExpression:'#d.#s = :s AND #d.#p = :p',ExpressionAttributeNames:{'#d':'data','#s':'status','#p':'primary'},ExpressionAttributeValues:{':s':'active',':p':true}}},
+      {Put:{TableName:this.tableName,Item:{...this.key(`OFFER#${offer.id}`),entity:'enrolment_offer',data:offer},ConditionExpression:'#d.#r = :r AND #d.#s = :s AND size(#d.#signatures) = :zero',ExpressionAttributeNames:{'#d':'data','#r':'revision','#s':'status','#signatures':'signatures'},ExpressionAttributeValues:{':r':expectedRevision,':s':'awaiting_signatures',':zero':0}}},
+      {Put:{TableName:this.tableName,Item:{...this.key(`OFFER#${offer.id}`,`DETAILS#${offer.revision}`),entity:'offer_details_revision',data:{details:offer.details,packetHash:offer.packetHash,revision:offer.revision,confirmedBy:offer.detailsConfirmedBy,savedAt:offer.detailsConfirmedAt}},ConditionExpression:'attribute_not_exists(PK)'}},
+      {Put:{TableName:this.tableName,Item:{...this.key(`OFFER_FAMILY#${family.id}`),entity:'offer_family',data:family},ConditionExpression:'#d.#r = :r',ExpressionAttributeNames:{'#d':'data','#r':'revision'},ExpressionAttributeValues:{':r':expectedFamilyRevision}}},
+      ...this.auditActions(auditEvents)];
+    try{await this.client.send(new TransactWriteCommand({TransactItems:actions}));}catch(error){if(conditional(error))throw conflict('The offer changed. Reopen it before saving details.');throw error;}
+  }
+
+  async saveOfferCorrection({offer,expectedRevision,taskTokenHash,auditEvents=[]}) {
+    const actions=[{Put:{TableName:this.tableName,Item:{...this.key(`OFFER#${offer.id}`),entity:'enrolment_offer',data:offer},ConditionExpression:'#d.#r = :r AND #d.#s = :s',ExpressionAttributeNames:{'#d':'data','#r':'revision','#s':'status'},ExpressionAttributeValues:{':r':expectedRevision,':s':'awaiting_signatures'}}},...this.auditActions(auditEvents)];
+    if(taskTokenHash)actions.push({ConditionCheck:{TableName:this.tableName,Key:this.key(`OFFER_TASK#${taskTokenHash}`),ConditionExpression:'#d.#s = :s',ExpressionAttributeNames:{'#d':'data','#s':'status'},ExpressionAttributeValues:{':s':'active'}}});
+    try{await this.client.send(new TransactWriteCommand({TransactItems:actions}));}catch(error){if(conditional(error))throw conflict('The agreement changed. Reopen it before continuing.');throw error;}
+  }
+
+  async revokeOffer({offer,reason,auditEvents=[]}) {
+    const next={...offer,status:'withdrawn',revision:offer.revision+1,withdrawalReason:reason};
+    try {await this.client.send(new TransactWriteCommand({TransactItems:[
+      {Put:{TableName:this.tableName,Item:{...this.key(`OFFER#${offer.id}`),entity:'enrolment_offer',data:next},ConditionExpression:'#d.#r = :r AND #d.#s = :s AND size(#d.#signatures) = :zero',ExpressionAttributeNames:{'#d':'data','#r':'revision','#s':'status','#signatures':'signatures'},ExpressionAttributeValues:{':r':offer.revision,':s':'awaiting_signatures',':zero':0}}},
+      ...this.auditActions(auditEvents)]}));}
+    catch(error){if(conditional(error))throw conflict('The offer changed before withdrawal.');throw error;}
+  }
+
   getInvitation(tokenHash) { return this.get(`INVITE#${tokenHash}`); }
   getInvitationById(id) { return this.get(`INVITE_ID#${id}`); }
   getApplication(id) { return this.get(`APP#${id}`, "CURRENT"); }

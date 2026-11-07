@@ -7,6 +7,7 @@ import { SesMailer } from "./ses-mailer.mjs";
 import { SlackNotifier } from "./slack-notifier.mjs";
 import { createService } from "./service.mjs";
 import { runProductionCanary } from "./production-canary.mjs";
+import { createEmailDeliveryPolicy, mergeServiceConfig } from "./email-delivery-policy.mjs";
 
 let servicePromise;
 
@@ -20,14 +21,15 @@ export async function loadSecret(secretArn = process.env.ROSEWOOD_CONFIG_SECRET_
 }
 
 export async function buildService(overrides = {}) {
-  const config = { ...process.env, ...await loadSecret(overrides.secretArn), ...(overrides.config || {}) };
+  const config = mergeServiceConfig(process.env, await loadSecret(overrides.secretArn), overrides.config || {});
   const auth = {
     authMode: config.GOOGLE_AUTH_MODE,
     serviceAccountEmail: config.GOOGLE_SERVICE_ACCOUNT_EMAIL,
     privateKey: config.GOOGLE_PRIVATE_KEY,
     oauthClientId: config.GOOGLE_OAUTH_CLIENT_ID,
     oauthClientSecret: config.GOOGLE_OAUTH_CLIENT_SECRET,
-    oauthRefreshToken: config.GOOGLE_OAUTH_REFRESH_TOKEN
+    oauthRefreshToken: config.GOOGLE_OAUTH_REFRESH_TOKEN,
+    restrictedToAppFiles: Boolean(config.SYNTHETIC_STACK_NAME)
   };
   const store = overrides.store || new DynamoStore({ tableName: config.ROSEWOOD_TABLE_NAME, auditTableName: config.ROSEWOOD_AUDIT_TABLE_NAME });
   const drive = overrides.drive || new GoogleDriveStore({ auth, eoiFolderId: config.GOOGLE_EOI_FOLDER_ID, applicationFolderId: config.GOOGLE_APPLICATION_FOLDER_ID });
@@ -35,7 +37,7 @@ export async function buildService(overrides = {}) {
     ? new StagedGoogleDriveStore({ drive, bucketName: config.DOCUMENT_STAGING_BUCKET, kmsKeyId: config.RECORDS_KMS_KEY_ARN })
     : drive);
   const sheets = overrides.sheets || new GoogleSheetsStore({ auth, eoiSpreadsheetId: config.GOOGLE_EOI_SPREADSHEET_ID, applicationSpreadsheetId: config.GOOGLE_APPLICATION_SPREADSHEET_ID, operationsSpreadsheetId: config.GOOGLE_OPERATIONS_SPREADSHEET_ID });
-  const mailer = overrides.mailer || new SesMailer({ from: config.SENDER_EMAIL, fromName: config.SENDER_NAME, replyTo: config.REPLY_TO_EMAIL, configurationSetName: config.SES_CONFIGURATION_SET_MANAGED || config.SES_CONFIGURATION_SET });
+  const mailer = overrides.mailer || new SesMailer({ from: config.SENDER_EMAIL, fromName: config.SENDER_NAME, replyTo: config.REPLY_TO_EMAIL, configurationSetName: config.SES_CONFIGURATION_SET_MANAGED || config.SES_CONFIGURATION_SET, deliveryPolicy: createEmailDeliveryPolicy(config) });
   const slack = overrides.slack || new SlackNotifier({
     pendingWebhookUrl: config.SLACK_PENDING_WEBHOOK_URL || config.SLACK_WEBHOOK_URL,
     completionWebhookUrl: config.SLACK_COMPLETION_WEBHOOK_URL,
@@ -46,6 +48,9 @@ export async function buildService(overrides = {}) {
 
 export async function handler(event, context) {
   context.callbackWaitsForEmptyEventLoop = false;
+  if (process.env.SYNTHETIC_STACK_NAME && (process.env.SYNTHETIC_READY !== "true" || event?.source === "rosewood.enrolment.canary")) {
+    return { statusCode: 503, headers: { "content-type": "application/json", "cache-control": "no-store" }, body: JSON.stringify({ error: "SYNTHETIC_RUNTIME_NOT_AVAILABLE" }) };
+  }
   if (event?.source === "rosewood.enrolment.canary") return runProductionCanary();
   servicePromise ||= buildService();
   return (await servicePromise)(event);

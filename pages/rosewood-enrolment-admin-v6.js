@@ -220,6 +220,7 @@
   }
 
   function signOut(message = "", revoke = true) {
+    offersWorkspace.clear();
     const token = state.sessionToken;
     if (revoke && token) fetch(`${API_BASE}/v6/session/logout`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: "{}", cache: "no-store" }).catch(() => {});
     clearRememberedSession();
@@ -1162,6 +1163,12 @@
     byId("communication-body").value = "";
     renderFamilyCommunicationChoices(family);
     renderCommunicationHistory(application.communications || [], family.communications || []);
+    if(family.offers?.length){
+      const offerHistory=element("div","review-card");
+      offerHistory.append(element("strong","","Enrolment offers"));
+      for(const offer of family.offers)offerHistory.append(element("p","",`${offer.childCount} child offer(s) issued ${formatDate(offer.createdAt,true)}`));
+      const button=element("button","secondary-button","View offer delivery and signatures");button.type="button";button.addEventListener("click",()=>showPanel("offers"));offerHistory.append(button);byId("communication-context").append(offerHistory);
+    }
     if (!application.recipients.length) setNotice("communication-error", "No contact-permitted recipient is available for this application.");
   }
 
@@ -1397,6 +1404,8 @@
     if (!state.meetings.length) list.append(element("p", "panel-note", "No principal meeting schedules have been created."));
   }
 
+  const offersWorkspace = window.createRosewoodOffers({root: byId("offers-panel"), request: (path, body) => api(path, body === undefined ? {} : {method: "POST", body}), staff: () => state.dashboard.staff});
+
   function showPanel(name) {
     const canManage = ["admin", "admissions"].includes(state.dashboard?.staff?.role);
     if (["communications", "meetings"].includes(name) && !canManage) name = "overview";
@@ -1407,6 +1416,7 @@
       button.setAttribute("aria-current", active ? "page" : "false");
     });
     if (name === "meetings") loadMeetings();
+    if (name === "offers") offersWorkspace.load().catch(error => setNotice("dashboard-error", error.message));
   }
 
   function fieldLabel(key) {

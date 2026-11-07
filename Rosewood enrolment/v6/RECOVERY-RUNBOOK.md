@@ -1,5 +1,10 @@
 # V6 Recovery Runbook
 
+## Conditional offers candidate recovery
+
+Not deployed. A resend rotates one recipient’s family task with an available unsigned child offer and invalidates the previous link/challenges/sessions through task revalidation. Never rewrite an accepted packet or original Application. Unsigned withdrawal preserves evidence; signed agreements need a separate reviewed process. Clear only the approved-contract hash to stop new issuance while retaining access; disabling the entire feature also stops family access. Restore family records, letter artifacts, offer associations, tasks, immutable packets/signatures, audit and outbox together into isolated tables. See [implementation notes](POST-OFFER-IMPLEMENTATION-2026-11-08.md).
+
+
 ## Guardian reports a missing signing OTP
 
 1. Identify the specific child's Application and current signer task using restricted,
@@ -400,3 +405,48 @@ Prefer a forward fix preserving `invitation-access.mjs`. If a full rollback is n
 use the restricted backup/audit previous expiries and conditional updates on only the
 unchanged migrated tokens; assess dates that have since passed before restoring them.
 Do not restore a table over live production or re-enable a revoked/replaced token.
+
+## 8 November local reporting and encrypted-alert repair
+
+These changes are preserved in the separate local branch
+`codex/rosewood-operations-repairs-20261108`, not the acceptance candidate and not
+production. The commands below require that separate implementation. Do not run them
+from the acceptance release or claim they are deployed. Its
+`backend/OPERATIONS-REPAIRS-REVIEW.md` records the remaining review and test requirements.
+
+**Application-link request reporting:** `GoogleSheetsStore` now knows the exact eleven
+`ApplicationLinkRequests` headers and creates that missing operations tab before writing.
+The rebuild has a dedicated mode which scans only authoritative `application_request`
+records, deduplicates by request ID and upserts that tab. It does not enqueue or replay
+business requests, OTP or email. With the existing authorised runtime configuration:
+
+```sh
+node scripts/rebuild-google-projections.mjs --requests-only
+node scripts/rebuild-google-projections.mjs --requests-only --apply --confirm=REBUILD_GOOGLE_PROJECTIONS
+```
+
+Inspect the first dry-run count before applying. Compare source request IDs/counts with
+the resulting reporting rows and confirm fresh requests project successfully. Retained
+OUTBOX_FAILED records remain historical evidence; the script does not delete or mark
+them recovered. Record which failures were reconciled only after checking the projection.
+Do not use a full outbox replay to repair these rows.
+
+**CloudWatch/Backup alerts:** the template changes only the security-topic encryption
+reference from `alias/aws/sns` to a new retained/rotating key with scoped service grants.
+Existing records, audit, staging and SES-feedback keys are unchanged. Inspect the change
+set and test actual CloudWatch notification delivery to the confirmed subscribers after
+release; an OK alarm alone is not delivery evidence. Verify Backup notification permission
+as well. The local lint run has the same four baseline warnings and no errors.
+
+Reference: [SNS key management](https://docs.aws.amazon.com/sns/latest/dg/sns-key-management.html)
+and [AWS Backup notifications](https://docs.aws.amazon.com/aws-backup/latest/devguide/backup-notifications.html).
+
+## Offer correction/signing recovery
+
+Clear the approved hash to stop new issues while
+retaining existing family access. Correction holds never rewrite accepted text. Unsigned
+offers may be withdrawn/reissued; changes to already signed agreements require separate
+review. Pending additional recipients show Waiting for primary guardian acceptance and
+have no usable link/task until the primary has accepted their selected children. Failed
+sends use existing outbox retries; do not reissue the family to retry email. Review family
+revision conflicts by reopening the child; duplicate completed signatures remain idempotent.
