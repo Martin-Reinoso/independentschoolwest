@@ -1,5 +1,19 @@
 # Conditional enrolment offer implementation
 
+## Current checkpoint
+
+Runtime `c46a705` is deployed to the separate **inactive** test stack. The candidate
+passes 280 backend tests and mocked desktop/mobile guardian journeys. Its complete
+policy bodies and map are verified; PDF/Word download controls are implemented but
+publication assets are not yet bound to the contract. Production is unchanged and no
+actual test email has been sent. Google consent/scoped setup blocks live provider
+journeys. See [current release gates](post-offer/CURRENT-RELEASE-GATES-2026-11-08.md)
+and the linked completion/deployment evidence for authoritative status.
+
+The integration entries below are chronological history. Their “latest”, test counts,
+“not deployed” and outstanding-feature statements apply to those earlier checkpoints.
+
+
 **Latest shared-portal integration:** both verified entries now show Applications and
 issued provisional offers together, using explicit invitation associations and current
 guardian permissions. Scoped browser navigation preserves source-session expiry and

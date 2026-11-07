@@ -1,14 +1,28 @@
 # Fourteen-section Rosewood terms — review notes
 
-Status: **proposed wording for review only**, 8 November 2026. This replaces the nine-section
-text only in `pages/rosewood-enrolment-acceptance-review.html`. It changes no backend,
-contract approval hash, immutable Application definition or issued/signed agreement.
+## Current status — 8 November 2026
 
-Open the preview with `?step=conditions` to go straight to the revised terms. The new
-text lives in `pages/rosewood-enrolment-acceptance-terms-review.js`, separate from the
-previous nine-section backend candidate. Do not assume the two are interchangeable.
+The fourteen-section draft is now integrated across the backend contract, online
+reader and signed PDF, generated from `post-offer/agreement-draft.json`. Runtime
+`c46a705` is deployed to the separate inactive test stack; it is not on production.
+The seven policy originals and all 75 pages are verified. Private contents-corrected
+PDF/Word copies exist; public download metadata remains absent pending publication
+review. Final wording approval is still open: implementation is not policy adoption.
 
-## What changed
+The current registration introduction is exactly:
+
+> Rosewood College is preparing to welcome its first students in 2027, subject to
+> registration approval from the Victorian Registration and Qualifications Authority
+> (VRQA). We will provide written confirmation of the commencement date and final
+> enrolment arrangements once these are confirmed.
+
+The earlier “acceptance does not guarantee opening on the proposed date” sentence
+was rejected and is not the current introduction. The concrete clause-review table
+below remains the list of proposed substantive departures requiring review. Prototype
+and test-count statements below describe earlier checkpoints, not current deployment.
+See [current release gates](CURRENT-RELEASE-GATES-2026-11-08.md).
+
+## Historical prototype changes
 
 - All fourteen Harkaway headings appear in their original order, with numbered paragraphs.
 - The checkbox now says **I agree to the Terms and Conditions of Enrolment.**
@@ -180,7 +194,7 @@ changes from Harkaway (commencement/payment protections, student-needs provision
 withdrawal, termination and variation) remain explicit draft policy choices in the review
 table. They have not been silently reverted or treated as approved in this correction.
 
-## Provisional offer clarification approved for the preview
+## Historical provisional clarification — introduction since superseded
 
 The user approved labelling the offer Provisional Offer of Enrolment and changing the
 place-acceptance statement to “I / We accept the provisional offer of a place for my / our
@@ -189,4 +203,6 @@ states that the offer depends on VRQA registration and written commencement conf
 and acceptance does not guarantee opening on the proposed date. The terms heading remains
 Terms and Conditions of Enrolment. The offer overview also identifies the provisional
 status before the agreement checkbox/top Continue button. Clause 2 remains unchanged.
-This wording update affects only the local review prototype, not backend or production.
+That checkpoint affected only the local review prototype. The later approved introduction
+shown at the top of this document supersedes its opening-date disclaimer; the current
+fourteen-section draft is integrated into the separate inactive test runtime.
