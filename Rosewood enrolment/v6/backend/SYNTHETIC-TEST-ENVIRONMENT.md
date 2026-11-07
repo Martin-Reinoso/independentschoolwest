@@ -2,7 +2,8 @@
 
 Status on 8 November 2026: the separate inactive test stack was created and verified.
 See [deployment evidence](INACTIVE-TEST-DEPLOYMENT-2026-11-08.md) for the latest state.
-It was created from clean
+Its current runtime is `c46a705`, applied through a reviewed code-only update with
+all resources and parameters unchanged. It was initially created from clean
 commit `3fb2453`, with 28 additions and no production updates. The actual role matches
 the resolved template exactly, has no extra attached/inline policies, and passes all
 18 principal-policy simulations. Google consent/configuration and live email tests

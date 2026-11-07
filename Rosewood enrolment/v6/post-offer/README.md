@@ -2,7 +2,8 @@
 
 The user wants terms in the online form and digital signatures, not a Word agreement.
 The acceptance portal has no upload step. The current candidate is incomplete and not
-deployed to production. An earlier candidate runs in a separate inactive AWS test stack.
+deployed to production. The `c46a705` runtime is deployed to the separate inactive AWS test stack;
+email/readiness/issuance remain disabled, with live Google/Gmail tests still pending.
 Follow the [completion plan and execution checkpoint](COMPLETION-TEST-AND-DEPLOYMENT-PLAN-2026-11-08.md)
 for current status; older chronological notes are not evidence of completion.
 See [implementation and release notes](../POST-OFFER-IMPLEMENTATION-2026-11-08.md).

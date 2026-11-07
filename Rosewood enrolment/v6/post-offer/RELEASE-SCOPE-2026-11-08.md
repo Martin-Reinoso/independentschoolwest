@@ -40,12 +40,14 @@ upstream content, not an acceptance change.
 
 ## Evidence and remaining gates
 
-The latest acceptance runtime checkpoint is local commit `692feaa`: 278 backend
-tests, the locked build and desktop/mobile both-signature journeys pass. It adds the
-exact checksum-pinned Student Code appendix map to the reader and signed PDF.
-The running inactive AWS artifact remains `3fb2453`, with the `e793e7f`
-environment-key configuration fix. Do not confuse local test results with deployed
-code or live integration evidence.
+The latest acceptance runtime is commit `c46a705`: 280 backend tests, locked build,
+policy-download checks and desktop/mobile both-signature journeys pass locally.
+It includes the checksum-pinned Student Code map and optional pinned policy-download
+controls; the actual PDF/Word publication metadata is still absent pending review.
+The isolated AWS stack now runs this exact candidate, verified against its artifact
+and runtime-module bytes. All 28 resources and parameters remain unchanged; readiness,
+delivery and issuance stay off. This is not active Google/email/signing evidence.
+See [inactive deployment checks](../backend/INACTIVE-TEST-DEPLOYMENT-2026-11-08.md).
 
 All seven current controlled originals match their catalogue bytes. Metadata review
 found school/exporter names, an empty bibliography element and internal PDF contents

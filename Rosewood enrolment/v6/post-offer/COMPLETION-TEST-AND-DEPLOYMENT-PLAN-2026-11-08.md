@@ -1,5 +1,41 @@
 # Offer acceptance: completion, testing and deployment proposal
 
+## Runtime update to c46a705 — latest
+
+Verified 8 November 2026 at 07:39 Melbourne time. The existing isolated test stack
+now runs the clean `c46a705` candidate, including the policy map and download support.
+The 16,929,267-byte package was uploaded under its own synthetic commit prefix.
+Preflight rechecked the caller, clean source, inactive parameters, all 28 separate
+resources, empty test tables and the actual role's 18 IAM simulation cases.
+
+The local/current templates differed only in `RosewoodFunction.Properties.Code`.
+The change set's property-value view listed exactly the S3 code-key change, with no
+replacement. Its standard view also listed dynamic reevaluation of the outbox rule,
+outbox permission and SES Lambda subscriber references. The execution guard initially
+stopped on that difference. Both views were then reviewed: no template setting changed,
+and the expected dependency references were explicitly verified before execution.
+
+The update is `UPDATE_COMPLETE`; Lambda is Active/Successful. Post-update verification
+proves all 28 physical resource IDs and every stack parameter are unchanged. The actual
+Lambda code checksum matches the uploaded ZIP; five key runtime modules equal the clean
+source, and the packaged Student Code map has its expected SHA-256. The test remains
+unready, email/offer delivery off, approved hash blank, outbox disabled and Google IDs
+unconfigured. Both synthetic tables remain empty before and after actual health and
+fictional staff-OTP requests, which return the expected 503 with `no-store`.
+
+Separate feedback still has seven events and one Lambda subscriber; all four test
+alarms have empty notification-action lists. No secret values were read, no message
+sent and no production resource or family record changed. This verifies an inactive
+runtime deployment, not successful live email, Drive or signing integration.
+
+Private evidence: `synthetic-update-{preflight,changeset,reviewed,full-review}-c46a705-private.json`,
+`synthetic-packaged-c46a705.yaml`, `synthetic-inactive-stack-c46a705-private.json`,
+`synthetic-{preupdate,preupdate-iam,postupdate}-c46a705.log`, and the corresponding
+private preparation/execution/verification scripts. All handles are terminal.
+Google policy consent/new scoped grant, policy publication, exact agreement review,
+live Gmail journeys and production rollout remain outstanding.
+
+
 ## Policy download controls and private staging — latest
 
 The local reader now supports PDF and Word links pinned to the exact policy source,
