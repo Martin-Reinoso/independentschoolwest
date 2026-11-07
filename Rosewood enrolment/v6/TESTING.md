@@ -1,5 +1,28 @@
 # V6 Testing
 
+## 8 November 2026 conditional-offer candidate — local only
+
+213 backend tests passed, including 28 offer tests plus SES PDF, Drive integrity and
+staged-adapter coverage. The frozen-lockfile production bundle passed. Static references passed for 105 tracked
+HTML/CSS files; the public-data gate passed for 540 tracked files. Both working and
+staged diff whitespace checks passed. Final run evidence is in the private
+`offer-terms-review-20261108` runtime directory.
+
+Playwright Chromium tested the actual offer service handlers with synthetic stores and
+intercepted network traffic. Desktop (1440px) and mobile (390px) verified OTP, selected
+two children and signed each independently; zero JS errors, horizontal overflow or
+upload fields. Staff verified OTP, selected the family/children, previewed exact email
+copies and downloaded the PDF, then issued the reviewed synthetic family offer. Two
+messages were queued: one primary letter email and one additional guardian request.
+The one-page PDF was rendered and inspected. The network-disabled review has two
+synthetic children, nine concise sections and seven policy readers. Full backend tests
+also finish both guardians’ signatures on both children and preserve the original
+Applications. Print-media checks confirm unsigned offers never show an acceptance record and signed records do. The feature-enabled canary test loads the real offer assets and makes protected GET-only checks. No actual SES message, Drive file or AWS record was created.
+
+This is not deployed or approved legal content. See
+[implementation/release notes](POST-OFFER-IMPLEMENTATION-2026-11-08.md).
+
+
 ## Reviewed family communications (2026-09-03)
 
 Automated coverage verifies same-invitation grouping, explicit child selection,
@@ -2051,3 +2074,23 @@ access, all five invitation write paths omitting TTL, token rotation, sibling po
 race protection, and atomic audited valid-link migration with conflict handling.
 No frontend assets or immutable form contracts change. Production release and migration
 evidence is recorded separately after verification.
+
+## 8 November 2026 integrated acceptance checkpoint (local only)
+
+- Node 24.22.1: all 219 backend tests pass; frozen-lockfile deployment bundle builds.
+- All 57 prior form hashes are unchanged; new EOI 29/Application 30 pin the new assets.
+- Playwright at 1440px/390px: both guardians sign both siblings, reload recovery, logout
+  cleanup, completion messages, two downloadable full agreement copies. Real handlers,
+  synthetic stores and intercepted API only. No real email or private record created.
+- Existing staff portal OTP → Offers → reviewed PDF/email → one primary queued message
+  → tracking list passed; mobile has no document overflow (offer table scrolls horizontally).
+- Family style/keyboard/layout checks passed at 320, 390, 768, 1024 and 1440px. Screenshots
+  inspected. Synthetic review makes no external request.
+- CloudFormation lint: no errors; four warnings identical to baseline, not new key defects.
+- Local evidence: private `offer-terms-review-20261108` directory; all-tests-final.log,
+  build-final.log, integrated-ui.log, design-aligned.log and family-ui-evidence.json.
+- Final repository gates: all local references resolve across 105 tracked HTML/CSS files;
+  public-data scan passes for 544 tracked files; staged diff whitespace check passes.
+- Not tested here: production Node 22 runtime, AWS deployment, actual SES attachment/OTP
+  delivery, restricted Drive persistence, live reporting reconciliation or alarm notification.
+  These remain release checks. Content approval hash/enablement remain empty/false.

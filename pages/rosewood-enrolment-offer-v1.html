@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><meta name="referrer" content="no-referrer"><meta http-equiv="Cache-Control" content="no-store"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src https://6zyzo44sdb5zmmx53toktqrnuu0sikyd.lambda-url.ap-southeast-2.on.aws; form-action 'none'; object-src 'none'; base-uri 'none'"><meta name="rosewood-api-base" content="https://6zyzo44sdb5zmmx53toktqrnuu0sikyd.lambda-url.ap-southeast-2.on.aws"><title>Accept a provisional offer | Rosewood College</title><link rel="icon" href="../img/favicon.ico" type="image/x-icon">
+<link rel="stylesheet" href="rosewood-enrolment-v5.css?v=1">
+<link rel="stylesheet" href="rosewood-enrolment-v6.css?v=17">
+<link rel="stylesheet" href="rosewood-enrolment-offer-v1.css?v=2"><link rel="stylesheet" href="rosewood-enrolment-acceptance-v1.css?v=1"></head>
+<body class="offer-family acceptance-portal no-environment-ribbon">
+<a class="skip-link" href="#family-form">Skip to the form</a>
+<div id="review-banner" class="preview-ribbon" role="status" hidden><strong>Design review</strong><span>Sample details only. Nothing is saved or sent.</span></div>
+<div class="page-shell">  <aside class="story-panel" aria-label="Rosewood College enrolment">
+    <div class="story-pattern" aria-hidden="true"></div>
+    <div class="story-content">
+      <img class="rosewood-emblem" src="../img/rosewood-emblem-corrected-transparent.png" alt="Rosewood College">
+      <p class="story-kicker">Provisional offer of enrolment</p>
+      <h1>Accept a provisional offer.</h1>
+      <p class="story-copy">Check your details, review the agreement and accept the provisional offer for each child.</p>
+      <div class="story-promise"><span aria-hidden="true">R</span><p><strong>Your family’s next step</strong>Each parent or guardian signs using their own verified access.</p></div>
+    </div>
+    <div class="story-footer"><span>Rosewood College</span><span>Melton, Victoria</span></div>
+  </aside>
+
+<main class="form-panel">
+<header class="form-header"><div class="header-title"><p class="eyebrow">Provisional offer</p><h2 id="step-title">Your children</h2></div><button id="family-logout" class="button button-secondary" type="button" hidden>Sign out</button><div class="save-state"><span></span><div><strong>Private offer</strong><small id="save-state" role="status">Verified guardian access</small></div></div></header>
+<nav id="review-progress" class="progress" aria-label="Acceptance steps" hidden><div class="progress-meta"><span id="progress-label">Step 1 of 4</span><span id="child-caption"></span></div><div class="progress-track" aria-hidden="true"><span></span></div><ol>
+<li><button type="button" data-step="student">1. Student</button></li><li><button type="button" data-step="guardian">2. Parent/Guardian</button></li><li><button type="button" data-step="conditions">3. Conditions</button></li><li><button type="button" data-step="signature">4. Signature</button></li></ol></nav>
+<article id="family-form" class="offer-content" tabindex="-1">
+<div id="notice" class="error-summary offer-notice" role="alert" tabindex="-1" hidden></div>
+<section id="access"><h2>Open your enrolment portal</h2><p>Enter the email address that received this invitation.</p><form id="email-form"><label class="field offer-field"><span>Your email address</span><input id="email" type="email" required autocomplete="email"></label><button class="button button-primary" type="submit">Send verification code</button></form></section>
+<section id="verify" hidden><h2>Check your email</h2><p>Enter the six-digit code. It is valid for 10 minutes.</p><form id="code-form"><label class="field offer-field"><span>Verification code</span><input id="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label><button class="button button-primary" type="submit">Open my portal</button></form><button id="resend" class="button button-secondary" type="button">Send another code</button></section>
+<section id="review" hidden><button type="button" class="text-action" data-children>← Your children</button><h2>Review the submitted details</h2><p>The first parent or guardian has confirmed these details. Please check them before signing. If anything is incorrect, email <a href="mailto:enrolment@ffe.org.au">enrolment@ffe.org.au</a> before continuing.</p><div id="readonly-details"></div><form id="readonly-form"><label class="declaration"><input name="reviewed" type="checkbox" required><span>I have checked the details and accept the provisional offer of a place for my / our child at Rosewood College.</span></label><button class="button button-primary" type="submit">Continue to conditions</button></form></section>
+<section id="policy" hidden></section>
+<section id="children" hidden><p class="eyebrow">Your family’s next step</p><h2>Your family portal</h2><p>Choose a child to view progress or accept an issued provisional offer. You will see only the records and actions available to your verified email.</p><div id="child-list" class="child-application-list"></div></section>
+<section id="student" hidden><button type="button" class="text-action" data-children>← Your children</button><h2>Student details</h2><p>Please check your child’s full name as shown on their birth certificate. You can correct a typo or add a missing middle name here.</p>
+<form id="student-form"><div class="field-grid two">
+<label class="field"><span>Given name(s) *</span><input name="first" required maxlength="100" autocomplete="off"></label><label class="field"><span>Middle name(s)</span><input name="middle" maxlength="100" autocomplete="off"><small>Leave blank if your child has no middle name.</small></label><label class="field"><span>Surname *</span><input name="last" required maxlength="100" autocomplete="off"></label><label class="field"><span>Preferred name</span><input name="preferred" maxlength="100" autocomplete="off"></label></div>
+<div class="offered-place"><p class="eyebrow">Your offered place</p><strong id="student-place"></strong><p>The entry year and year level are set by your offer. Contact the College if these need changing.</p></div>
+<label class="declaration"><input name="acceptPlace" type="checkbox" required><span>I / We accept the provisional offer of a place for my / our child at Rosewood College.</span></label>
+<div class="step-actions"><button class="button button-primary" type="submit">Continue to parent/guardian</button></div></form></section>
+<section id="guardian" hidden><h2>Parent/guardian details</h2><p>Check the names and contact details below.</p><form id="guardian-form"><div id="guardian-fields"></div>
+<button id="add-guardian" class="button button-secondary" type="button">+ Add parent/guardian</button><p class="group-note">Add any legal parent or guardian missing from the application details.</p><p id="guardian-change-status" role="status"></p>
+<label class="declaration"><input name="confirmed" type="checkbox" required><span>I have checked these details and included all legal parents or guardians for this child. There are no further guardians to add.</span></label><div class="step-actions"><button class="button button-secondary" type="button" data-back="student">Back</button><button class="button button-primary" type="submit">Continue to conditions</button></div></form></section>
+<section id="conditions" hidden><h2>Conditions of enrolment</h2><p id="agreement-for"></p>
+<div class="offer-facts"><h3>Your offer at a glance</h3><dl><dt>Offer status</dt><dd>Provisional offer of enrolment</dd><dt>Place offered</dt><dd id="conditions-place"></dd><dt>Commencement</dt><dd>Subject to registration and written confirmation from the College.</dd></dl></div>
+<form id="conditions-form"><label class="declaration"><input name="agreed" type="checkbox" required><span>I agree to the Terms and Conditions of Enrolment.</span></label>
+<div class="step-actions"><button class="button button-primary" type="submit">Continue to signature</button></div>
+<div class="terms-heading"><h3>Terms and Conditions of Enrolment</h3><div class="terms-tools"><button id="enlarge-terms" class="text-action" type="button" aria-pressed="false">Enlarge text</button><button id="print-terms" class="text-action" type="button">Print</button></div></div>
+<p id="draft-note" class="draft-note" hidden>Design preview: draft terms and policy sources remain subject to review. No agreement is accepted in this preview.</p><p id="signing-hold" role="status" hidden></p><aside class="provisional-notice" aria-labelledby="provisional-offer-title"><h4 id="provisional-offer-title"></h4><p id="provisional-offer-copy"></p></aside><div id="fine-print" class="fine-print"></div>
+<div class="policy-readers"><h3>Policies included in the agreement</h3><p>Read the policies below.</p><div id="review-policies"></div></div>
+<div class="step-actions"><button class="button button-secondary" type="button" data-back="guardian">Back</button><button class="button button-primary" type="submit">Continue to signature</button></div></form></section>
+<section id="signature" hidden><h2>Acceptance and signature</h2><p>Check the details below before signing.</p><dl id="signature-summary" class="signature-summary"></dl><button id="edit-details" class="text-action" type="button">Review details</button>
+<form id="signature-form"><label class="declaration"><input name="declared" type="checkbox" required><span>I confirm that the details are correct and electronically sign my acceptance of this provisional offer of enrolment.</span></label><label class="field signature-name"><span>Your full name *</span><input id="signature-name" name="name" required maxlength="200" autocomplete="off"></label><p>Draw your signature, or use your typed name.</p><div class="signature-wrap"><canvas id="acceptance-signature" width="900" height="240" aria-label="Signature drawing area"></canvas></div><div class="inline-actions"><button class="button button-secondary" id="use-typed" type="button">Use typed signature</button><button class="button button-secondary" id="clear-signature" type="button">Clear</button></div><p id="signature-feedback" aria-live="polite">No signature entered.</p><div class="step-actions"><button class="button button-secondary" type="button" data-back="conditions">Back</button><button class="button button-primary" type="submit" id="submit-signature">Sign and submit</button></div></form></section>
+<section id="result" hidden><p class="eyebrow">Acceptance record</p><h2 id="result-title">Signature recorded</h2><p id="result-message"></p><div id="signers-status"></div><p id="result-provisional"></p><button class="button button-primary" type="button" data-children>Return to children</button><button id="read-record" class="button button-secondary" type="button">Read the accepted terms</button><button id="download-record" class="button button-secondary" type="button">Download acceptance record</button></section>
+</article><footer class="form-footer"><span>Rosewood College enrolment</span><span>Secure online form</span></footer>
+</main></div>
+
+<dialog id="session-dialog" aria-labelledby="session-title"><h2 id="session-title">Your secure session</h2><p id="session-message"></p><button id="session-continue" class="button button-primary" type="button">Continue my session</button><button id="session-signin" class="button button-secondary" type="button">Sign in again</button></dialog>
+<script src="rosewood-enrolment-offer-terms-v1.js"></script>
+<script src="rosewood-enrolment-offer-policy-reader.js"></script>
+<script src="rosewood-family-portal.js?v=1"></script>
+<script src="rosewood-enrolment-offer-v1.js?v=4"></script>
+</body></html>

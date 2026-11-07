@@ -17,7 +17,7 @@
   const invitationToken = params.get("invite") || "";
   const policyDocuments = window.rosewoodPolicyDocuments || {};
   const policyOrder = ["enrolment-policy", "enrolment-procedure", "privacy-policy"];
-  const SUPPORTED_APPLICATION_FORM_VERSIONS = new Set(["rosewood-application-2026.1", "rosewood-application-2026.2", "rosewood-application-2026.3", "rosewood-application-2026.4", "rosewood-application-2026.5", "rosewood-application-2026.6", "rosewood-application-2026.7", "rosewood-application-2026.8", "rosewood-application-2026.9", "rosewood-application-2026.10", "rosewood-application-2026.11", "rosewood-application-2026.12", "rosewood-application-2026.13", "rosewood-application-2026.14", "rosewood-application-2026.15", "rosewood-application-2026.16", "rosewood-application-2026.17", "rosewood-application-2026.18", "rosewood-application-2026.19", "rosewood-application-2026.20", "rosewood-application-2026.21", "rosewood-application-2026.22", "rosewood-application-2026.23", "rosewood-application-2026.24", "rosewood-application-2026.25", "rosewood-application-2026.26", "rosewood-application-2026.27", "rosewood-application-2026.28", "rosewood-application-2026.29"]);
+  const SUPPORTED_APPLICATION_FORM_VERSIONS = new Set(["rosewood-application-2026.1", "rosewood-application-2026.2", "rosewood-application-2026.3", "rosewood-application-2026.4", "rosewood-application-2026.5", "rosewood-application-2026.6", "rosewood-application-2026.7", "rosewood-application-2026.8", "rosewood-application-2026.9", "rosewood-application-2026.10", "rosewood-application-2026.11", "rosewood-application-2026.12", "rosewood-application-2026.13", "rosewood-application-2026.14", "rosewood-application-2026.15", "rosewood-application-2026.16", "rosewood-application-2026.17", "rosewood-application-2026.18", "rosewood-application-2026.19", "rosewood-application-2026.20", "rosewood-application-2026.21", "rosewood-application-2026.22", "rosewood-application-2026.23", "rosewood-application-2026.24", "rosewood-application-2026.25", "rosewood-application-2026.26", "rosewood-application-2026.27", "rosewood-application-2026.28", "rosewood-application-2026.29", "rosewood-application-2026.30"]);
   const CONTACT_PERMISSION_YES = "Yes, the school may contact this person";
   const CONTACT_PERMISSION_NO = "No, do not contact this person";
   const APPLICATION_SESSION_STORAGE_KEY = "rosewood-enrolment-v6-active-session";
@@ -266,7 +266,8 @@
   }
 
   function beginSessionExpiry(result) {
-    if (Number(result.absoluteTimeoutSeconds) > 0) state.sessionAbsoluteExpiresAt = Date.now() + Number(result.absoluteTimeoutSeconds) * 1000;
+    if (Number(result.absoluteExpiresAt) > 0) state.sessionAbsoluteExpiresAt = Number(result.absoluteExpiresAt);
+    else if (Number(result.absoluteTimeoutSeconds) > 0) state.sessionAbsoluteExpiresAt = Math.min(state.sessionAbsoluteExpiresAt || Infinity, Date.now() + Number(result.absoluteTimeoutSeconds) * 1000);
     armSessionExpiry(result.idleTimeoutSeconds || result.expiresInSeconds);
   }
 
@@ -703,9 +704,10 @@
         const eoiNote = record.sourceEoiId ? '<p class="child-application-eoi-note">Information from your Expression of Interest has been included.</p>' : "";
         return `<article class="child-application-card"><div class="child-application-icon" aria-hidden="true">${esc(initial)}</div><div class="child-application-main"><h4>${esc(record.studentName)}</h4>${eoiNote}<dl><div><dt>Status</dt><dd><span class="status-pill${statusClass}">${esc(statusLabel(record.status))}</span></dd></div></dl></div><div class="child-application-action">${action}</div></article>`;
       }).join("");
-      const records = applications.length ? section("Child applications", `<div class="child-application-list">${cards}</div>`) : "";
+      const portalCards = family.portal ? window.ROSEWOOD_FAMILY_PORTAL.cards(family.portal.children) : cards;
+      const records = portalCards ? section(family.portal ? "Applications and provisional offers" : "Child applications", `<div class="child-application-list">${portalCards}</div>`) : "";
       const startCopy = applications.length ? "Add another child" : "Enter the first child";
-      return intro("Choose a child application", linked ? "Information from an Expression of Interest has been included for one or more children below. Continue an existing application or start a separate application for another child." : "Add each child who will apply to Rosewood College. Each child has a separate application record.", workflows[kind].label) +
+      return intro(family.portal ? "Your family portal" : "Choose a child application", family.portal ? "Choose a child to continue an application, view its progress or accept an issued provisional offer. Each child's record remains separate." : linked ? "Information from an Expression of Interest has been included for one or more children below. Continue an existing application or start a separate application for another child." : "Add each child who will apply to Rosewood College. Each child has a separate application record.", workflows[kind].label) +
         section("Invited parent or guardian", `<div class="review-card"><dl>${family.parentGuardianName ? `<dt>Name</dt><dd>${esc(family.parentGuardianName)}</dd>` : ""}<dt>Email</dt><dd>${esc(family.recipientEmail || state.values.application_gateway_email)}</dd></dl></div>`) + records +
         section(startCopy, `<p>${applications.length ? "Use this only for another child. Their medical details, documents, progress and signatures will remain separate from the applications above." : "Enter the child’s name to create their Application for Enrolment."}</p><div class="field-grid two">${field("application_new_first", "Student First Name", { required: true })}${field("application_new_last", "Student Last Name", { required: true })}</div>`) + actions({ label: applications.length ? "Start another application" : "Start application", back: false, left: '<button type="button" class="button button-secondary" data-action="sign-out">Sign out</button>' });
     }
@@ -1168,6 +1170,14 @@
     document.querySelector("#story-title").textContent = workflow.title;
     document.querySelector("#story-copy").textContent = workflow.copy;
     document.querySelector("#story-promise-copy").textContent = workflow.promise;
+    document.querySelector("#story-promise-title").textContent = state.screen === 2 && state.familyContext?.portal ? "Your family’s next step" : "A separate transaction";
+    if (state.screen === 2 && state.familyContext?.portal) {
+      document.querySelector("#step-title").textContent = "Your family portal";
+      document.querySelector("#story-kicker").textContent = "Rosewood College enrolment";
+      document.querySelector("#story-title").textContent = "Your family’s next steps.";
+      document.querySelector("#story-copy").textContent = "View each child's application and provisional offer in one place.";
+      document.querySelector("#story-promise-copy").textContent = "Each parent or guardian uses their own verified access.";
+    }
     updateEnvironment();
     if (state.paused) {
       document.querySelector("#step-title").textContent = "Progress saved";
@@ -1462,6 +1472,10 @@
         showServiceError(error);
         return;
       }
+    }
+    if (target === 2 && state.familySessionToken) {
+      try { state.familyContext = (await api("/v6/application/family", { method: "GET", authToken: state.familySessionToken })).family; }
+      catch (error) { showServiceError(error); return; }
     }
     state.screen = target;
     render();
@@ -1992,7 +2006,7 @@
 
   async function revokeBrowserSessions() {
     const tokens = [...new Set([state.sessionToken, state.familySessionToken, state.statusSessionToken, state.correction?.sessionToken].filter(Boolean))];
-    await Promise.allSettled(tokens.map(authToken => api("/v6/session/logout", { method: "POST", authToken, body: "{}" })));
+    await Promise.allSettled(tokens.map(authToken => api("/v6/session/logout", { method: "POST", authToken, body: JSON.stringify({ endFamilyAccess: true }) })));
   }
 
   function clearApplicationSession() {
@@ -2107,6 +2121,7 @@
       applyFormContract(result.context);
       state.familySessionToken = result.familySessionToken || "";
       state.familyContext = result.family || null;
+      if (state.familySessionToken) state.familyContext = (await api("/v6/application/family", { method: "GET", authToken: state.familySessionToken })).family;
       state.sessionToken = result.family ? "" : result.sessionToken;
       state.applicationContext = result.context;
       state.revision = result.context.revision;
@@ -2193,6 +2208,29 @@
   });
 
   form.addEventListener("click", async event => {
+    const familyAction = event.target.closest("[data-family-target]");
+    if (familyAction) {
+      event.preventDefault();
+      const applicationId = familyAction.dataset.familyApplication;
+      if (familyAction.dataset.familyTarget === "application") {
+        const child = state.familyContext?.portal?.children.find(item => item.applicationId === applicationId);
+        return child?.applicationAction === "continue" ? selectFamilyApplication(applicationId, familyAction) : selectApplicationStatus(applicationId, familyAction);
+      }
+      familyAction.disabled = true;
+      try {
+        const opened = await api("/v6/family/open", { method: "POST", authToken: state.familySessionToken, body: JSON.stringify({ target: "offer", applicationId, offerId: familyAction.dataset.child }) });
+        // Retire editing/status scopes left in this tab; keep the verified family
+        // anchor alive for the handoff. This also covers pre-release legacy sessions.
+        const priorTokens = [...new Set([state.sessionToken, state.statusSessionToken, state.correction?.sessionToken].filter(Boolean))];
+        await Promise.all(priorTokens.map(authToken => api("/v6/session/logout", { method: "POST", authToken, body: "{}" })));
+        state.sessionToken = "";
+        state.statusSessionToken = "";
+        state.correction = null;
+        persistBrowserSession();
+        window.ROSEWOOD_FAMILY_PORTAL.navigate(opened);
+      } catch (error) { familyAction.disabled = false; showServiceError(error); }
+      return;
+    }
     const policyLink = event.target.closest("[data-policy-link]");
     const policyReturn = event.target.closest("[data-policy-return]");
     const retryUpload = event.target.closest("[data-retry-upload]");
@@ -2250,6 +2288,8 @@
       state.correction = null;
       state.values = { application_gateway_email: email };
       state.screen = 2;
+      try { state.familyContext = (await api("/v6/application/family", { method: "GET", authToken: state.familySessionToken })).family; }
+      catch (error) { showServiceError(error); return; }
       return render();
     }
     if (action?.dataset.action === "next") return next();
@@ -2354,6 +2394,14 @@
         bindAddressAutocomplete();
       });
   } else {
-    restoreBrowserSession().finally(render);
+    const handoff = !reviewMode && window.ROSEWOOD_FAMILY_PORTAL.consume("application");
+    if (handoff) sessionStorage.setItem(APPLICATION_SESSION_STORAGE_KEY, JSON.stringify({ familySessionToken: handoff.sessionToken, email: handoff.email, screen: 2, absoluteExpiresAt: handoff.absoluteExpiresAt }));
+    restoreBrowserSession().then(async restored => {
+      if (restored && handoff) {
+        const button = document.createElement("button");
+        if (handoff.applicationAction === "continue") await selectFamilyApplication(handoff.applicationId, button);
+        else await selectApplicationStatus(handoff.applicationId, button);
+      }
+    }).finally(render);
   }
 })();

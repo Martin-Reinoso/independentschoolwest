@@ -103,8 +103,18 @@ async function fetchExpectedSessionRequired(fetchImpl, url, siteBaseUrl) {
   if (payload?.error !== "SESSION_REQUIRED") throw new Error("Protected workflow route did not fail closed.");
 }
 
-async function checkPublicAssets({ fetchImpl, siteBaseUrl }) {
-  await Promise.all(PUBLIC_ASSETS.map(async asset => {
+async function checkPublicAssets({ fetchImpl, siteBaseUrl, offersEnabled }) {
+  const offerAssets = offersEnabled ? [
+    {path:'/pages/rosewood-enrolment-offer-v1.html',markers:['Sign and submit','rosewood-enrolment-offer-v1.js']},
+    {path:'/pages/rosewood-enrolment-offer-v1.js',markers:['/v6/offers/sign','/v6/offers/verify-code']},
+    {path:'/pages/rosewood-enrolment-offers-admin-v1.html',markers:['Send reviewed family offer']},
+    {path:'/pages/rosewood-enrolment-offers-admin-v1.js',markers:['/v6/staff/offers/preview','letterPdfBase64','childOpenedAt']},
+    {path:'/pages/rosewood-enrolment-offer-terms-v1.js',markers:['ROSEWOOD_OFFER_REVIEW_CONTRACT','Terms and Conditions of Enrolment','rosewood-provisional-enrolment-agreement-2026.3-review']},
+    {path:'/pages/rosewood-enrolment-offer-v1.css',markers:['.child-card']},
+    {path:'/pages/rosewood-enrolment-acceptance-v1.css',markers:['.acceptance-portal','.fine-print']},
+    {path:'/pages/rosewood-enrolment-offer-policy-reader.js',markers:['ROSEWOOD_OFFER_POLICY_READER','Return to offer acceptance']}
+  ] : [];
+  await Promise.all([...PUBLIC_ASSETS,...offerAssets].map(async asset => {
     const response = await fetchResponse(fetchImpl, `${siteBaseUrl}${asset.path}`);
     const body = await response.text();
     for (const marker of asset.markers) {
@@ -113,7 +123,7 @@ async function checkPublicAssets({ fetchImpl, siteBaseUrl }) {
   }));
 }
 
-async function checkBackendHealth({ fetchImpl, apiBaseUrl }) {
+async function checkBackendHealth({ fetchImpl, apiBaseUrl, offersEnabled }) {
   const response = await fetchResponse(fetchImpl, `${apiBaseUrl}/v6/health`);
   const payload = await response.json();
   const expectedEoi = currentFormDefinition("eoi").formVersion;
@@ -127,6 +137,7 @@ async function checkBackendHealth({ fetchImpl, apiBaseUrl }) {
   if (payload?.features?.communityEnquiries !== true) throw new Error("The community enquiry workflow is not enabled in the deployed backend.");
   if (payload?.features?.cohortPlanning !== true) throw new Error("The staff cohort-planning workflow is not enabled in the deployed backend.");
   if (payload?.features?.familyCommunications !== true) throw new Error("The reviewed family-communication workflow is not enabled in the deployed backend.");
+  if (offersEnabled && payload?.features?.conditionalOffers !== true) throw new Error('Conditional offer acceptance is not enabled in the backend.');
 }
 
 async function checkEoiAddressConfiguration({ fetchImpl, apiBaseUrl, siteBaseUrl }) {
@@ -148,11 +159,12 @@ async function checkEoiAddressConfiguration({ fetchImpl, apiBaseUrl, siteBaseUrl
   }
 }
 
-async function checkApplicationWorkflow({ fetchImpl, apiBaseUrl, siteBaseUrl }) {
+async function checkApplicationWorkflow({ fetchImpl, apiBaseUrl, siteBaseUrl, offersEnabled }) {
   await Promise.all([
     "/v6/application/context",
     "/v6/application/status",
-    "/v6/staff/dashboard"
+    "/v6/staff/dashboard",
+    ...(offersEnabled ? ['/v6/offers/context','/v6/staff/offers'] : [])
   ].map(path => fetchExpectedSessionRequired(fetchImpl, `${apiBaseUrl}${path}`, siteBaseUrl)));
 }
 
@@ -194,11 +206,12 @@ export async function runProductionCanary({
   const siteBaseUrl = baseUrl(env.PUBLIC_SITE_BASE_URL || "https://ffe.org.au", "PUBLIC_SITE_BASE_URL");
   const apiBaseUrl = baseUrl(env.PUBLIC_API_BASE_URL, "PUBLIC_API_BASE_URL");
   const pipelineStore = operationalStore || new DynamoStore({ tableName: env.ROSEWOOD_TABLE_NAME });
+  const offersEnabled = env.ENROLMENT_OFFERS_ENABLED === 'true';
   const checks = await Promise.all([
-    observedCheck("PublicFormAvailability", () => checkPublicAssets({ fetchImpl, siteBaseUrl })),
-    observedCheck("BackendHealthAvailability", () => checkBackendHealth({ fetchImpl, apiBaseUrl })),
+    observedCheck("PublicFormAvailability", () => checkPublicAssets({ fetchImpl, siteBaseUrl, offersEnabled })),
+    observedCheck("BackendHealthAvailability", () => checkBackendHealth({ fetchImpl, apiBaseUrl, offersEnabled })),
     observedCheck("EoiAddressAvailability", () => checkEoiAddressConfiguration({ fetchImpl, apiBaseUrl, siteBaseUrl })),
-    observedCheck("ApplicationWorkflowAvailability", () => checkApplicationWorkflow({ fetchImpl, apiBaseUrl, siteBaseUrl })),
+    observedCheck("ApplicationWorkflowAvailability", () => checkApplicationWorkflow({ fetchImpl, apiBaseUrl, siteBaseUrl, offersEnabled })),
     observedCheck("OperationalPipelineAvailability", () => checkOperationalPipeline({ operationalStore: pipelineStore, now }))
   ]);
 

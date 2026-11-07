@@ -42,8 +42,8 @@ function healthyFetch({ breakPublicAsset = false, omitAddressKey = false, omitCo
       return response({
         status: "ok",
         formVersions: {
-          eoi: "rosewood-eoi-2026.28",
-          application: "rosewood-application-2026.29",
+          eoi: "rosewood-eoi-2026.29",
+          application: "rosewood-application-2026.30",
           applicationLinkRequest: "rosewood-application-link-request-2026.1",
           communityEnquiry: "rosewood-community-enquiry-2026.1"
         },
@@ -211,4 +211,15 @@ test("production canary detects a protected workflow route that does not fail cl
   });
 
   assert.equal(result.checks.find(check => check.name === "ApplicationWorkflowAvailability").available, false);
+});
+
+test('enabled family offers are checked against real candidate assets and protected GET routes only',async()=>{
+ const {readFile}=await import('node:fs/promises');const seen=[];const fallback=healthyFetch();
+ const result=await runProductionCanary({env:{PUBLIC_SITE_BASE_URL:SITE,PUBLIC_API_BASE_URL:API,ENROLMENT_OFFERS_ENABLED:'true'},metricsClient:capturingMetricsClient(),operationalStore:operationalStore(),fetchImpl:async(input,options={})=>{
+   const url=new URL(input);seen.push({path:url.pathname,method:options.method||'GET'});
+   if(url.origin===SITE && /(?:rosewood-enrolment-offer(?:s-admin|-terms)?-v1|rosewood-enrolment-acceptance-v1|rosewood-enrolment-offer-policy-reader)\.(html|js|css)$/.test(url.pathname))return response(await readFile(new URL('../../../../'+url.pathname.slice(1),import.meta.url),'utf8'));
+   if(url.origin===API && url.pathname==='/v6/health'){const data=await (await fallback(input,options)).json();data.features.conditionalOffers=true;return response(data);}
+   if(url.origin===API && ['/v6/offers/context','/v6/staff/offers'].includes(url.pathname))return response({error:'SESSION_REQUIRED'},{status:401});
+   return fallback(input,options);
+ }});assert.ok(result.checks.every(c=>c.available));assert.ok(seen.every(r=>r.method==='GET'));assert.ok(seen.some(r=>r.path==='/v6/offers/context'));
 });

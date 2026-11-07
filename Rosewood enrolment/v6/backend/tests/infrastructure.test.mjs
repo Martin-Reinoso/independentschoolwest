@@ -9,8 +9,12 @@ test("runtime can enforce conditional authoritative-record transactions", async 
     template.indexOf("- Sid: AppendOnlyAudit")
   );
 
-  assert.match(authoritativeRecords, /dynamodb:TransactWriteItems/);
-  assert.match(authoritativeRecords, /dynamodb:ConditionCheckItem/);
+  // DynamoDB transactions are authorised through these underlying item actions;
+  // TransactWriteItems is an API name, not a supported IAM permission action.
+  for (const action of ['PutItem','UpdateItem','DeleteItem','GetItem','ConditionCheckItem']) {
+    assert.match(authoritativeRecords, new RegExp(`dynamodb:${action}`));
+  }
+  assert.doesNotMatch(authoritativeRecords, /dynamodb:TransactWriteItems/);
   assert.match(authoritativeRecords, /Resource: !GetAtt RosewoodTable\.Arn/);
 });
 

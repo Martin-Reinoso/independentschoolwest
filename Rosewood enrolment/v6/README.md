@@ -1,5 +1,24 @@
 # Rosewood Enrolment V6
 
+## 8 November 2026 local conditional-offer candidate
+
+The acceptance candidate is incomplete and **not deployed**. It now has the reviewed
+editable primary form, read-only second guardian, formatted frozen policy readers,
+offer-specific detail revisions and added-guardian signing. The rejected family
+correction-request route is removed. Signed acceptance PDFs now include the frozen terms,
+policies and recorded signatures; final emails attach the same stored copy. Node22 tests
+and desktop/mobile synthetic downloads pass. The personalised principal-letter generator
+now uses the reviewed design and private signature configuration, with exact PDF review
+and immutable delivery. The combined family overview now links Applications and offers
+through their explicit invitation, with scoped navigation and secondary-guardian
+restrictions. See [shared portal](backend/FAMILY-PORTAL.md). Controlled policy originals,
+private test configuration and isolated external testing remain pending.
+Fourteen-section terms and test-email guards are aligned locally. Local contracts are EOI
+`.29` / Application `.30`; all older hashes remain unchanged. See the
+[current execution checkpoint](post-offer/COMPLETION-TEST-AND-DEPLOYMENT-PLAN-2026-11-08.md) and
+[implementation and remaining release requirements](POST-OFFER-IMPLEMENTATION-2026-11-08.md).
+
+
 ## Completed signing links (2026-09-16)
 
 EOI `2026.28` and Application `2026.29` preserve all existing question and answer

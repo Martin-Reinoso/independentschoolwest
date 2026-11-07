@@ -1,5 +1,18 @@
 # V6 Form And Data Evolution
 
+## 8 November 2026 family portal session integration
+
+The local candidate adds a computed overview over existing invitation/Application/offer
+relationships, not a new family-data entity. Scoped handoff sessions add `portalAnchor`
+and inherit the original verified session's absolute expiry. Derived editing/status
+sessions preserve that anchor. No Application answers, signatures or revisions are
+changed by the overview or handoff. See [access and revocation](backend/FAMILY-PORTAL.md).
+
+## 8 November 2026 separate offer entities
+
+Local candidate only: OFFER_FAMILY, OFFER, OFFER_APPLICATION and OFFER_TASK entities plus immutable ISSUED and SIGNATURE records use an independent agreement contract. Their transactions condition-check the source Application but never write its answers, revisions or signatures. Restricted Drive artifacts use enrolment_offer workflow properties. No EOI/Application form definition or Sheet projection changes. See [storage and recovery map](POST-OFFER-IMPLEMENTATION-2026-11-08.md).
+
+
 ## Reviewed family communication records (2026-09-03)
 
 The prepared application-review email is stored outside the Application answer model:
@@ -396,3 +409,13 @@ contact permission and matching frozen signature evidence; it grants no session.
 ## Application invitation lifetime — 11 October 2026
 
 The 11 October 2026 backend-only invitation change adds `expiryPolicy: "none"`, nullable `expiresAt` and an optional `expiryRemovedAt` audit timestamp to Application invitation metadata. It removes the top-level TTL from both `INVITE#…/META` and `INVITE_ID#…/META`. This does not change a form definition, browser asset, Application answer, revision, signature or document. Legacy records retain their original expiry until explicitly migrated or renewed. Sibling writes condition on the expiry policy to reject stale pre-migration copies.
+
+## 8 November local EOI 29 / Application 30 release
+
+These definitions preserve EOI 28 / Application 29 question contracts and pin the staff
+integration and family acceptance assets. All 57 earlier hashes are unchanged. Offer
+family accounts retain recipient-scoped child mappings; a secondary account has no task
+until primary acceptance activates it. Signing condition-checks and increments the family
+revision and atomically creates any newly eligible tasks/outbox messages. Offer correction
+status/history is operational metadata; the issued packet/signature evidence remains frozen.
+No production migration is applied by this local release.

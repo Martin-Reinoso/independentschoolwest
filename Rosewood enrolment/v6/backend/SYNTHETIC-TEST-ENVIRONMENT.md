@@ -1,0 +1,123 @@
+# Isolated provisional-offer integration environment
+
+Status on 8 November 2026: template and runtime guards implemented; **not deployed**.
+The AWS account/region were verified and CloudFormation validated the template.
+AWS IAM custom-policy simulation passed 18 cases. This is policy-model evidence,
+not a claim that a deployed role, delivery pipeline or Google integration works.
+The full Node 22.23.4 suite passes 277 tests and the locked deployment build passes.
+No real test email has been sent in this checkpoint.
+
+## User-authorised boundary
+
+Only the exact approved personal Gmail address may receive test messages. It must
+never become the logical applicant, guardian or staff identity. That inbox also owns
+a real family Application, which must not be used, copied, linked or modified.
+Use `alex@rosewood-offer.test`, `taylor@rosewood-offer.test` and
+`staff@rosewood-offer.test` with obviously fictional child records. No production
+write tests, family email or actual offer issuance are authorised by this test plan.
+
+## Reproducible infrastructure
+
+`scripts/build-synthetic-template.py` derives `template.synthetic.json` from the
+production template using PyYAML 6.0.3. It does not call AWS. The production template
+is unchanged by the generator. Package from the backend directory, where
+`lambda-dist/` resolves to the locked build output.
+
+The only planned deployment name is `rosewood-offer-test-20261108`, account
+`274319535046`, region `ap-southeast-2`. Before preparing a CREATE change set, verify
+the caller and confirm that name is absent (or explicitly inspect the existing test
+stack). Use a clean reviewed release snapshot; inspect all additions/replacements
+before execution. Never pass the production stack name to this workflow.
+
+The test stack creates separate records/audit tables, KMS keys, private staging
+bucket, runtime role, configuration secret, log group, SES configuration set,
+encrypted feedback topic, Lambda and outbox schedule. It cannot reuse production
+tables, retained keys, secrets or backup vaults through parameters. DynamoDB PITR
+remains enabled; locked production backup plans/vaults are not cloned.
+
+Defaults are deliberately inactive: `SyntheticReady=false`,
+`EmailDeliveryMode=disabled`, `OutboxScheduleState=DISABLED`, offers disabled and
+the approved contract hash blank. The Lambda returns 503 before reading secrets
+when unready. The initial secret contains a provisioning marker, not production
+credentials. Replace it with a newly generated test-only configuration when ready;
+never copy the production secret.
+
+The role independently restricts all SES recipients to the sole approved inbox,
+including mixed To/Cc/Bcc sets. It denies absent recipient context and other sending
+actions. Exact test-resource permissions plus explicit outside-resource denials
+cover DynamoDB, S3, Secrets Manager and KMS. The runtime has no CloudWatch metric
+publishing permission. Four separate test alarms have no notification actions;
+there are no security-email subscriptions or scheduled production canary. The
+canary event is also explicitly rejected by the synthetic Lambda.
+
+`scripts/check-synthetic-iam.mjs` performs read-only AWS custom-policy simulation:
+allowed inbox, other/mixed/missing recipients, raw transport, own/outside database,
+storage, secret, KMS, audit append/rewrite/deletion, transaction condition checks and
+production metrics. CloudFormation lint also passes after removing the ineffective
+`dynamodb:TransactWriteItems` action; transactions use underlying item permissions
+as documented in [AWS transaction IAM guidance](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/transaction-apis-iam.html).
+After creation, repeat those checks
+against the actual role and actual test resource ARNs; inspect function permissions,
+feedback configuration and disabled schedule before enabling any traffic.
+
+## Google isolation
+
+An empty Google Cloud project was created under the user's personal Google account:
+`rosewood-offer-test-20261108` (display name **Rosewood Offer Test**, number
+`836042484839`). No billing upgrade, OAuth credential, user grant, Drive folder or
+Sheet has been created. The app configuration form is prepared with the user's
+personal contact address and External/testing audience. Its final Google API
+Services User Data Policy checkbox is unticked, awaiting the specific confirmation
+requested in chat. Browser confirmation rules require action-time approval for
+accepting those terms and, separately, granting new security-sensitive access.
+
+Use a distinct OAuth client/project and only
+`https://www.googleapis.com/auth/drive.file`. Do not reuse the production app client
+or broad Drive/Sheets refresh token. The production grant was inspected in memory
+and has broad Drive/Sheets scopes; it is unsuitable for this environment. No shared
+drives were listed, so a new service account has no suitable shared-drive file owner.
+
+After consent, enable Drive and Sheets APIs, create the test client and restrict its
+testing audience. Authorise only app-file access, then create separate folders and
+three Sheets with that client. Verify the granted scope and verify that known
+production folder/Sheet IDs are inaccessible using metadata-only requests. Never
+read family documents to demonstrate denial. Keep tokens in the private runtime
+and the new test secret only. Test refresh-token expiry must be monitored; do not
+publish the test OAuth app merely to avoid reauthorisation.
+
+Both Drive and Sheets adapters use app-file scope in the synthetic runtime. Every
+token refresh requires an explicit exact app-file-only returned grant. Missing or
+broader scope is rejected before a file API call, and the token is not cached.
+Production auth behaviour is unchanged. `SYNTHETIC_GOOGLE_CLIENT_ID` pins the
+expected new client; the secret cannot override runtime resource IDs, staff roles,
+URLs, transport policy or Slack settings. Only named OAuth/HMAC/private-signature
+secret keys are accepted. All five Google destination IDs must be configured and
+distinct. Compare them with the production configuration in preflight.
+
+## Activation and evidence still required
+
+1. Complete Google consent/credential setup and create test-only storage/reporting.
+2. Review the generated template and clean bundle, create the separate AWS stack
+   inactive, then independently verify its IAM and resource boundary.
+3. Provision newly generated OTP/network HMAC secrets, scoped Google credentials
+   and the authorised private principal-signature crop. Do not put any of these
+   in Git, template parameters, command-line literals, Pages or Lambda source.
+4. Set the five test Google IDs and expected client; verify exact account, region,
+   stack, role, resources, destinations, contract hash and no production reference.
+   Start with delivery disabled and the schedule disabled.
+5. Use a separate local frontend configuration at `http://127.0.0.1:8767` pointing
+   only to the test Function URL. All test email portal links target this local UI.
+   Do not change tracked production API metadata or publish draft policies.
+6. Seed fictional records only, then enable ready/test email mode and the reviewed
+   test contract. Enable scheduled outbox delivery only once its initial contents
+   are verified synthetic. Inspect every message count and logical recipient.
+7. Exercise actual staff issue, primary/secondary OTP and signatures, sibling
+   selection, delivery feedback, PDFs/attachments, retry and duplicate handling,
+   denial cases and isolated recovery. Read only labelled test messages in Gmail.
+   Simulate provider failures; do not email bounce simulators or other recipients.
+8. Record a test-email ledger, final queue state and exact stored/attached PDF
+   checksums. Disable the test schedule/delivery when the run is complete and
+   document resource retention/cleanup separately.
+
+The production release remains a separate backend-first deployment with actual
+offer issuance off, followed by frontend verification and read-only monitoring.

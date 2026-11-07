@@ -1,5 +1,10 @@
 # V6 Release Blockers
 
+## 8 November 2026 offer candidate
+
+A separate conditional-offer backend and family/staff pages now exist locally. Issuance defaults off and requires approval of the exact contract hash. All seven controlled policy originals are verified; their old source addresses, download publication, remaining draft contractual choices and exact agreement approval remain release dependencies. This does not close historical governance items or change production. See [current source evidence](post-offer/POLICY-SOURCE-VERIFICATION-2026-11-08.md) and [release requirements](POST-OFFER-IMPLEMENTATION-2026-11-08.md).
+
+
 V6 is suitable for invited content and interaction review only. It must not collect
 real family information until the applicable blockers are closed.
 
@@ -70,3 +75,15 @@ real family information until the applicable blockers are closed.
 
 AWS is authoritative for V6 operational records. Google Sheets are replaceable
 reporting projections; restricted Google Drive is the approved launch file store.
+
+## 8 November acceptance checkpoint
+
+Staff integration, design alignment, staged requests, completion receipts, corrections,
+session recovery and signed-copy download are implemented and locally tested. They are
+no longer development gaps. Production enablement remains off: policy address/download
+review, remaining draft contractual choices and conditional agreement approval are
+unresolved. Node 22 local checks pass; isolated AWS/Drive/SES end-to-end verification
+remains required. Reporting and encrypted-alarm repairs have been removed from this
+candidate and preserved in the separate local branch
+`codex/rosewood-operations-repairs-20261108`; neither is deployed or verified in
+production. See POST-OFFER-IMPLEMENTATION-2026-11-08.md.

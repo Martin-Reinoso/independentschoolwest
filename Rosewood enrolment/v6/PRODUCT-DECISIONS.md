@@ -1,5 +1,10 @@
 # V6 Product and Backend Decisions
 
+## 8 November 2026 conditional agreement candidate
+
+The user requested online terms and digital signatures, not a Word agreement or signed policy uploads. They explicitly retained both bond options and requested one full term of withdrawal notice, with hardship exceptions and legal review. The user also requested one staff-triggered congratulatory email per family with the personalised provisional-offer letter attached, a portal child selector, staff delivery/access/signature tracking, no acceptance-stage document uploads and succinct terms. The candidate implements that family flow, with separate verified requests for other required guardians. The proposed flow is one conditional agreement and one acceptance process; commencement confirmation does not require another signature unless material terms change. Payment/refund provisions and current source-policy verification remain review items. This is not a production release or governing-authority approval. See [implementation notes](POST-OFFER-IMPLEMENTATION-2026-11-08.md).
+
+
 ## 2026-09-03: reviewed family-grouped application updates
 
 - Treat the existing invitation identifier as a candidate family grouping, but never
@@ -567,3 +572,13 @@ implemented.
   delay and permanent-failure status and must be recorded without recipient addresses.
 - GitHub pull requests must pass backend tests/build, local-asset resolution and
   public-data/secret checks before merge.
+
+## 8 November follow-through: align acceptance with V6
+
+The user's “ok let's do it” authorises development following the context assessment.
+Use the existing staff portal and family design, defer additional guardian invitations
+until primary acceptance for their selected children, and distinguish individual receipt
+from all-signatures completion. Retain a single conditional agreement process. No upload
+step is added to acceptance. Correction review changes operational state only; material
+signed-agreement variation remains a separately reviewed future workflow. Development
+approval does not approve draft payment/refund/legal text or send offers to real families.
