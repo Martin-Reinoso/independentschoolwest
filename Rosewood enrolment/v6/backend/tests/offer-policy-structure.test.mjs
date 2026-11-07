@@ -54,3 +54,15 @@ test('Student Code appendix retains the exact source map in place and rejects un
   figure.assetPath=unsafe;assert.throws(()=>reader.renderPolicy(policy),/Invalid frozen policy figure/);
  }
 });
+
+test('policy downloads preserve older snapshots and pin both formats to the exact policy source',()=>{
+ assert.equal(reader.renderDownloads(OFFER_CONTRACT.policies[0]),'');
+ const policy={title:'Policy & details',sourceSha256:'a'.repeat(64),sourceDownloads:{sourceSha256:'a'.repeat(64)}};
+ for(const format of ['pdf','docx'])policy.sourceDownloads[format]={assetPath:`Files/Policies/offer-snapshots/parent-code-${'b'.repeat(64)}.${format}`,sha256:'b'.repeat(64),bytes:100};
+ const html=reader.renderDownloads(policy);
+ assert.match(html,/target="_blank" rel="noopener noreferrer"/);assert.match(html,/download>Download policy Word document/);
+ assert.match(html,/Policy &amp; details documents/);assert.equal((html.match(/<a /g)||[]).length,2);
+ for(const mutate of [p=>p.sourceDownloads.sourceSha256='c'.repeat(64),p=>delete p.sourceDownloads.docx,p=>p.sourceDownloads.pdf.bytes=0,p=>p.sourceDownloads.pdf.assetPath='https://example.test/policy.pdf',p=>p.sourceDownloads.pdf.assetPath='../private.pdf',p=>p.sourceDownloads.pdf.sha256='c'.repeat(64),p=>p.sourceDownloads.pdf.assetPath=p.sourceDownloads.docx.assetPath]){
+  const invalid=structuredClone(policy);mutate(invalid);assert.throws(()=>reader.renderDownloads(invalid),/Invalid frozen policy downloads/);
+ }
+});

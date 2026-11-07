@@ -17,3 +17,25 @@ export function policyFigureBytes(figure){
  try{return validatePolicyFigure(figure,readFileSync(existsSync(packaged)?packaged:new URL('../../../'+figure.assetPath,import.meta.url)));}
  catch{throw failure();}
 }
+
+const downloadFailure = () => new Error('A frozen policy download is unavailable or has changed.');
+
+export function validatePolicyDownload(policy, format, bytes) {
+ const downloads = policy.sourceDownloads, file = downloads?.[format];
+ if (!['pdf','docx'].includes(format) || !downloads || !/^[a-f0-9]{64}$/.test(policy.sourceSha256) || downloads.sourceSha256 !== policy.sourceSha256 || !file || !/^[a-f0-9]{64}$/.test(file.sha256) || !/^Files\/Policies\/offer-snapshots\/[a-z0-9-]+-[a-f0-9]{64}\.(pdf|docx)$/.test(file.assetPath) || !file.assetPath.endsWith('-'+file.sha256+'.'+format)) throw downloadFailure();
+ if (!Buffer.isBuffer(bytes) || !bytes.length || bytes.length > 20_000_000 || file.bytes !== bytes.length || createHash('sha256').update(bytes).digest('hex') !== file.sha256) throw downloadFailure();
+ if (format === 'pdf' ? bytes.subarray(0,5).toString() !== '%PDF-' : bytes.subarray(0,4).toString('hex') !== '504b0304') throw downloadFailure();
+ return bytes;
+}
+
+// Build-time verification of public immutable downloads; never put Word/PDF copies
+// in Lambda. Missing metadata is valid for retained older policy snapshots only.
+export function verifyPolicyDownloads(policy) {
+ if (policy.sourceDownloads === undefined) return;
+ for (const format of ['pdf','docx']) {
+  const file = policy.sourceDownloads?.[format];
+  // Validate metadata before using it as a filesystem path.
+  if (!file || typeof file.assetPath !== 'string' || !/^Files\/Policies\/offer-snapshots\/[a-z0-9-]+-[a-f0-9]{64}\.(pdf|docx)$/.test(file.assetPath)) throw downloadFailure();
+  validatePolicyDownload(policy, format, readFileSync(new URL('../../../'+file.assetPath, import.meta.url)));
+ }
+}

@@ -1,8 +1,10 @@
-# Frozen offer policy figures
+# Frozen offer policy assets
 
 These are exact, checksum-named images extracted from verified controlled policy
-originals for the unpublished provisional-offer candidate. No Word/PDF source or
-signature image belongs in this directory.
+originals for the unpublished provisional-offer candidate. Private controlled originals
+and signature images do not belong in this directory. Reviewed publication copies of
+policy PDFs/Word documents may be added only after the outstanding publication review,
+using checksum-named paths pinned in the agreement. None are published yet.
 
 The Student Code map is the original `word/media/image2.png` from evidence
 C.4.4.iih, source DOCX SHA-256
@@ -22,3 +24,11 @@ This is fidelity evidence, not publication approval. The original map contains
 cramped/clipped callout text. The policy originals still contain the Alfred Road
 address; publication/address decisions remain open. See
 `Rosewood enrolment/v6/post-offer/POLICY-SOURCE-VERIFICATION-2026-11-08.md`.
+
+Policy download metadata is `sourceDownloads: { sourceSha256, pdf, docx }`, with
+`assetPath`, `sha256` and `bytes` for each format. The source checksum must match the
+policy snapshot. Paths are `Files/Policies/offer-snapshots/<slug>-<sha256>.<format>`.
+The release build verifies exact bytes and format signatures. Keep publication copies
+and their manifests tied to the reviewed policy version; never silently replace a file.
+Private staging instructions are in `v6/scripts/prepare-offer-policy-downloads.py` and
+the policy source-verification record. The current contract has no download metadata.

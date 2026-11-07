@@ -1126,7 +1126,7 @@ const application2026v29 = complete({
 const v30FrontendAssetHashes = freeze({
   ...v29FrontendAssetHashes,
   "pages/rosewood-family-portal.js": "e877a7b9540c10a6b7e3cb0e2bab3934db2f2bce2977ecfa1e7ace21a6cfd1fe",
-  "pages/rosewood-enrolment-offer-policy-reader.js": "07014c2d1d1ace33fd0744402cc787bacb61d1dffc9795cb9c10144f41442dcd",
+  "pages/rosewood-enrolment-offer-policy-reader.js": "b55afbc63ab71c28f78b9615b08721a5b0a206e5397a1c9003ced7a6bbc6cb21",
   "pages/rosewood-enrolment-acceptance-v1.css": "93cdea43dce679ed795194ce72f5e85c931dba9d9e547110b5ca110edb76a2dd",
   "pages/rosewood-enrolment-v6.html": "99a003c4fae515fcd3e621fb491c49a8fb7266569c2c5321d423c1dd0f9b689f",
   "pages/rosewood-enrolment-v6.js": "e2829d06eb50fb4e91d5a23ee4fe989c8aea9f01b1a1944c78034917bebdeb02",

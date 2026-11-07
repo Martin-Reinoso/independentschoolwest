@@ -11,5 +11,5 @@ export const OFFER_ASSET_HASHES = {
   "pages/rosewood-enrolment-v6.css": "cbcaab23c01798ca068370e9ccbfed074a4cc2ab830c161bc446ce2a2f402d98",
   "pages/rosewood-enrolment-admin-v6.css": "efc086d3ec2e242a3a545232f054413595cc7b8fb03e40f4f90ba417bfcc3bfe",
   "pages/rosewood-enrolment-acceptance-v1.css": "93cdea43dce679ed795194ce72f5e85c931dba9d9e547110b5ca110edb76a2dd",
-  "pages/rosewood-enrolment-offer-policy-reader.js": "07014c2d1d1ace33fd0744402cc787bacb61d1dffc9795cb9c10144f41442dcd"
+  "pages/rosewood-enrolment-offer-policy-reader.js": "b55afbc63ab71c28f78b9615b08721a5b0a206e5397a1c9003ced7a6bbc6cb21"
 };

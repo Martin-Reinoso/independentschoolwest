@@ -8,7 +8,7 @@ import { OFFER_ASSET_HASHES } from "../offer-assets.mjs";
 import { APPLICATION_REQUEST_CONTRACT } from "../application-request-contract.mjs";
 import {OFFER_LETTER_LOGO_SHA256} from '../offer-letter-assets.mjs';
 import {OFFER_CONTRACT} from '../offer-contract.mjs';
-import {policyFigureBytes} from '../offer-policy-assets.mjs';
+import {policyFigureBytes,verifyPolicyDownloads} from '../offer-policy-assets.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.join(root, "lambda-dist");
@@ -46,6 +46,7 @@ function assertFormAssets() {
 }
 
 assertFormAssets();
+for (const policy of OFFER_CONTRACT.policies) verifyPolicyDownloads(policy);
 rmSync(output, { recursive: true, force: true });
 mkdirSync(output, { recursive: true });
 for (const file of files) copyFileSync(path.join(root, file), path.join(output, file));

@@ -1,5 +1,50 @@
 # Offer acceptance: completion, testing and deployment proposal
 
+## Policy download controls and private staging — latest
+
+The local reader now supports PDF and Word links pinned to the exact policy source,
+file checksum, byte count and immutable local filename. PDF opens separately so the
+acceptance remains open; Word uses a download link. Missing metadata remains supported
+for earlier snapshots. A partially specified or mismatched pair is rejected. The
+release build verifies referenced files, checksum, size and PDF/ZIP signatures before
+packaging; Word/PDF copies are public-site assets, not Lambda payloads.
+
+`scripts/prepare-offer-policy-downloads.py` stages a new private review package only.
+It rechecks all seven controlled originals against the contract/catalogue, verifies
+contents-only Word changes, rechecks the rendered contents destinations/numbers and
+requires an exact match to the final review report. It writes 14 checksum-named files
+and a `download-review-manifest.json` with `publicationApproved: false`. It never
+edits the agreement, publishes files or overwrites a package. Changed evidence,
+existing-output and repository-output rejection checks pass.
+
+All 14 reviewed copies are staged privately. **The current contract still has no
+download metadata, and no PDF/Word copy is published.** Address/map publication
+review remains outstanding. After that review, bind the approved manifest as each
+policy's `sourceDownloads`, publish its exact immutable files, regenerate contract
+projections, review the changed agreement hash and verify the live URLs. Retain files
+referenced by earlier offers. The private contents-only staging tool intentionally
+rejects other Word changes; any later address revision needs fresh source verification.
+
+280 backend tests, the locked deployment build, generated-content check and static
+reference checks pass. Production and the inactive AWS test artifact are unchanged.
+No email or real Application record was touched.
+
+Browser verification uses the private staged copies through a localhost-only server.
+At 1440/390/320 widths all fourteen fetched hashes and seven actual Word downloads
+match, PDF opens a separate tab, and returning preserves checkbox/focus. The policy
+heading remains below the toolbar; no horizontal overflow or external request occurs.
+Desktop/mobile screenshots were inspected. Chrome's headless PDF viewer does not emit
+a normal document-loaded event; the test verifies separate-tab opening and exact PDF
+response bytes, not viewer internals. The earlier intercepted-download fixture cancelled
+Word downloads; retesting over real localhost HTTP resolves that fixture limitation.
+The complete mocked primary/additional-guardian acceptance journeys also pass at all
+three widths, including exact signed-record download and unchanged fictional Application.
+
+Private evidence: `policy-download-review/`, `policy-download-browser-evidence.json`,
+`policy-download-{all-tests,build,browser,connected-browser}.log`. No review document is
+in Git. The 14-file staging package is not approved for publication or bound to an offer.
+
+
 Prepared 8 November 2026. Status: IMPLEMENTATION IN PROGRESS; not deployed. The user requested a
 comprehensive plan and explicitly prohibited testing from emailing current families or
 damaging their records. Gmail access is authorised for reviewing test email. That does

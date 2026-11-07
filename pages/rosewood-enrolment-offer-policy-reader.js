@@ -67,13 +67,27 @@
     return {html:output.join(''),contents};
   }
 
+  // Optional on older snapshots. Published files belong to this exact policy source.
+  function renderDownloads(policy) {
+    const downloads = policy.sourceDownloads;
+    if (downloads === undefined) return '';
+    if (!downloads || !/^[a-f0-9]{64}$/.test(policy.sourceSha256) || downloads.sourceSha256 !== policy.sourceSha256) throw Error('Invalid frozen policy downloads.');
+    const links = ['pdf', 'docx'].map(format => {
+      const file = downloads[format];
+      if (!file || !/^[a-f0-9]{64}$/.test(file.sha256) || !Number.isInteger(file.bytes) || file.bytes < 1 || file.bytes > 20_000_000 || !/^Files\/Policies\/offer-snapshots\/[a-z0-9-]+-[a-f0-9]{64}\.(pdf|docx)$/.test(file.assetPath) || !file.assetPath.endsWith('-' + file.sha256 + '.' + format)) throw Error('Invalid frozen policy downloads.');
+      const label = format === 'pdf' ? 'View policy PDF (opens in a new tab)' : 'Download policy Word document';
+      return `<a class="button ${format === 'pdf' ? 'button-secondary' : 'button-quiet'}" href="../${escape(file.assetPath)}" ${format === 'pdf' ? 'target="_blank" rel="noopener noreferrer"' : 'download'}>${label}</a>`;
+    });
+    return `<div class="policy-original-actions" aria-label="${escape(policy.title)} documents">${links.join('')}</div>`;
+  }
+
   function create({ root, onOpen, onClose }) {
     let policies = [], active = null, returnFocus = null, returnScroll = 0;
     function render(index) {
       const policy = policies[index];
       if (!policy?.text) throw Error('This policy is unavailable. Please email enrolment@ffe.org.au before signing.');
-      const body = renderPolicy(policy);
-      root.innerHTML = `<article class="policy-reader" aria-labelledby="policy-reader-title"><div class="policy-reader-toolbar"><button class="policy-return" type="button" data-policy-return>← Return to offer acceptance</button><nav class="policy-tabs" aria-label="Choose a policy">${policies.map((p,i)=>`<button type="button" class="text-action" data-policy-index="${i}" ${i===index?'aria-current="page"':''}>${escape(p.title)}</button>`).join('')}</nav><label class="policy-mobile-selector"><span>Choose policy</span><select data-policy-select>${policies.map((p,i)=>`<option value="${i}" ${i===index?'selected':''}>${escape(p.title)}</option>`).join('')}</select></label></div><header class="policy-reader-heading"><p class="eyebrow">Rosewood College policy</p><h2 id="policy-reader-title" tabindex="-1">${escape(policy.title)}</h2><p>Reading this policy does not accept the offer or submit your signature.</p></header><div class="policy-reader-utilities"><details class="policy-contents"><summary>Contents</summary><ol>${body.contents.map(h=>`<li><a href="#${h.id}" data-policy-heading="${h.id}">${escape(h.title)}</a></li>`).join('')}</ol></details></div><div class="policy-document">${body.html}</div><footer class="policy-reader-footer"><button class="button button-secondary" type="button" data-policy-return>← Return to offer acceptance</button></footer></article>`;
+      const body = renderPolicy(policy), downloads = renderDownloads(policy);
+      root.innerHTML = `<article class="policy-reader" aria-labelledby="policy-reader-title"><div class="policy-reader-toolbar"><button class="policy-return" type="button" data-policy-return>← Return to offer acceptance</button><nav class="policy-tabs" aria-label="Choose a policy">${policies.map((p,i)=>`<button type="button" class="text-action" data-policy-index="${i}" ${i===index?'aria-current="page"':''}>${escape(p.title)}</button>`).join('')}</nav><label class="policy-mobile-selector"><span>Choose policy</span><select data-policy-select>${policies.map((p,i)=>`<option value="${i}" ${i===index?'selected':''}>${escape(p.title)}</option>`).join('')}</select></label></div><header class="policy-reader-heading"><p class="eyebrow">Rosewood College policy</p><h2 id="policy-reader-title" tabindex="-1">${escape(policy.title)}</h2><p>Reading this policy does not accept the offer or submit your signature.</p></header><div class="policy-reader-utilities"><details class="policy-contents"><summary>Contents</summary><ol>${body.contents.map(h=>`<li><a href="#${h.id}" data-policy-heading="${h.id}">${escape(h.title)}</a></li>`).join('')}</ol></details>${downloads}</div><div class="policy-document">${body.html}</div><footer class="policy-reader-footer"><button class="button button-secondary" type="button" data-policy-return>← Return to offer acceptance</button></footer></article>`;
       onOpen();
       root.querySelector('h2').focus({ preventScroll: true });
       root.scrollIntoView({ block: 'start', behavior: 'instant' });
@@ -103,5 +117,5 @@
     window.addEventListener('popstate',()=>{const match=location.hash.match(/^#offer-policy\/(\d+)$/);if(match&&policies.length)open(Number(match[1]),true);else restore();});
     return { open, setPolicies(value) { policies=value||[]; }, clear() { active=null;policies=[];returnFocus=null;root.replaceChildren();if(location.hash.startsWith('#offer-policy/')){const url=new URL(location.href);url.hash='';history.replaceState({},'',url);} } };
   }
-  window.ROSEWOOD_OFFER_POLICY_READER = { create, renderText, renderPolicy };
+  window.ROSEWOOD_OFFER_POLICY_READER = { create, renderText, renderPolicy, renderDownloads };
 })();
