@@ -845,6 +845,12 @@
             "SLACK_WEBHOOK_URL": "",
             "ENROLMENT_OFFER_PAGE_URL": "http://127.0.0.1:8767/pages/rosewood-enrolment-offer-v1.html"
           }
+        },
+        "KmsKeyArn": {
+          "Fn::GetAtt": [
+            "RosewoodKey",
+            "Arn"
+          ]
         }
       }
     },

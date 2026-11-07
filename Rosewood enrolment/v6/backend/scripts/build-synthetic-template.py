@@ -120,6 +120,9 @@ def build():
         statements.append({"Sid": "DenyOutsideTest" + name, "Effect": "Deny", "Action": action, "NotResource": allowed})
     function = resources["RosewoodFunction"]["Properties"]
     function["ReservedConcurrentExecutions"] = 2
+    # Default Lambda environment encryption uses an AWS-managed key, which our
+    # outside-test-key denial intentionally blocks. Keep encryption in this stack.
+    function["KmsKeyArn"] = att("RosewoodKey")
     env = function["Environment"]["Variables"]
     env.update({
         "SYNTHETIC_STACK_NAME": ref("AWS::StackName"), "SYNTHETIC_READY": ref("SyntheticReady"),

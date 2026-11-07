@@ -1,11 +1,21 @@
 # Isolated provisional-offer integration environment
 
-Status on 8 November 2026: template and runtime guards implemented; **not deployed**.
-The AWS account/region were verified and CloudFormation validated the template.
-AWS IAM custom-policy simulation passed 18 cases. This is policy-model evidence,
-not a claim that a deployed role, delivery pipeline or Google integration works.
-The full Node 22.23.4 suite passes 277 tests and the locked deployment build passes.
-No real test email has been sent in this checkpoint.
+Status on 8 November 2026: the separate inactive test stack was created from clean
+commit `3fb2453`, with 28 additions and no production updates. The actual role matches
+the resolved template exactly, has no extra attached/inline policies, and passes all
+18 principal-policy simulations. Google consent/configuration and live email tests
+remain pending. All delivery/readiness/offer switches remain off.
+
+The first live request exposed a startup defect missed by simulation: Lambda's default
+environment key is outside the role's deliberate KMS boundary, causing KMS access denial
+and HTTP 502 before handler execution. The candidate now explicitly uses the test
+stack's own key for Lambda environment encryption. The outside-key denial is retained;
+six focused isolation tests pass. Applying this one-resource update and repeating the
+live unready-endpoint check remain required. This finding does not affect production.
+
+The separated acceptance candidate passed all 275 backend tests and the locked build;
+the new encryption-boundary regression brings the suite to 276. No actual test email
+has been sent. See the current completion plan for final live verification evidence.
 
 ## User-authorised boundary
 
@@ -56,8 +66,9 @@ storage, secret, KMS, audit append/rewrite/deletion, transaction condition check
 production metrics. CloudFormation lint also passes after removing the ineffective
 `dynamodb:TransactWriteItems` action; transactions use underlying item permissions
 as documented in [AWS transaction IAM guidance](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/transaction-apis-iam.html).
-After creation, repeat those checks
-against the actual role and actual test resource ARNs; inspect function permissions,
+Use `node scripts/check-synthetic-iam.mjs --deployed` to repeat those checks
+against the actual role and actual test resource ARNs; it first checks exact deployed
+policy equality, trust and absence of additional role policies. Inspect function permissions,
 feedback configuration and disabled schedule before enabling any traffic.
 
 ## Google isolation

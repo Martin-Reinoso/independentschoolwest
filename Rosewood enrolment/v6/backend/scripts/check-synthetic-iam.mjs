@@ -1,6 +1,6 @@
 // Read-only AWS IAM simulation of the generated template. This does not assume a
-// role, send email, read family records, or create infrastructure. Repeat with the
-// actual deployed role and resources before enabling the synthetic runtime.
+// role, send email, read family records, or create infrastructure. --deployed checks
+// the actual role and actual stack resources before simulating that principal.
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { readFileSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
@@ -8,6 +8,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 const aws = args => JSON.parse(execFileSync("aws", [...args, "--profile", "default", "--region", "ap-southeast-2", "--output", "json"], { encoding: "utf8", maxBuffer: 2_000_000 }));
+assert.ok(process.argv.slice(2).every(arg => arg === "--deployed"), "Only --deployed is supported");
+const deployed = process.argv.includes("--deployed");
 assert.equal(aws(["sts", "get-caller-identity"]).Account, "274319535046");
 const template = JSON.parse(readFileSync(new URL("../template.synthetic.json", import.meta.url)));
 const stack = "rosewood-offer-test-20261108", prefix = "arn:aws:", ar = "ap-southeast-2:274319535046:";
@@ -20,6 +22,26 @@ const values = { "AWS::Partition": "aws", "AWS::Region": "ap-southeast-2", "AWS:
   "RosewoodKey.Arn": `${prefix}kms:${ar}key/00000000-0000-4000-8000-000000000001`,
   "RosewoodDocumentStagingBucket.Arn": `${prefix}s3:::${stack}-274319535046-staging`,
   "RosewoodLogGroup.Arn": `${prefix}logs:${ar}log-group:/aws/lambda/${stack}-service:*` };
+let roleArn;
+if (deployed) {
+  const state = aws(["cloudformation", "describe-stacks", "--stack-name", stack]).Stacks[0];
+  assert.ok(["CREATE_COMPLETE", "UPDATE_COMPLETE"].includes(state.StackStatus), "Test stack must be stable");
+  const outputs = Object.fromEntries(state.Outputs.map(item => [item.OutputKey, item.OutputValue]));
+  const params = Object.fromEntries(state.Parameters.map(item => [item.ParameterKey, item.ParameterValue]));
+  assert.equal(outputs.FunctionName, `${stack}-service`);
+  assert.equal(outputs.TableName, `${stack}-records`);
+  assert.equal(outputs.AuditTableName, `${stack}-audit`);
+  assert.equal(outputs.DocumentStagingBucketName, `${stack}-274319535046-staging`);
+  assert.equal(outputs.SesConfigurationSetName, values.RosewoodSesConfigurationSet);
+  assert.equal(params.TestEmailDestination, values.TestEmailDestination);
+  assert.equal(params.SenderEmail, values.SenderEmail);
+  assert.ok(outputs.ConfigSecretArn.startsWith(`${prefix}secretsmanager:${ar}secret:${stack}-config-`));
+  assert.ok(outputs.KmsKeyArn.startsWith(`${prefix}kms:${ar}key/`));
+  values.SyntheticConfigSecret = outputs.ConfigSecretArn;
+  values["RosewoodKey.Arn"] = outputs.KmsKeyArn;
+  roleArn = outputs.RuntimeRoleArn;
+  assert.ok(roleArn.startsWith(`arn:aws:iam::274319535046:role/${stack}-`));
+}
 function resolve(value) {
   if (Array.isArray(value)) return value.map(resolve);
   if (!value || typeof value !== "object") return value;
@@ -29,6 +51,17 @@ function resolve(value) {
   return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, resolve(item)]));
 }
 const policy = resolve(template.Resources.RosewoodRole.Properties.Policies[0].PolicyDocument);
+if (deployed) {
+  const roleName = roleArn.split("/").at(-1);
+  const role = aws(["iam", "get-role", "--role-name", roleName]).Role;
+  assert.equal(role.Arn, roleArn);
+  assert.deepEqual(role.AssumeRolePolicyDocument, template.Resources.RosewoodRole.Properties.AssumeRolePolicyDocument);
+  assert.equal(role.PermissionsBoundary, undefined, "Review unexpected permissions boundary");
+  assert.deepEqual(aws(["iam", "list-attached-role-policies", "--role-name", roleName]).AttachedPolicies, []);
+  assert.deepEqual(aws(["iam", "list-role-policies", "--role-name", roleName]).PolicyNames, ["RosewoodV6Runtime"]);
+  const actual = aws(["iam", "get-role-policy", "--role-name", roleName, "--policy-name", "RosewoodV6Runtime"]).PolicyDocument;
+  assert.deepEqual(actual, policy, "Deployed policy differs from the reviewed resolved template");
+}
 const emailResources = policy.Statement.find(s => s.Sid === "SendTransactionalEmail").Resource;
 const recipient = values.TestEmailDestination;
 const from = { ContextKeyName: "ses:FromAddress", ContextKeyType: "string", ContextKeyValues: [values.SenderEmail] };
@@ -57,8 +90,9 @@ const directory = mkdtempSync(path.join(tmpdir(), "rosewood-synthetic-iam-"));
 try {
   for (const [name, action, resources, context, expected] of cases) {
     const file = path.join(directory, "input.json");
-    writeFileSync(file, JSON.stringify({ PolicyInputList: [JSON.stringify(policy)], ActionNames: [action], ResourceArns: resources, ContextEntries: context }), { mode: 0o600 });
-    const response = aws(["iam", "simulate-custom-policy", "--cli-input-json", `file://${file}`]);
+    const identity = deployed ? { PolicySourceArn: roleArn } : { PolicyInputList: [JSON.stringify(policy)] };
+    writeFileSync(file, JSON.stringify({ ...identity, ActionNames: [action], ResourceArns: resources, ContextEntries: context }), { mode: 0o600 });
+    const response = aws(["iam", deployed ? "simulate-principal-policy" : "simulate-custom-policy", "--cli-input-json", `file://${file}`]);
     assert.equal(response.EvaluationResults.length, 1, name);
     for (const result of response.EvaluationResults) {
       assert.equal(result.EvalDecision, expected, name);
@@ -69,5 +103,5 @@ try {
     }
     console.log(`${name}: ${expected}`);
   }
-  console.log(`${cases.length} IAM simulation cases passed. No AWS resources or messages created.`);
+  console.log(`${cases.length} ${deployed ? "deployed-role" : "template"} IAM simulation cases passed. No AWS resources or messages created by this check.`);
 } finally { rmSync(directory, { recursive: true, force: true }); }

@@ -37,3 +37,12 @@ test("AWS independently restricts recipients, credentials, storage, database and
   assert.deepEqual(audit.Action, ["dynamodb:PutItem", "dynamodb:Query"]);
   assert.equal(JSON.stringify(statements).includes("dynamodb:TransactWriteItems"), false, "transaction permissions use their underlying item actions");
 });
+
+test("Lambda environment encryption stays within the key allowed by the isolation policy", () => {
+  const environmentKey = resources.RosewoodFunction.Properties.KmsKeyArn;
+  assert.deepEqual(environmentKey, { "Fn::GetAtt": ["RosewoodKey", "Arn"] });
+  assert.deepEqual(statements.find(s => s.Sid === "DenyOutsideTestEncryption").NotResource, [environmentKey]);
+  const allowed = statements.find(s => s.Sid === "EncryptedRecordsKeyUse");
+  assert.deepEqual(allowed.Resource, environmentKey);
+  assert.ok(allowed.Action.includes("kms:Decrypt"));
+});
