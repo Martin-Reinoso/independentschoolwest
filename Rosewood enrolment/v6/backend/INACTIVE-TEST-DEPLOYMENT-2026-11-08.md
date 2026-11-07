@@ -3,12 +3,14 @@
 ## Current live checkpoint
 
 The Google grant and isolated live staff/primary/secondary journey are complete.
-Both fictional children have two signatures; all 13 expected test emails were delivered.
+Both fictional children have two signatures; all 14 test emails were delivered (13
+journey messages plus the corrected OTP recheck).
 Actual Gmail letter and signed-record bytes match their reviewed/stored counterparts.
 Original Applications are unchanged. Read [live integration evidence](../post-offer/LIVE-INTEGRATION-2026-11-08.md).
 Production is unchanged; real issuance stays off. Earlier inactive/pending-consent
-checkpoints below are historical and superseded by that report. Final test fixes,
-recovery validation and the disabled production rollout are still in progress.
+checkpoints below are historical and superseded by that report. Final test fixes and recovery validation pass. Test runtime 7bf4e0d is now inactive
+with delivery/issuance off. The disabled production rollout is prepared; existing
+frjativa GitHub credentials have the required publishing access.
 
 ## Runtime update to 9647377 — latest
 

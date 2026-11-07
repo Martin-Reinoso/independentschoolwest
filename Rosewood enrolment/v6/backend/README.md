@@ -2,13 +2,13 @@
 
 ## Conditional offers local candidate
 
-The isolated integration template, credential boundary and current pending setup are
+The isolated integration template, credential boundary and completed live tests are
 documented in [synthetic test environment](SYNTHETIC-TEST-ENVIRONMENT.md). This is a
 separate test stack; never use the production template unchanged for email testing.
 The seven controlled policy originals now have current byte verification and the
 reader uses their actual heading/list/table structure; see
 [policy source verification](../post-offer/POLICY-SOURCE-VERIFICATION-2026-11-08.md).
-Original download publication and the six source-cover address discrepancies remain open.
+All fourteen pinned publication downloads use the approved 456 Bridge Road address; controlled originals remain unchanged.
 
 Separate family offer routes, PDF attachments, child selection, delivery/access tracking and independent signature records have been implemented locally, with issuance disabled by default. The reviewed contract and policy sources still require release verification. Existing Application signing remains independent. See [implementation and release notes](../POST-OFFER-IMPLEMENTATION-2026-11-08.md).
 

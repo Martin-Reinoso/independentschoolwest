@@ -1,7 +1,7 @@
 # Isolated live acceptance test — 8 November 2026
 
 Production is unchanged and real offer issuance remains off. This evidence is from
-`rosewood-offer-test-20261108`, runtime `4b9b223`, using fictional Applications and
+`rosewood-offer-test-20261108`, journey runtime `4b9b223` and verified final runtime `7bf4e0d`, using fictional Applications and
 logical `.test` guardians. The sole actual email destination is the user's authorised
 personal inbox. Its real Application was never used, copied, linked or modified.
 
@@ -83,7 +83,30 @@ replayed an invitation or completion message. The isolated queue was empty after
   says “Verified guardian access”. Unpublished asset pins are updated. No access-control
   defect occurred: the actual session was revoked and protected routes rejected it.
 
-The fixes require the final isolated code update and browser/email recheck before
-production deployment. Recovery-table validation, final release reconciliation,
-production deployment with issuance off, published-asset verification and scheduled
-monitoring remain separate release steps. This report does not claim those are done.
+The fixes were deployed through a code-only test change set; actual Lambda checksum
+and unchanged parameters were verified. A further OTP reached Gmail with the corrected
+wording, authenticated successfully and brought the final ledger to **14 emails, all
+14 delivered** (three guardian OTPs). Verified and signed-out labels were checked in
+Chrome, including refresh after logout. All 283 final backend tests, 19 focused asset/
+frontend tests, locked deployment build and static/public-data checks pass.
+
+An on-demand backup of the isolated test records was restored into a separate table.
+All nine critical Application/offer/family/signature rows matched exactly; 111 total
+rows were restored. The disconnected duplicate table was removed afterward; the
+original isolated records and backup remain. No production backup was restored.
+
+After tests, the isolated runtime was returned to inactive: readiness false, email
+transport disabled, offer issuance false, content approval blank and schedule disabled.
+All resources and retained fictional evidence remain separate from production.
+
+Production rollout is prepared with real issuance off. Its reviewed change set changes
+only Lambda code/two offer environment values and removes two unsupported transaction
+IAM action entries; zero replacements. Exact previous Lambda ZIP/template and parameters
+are retained for rollback. Before release, production health was 200 on EOI .28 /
+Application .29 and all nine alarms were OK. Deployment and scheduled verification
+are not claimed until the production release report records them.
+
+GitHub access is available through the already-configured **frjativa** account (also
+fjativag), both with push permission. The active jativaf profile is read-only. Use a
+command-scoped credential from frjativa; no global account switch or permission grant
+is needed. The initial publishing-blocker diagnosis was corrected before rollout.
