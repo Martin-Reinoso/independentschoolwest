@@ -1,5 +1,16 @@
 # Fourteen-section Rosewood terms — review notes
 
+## Production release checkpoint
+
+The acceptance implementation is now deployed to AWS and GitHub Pages through PR #56,
+with real offer issuance **off** and content approval blank. EOI `2026.29` / Application `2026.30`
+are live; no production family was selected or emailed. Actual isolated integration,
+14 delivered test messages, signed PDF checks, retry/recovery and 283 tests pass.
+See [current release and operating evidence](PRODUCTION-RELEASE-2026-11-08.md).
+Earlier local-only, inactive-runtime and pending-Google statements below are historical.
+Final substantive agreement adoption and deliberate real-family issuance remain separate.
+
+
 ## Current status — 8 November 2026
 
 The fourteen-section draft is now integrated across the backend contract, online

@@ -48,6 +48,8 @@ Synthetic browser tests exercise the actual embedded staff portal and backend wi
 fake providers at desktop/mobile sizes, including the download-to-stored-byte match.
 Private visual evidence uses the authorised signature crop with fictional family names.
 
-The private configuration still needs provisioning in the isolated test environment,
-followed by real delivery to the approved Gmail inbox and production release checks.
-Local passing tests do not establish successful AWS, Drive or Gmail integration.
+The authorised private signature was provisioned in both the isolated test secret and
+production configuration. All unrelated production secret values were preserved and
+verified against the preceding version. Actual Gmail letter bytes match the staff
+preview and stored Drive letter. Test delivery is now off; production issuance remains
+disabled pending exact content approval. See the [production release report](../post-offer/PRODUCTION-RELEASE-2026-11-08.md).

@@ -1,5 +1,16 @@
 # Option 1 acceptance design review
 
+## Production release checkpoint
+
+The acceptance implementation is now deployed to AWS and GitHub Pages through PR #56,
+with real offer issuance **off** and content approval blank. EOI `2026.29` / Application `2026.30`
+are live; no production family was selected or emailed. Actual isolated integration,
+14 delivered test messages, signed PDF checks, retry/recovery and 283 tests pass.
+See [current release and operating evidence](PRODUCTION-RELEASE-2026-11-08.md).
+Earlier local-only, inactive-runtime and pending-Google statements below are historical.
+Final substantive agreement adoption and deliberate real-family issuance remain separate.
+
+
 ## Completion and deployment proposal
 
 The comprehensive current plan is [COMPLETION-TEST-AND-DEPLOYMENT-PLAN-2026-11-08.md](COMPLETION-TEST-AND-DEPLOYMENT-PLAN-2026-11-08.md). It includes formatted policy readers, both parent journeys, family overview, letters/emails/signed PDFs, isolated testing, Gmail review and staged deployment. User constraint: no testing emails to current families and no modification of their records. The plan has not been executed.
