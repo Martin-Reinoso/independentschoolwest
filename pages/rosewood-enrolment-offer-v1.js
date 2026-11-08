@@ -42,6 +42,8 @@
  function renderReadOnly(){const d=context.details,row=(label,value)=>`<dt>${esc(label)}</dt><dd>${esc(value||'—')}</dd>`;$('readonly-details').innerHTML=`<h3>Student</h3><dl>${row('Full name',name(d.student))}${row('Preferred name',d.student.preferred)}${row('Offered place',`${context.packet.entryLevel} · ${context.packet.entryYear}`)}</dl>`+d.guardians.map(p=>`<h3>${esc(name(p))}</h3><dl>${row('Relationship',p.relationship)}${p.email?row('Signing email',p.email):''}${p.mobile?row('Mobile',p.mobile):''}</dl>`).join('');}
  function renderConditions(){
   const p=context.packet,c=p.contract;$('conditions-place').textContent=`${p.studentName} — ${p.entryLevel} · ${p.entryYear} entry`;$('agreement-for').textContent=`Provisional offer for ${p.studentName}.`;
+  const deadline=value=>value?new Date(value).toLocaleString('en-AU',{timeZone:'Australia/Melbourne',timeZoneName:'short'}):'Shown in the issued offer';
+  $('conditions-accept-by').textContent=deadline(p.schedule?.acceptBy);$('conditions-deadline').textContent=deadline(p.schedule?.conditionsBy);$('payment-arrangements-note').textContent=c.paymentArrangementsNotice||'';
   $('provisional-offer-title').textContent=c.introduction.title;$('provisional-offer-copy').textContent=c.introduction.text;
   $('fine-print').innerHTML=c.sections.map(s=>`<section><h4>${esc(s.id)}. ${esc(s.title)}</h4>${s.paragraphs.map(t=>`<p>${esc(t)}</p>`).join('')}</section>`).join('');
   $('review-policies').className='policy-links';$('review-policies').innerHTML=c.policies.map((p,i)=>`<button type="button" class="button button-secondary" data-policy="${i}">${esc(p.title)} →</button>`).join('');reader.setPolicies(c.policies);

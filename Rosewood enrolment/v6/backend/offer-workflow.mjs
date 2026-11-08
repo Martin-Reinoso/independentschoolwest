@@ -34,10 +34,11 @@ export function makeOfferPacket(app, input, now=Date.now()) {
   const entryYear=text(app.values?.entry_year,4), entryLevel=text(app.values?.entry_level,60);
   if (!studentName || !/^20\d{2}$/.test(entryYear) || !entryLevel) throw failure(409,'ENTRY_DETAILS_REQUIRED','Confirm the student and entry details before preparing an offer.');
   if (entryYear !== '2027') throw failure(409,'OFFER_YEAR_UNSUPPORTED','This opening-year offer is for 2027 only. Prepare a separately reviewed offer for another entry year.');
-  const schedule={acceptBy:text(input.acceptBy,40), conditionsBy:text(input.conditionsBy,40), feeSchedule:text(input.feeSchedule,6000), paymentDays:Number(input.paymentDays), refundDays:Number(input.refundDays), bondOption:input.bondOption, bondAmount:Number(input.bondAmount ?? (input.bondOption==='higher'?10000:2000)), bondCredit:Number(input.bondCredit || 0)};
+  const financialFields=['feeSchedule','paymentDays','refundDays','bondOption','bondAmount','bondCredit'];
+  if(financialFields.some(key=>Object.hasOwn(input,key)))throw failure(422,'PAYMENT_CHOICES_DEFERRED','Bond and payment choices are made later. Reload the staff portal to prepare this provisional offer without financial selections.');
+  const schedule={acceptBy:text(input.acceptBy,40),conditionsBy:text(input.conditionsBy,40),financialArrangements:'deferred'};
   for (const key of ['acceptBy','conditionsBy']) if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(schedule[key]) || !Number.isFinite(Date.parse(schedule[key])) || Date.parse(schedule[key]) <= now) throw failure(422,'DATES_REQUIRED','Provide future offer and registration-condition deadlines.');
   if (Date.parse(schedule.conditionsBy)<Date.parse(schedule.acceptBy)) throw failure(422,'INVALID_DATES','The conditions deadline cannot precede the acceptance deadline.');
-  if (schedule.feeSchedule.length < 50 || !Number.isInteger(schedule.paymentDays) || schedule.paymentDays<1 || schedule.paymentDays>90 || !Number.isInteger(schedule.refundDays) || schedule.refundDays<1 || schedule.refundDays>90 || !['standard','higher'].includes(schedule.bondOption) || !Number.isFinite(schedule.bondCredit) || schedule.bondCredit<0 || schedule.bondCredit>schedule.bondAmount || !(schedule.bondOption==='standard'?[2000]:[10000,20000]).includes(schedule.bondAmount)) throw failure(422,'SCHEDULE_REQUIRED','Complete the reviewed fee schedule, bond selection, payment and refund periods.');
   const details=initialOfferDetails(app,signers);
   signers=signers.map(signer=>({...signer,name:personName(details.guardians.find(person=>person.id===signer.id))}));
   const packet=packetWithDetails({contract:OFFER_CONTRACT, studentName, entryYear, entryLevel, signers:signers.map(({name})=>({name})), schedule},details);

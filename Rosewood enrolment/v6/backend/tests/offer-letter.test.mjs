@@ -46,11 +46,12 @@ test('reviewed PDF bytes are the issued attachment and changed options/signature
  assert.equal((await changed.call('/v6/staff/offers/issue',request)).status,409);assert.equal(changed.outbox.length,0);
 });
 
-test('both staff surfaces expose the shared renderer controls and current family bond options',()=>{
+test('both staff surfaces prepare acceptance without financial-choice inputs',()=>{
  const root=new URL('../../../../pages/',import.meta.url);
  for(const [file,attribute] of [['rosewood-enrolment-offers-admin-v1.html','id'],['rosewood-enrolment-admin-v6.html','data-offer-id']]){
-  const html=readFileSync(new URL(file,root),'utf8');for(const control of ['letter-date','letter-meeting-confirmed','letter-gathering','bond-amount'])assert.ok(html.includes(`${attribute}="${control}"`),`${file}: ${control}`);
-  assert.match(html,/\$20,000 — 5% tuition reduction for every child/);assert.doesNotMatch(html,/\$10,000 per child with the approved discount/);
+  const html=readFileSync(new URL(file,root),'utf8');for(const control of ['letter-date','letter-meeting-confirmed','letter-gathering'])assert.ok(html.includes(`${attribute}="${control}"`),`${file}: ${control}`);
+  for(const control of ['fee-schedule','bond','bond-amount','credit','payment-days','refund-days'])assert.equal(html.includes(`${attribute}="${control}"`),false);
+  assert.match(html,/Bond and payment options will be chosen separately/);
  }
 });
 
