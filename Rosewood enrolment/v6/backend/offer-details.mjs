@@ -94,7 +94,7 @@ export function reconcileOfferAccounts(family, offer) {
     const existing = accounts.find(account => account.email === signer.email && account.children.some(child => child.offerId === offer.id));
     const target = existing || accounts.find(account => account.email === signer.email && !account.tokenHash) || { id: `recipient-${crypto.randomUUID()}`, email: signer.email, primary: false, tokenHash: "", children: [] };
     target.name = signer.name;
-    const child = { offerId: offer.id, signerId: signer.id, studentName: offer.packet.studentName, entryYear: offer.packet.entryYear, entryLevel: offer.packet.entryLevel };
+    const child = { offerId: offer.id, signerId: signer.id, studentName: offer.packet.studentName, studentFirstName: offer.details?.student.first, entryYear: offer.packet.entryYear, entryLevel: offer.packet.entryLevel };
     target.children = [...target.children.filter(item => item.offerId !== offer.id), child];
     if (!accounts.includes(target)) accounts.push(target);
   }

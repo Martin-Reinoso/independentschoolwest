@@ -5,7 +5,7 @@ import {readFileSync} from 'node:fs';
 import {letterContent,renderOfferLetter} from '../offer-letter.mjs';
 import {principalSignatureFromConfig} from '../offer-letter-assets.mjs';
 import {pdfHash} from '../offer-pdf.mjs';
-import {harness,drawing,schedule} from './helpers/offer-harness.mjs';
+import {harness,application,drawing,schedule} from './helpers/offer-harness.mjs';
 
 const signaturePng=Buffer.from(drawing.split(',')[1],'base64');
 const data={date:'2026-11-08',parents:['Alex Synthetic','Taylor Synthetic'],children:[{studentName:'Avery Synthetic',entryLevel:'Foundation',entryYear:'2027'}]};
@@ -44,6 +44,32 @@ test('reviewed PDF bytes are the issued attachment and changed options/signature
  const replacement=readFileSync(new URL('./fixtures/synthetic-principal-signature-alt.png',import.meta.url));
  changed.env.OFFER_PRINCIPAL_SIGNATURE_PNG_BASE64=replacement.toString('base64');changed.env.OFFER_PRINCIPAL_SIGNATURE_SHA256=pdfHash(replacement);
  assert.equal((await changed.call('/v6/staff/offers/issue',request)).status,409);assert.equal(changed.outbox.length,0);
+});
+
+test('reviewed and queued family openings use only selected structured first names',async()=>{
+ for(const count of [1,2,3]){
+  const h=harness(),names=['Mary Rose','Anne-Marie','Zoë'];
+  for(const [i,name] of names.entries()){
+   const app=application();app.id=`app-name-${i}`;app.values.student_first=name;app.values.student_middle='Middle';h.apps.set(app.id,app);
+  }
+  const before=structuredClone([...h.apps]);
+  const {prepared,result}=await h.issue(names.slice(0,count).map((_,i)=>`app-name-${i}`));
+  assert.equal(result.httpStatus,200);
+  const opening=`Congratulations! We are delighted to offer ${count===1?'Mary Rose':count===2?'Mary Rose and Anne-Marie':'Mary Rose, Anne-Marie and Zoë'} ${count===1?'a place':'places'} at Rosewood College.`;
+  const preview=prepared.messages.find(m=>m.primary),queued=h.outbox.find(m=>m.payload.tags?.message_type==='offer_family_invitation').payload;
+  for(const email of [preview,queued]){
+   assert.ok(email.text.includes(opening));assert.ok(email.html.includes(`<p>${opening}</p>`));
+   assert.doesNotMatch(email.text,/Avery/);
+   if(count<3)assert.doesNotMatch(email.text,/Zoë/);
+   for(const name of names.slice(0,count))assert.ok(email.text.includes(`${name} Middle Synthetic — Foundation, 2027`));
+  }
+  assert.deepEqual([...h.apps],before);
+  assert.deepEqual([...h.families.values()][0].accounts[0].children.map(c=>c.studentFirstName),names.slice(0,count));
+ }
+ const h=harness(),prepared=await h.call('/v6/staff/offers/preview',{applicationIds:['app-synthetic'],schedule});
+ h.apps.get('app-synthetic').values.student_first='Corrected';
+ const result=await h.call('/v6/staff/offers/issue',{applicationIds:['app-synthetic'],schedule,letterDate:prepared.letterDate,packetHash:prepared.packetHash,guardianPlanReviewed:true,confirmation:'Send reviewed family offer',operationId:'synthetic-operation-12345'});
+ assert.equal(result.error,'OFFER_REVIEW_REQUIRED');assert.equal(h.outbox.length,0);assert.equal(h.offers.size,0);
 });
 
 test('both staff surfaces prepare acceptance without financial-choice inputs',()=>{

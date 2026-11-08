@@ -5,8 +5,8 @@ import vm from "node:vm";
 import { OFFER_CONTRACT } from "../offer-contract.mjs";
 import { offerInvitationEmail, offerSignatureReceipt, offerCompletionEmail } from "../offer-emails.mjs";
 
-const child = { studentName: "Avery Synthetic", entryLevel: "Foundation", entryYear: "2027" };
-const sibling = { studentName: "Jordan Synthetic", entryLevel: "Year 2", entryYear: "2027" };
+const child = { studentName: "Avery Synthetic", studentFirstName: "Avery", entryLevel: "Foundation", entryYear: "2027" };
+const sibling = { studentName: "Jordan Synthetic", studentFirstName: "Jordan", entryLevel: "Year 2", entryYear: "2027" };
 const link = "https://example.test/portal?invite=synthetic";
 
 test("initial message names every offered child, identifies the principal's attachment and preserves provisional status", () => {
@@ -20,7 +20,20 @@ test("initial message names every offered child, identifies the principal's atta
     assert.equal(email.text.split(link).length - 1, 1);
     assert.equal(email.html.split(link).length - 1, 1);
     assert.ok(!email.subject.includes(child.studentName));
-    assert.match(email.text, children.length === 1 ? /a place for your child/ : /places for your children/);
+    assert.match(email.text, children.length === 1 ? /offer Avery a place/ : /offer Avery and Jordan places/);
+    assert.match(email.text, children.length === 1 ? /select your child/ : /select each child/);
+  }
+});
+
+test("opening joins three given names, preserves compound names and falls back to a stored full name", () => {
+  const third = { ...child, studentName: "Mary Rose Synthetic", studentFirstName: "Mary Rose" };
+  const email = offerInvitationEmail({ name: "Alex", primary: true, children: [child, sibling, third], link });
+  const opening = "Congratulations! We are delighted to offer Avery, Jordan and Mary Rose places at Rosewood College.";
+  assert.ok(email.text.includes(opening));
+  assert.ok(email.html.includes(`<p>${opening}</p>`));
+  for (const first of [undefined, " "]) {
+    const legacy = offerInvitationEmail({ name: "Alex", primary: true, children: [{ ...third, studentFirstName: first }], link });
+    assert.match(legacy.text, /offer Mary Rose Synthetic a place/);
   }
 });
 
@@ -51,7 +64,7 @@ test("completion acknowledgement includes child entry details and only claims at
 });
 
 test("family supplied names cannot inject HTML into an offer email", () => {
-  const email = offerInvitationEmail({ name: "<script>alert(1)</script>", primary: true, children: [{ ...child, studentName: '<img src=x onerror="alert(1)">' }], link });
+  const email = offerInvitationEmail({ name: "<script>alert(1)</script>", primary: true, children: [{ ...child, studentName: '<img src=x onerror="alert(1)">', studentFirstName: '<img src=x onerror="alert(1)">' }], link });
   assert.doesNotMatch(email.html, /<script>|<img /);
   assert.match(email.html, /&lt;img/);
 });
