@@ -1,5 +1,7 @@
 # Rosewood V6 Backend
 
+Offer acceptance also uses the existing two Slack routes: non-final signatures to private `#enrolments-committee`, completed required signatures to `#enrolments`. See [notification semantics and recovery](../post-offer/OFFER-SLACK-NOTIFICATIONS-2026-11-08.md).
+
 ## Current acceptance workflow
 
 Families accept the provisional offer and terms now; financial choices come later.

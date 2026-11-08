@@ -1,6 +1,8 @@
 # Rosewood Enrolment V6
 
-Current wording clarification: [founding-year tuition reduction](post-offer/FOUNDING-YEAR-WORDING-2026-11-08.md). Agreement 2026.6; EOI 2026.35 / Application 2026.36 preserve all question contracts.
+Current release: [offer acceptance Slack notifications and clause 1.1 wording](post-offer/OFFER-SLACK-NOTIFICATIONS-2026-11-08.md). Agreement 2026.7; EOI 2026.36 / Application 2026.37 preserve question contracts.
+
+Previous wording clarification: [founding-year tuition reduction](post-offer/FOUNDING-YEAR-WORDING-2026-11-08.md). Agreement 2026.6; EOI 2026.35 / Application 2026.36 preserve all question contracts.
 
 ## Offer signing arrangements — 8 November 2026
 

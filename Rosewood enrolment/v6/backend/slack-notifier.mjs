@@ -95,6 +95,40 @@ export function applicationCompletionMessage({ reference, completedAt, studentNa
   };
 }
 
+// Offer acceptance is separate from the original Application submission. Only
+// operational identity/progress fields are projected; no guardian contact restrictions,
+// private links, signatures, email addresses or agreement documents reach Slack.
+export function offerAcceptanceMessage({ type, reference, studentName, entryYear, entryLevel, signedBy, requiredCount, signedAt, staffPortalUrl }) {
+  const complete = type === "offer_acceptance_complete";
+  if (!complete && type !== "offer_signature_pending") throw new Error("Slack offer notification type is invalid.");
+  const student = safeName(studentName, "student name");
+  const signed = safeNames(signedBy, "completed signer name");
+  if (!Number.isInteger(requiredCount) || requiredCount < 1 || requiredCount > 6 || signed.length > requiredCount || complete !== (signed.length === requiredCount)) throw new Error("Slack offer signature progress is invalid.");
+  if (!/^20\d{2}$/.test(String(entryYear))) throw new Error("Slack offer entry year is invalid.");
+  const level = safeName(entryLevel, "entry level");
+  const at = melbourneTime(signedAt, "offer acceptance");
+  const heading = complete ? "Provisional offer acceptance complete" : "Provisional offer: parent/guardian acceptance received";
+  const summary = complete
+    ? "All required signatures have been received. The offer remains subject to registration and written confirmation of commencement."
+    : "Acceptance is awaiting the remaining required parent/guardian signatures.";
+  return {
+    text: `${heading}. Student: ${student}. ${signed.length} of ${requiredCount} required signatures received.`,
+    blocks: [
+      { type: "section", text: { type: "mrkdwn", text: `${complete ? ":white_check_mark:" : ":hourglass_flowing_sand:"} *${heading}*` } },
+      { type: "section", fields: [
+        { type: "mrkdwn", text: `*Student*\n${student}` },
+        { type: "mrkdwn", text: `*Entry*\n${level} · ${entryYear}` },
+        { type: "mrkdwn", text: `*Signed by*\n${signed.join(", ")}` },
+        { type: "mrkdwn", text: `*Signature progress*\n${signed.length} of ${requiredCount} required signatures` },
+        ...(reference ? [{ type: "mrkdwn", text: `*Application reference*\n${safeReference(reference)}` }] : []),
+        { type: "mrkdwn", text: `*Accepted*\n${at}` }
+      ] },
+      { type: "section", text: { type: "mrkdwn", text: summary } },
+      ...actions(staffPortalUrl)
+    ]
+  };
+}
+
 function webhook(value, label) {
   const raw = String(value || "").trim();
   if (!raw) return "";
@@ -116,13 +150,14 @@ export class SlackNotifier {
 
   async send(payload) {
     const type = String(payload?.type || "");
-    const pending = type === "signature_pending";
-    const complete = type === "application_complete";
+    const pending = type === "signature_pending" || type === "offer_signature_pending";
+    const complete = type === "application_complete" || type === "offer_acceptance_complete";
     if (!pending && !complete) throw new Error("Slack notification type is invalid.");
     const webhookUrl = pending ? this.pendingWebhookUrl : this.completionWebhookUrl;
     if (!webhookUrl) return { skipped: true, reason: "not_configured" };
-    const message = pending
-      ? signaturePendingMessage({ ...payload, staffPortalUrl: this.staffPortalUrl })
+    const message = type.startsWith("offer_")
+      ? offerAcceptanceMessage({ ...payload, staffPortalUrl: this.staffPortalUrl })
+      : pending ? signaturePendingMessage({ ...payload, staffPortalUrl: this.staffPortalUrl })
       : applicationCompletionMessage({ ...payload, staffPortalUrl: this.staffPortalUrl });
     const response = await fetch(webhookUrl, {
       method: "POST",

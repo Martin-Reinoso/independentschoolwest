@@ -2911,7 +2911,7 @@ export function createService({ store, artifacts, drive, sheets, mailer, slack =
     ,["POST /v6/meetings/book", bookMeeting]
   ]);
 
-  for (const [route, action] of createOfferRoutes({ store, drive, mailer, env, clock, parseBody, requireStaffSession, requireSession, networkFingerprint, signatureBytes, createAuditEvent, emailOutbox, offerOtp, dispatchOutbox })) routes.set(route, action);
+  for (const [route, action] of createOfferRoutes({ store, drive, mailer, env, clock, parseBody, requireStaffSession, requireSession, networkFingerprint, signatureBytes, createAuditEvent, emailOutbox, slack, slackOutbox, offerOtp, dispatchOutbox })) routes.set(route, action);
 
   async function handler(event) {
     const origin = headers(event).origin || allowedOrigins[0];

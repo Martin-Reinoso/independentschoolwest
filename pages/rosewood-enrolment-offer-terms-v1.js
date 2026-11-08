@@ -1,6 +1,6 @@
 // Generated from post-offer/agreement-draft.json. Run scripts/generate-offer-content.mjs; do not edit.
 window.ROSEWOOD_OFFER_REVIEW_CONTRACT = {
-  "id": "rosewood-provisional-enrolment-agreement-2026.6",
+  "id": "rosewood-provisional-enrolment-agreement-2026.7",
   "status": "approved",
   "preparedOn": "2026-11-08",
   "title": "Terms and Conditions of Enrolment",
@@ -11,7 +11,7 @@ window.ROSEWOOD_OFFER_REVIEW_CONTRACT = {
       "id": "1",
       "title": "Acceptance of Offer of Enrolment",
       "paragraphs": [
-        "1.1 An offer of enrolment must be accepted by both Parents, where appropriate, unless the College agrees to waive this requirement. Upon acceptance, all signatories will be jointly and severally liable for the obligations contained in these terms and conditions.",
+        "1.1 An offer of enrolment must be accepted by both Parents, where applicable, unless the College agrees to waive this requirement. Upon acceptance, all signatories will be jointly and severally liable for the obligations contained in these terms and conditions.",
         "1.2 The offer identifies the Student, entry year and year level. Acceptance is subject to the commencement conditions in clause 2 and the Fee Schedule. No separate non-refundable acceptance fee is imposed by these terms.",
         "1.3 A request to defer entry must be made to the College in writing. A place in another year is available only if confirmed in writing. Otherwise, the College may offer a waiting-list position; this does not guarantee a future place.",
         "1.4 The issued offer schedule, Fee Schedule, these terms and the policies identified in this agreement form the Enrolment Agreement."
