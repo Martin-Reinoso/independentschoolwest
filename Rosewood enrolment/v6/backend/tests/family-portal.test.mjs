@@ -114,3 +114,35 @@ test('an expired unsigned offer keeps its deadline status and cannot be reopened
  assert.equal((await h.call('/v6/family/open',{target:'offer',applicationId:'app-synthetic',offerId:offer.id},token)).httpStatus,403);
  offer.status='withdrawn';assert.equal((await h.call('/v6/family/context',undefined,token)).children[0].stage,'offer_withdrawn');
 });
+
+test('missing historical invitation index retains only the verified offer children and cannot grant Application access',async()=>{
+ const h=harness();await h.issue();const primary=await h.login();sibling(h,'Unissued sibling','submitted');sibling(h,'Foreign sibling','submitted','other-family');
+ const original=structuredClone([...h.apps]),messages=h.mail.length,outbox=h.outbox.length;
+ h.store.getInvitationById=async()=>null;
+ const view=await h.call('/v6/family/context',undefined,primary.session);
+ assert.equal(view.httpStatus,200);assert.equal(view.canUseApplications,false);assert.deepEqual(view.children.map(c=>c.applicationId),['app-synthetic']);assert.equal(view.children[0].applicationAction,'');
+ const offerId=view.children[0].offer.offerId;
+ const opened=await h.call('/v6/family/open',{target:'offer',applicationId:'app-synthetic',offerId},primary.session);assert.equal(opened.httpStatus,200);assert.equal((await h.child(opened.sessionToken)).httpStatus,200);
+ assert.equal((await h.call('/v6/family/open',{target:'application',applicationId:'app-synthetic'},primary.session)).httpStatus,403);
+ assert.equal((await h.call('/v6/family/context',undefined,familySession(h))).httpStatus,403);
+ assert.equal((await h.call('/v6/family/open',{target:'offer',applicationId:'Unissued sibling',offerId},primary.session)).httpStatus,403);
+ assert.deepEqual([...h.apps],original);assert.equal(h.mail.length,messages);assert.equal(h.outbox.length,outbox);
+ await h.call('/v6/session/logout',{endFamilyAccess:true},opened.sessionToken);assert.equal((await h.child(primary.session)).httpStatus,401);
+});
+
+test('missing historical invitation index still allows released secondary review but honours revocation and contact restrictions',async()=>{
+ const h=harness();await h.issue();const primary=await h.login();await sign(h,primary.session);const secondary=await h.login(1);h.store.getInvitationById=async()=>null;
+ const view=await h.call('/v6/family/context',undefined,secondary.session);assert.equal(view.httpStatus,200);assert.equal(view.children.length,1);assert.equal(view.canUseApplications,false);
+ h.apps.get('app-synthetic').signerControls[1].contactPermission=false;assert.equal((await h.call('/v6/family/context',undefined,secondary.session)).httpStatus,403);
+ h.apps.get('app-synthetic').signerControls[1].contactPermission=true;
+ [...h.tasks.values()].find(t=>!t.primary).status='revoked';assert.equal((await h.call('/v6/family/context',undefined,secondary.session)).httpStatus,403);
+});
+
+test('missing index never repairs mismatched family relationships or reuses a consumed code',async()=>{
+ const h=harness();await h.issue();const primary=await h.login();h.store.getInvitationById=async()=>null;
+ assert.equal((await h.call('/v6/family/context',undefined,primary.session)).httpStatus,200);
+ assert.equal((await h.call('/v6/offers/verify-code',{invite:primary.invite,challengeId:primary.challengeId,code:primary.code},'')).error,'OTP_INVALID');
+ assert.equal((await h.call('/v6/family/context',undefined,primary.session)).httpStatus,200);
+ h.apps.get('app-synthetic').invitationId='other-family';assert.equal((await h.call('/v6/family/context',undefined,primary.session)).httpStatus,403);
+ h.apps.get('app-synthetic').invitationId='family-synthetic';[...h.families.values()][0].offerIds=[];assert.equal((await h.call('/v6/family/context',undefined,primary.session)).httpStatus,403);
+});
