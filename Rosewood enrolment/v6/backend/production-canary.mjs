@@ -111,7 +111,7 @@ async function checkPublicAssets({ fetchImpl, siteBaseUrl, offersEnabled }) {
     {path:'/pages/rosewood-enrolment-offer-v1.js',markers:['/v6/offers/sign','/v6/offers/verify-code']},
     {path:'/pages/rosewood-enrolment-offers-admin-v1.html',markers:['Send reviewed family offer']},
     {path:'/pages/rosewood-enrolment-offers-admin-v1.js',markers:['/v6/staff/offers/preview','letterPdfBase64','childOpenedAt']},
-    {path:'/pages/rosewood-enrolment-offer-terms-v1.js',markers:['ROSEWOOD_OFFER_REVIEW_CONTRACT','Terms and Conditions of Enrolment','rosewood-provisional-enrolment-agreement-2026.3-review']},
+    {path:'/pages/rosewood-enrolment-offer-terms-v1.js',markers:['ROSEWOOD_OFFER_REVIEW_CONTRACT','Terms and Conditions of Enrolment',OFFER_CONTRACT.id]},
     {path:'/pages/rosewood-enrolment-offer-v1.css',markers:['.child-card']},
     {path:'/pages/rosewood-enrolment-acceptance-v1.css',markers:['.acceptance-portal','.fine-print']},
     {path:'/pages/rosewood-enrolment-offer-policy-reader.js',markers:['ROSEWOOD_OFFER_POLICY_READER','Return to offer acceptance']}
