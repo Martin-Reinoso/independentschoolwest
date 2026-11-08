@@ -1,5 +1,16 @@
 # Current provisional-offer release gates
 
+## Current correction: financial choices are made later
+
+The user clarified that this stage is acceptance only. The six financial-choice inputs
+have been removed from staff preparation, new offer packets and the signed PDF schedule.
+Bond/payment choices are deferred; the published fee terms remain available. Required
+offer dates are now visible before family signing. Agreement 2026.4 is approved and
+active; current assets are EOI 2026.30 / Application 2026.31. See the
+[verified correction and release evidence](PAYMENT-CHOICES-LATER-2026-11-08.md).
+This supersedes earlier requirements to select financial arrangements before issue.
+
+
 8 November 2026. Engineering is deployed and real issuance is enabled following explicit final-terms approval. No real
 family has been selected or emailed. [Production release evidence](PRODUCTION-RELEASE-2026-11-08.md)
 is authoritative; earlier planning checkpoints are historical.

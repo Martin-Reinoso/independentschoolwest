@@ -1,5 +1,16 @@
 # V6 Form And Data Evolution
 
+## Current correction: financial choices are made later
+
+The user clarified that this stage is acceptance only. The six financial-choice inputs
+have been removed from staff preparation, new offer packets and the signed PDF schedule.
+Bond/payment choices are deferred; the published fee terms remain available. Required
+offer dates are now visible before family signing. Agreement 2026.4 is approved and
+active; current assets are EOI 2026.30 / Application 2026.31. See the
+[verified correction and release evidence](post-offer/PAYMENT-CHOICES-LATER-2026-11-08.md).
+This supersedes earlier requirements to select financial arrangements before issue.
+
+
 ## Current offer activation — 8 November 2026
 
 The user approved the final terms and real offers are enabled. The exact contract hash,
