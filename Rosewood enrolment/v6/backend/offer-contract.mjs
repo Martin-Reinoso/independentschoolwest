@@ -1,7 +1,7 @@
 // Generated from post-offer/agreement-draft.json. Run scripts/generate-offer-content.mjs; do not edit.
 // Issue requires approval of this exact content hash. Draft status is not approval.
 export const OFFER_CONTRACT = {
-  "id": "rosewood-provisional-enrolment-agreement-2026.4",
+  "id": "rosewood-provisional-enrolment-agreement-2026.5",
   "status": "approved",
   "preparedOn": "2026-11-08",
   "title": "Terms and Conditions of Enrolment",
@@ -26,8 +26,8 @@ export const OFFER_CONTRACT = {
         "2.2 Parents must provide accurate information and relevant existing reports or assessments reasonably needed to plan the Student’s education, health and safety. Requests will be explained and limited to information relevant to that purpose; further assessment requirements will be discussed with the family.",
         "2.3 Where English-language support is needed, the College will discuss assessment, support and participation arrangements with the family. These terms do not impose an automatic English-proficiency exclusion or cancellation rule.",
         "2.4 Rosewood is working towards opening in 2027. Opening and commencement remain subject to VRQA registration, applicable registration requirements and written confirmation of commencement from the College. Acceptance of this agreement does not itself confirm that the Student may commence.",
-        "2.5 No tuition, levy, bond or withdrawal charge becomes payable before those commencement conditions are confirmed as satisfied. The issued offer schedule specifies the acceptance and conditions deadlines. Families will choose their bond option and payment arrangements separately at a later stage; accepting this provisional offer does not record those choices or request payment.",
-        "2.6 If the commencement conditions are not met by the stated deadline, either party may end this agreement in writing without a withdrawal charge. Any money paid under it must be returned. Any applicable refund arrangements will be provided with the later payment arrangements. Extending that deadline requires express written agreement."
+        "2.5 No tuition, levy, bond or withdrawal charge becomes payable before those commencement conditions are confirmed as satisfied. Families will choose their bond option and payment arrangements separately at a later stage; accepting this provisional offer does not record those choices or request payment.",
+        "2.6 If the commencement conditions cannot be satisfied, either party may end this agreement in writing without a withdrawal charge. Any money paid under it must be returned. Any applicable refund arrangements will be provided with the later payment arrangements."
       ]
     },
     {
@@ -155,7 +155,7 @@ export const OFFER_CONTRACT = {
       "paragraphs": [
         "14.1 College means Rosewood College, operated by Families for Education Ltd. Board means the governing board of Families for Education Ltd. Principal includes an authorised delegate where appropriate.",
         "14.2 Parent means a parent, legal guardian or other person whose authority to enter this agreement has been accepted by the College. Student means the child identified in the offer.",
-        "14.3 Offer schedule means the child-specific place, dates and commencement conditions issued by the College. Fee Schedule means the identified schedule of tuition, levies, extras, discounts, bond arrangements, payment terms and refunds forming part of that offer.",
+        "14.3 Offer schedule means the child-specific place, entry year, year level and commencement conditions issued by the College. Fee Schedule means the identified schedule of tuition, levies, extras, discounts, bond arrangements, payment terms and refunds forming part of that offer.",
         "14.4 Enrolment Agreement means the issued offer and schedules, these terms and the identified policy versions accepted by the required signatories. Nothing in it excludes rights or obligations that cannot lawfully be excluded."
       ]
     }
@@ -163,8 +163,6 @@ export const OFFER_CONTRACT = {
   "offerFields": [
     "Student name",
     "Commencement year and year level",
-    "Commencement date",
-    "Offer acceptance deadline",
     "Authorised College offer issuer",
     "Required signers or documented exception",
     "Fee Schedule year version and approval",

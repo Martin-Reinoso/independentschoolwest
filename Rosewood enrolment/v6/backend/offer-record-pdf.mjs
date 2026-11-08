@@ -26,7 +26,10 @@ export async function renderOfferRecordPdf(offer, signatureImages) {
   doc.paragraph(`${p.studentName}\n${p.entryLevel} - ${p.entryYear}`,{strong:true,size:11});
   if(p.details?.student?.preferred)doc.paragraph(`Preferred name: ${p.details.student.preferred}`);
   for(const guardian of p.details?.guardians||[])doc.paragraph(`${[guardian.first,guardian.middle,guardian.last].filter(Boolean).join(' ')}${guardian.relationship?` - ${guardian.relationship}`:''}`);
-  doc.paragraph(`Issued: ${date(offer.createdAt)}\nAccept by: ${date(s.acceptBy)}\nCommencement conditions deadline: ${date(s.conditionsBy)}`);
+  const dates=[`Issued: ${date(offer.createdAt)}`];
+  if(s.acceptBy)dates.push(`Accept by: ${date(s.acceptBy)}`);
+  if(s.conditionsBy)dates.push(`Commencement conditions deadline: ${date(s.conditionsBy)}`);
+  doc.paragraph(dates.join('\n'));
   doc.heading('Electronic signatures');
   doc.paragraph(p.contract.acceptanceDeclaration);
   doc.paragraph(p.contract.termsDeclaration);
