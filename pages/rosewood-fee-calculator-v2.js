@@ -361,7 +361,7 @@
       heading.textContent = student.label;
       const list = document.createElement("dl");
       const entries = [
-        ["Foundation reduction", formatReduction(student.foundationDiscountCents)],
+        ["Founding-year tuition reduction for 2027", formatReduction(student.foundationDiscountCents)],
         ["Sibling reduction", formatReduction(student.siblingDiscountCents)],
         ["Bond reduction", formatReduction(student.bondDiscountCents)],
         ["Annual reduction", formatReduction(student.annualDiscountCents)],
