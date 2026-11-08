@@ -77,7 +77,7 @@ export async function offerTaskAccess(store, task, now, {all=false}={}) {
 }
 
 export function createOfferRoutes(c) {
- const {store,drive,mailer,env,clock,parseBody,requireStaffSession,requireSession,networkFingerprint,signatureBytes,createAuditEvent,emailOutbox,offerOtp,dispatchOutbox}=c;
+ const {store,drive,mailer,env,clock,parseBody,requireStaffSession,requireSession,networkFingerprint,signatureBytes,createAuditEvent,emailOutbox,slack,slackOutbox,offerOtp,dispatchOutbox}=c;
  const iso=()=>new Date(clock()).toISOString();
  const page=env.ENROLMENT_OFFER_PAGE_URL || 'https://ffe.org.au/pages/rosewood-enrolment-offer-v1.html';
  const audit=(record,type,actor,details={})=>createAuditEvent({workflow:'enrolment_offer',recordId:record.id,type,at:iso(),actorType:actor.scope==='staff'?'staff':'family',actorId:actor.email,details});
@@ -223,6 +223,17 @@ export function createOfferRoutes(c) {
      }
      if(next.status==='signed_conditional')for(const recipient of nextFamily.accounts.filter(a=>a.children.some(c=>c.offerId===next.id)&&offerSignerContactAllowed(next,app,next.signers.find(s=>s.id===a.children.find(c=>c.offerId===next.id).signerId)))){
        messages.push(emailOutbox({to:recipient.email,...offerCompletionEmail({name:recipient.name,child:offer.packet,hasAttachment:true}),_offerRecord:next.acceptanceRecord,tags:{workflow:'enrolment_offer',message_type:'offer_complete',record_id:offer.id},_tracking:{kind:'offer_family_receipt',familyId:family.id,taskTokenHash:recipient.tokenHash,offerId:offer.id}},clock()));
+     }
+     const complete=next.status==='signed_conditional';
+     if(complete?slack?.completionEnabled:slack?.pendingEnabled){
+       const required=requiredOfferSigners(next),signedRequired=next.signatures.filter(s=>required.some(person=>person.id===s.signerId));
+       messages.push(slackOutbox({
+         type:complete?'offer_acceptance_complete':'offer_signature_pending',
+         reference:app.reference||'',studentName:next.packet.studentName,
+         entryYear:next.packet.entryYear,entryLevel:next.packet.entryLevel,
+         signedBy:signedRequired.map(s=>s.signerName),requiredCount:required.length,
+         signedAt:signature.signedAt
+       },clock()));
      }
      await store.signOffer({offer:next,family:nextFamily,expectedFamilyRevision:family.revision,tasks,applications:[...applications.values()],expectedRevision:offer.revision,expectedApplication:app,taskTokenHash:task.tokenHash,signature,outboxEvents:messages,auditEvents:[audit(offer,'offer.signed',actor,{signerId:signer.id,packetHash:offer.packetHash}),...(next.status==='signed_conditional'?[audit(offer,'offer.completed',actor,{packetHash:offer.packetHash})]:[])]});committed=true;await dispatchOutbox(20);return summary(next);
    }catch(error){if(!committed)for(const f of files)await drive.deleteArtifact(f).catch(()=>console.error('Offer artifact cleanup failed'));throw error;}
