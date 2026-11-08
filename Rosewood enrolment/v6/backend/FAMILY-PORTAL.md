@@ -1,7 +1,7 @@
 # Shared family overview and verified navigation
 
-Local candidate, 8 November 2026. Not deployed. The current completion plan is the
-release authority; this document describes the implemented integration.
+Deployed integration, 8 November 2026. Real offers are enabled following the user’s
+final-terms approval; see [activation evidence](../post-offer/OFFER-ACTIVATION-2026-11-08.md).
 
 ## Entry and scope
 
@@ -74,5 +74,5 @@ at 1440/390/320px, preserving the synthetic Applications and making no external
 requests. The separate connected-acceptance test retains both guardian signatures,
 all seven policy readers and the exact stored signed-PDF download.
 
-These are local checks. AWS/Google isolation, actual approved-inbox delivery,
-deployment and production read-only monitoring remain separate release gates.
+The local checks above were supplemented by the completed isolated AWS/Google/Gmail
+journey and verified production release/activation recorded in the linked evidence.

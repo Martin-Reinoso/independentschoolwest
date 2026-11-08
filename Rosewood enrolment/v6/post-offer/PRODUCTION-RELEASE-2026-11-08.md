@@ -1,5 +1,15 @@
 # Provisional-offer production release — 8 November 2026
 
+## Current activation state
+
+The user approved the final terms and real issuance was enabled on 8 November 2026.
+See [exact approval and successful activation checks](OFFER-ACTIVATION-2026-11-08.md).
+The issuance-off state below records the preceding engineering release, not the current
+operating configuration. The “before sending” approval/activation steps are now complete;
+staff still preview and explicitly send each selected family offer.
+
+## Historical engineering release
+
 The acceptance workflow is deployed to AWS and GitHub Pages. Real offer issuance is
 **disabled**, the approved-content hash is blank, and no real family was selected or
 emailed. [PR #56](https://github.com/Martin-Reinoso/independentschoolwest/pull/56) merged

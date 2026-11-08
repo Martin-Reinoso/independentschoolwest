@@ -1,5 +1,13 @@
 # V6 Form And Data Evolution
 
+## Current offer activation — 8 November 2026
+
+The user approved the final terms and real offers are enabled. The exact contract hash,
+no-email activation and passing regression/live checks are recorded in
+[activation evidence](post-offer/OFFER-ACTIVATION-2026-11-08.md). Historical candidate
+and pending-approval statements below do not describe the current release.
+
+
 ## 8 November 2026 family portal session integration
 
 The local candidate adds a computed overview over existing invitation/Application/offer

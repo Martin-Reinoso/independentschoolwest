@@ -1,5 +1,13 @@
 # V6.6 Parent/Guardian And Signature Question Matrix
 
+## Current offer activation — 8 November 2026
+
+The user approved the final terms and real offers are enabled. The exact contract hash,
+no-email activation and passing regression/live checks are recorded in
+[activation evidence](post-offer/OFFER-ACTIVATION-2026-11-08.md). Historical candidate
+and pending-approval statements below do not describe the current release.
+
+
 ## 8 November 2026 online offer candidate
 
 An invited-email OTP post-offer portal lists only the children that guardian is authorised to access. Selecting a child displays the immutable child/year/level, offer dates, fee schedule, bond choice and complete terms/policies. Signing requires four explicit acknowledgements: complete review, commencement conditions, acceptance of terms, and electronic-signing consent, plus a signature drawing or typed-signature rendering. The signer is derived from invited-email OTP, never a free-form guardian identifier. There is no policy-upload field, payment capture or inferred photo/previous-school permission. This candidate is not active; existing Application questions remain unchanged.
