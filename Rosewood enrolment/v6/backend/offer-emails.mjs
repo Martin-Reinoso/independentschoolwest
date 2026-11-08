@@ -29,7 +29,7 @@ export function offerInvitationEmail({ name, primary, children, link }) {
       `Attached is your family's personalised provisional offer letter from our Founding Principal, Dr Anne-Marie Irwin. It sets out ${plural ? "the offers" : "the offer"} listed below.`,
       OFFER_CONTRACT.introduction.text,
       `Use the link below to access your family portal and select ${plural ? "each child" : "your child"} to check the details, review the Terms and Conditions of Enrolment and digitally sign acceptance. You do not need to upload any documents.`,
-      "Where another parent or guardian is required to sign, they will receive their own email after you have signed for all children included in their request. Acceptance is complete once all required guardians have signed."
+      "Where another parent or guardian is required to sign and may be contacted, they will receive their own email after you have signed for all children included in their request. A guardian with a contact restriction will not be emailed; the College will confirm any remaining signing arrangement. Acceptance is complete once all required guardians have signed."
     ] : [
       `The first parent or guardian has signed acceptance of ${plural ? "the provisional offers" : "the provisional offer"} listed below. Your signature is now requested.`,
       "Use your private link to verify your email, review the submitted details and terms, and sign. Acceptance is complete once all required guardians have signed.",

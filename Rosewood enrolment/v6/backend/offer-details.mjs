@@ -1,26 +1,44 @@
 import crypto from "node:crypto";
 import {offerContentHash} from './offer-content-hash.mjs';
+import {contactPermissionAllowed} from './schema.mjs';
 
 const fail = (code, message) => { throw Object.assign(new Error(message), { status: 422, code }); };
 export const personName = person => [person.first, person.middle, person.last].filter(Boolean).join(" ");
 const clean = (value, max = 100) => String(value ?? "").trim().slice(0, max);
 const digest = offerContentHash;
 
+// Read old completed Applications without rewriting their frozen answers/signatures.
+// A modern/partial control set never falls back to old contact answers.
+export function applicationOfferControls(app) {
+  const count=Number(app?.guardianCount), stored=app?.signerControls;
+  if(Array.isArray(stored)&&stored.length)return stored;
+  if(!app || app.status!=='submitted' || !/^rosewood-application-2026\.[1-5]$/.test(app.formVersion||'') || !Number.isInteger(count) || count<1 || count>6 || app.guardianIds?.length!==count || new Set(app.guardianIds).size!==count)return [];
+  const email=v=>String(v||'').trim().toLowerCase();
+  const values=app.values||{};
+  return app.guardianIds.map((guardianId,guardianIndex)=>{
+    const prefix=`app_guardian_${guardianIndex}_`,currentEmail=email(values[prefix+'email']);
+    return {guardianId,guardianIndex,name:[values[prefix+'first'],values[prefix+'last']].filter(Boolean).join(' '),currentEmail,
+      contactPermission:guardianIndex===0?currentEmail===email(app.recipientEmail):contactPermissionAllowed(values[prefix+'permission'],app.formVersion)};
+  });
+}
+
+export const requiredOfferSigners = offer => offer.signers.filter(signer=>signer.required!==false);
+
 export function initialOfferDetails(app, signers) {
   const values = app.values || {};
   return {
     student: Object.fromEntries(["first", "middle", "last", "preferred"].map(key => [key, clean(values[`student_${key}`])])),
     guardians: signers.map(signer => {
-      const control = app.signerControls.find(c => c.guardianId === signer.id);
+      const control = applicationOfferControls(app).find(c => c.guardianId === signer.id);
       const prefix = `app_guardian_${control.guardianIndex}_`;
       const fallback = signer.name.split(/\s+/);
-      return { id: signer.id, source: "application", first: clean(values[prefix + "first"] || fallback.slice(0, -1).join(" ") || fallback[0]), middle: "", last: clean(values[prefix + "last"] || fallback.at(-1)), mobile: clean(values[prefix + "mobile"], 40), email: signer.email, relationship: clean(values[prefix + "relationship"]), contactPermission: control.contactPermission === true, shareContact: values[prefix + "share"] === "Yes, share them" };
+      return { id: signer.id, source: "application", signatureRequired: signer.required!==false, contactRestrictionLocked:control.contactPermission===false, first: clean(values[prefix + "first"] || fallback.slice(0, -1).join(" ") || fallback[0]), middle: "", last: clean(values[prefix + "last"] || fallback.at(-1)), mobile: clean(values[prefix + "mobile"], 40), email: signer.email, relationship: clean(values[prefix + "relationship"]), contactPermission: control.contactPermission === true, shareContact: values[prefix + "share"] === "Yes, share them" };
     })
   };
 }
 
 export function packetWithDetails(packet, details) {
-  return { ...packet, studentName: personName(details.student), signers: details.guardians.map(person => ({ name: personName(person) })),
+  return { ...packet, studentName: personName(details.student), signers: details.guardians.filter(person=>person.signatureRequired!==false).map(person => ({ name: personName(person) })),
     // The common signed packet contains identities and relationships. Private contact
     // fields are held in the restricted offer revision and bound by its content hash.
     details: { student: details.student, guardians: details.guardians.map(({ first, middle, last, relationship }) => ({ first, middle, last, relationship })) },
@@ -31,8 +49,8 @@ export function packetWithDetails(packet, details) {
 export function visibleOfferDetails(details, { primary, email }) {
   if (primary) return structuredClone(details);
   return { student: structuredClone(details.student), guardians: details.guardians.map(guardian => {
-    const { id, first, middle, last, relationship } = guardian;
-    return { id, first, middle, last, relationship, ...(guardian.email === email || guardian.shareContact ? { email: guardian.email, mobile: guardian.mobile } : {}) };
+    const { id, first, middle, last, relationship, signatureRequired } = guardian;
+    return { id, first, middle, last, relationship, signatureRequired, ...(guardian.email === email || guardian.shareContact ? { email: guardian.email, mobile: guardian.mobile } : {}) };
   }) };
 }
 
@@ -55,18 +73,20 @@ export function validateOfferDetails(input, existing, { primaryEmail, confirmed 
     const id = prior?.id || `offer-guardian-${crypto.randomUUID()}`;
     if (seenIds.has(id)) fail("GUARDIAN_DUPLICATE", "Each guardian must be listed once.");
     seenIds.add(id);
-    const address = field(person.email, "the guardian's email", { max: 254 }).toLowerCase();
-    if (!/^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(address)) fail("EMAIL_INVALID", "Enter one valid email address for each guardian.");
+    const restricted=prior?.contactPermission===false;
+    const address = field(person.email, "the guardian's email", { max: 254, optional:restricted }).toLowerCase();
+    if ((address || !restricted) && !/^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(address)) fail("EMAIL_INVALID", "Enter one valid email address for each guardian.");
     if (prior && address !== prior.email) fail("SIGNING_EMAIL_LOCKED", "Existing signing emails cannot be changed here. Email enrolment@ffe.org.au for assistance.");
-    if (seenEmails.has(address)) fail("GUARDIAN_DUPLICATE", "Each guardian needs their own email address to sign.");
-    seenEmails.add(address);
+    if (address && seenEmails.has(address)) fail("GUARDIAN_DUPLICATE", "Each guardian needs their own email address to sign.");
+    if(address)seenEmails.add(address);
     if (typeof person.contactPermission !== "boolean") fail("CONTACT_PERMISSION_REQUIRED", "Confirm whether the College may contact each guardian.");
+    if(prior?.contactRestrictionLocked && person.contactPermission)fail("CONTACT_PERMISSION_LOCKED", "The recorded contact restriction must be reviewed by the College.");
     if (address === primaryEmail && !person.contactPermission) fail("PRIMARY_CONTACT_REQUIRED", "The signing guardian must permit contact for this offer.");
-    const mobile = field(person.mobile, "the guardian's mobile number", { max: 40 });
-    if (!/^[+()\d\s.-]{6,40}$/.test(mobile) || mobile.replace(/\D/g, '').length < 6) fail("PHONE_INVALID", "Check the guardian's mobile number.");
+    const mobile = field(person.mobile, "the guardian's mobile number", { max: 40, optional:restricted });
+    if (!(restricted && mobile===prior.mobile) && (mobile || !restricted) && (!/^[+()\d\s.-]{6,40}$/.test(mobile) || mobile.replace(/\D/g, '').length < 6)) fail("PHONE_INVALID", "Check the guardian's mobile number.");
     const relationship = field(person.relationship, "the guardian's relationship");
     if (!["Parent", "Mother", "Father", "Legal guardian"].includes(relationship) && (!prior || relationship !== prior.relationship)) fail("GUARDIAN_AUTHORITY_REQUIRED", "For another relationship, email enrolment@ffe.org.au to confirm the signing arrangement.");
-    return { id, source: prior?.source || "offer_added", first: field(person.first, "the guardian's given name"), middle: field(person.middle ?? "", "the guardian's middle name", { optional: true }), last: field(person.last, "the guardian's surname"), mobile, email: address, relationship, contactPermission: person.contactPermission, shareContact: prior?.shareContact || false };
+    return { id, source: prior?.source || "offer_added", signatureRequired:prior?.signatureRequired!==false, contactRestrictionLocked:prior?.contactRestrictionLocked===true, first: field(person.first, "the guardian's given name"), middle: field(person.middle ?? "", "the guardian's middle name", { optional: true }), last: field(person.last, "the guardian's surname"), mobile, email: address, relationship, contactPermission: person.contactPermission, shareContact: prior?.shareContact || false };
   });
   // Existing required guardians, including saved additions, cannot be removed in a
   // subsequent draft. An authorised College arrangement is a separate operation.
@@ -75,11 +95,11 @@ export function validateOfferDetails(input, existing, { primaryEmail, confirmed 
 }
 
 export function offerSignerContactAllowed(offer, app, signer) {
-  if (!signer) return false;
+  if (!signer || signer.required===false) return false;
   const detail = offer.details?.guardians.find(person => person.id === signer.id);
   if (detail?.contactPermission === false) return false;
   if (signer.source === "offer_added") return detail?.source === "offer_added" && detail.contactPermission === true && detail.email === signer.email && Boolean(offer.detailsConfirmedBy);
-  const control = app?.signerControls?.find(person => person.guardianId === signer.id);
+  const control = applicationOfferControls(app).find(person => person.guardianId === signer.id);
   return control?.contactPermission === true && String(control.currentEmail || "").trim().toLowerCase() === signer.email;
 }
 
@@ -90,7 +110,7 @@ export function reconcileOfferAccounts(family, offer) {
   for (const account of accounts) {
     account.children = account.children.filter(child => child.offerId !== offer.id || account.tokenHash);
   }
-  for (const signer of offer.signers) {
+  for (const signer of requiredOfferSigners(offer).filter(person=>person.email)) {
     const existing = accounts.find(account => account.email === signer.email && account.children.some(child => child.offerId === offer.id));
     const target = existing || accounts.find(account => account.email === signer.email && !account.tokenHash) || { id: `recipient-${crypto.randomUUID()}`, email: signer.email, primary: false, tokenHash: "", children: [] };
     target.name = signer.name;

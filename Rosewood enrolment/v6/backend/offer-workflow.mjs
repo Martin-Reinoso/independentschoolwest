@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { initialOfferDetails, packetWithDetails, visibleOfferDetails, validateOfferDetails, personName, offerSignerContactAllowed, reconcileOfferAccounts } from './offer-details.mjs';
+import { initialOfferDetails, packetWithDetails, visibleOfferDetails, validateOfferDetails, personName, offerSignerContactAllowed, reconcileOfferAccounts, applicationOfferControls, requiredOfferSigners } from './offer-details.mjs';
 import { OFFER_CONTRACT } from './offer-contract.mjs';
 import {letterContent, renderOfferLetter} from './offer-letter.mjs';
 import {principalSignatureFromConfig} from './offer-letter-assets.mjs';
@@ -17,17 +17,17 @@ const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<'
 const checksum = value => hash(value);
 
 export function offerSigners(app) {
-  const controls = app.signerControls || [];
-  if (!controls.length || controls.length !== Number(app.guardianCount)) throw failure(409,'SIGNER_REVIEW_REQUIRED','Review the required guardians before preparing an offer.');
+  const controls = applicationOfferControls(app);
+  if (!controls.length || controls.length !== Number(app.guardianCount) || new Set(controls.map(c=>c.guardianId)).size!==controls.length || new Set(controls.map(c=>Number(c.guardianIndex))).size!==controls.length || controls.some(c=>!Number.isInteger(Number(c.guardianIndex))||Number(c.guardianIndex)<0||Number(c.guardianIndex)>=controls.length)) throw failure(409,'SIGNER_REVIEW_REQUIRED','Review the required guardians before preparing an offer.');
   return controls.map(control => {
     const i=control.guardianIndex;
     const person={id:control.guardianId, name:text(control.name || [app.values?.[`app_guardian_${i}_first`],app.values?.[`app_guardian_${i}_last`]].filter(Boolean).join(' ')), email:email(control.currentEmail), permitted:control.contactPermission === true};
-    if (!person.id || !person.name || !/^\S+@\S+\.\S+$/.test(person.email) || !person.permitted) throw failure(409,'SIGNER_REVIEW_REQUIRED','A required guardian cannot be contacted. Resolve the authorised signing arrangement with the College first.');
+    if (!person.id || !person.name || (person.permitted && !/^\S+@\S+\.\S+$/.test(person.email))) throw failure(409,'SIGNER_REVIEW_REQUIRED','A required guardian cannot be contacted. Resolve the authorised signing arrangement with the College first.');
     return person;
   });
 }
 
-export function makeOfferPacket(app, input, now=Date.now()) {
+export function makeOfferPacket(app, input, now=Date.now(), arrangement={}) {
   if (!app || app.status !== 'submitted') throw failure(409,'APPLICATION_NOT_COMPLETE','A completed application is required before an offer can be prepared.');
   let signers=offerSigners(app);
   const studentName=[app.values?.student_first,app.values?.student_last].filter(Boolean).join(' ');
@@ -38,10 +38,17 @@ export function makeOfferPacket(app, input, now=Date.now()) {
   if(financialFields.some(key=>Object.hasOwn(input,key)))throw failure(422,'PAYMENT_CHOICES_DEFERRED','Bond and payment choices are made later. Reload the staff portal to prepare this provisional offer without financial selections.');
   if(['acceptBy','conditionsBy'].some(key=>Object.hasOwn(input,key)))throw failure(422,'OFFER_DEADLINES_REMOVED','Offer deadlines are no longer required. Reload the staff portal to prepare this provisional offer without deadline dates.');
   const schedule={expiryPolicy:'none',financialArrangements:'deferred'};
+  if(!arrangement || typeof arrangement!=='object' || Array.isArray(arrangement) || Object.keys(arrangement).some(k=>!['mode','reason'].includes(k)) || !['all_guardians','primary_only'].includes(arrangement.mode||'all_guardians'))throw failure(422,'SIGNING_ARRANGEMENT_REQUIRED','Choose the signing arrangement for this child.');
+  const mode=arrangement.mode||'all_guardians', reason=text(arrangement.reason,2000),primary=signers.find(s=>s.email===email(app.recipientEmail));
+  if(!primary?.permitted)throw failure(409,'PRIMARY_REVIEW_REQUIRED','Review the main carer contact details before preparing an offer.');
+  if(mode==='primary_only' && (reason.length<10 || String(arrangement.reason).length>2000))throw failure(422,'SIGNING_APPROVAL_REQUIRED','Record why the College has approved the main carer alone to sign.');
+  if(mode==='all_guardians' && reason)throw failure(422,'SIGNING_APPROVAL_REQUIRED','An approval reason applies only to the main-carer-only arrangement.');
+  signers=signers.map(s=>({...s,required:mode!=='primary_only'||s.id===primary.id}));
+  const signingArrangement={mode,reason,primaryGuardianId:primary.id,excludedGuardianIds:signers.filter(s=>!s.required).map(s=>s.id)};
   const details=initialOfferDetails(app,signers);
   signers=signers.map(signer=>({...signer,name:personName(details.guardians.find(person=>person.id===signer.id))}));
-  const packet=packetWithDetails({contract:OFFER_CONTRACT, studentName, entryYear, entryLevel, signers:signers.map(({name})=>({name})), schedule},details);
-  return {packet, details, packetHash:checksum(packet), signers, applicationId:app.id, applicationRevisionHash:app.revisionHash, signatureControlRevision:Number(app.signatureControlRevision || 0)};
+  const packet=packetWithDetails({contract:OFFER_CONTRACT, studentName, entryYear, entryLevel, signers:signers.map(({name})=>({name})), schedule, ...(mode==='primary_only'?{signingArrangement:'The College has approved the main carer alone to sign for the guardians listed when this offer was issued. Any newly added guardian must also sign.'}:{})},details);
+  return {packet, details, signingArrangement, packetHash:checksum(packet), signers, applicationId:app.id, applicationRevisionHash:app.revisionHash, signatureControlRevision:Number(app.signatureControlRevision || 0)};
 }
 
 // Existing issued deadlines remain authoritative; only explicitly deadline-free new offers stay open.
@@ -76,7 +83,7 @@ export function createOfferRoutes(c) {
  const audit=(record,type,actor,details={})=>createAuditEvent({workflow:'enrolment_offer',recordId:record.id,type,at:iso(),actorType:actor.scope==='staff'?'staff':'family',actorId:actor.email,details});
  const enabled=()=>{if(env.ENROLMENT_OFFERS_ENABLED!=='true')throw failure(503,'OFFERS_NOT_ENABLED','Online offer acceptance is not yet available. Please contact the College.');};
  const approved=()=>env.ENROLMENT_OFFER_APPROVED_HASH===hash(OFFER_CONTRACT);
- const summary=o=>({offerId:o.id,applicationId:o.applicationId,familyId:o.familyId,studentName:o.packet.studentName,entryYear:o.packet.entryYear,entryLevel:o.packet.entryLevel,status:o.status,required:o.signers.length,signed:o.signatures.length,createdAt:o.createdAt,signers:o.signers.map(s=>({name:s.name,signedAt:o.signatures.find(x=>x.signerId===s.id)?.signedAt||''}))});
+ const summary=o=>({offerId:o.id,applicationId:o.applicationId,familyId:o.familyId,studentName:o.packet.studentName,entryYear:o.packet.entryYear,entryLevel:o.packet.entryLevel,status:o.status,required:requiredOfferSigners(o).length,signed:o.signatures.length,createdAt:o.createdAt,signers:o.signers.map(s=>({name:s.name,required:s.required!==false,contactPermitted:s.permitted===true,signedAt:o.signatures.find(x=>x.signerId===s.id)?.signedAt||''}))});
  function message(account,link) { return offerInvitationEmail({name:account.name,primary:account.primary,children:account.children,link}); }
  function invitation(account,raw,family) {
    const payload={to:account.email,...message(account,`${page}?invite=${encodeURIComponent(raw)}`),tags:{workflow:'enrolment_offer',message_type:'offer_family_invitation',record_id:account.tokenHash},_tracking:{kind:'offer_family_invitation',familyId:family.id,taskTokenHash:account.tokenHash}};
@@ -88,21 +95,24 @@ export function createOfferRoutes(c) {
    if(!ids.length || ids.length>8 || new Set(ids).size!==ids.length || ids.some(id=>typeof id!=='string'||id.length>200))throw failure(422,'FAMILY_SELECTION_REQUIRED','Select one to eight completed applications from the same family.');
    const apps=await Promise.all([...ids].sort().map(id=>store.getApplication(id)));
    if(!apps[0]?.invitationId || apps.some(a=>!a || a.invitationId!==apps[0].invitationId))throw failure(409,'FAMILY_MISMATCH','Select children linked to the same family invitation.');
-   const prepared=apps.map(a=>makeOfferPacket(a,body.schedule||{},clock()));
+   const arrangements=body.signingArrangements||{};
+   if(typeof arrangements!=='object'||Array.isArray(arrangements)||Object.keys(arrangements).some(id=>!ids.includes(id)))throw failure(422,'SIGNING_ARRANGEMENT_REQUIRED','Review the signing arrangements for the selected children.');
+   const prepared=apps.map(a=>makeOfferPacket(a,body.schedule||{},clock(),arrangements[a.id]||{}));
    const primaryEmail=email(apps[0].recipientEmail);
    if(!primaryEmail || apps.some(a=>email(a.recipientEmail)!==primaryEmail))throw failure(409,'PRIMARY_REVIEW_REQUIRED','Review the primary family email before preparing the offer.');
    const accounts=[];
    for(const child of prepared) {
      const seen=new Set();
-     for(const signer of child.signers) {
+     for(const signer of child.signers.filter(s=>s.required!==false && s.email)) {
        if(seen.has(signer.email))throw failure(409,'SIGNER_REVIEW_REQUIRED','Each signing guardian needs their own verified email address.');seen.add(signer.email);
        let account=accounts.find(a=>a.email===signer.email);
        if(account && account.name.toLocaleLowerCase()!==signer.name.toLocaleLowerCase())throw failure(409,'SIGNER_REVIEW_REQUIRED','The same email has different guardian names. Review the signing arrangement.');
-       if(!account){account={id:`recipient-${accounts.length+1}`,name:signer.name,email:signer.email,primary:signer.email===primaryEmail,children:[]};accounts.push(account);}
+       if(!account){account={id:`recipient-${accounts.length+1}`,name:signer.name,email:signer.email,primary:signer.email===primaryEmail,contactPermitted:true,children:[]};accounts.push(account);}
+       account.contactPermitted=account.contactPermitted&&signer.permitted;
        account.children.push({applicationId:child.applicationId,signerId:signer.id,studentName:child.packet.studentName,studentFirstName:child.details.student.first,entryYear:child.packet.entryYear,entryLevel:child.packet.entryLevel});
      }
    }
-   if(accounts.length>8 || !accounts.some(a=>a.primary && a.children.length===prepared.length))throw failure(409,'SIGNER_REVIEW_REQUIRED','The primary recipient must be authorised for every selected child.');
+   if(accounts.length>8 || !accounts.some(a=>a.primary && a.contactPermitted && a.children.length===prepared.length))throw failure(409,'SIGNER_REVIEW_REQUIRED','The primary recipient must be authorised for every selected child.');
    // Freeze the calendar date so an overnight send cannot silently change the reviewed letter.
    const currentDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Australia/Melbourne',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(clock()));
    const date=body.letterDate || currentDate;
@@ -111,25 +121,25 @@ export function createOfferRoutes(c) {
    if(options.includeGathering && currentDate>='2027-01-17')throw failure(422,'GATHERING_DATE_PASSED','The January gathering paragraph is no longer current. Remove it before preparing this letter.');
    const letter=letterContent({date,parents:accounts.filter(a=>a.children.length===prepared.length).map(a=>a.name),children:prepared.map(p=>p.packet),meetingConfirmed:options.meetingConfirmed??false,includeGathering:options.includeGathering??false,testCopy:env.EMAIL_DELIVERY_MODE==='test'});
    const pdf=await renderOfferLetter(letter,{signaturePng:principalSignatureFromConfig(env)});
-   const messages=accounts.map(a=>({recipientId:a.id,to:a.email,primary:a.primary,...message(a,'[Your private portal link]')}));
+   const messages=accounts.filter(a=>a.contactPermitted).map(a=>({recipientId:a.id,to:a.email,primary:a.primary,...message(a,'[Your private portal link]')}));
    const packetHash=hash({prepared,accounts,letterHash:pdf.sha256,messages});
    return {apps,prepared,accounts,letter,pdf,messages,packetHash};
  }
  async function preview(event) {
    const actor=await requireStaffSession(event,['admin','admissions']);const p=await prepare(parseBody(event,20000));
-   return {packetHash:p.packetHash,children:p.prepared.map(x=>({applicationId:x.applicationId,packet:x.packet,packetHash:x.packetHash})),recipients:p.accounts.map(a=>({name:a.name,email:a.email,primary:a.primary,childCount:a.children.length})),messages:p.messages,letterDate:p.letter.date,letter:p.letter,letterPdfBase64:p.pdf.bytes.toString('base64'),letterPdfSha256:p.pdf.sha256,contractApprovalHash:hash(OFFER_CONTRACT),approved:approved(),issueEnabled:env.ENROLMENT_OFFERS_ENABLED==='true',reviewedBy:actor.email};
+   return {packetHash:p.packetHash,children:p.prepared.map(x=>({applicationId:x.applicationId,packet:x.packet,packetHash:x.packetHash,signingArrangement:x.signingArrangement,guardians:x.signers.map(s=>({name:s.name,required:s.required,contactPermitted:s.permitted}))})),recipients:p.accounts.map(a=>({name:a.name,email:a.email,primary:a.primary,childCount:a.children.length,contactPermitted:a.contactPermitted})),messages:p.messages,letterDate:p.letter.date,letter:p.letter,letterPdfBase64:p.pdf.bytes.toString('base64'),letterPdfSha256:p.pdf.sha256,contractApprovalHash:hash(OFFER_CONTRACT),approved:approved(),issueEnabled:env.ENROLMENT_OFFERS_ENABLED==='true',reviewedBy:actor.email};
  }
  async function issue(event) {
    const actor=await requireStaffSession(event,['admin','admissions']);enabled();if(!approved())throw failure(409,'AGREEMENT_APPROVAL_REQUIRED','The exact agreement version must be approved before issue.');
    const body=parseBody(event,20000),p=await prepare(body),op=text(body.operationId,100);
    if(!/^[A-Za-z0-9-]{16,100}$/.test(op))throw failure(422,'OPERATION_REQUIRED','A valid operation identifier is required.');
-   if(body.confirmation!=='Send reviewed family offer' || body.guardianPlanReviewed!==true || body.packetHash!==p.packetHash)throw failure(409,'OFFER_REVIEW_REQUIRED','Review the exact family offer, attachment, fees and recipients before sending.');
+   if(body.confirmation!=='Send reviewed family offer' || body.guardianPlanReviewed!==true || body.packetHash!==p.packetHash)throw failure(409,'OFFER_REVIEW_REQUIRED','Review the exact family offer, signing arrangement, attachment and recipients before sending.');
    const familyId=`family-offer-${hash(op)}`;
    const existing=await store.getOfferFamily(familyId);
    if(existing){if(existing.packetHash!==p.packetHash)throw failure(409,'OFFER_EXISTS','This operation has already been used for a different offer.');return {familyId,children:await Promise.all(existing.offerIds.map(async id=>staffSummary(await store.getOffer(id)))),deduplicated:true};}
    const previous=await Promise.all(p.apps.map(a=>store.getOfferByApplication(a.id)));
    if(previous.some(o=>o && (o.status!=='withdrawn'||o.signatures.length)))throw failure(409,'OFFER_EXISTS','A selected child already has an active or signed offer.');
-   const offers=p.prepared.map((x,i)=>({id:`offer-${crypto.randomUUID()}`,familyId,applicationId:x.applicationId,operationId:op,packet:x.packet,details:x.details,issuedPacketHash:x.packetHash,packetHash:x.packetHash,contractHash:hash(OFFER_CONTRACT),applicationRevisionHash:x.applicationRevisionHash,signatureControlRevision:x.signatureControlRevision,signers:x.signers,signatures:[],status:'awaiting_signatures',revision:1,createdAt:iso(),createdBy:actor.email,previousOfferId:previous[i]?.id||''}));
+   const offers=p.prepared.map((x,i)=>({id:`offer-${crypto.randomUUID()}`,familyId,applicationId:x.applicationId,operationId:op,packet:x.packet,details:x.details,signingArrangement:{...x.signingArrangement,recordedBy:actor.email,recordedAt:iso()},issuedPacketHash:x.packetHash,packetHash:x.packetHash,contractHash:hash(OFFER_CONTRACT),applicationRevisionHash:x.applicationRevisionHash,signatureControlRevision:x.signatureControlRevision,signers:x.signers,signatures:[],status:'awaiting_signatures',revision:1,createdAt:iso(),createdBy:actor.email,previousOfferId:previous[i]?.id||''}));
    const accounts=p.accounts.map(a=>({...a,tokenHash:'',children:a.children.map(c=>({offerId:offers.find(o=>o.applicationId===c.applicationId).id,signerId:c.signerId,studentName:c.studentName,studentFirstName:c.studentFirstName,entryYear:c.entryYear,entryLevel:c.entryLevel}))}));
    const tasks=accounts.filter(a=>a.primary).map(a=>{const raw=random();a.tokenHash=hash(raw);return {...a,raw,familyId,status:'active'};});
    const family={id:familyId,invitationId:p.apps[0].invitationId,packetHash:p.packetHash,offerIds:offers.map(o=>o.id),accounts,letter:p.letter,letterHash:p.pdf.sha256,createdAt:iso(),createdBy:actor.email,revision:1};
@@ -137,7 +147,7 @@ export function createOfferRoutes(c) {
    try {
      const attachment=await drive.storeOfferLetter({familyId,data:p.pdf.bytes,sha256:p.pdf.sha256});files.push(attachment);family.letterFileId=attachment.id;
      for(const o of offers){const file=await drive.storeOfferSnapshot({offerId:o.id,revision:1,snapshot:{packet:o.packet,packetHash:o.packetHash,familyId,letterHash:family.letterHash,createdAt:o.createdAt,createdBy:o.createdBy}});files.push(file);o.snapshotFileId=file.id;}
-     await store.issueOfferFamily({family,offers,tasks:tasks.map(({raw,...t})=>t),applications:p.apps,outboxEvents:tasks.map(t=>invitation(t,t.raw,family)),auditEvents:[audit(family,'offer.family_issued',actor,{children:offers.length,recipients:tasks.length,letterHash:family.letterHash})]});
+     await store.issueOfferFamily({family,offers,tasks:tasks.map(({raw,...t})=>t),applications:p.apps,outboxEvents:tasks.map(t=>invitation(t,t.raw,family)),auditEvents:[audit(family,'offer.family_issued',actor,{children:offers.length,recipients:tasks.length,letterHash:family.letterHash}),...offers.filter(o=>o.signingArrangement.mode==='primary_only').map(o=>audit(o,'offer.signing_arrangement_approved',actor,{mode:o.signingArrangement.mode,reason:o.signingArrangement.reason,primaryGuardianId:o.signingArrangement.primaryGuardianId,excludedGuardianIds:o.signingArrangement.excludedGuardianIds}))]});
    }catch(error){for(const file of files)await drive.deleteArtifact(file).catch(()=>console.error('Offer artifact cleanup failed'));throw error;}
    await dispatchOutbox(20);return {familyId,children:offers.map(summary)};
  }
@@ -160,8 +170,8 @@ export function createOfferRoutes(c) {
  }
  async function verified(event){enabled();const actor=await requireSession(event,'enrolment_offer'),task=await store.getOfferTask(actor.taskTokenHash),children=await available(task);if(!children.length || task.familyId!==actor.familyId || task.email!==actor.email)throw failure(409,'OFFER_UNAVAILABLE','These offers are no longer available. Contact the College.');return {actor,task,children};}
  function childContext({offer,signer,signed,app},task){
-   const blocked=offer.signers.some(person=>!offerSignerContactAllowed(offer,app,person));
-   return {...summary(offer),packet:offer.packet,packetHash:offer.packetHash,revision:offer.revision,details:visibleOfferDetails(offer.details,{primary:task.primary,email:task.email}),primary:task.primary===true,editable:task.primary===true&&offer.signatures.length===0,signerName:signer.name,signerEmail:signer.email,alreadySigned:Boolean(signed),signedAt:signed?.signedAt||'',declaration:offer.packet.contract.declaration,reviewRequired:offer.correction?.status==='open'||blocked,signingHoldReason:blocked?'A required guardian has contact restrictions. Email enrolment@ffe.org.au to confirm the signing arrangement.':offer.correction?.status==='open'?'The College is reviewing this offer. Please email enrolment@ffe.org.au before signing.':''};
+   const blocked=requiredOfferSigners(offer).some(person=>!offerSignerContactAllowed(offer,app,person));
+   return {...summary(offer),packet:offer.packet,packetHash:offer.packetHash,revision:offer.revision,details:visibleOfferDetails(offer.details,{primary:task.primary,email:task.email}),primary:task.primary===true,editable:task.primary===true&&offer.signatures.length===0,signerName:signer.name,signerEmail:signer.email,alreadySigned:Boolean(signed),signedAt:signed?.signedAt||'',declaration:offer.packet.contract.declaration,reviewRequired:offer.correction?.status==='open',signingHoldReason:offer.correction?.status==='open'?'The College is reviewing this offer. Please email enrolment@ffe.org.au before signing.':'',signingArrangementNotice:blocked?'You can sign now. Another required guardian has a contact restriction and will not be emailed. Acceptance will remain pending while the College confirms their signing arrangement.':offer.packet.signingArrangement||''};
  }
  async function context(event){const {children,actor}=await verified(event);return {expiresAt:actor.expiresAt,absoluteExpiresAt:actor.absoluteExpiresAt,children:children.map(x=>({...summary(x.offer),alreadySigned:Boolean(x.signed),reviewRequired:x.offer.correction?.status==='open'}))};}
  async function select(event){const {children,actor,task}=await verified(event),body=parseBody(event,10000),child=children.find(x=>x.offer.id===body.offerId);if(!child)throw failure(404,'OFFER_UNAVAILABLE','This child offer is not available to you.');await store.recordOfferAccess({tokenHash:task.tokenHash,offerId:child.offer.id,at:iso(),auditEvent:audit(child.offer,'offer.child_opened',actor)});return childContext(child,task);}
@@ -173,7 +183,7 @@ export function createOfferRoutes(c) {
    if(body.revision!==offer.revision || body.packetHash!==offer.packetHash)throw failure(409,'DETAILS_CHANGED','These details changed in another session. Reopen the offer before continuing.');
    const details=validateOfferDetails(body.details,offer.details,{primaryEmail:actor.email,confirmed:body.guardianListConfirmed===true});
    const packet=packetWithDetails(offer.packet,details);
-   const next={...offer,details,packet,packetHash:hash(packet),revision:offer.revision+1,detailsConfirmedBy:actor.email,detailsConfirmedAt:iso(),updatedAt:iso(),signers:details.guardians.map(person=>({id:person.id,name:personName(person),email:person.email,permitted:person.contactPermission,source:person.source}))};
+   const next={...offer,details,packet,packetHash:hash(packet),revision:offer.revision+1,detailsConfirmedBy:actor.email,detailsConfirmedAt:iso(),updatedAt:iso(),signers:details.guardians.map(person=>({id:person.id,name:personName(person),email:person.email,permitted:person.contactPermission,required:person.signatureRequired!==false,source:person.source}))};
    const family=await store.getOfferFamily(offer.familyId),nextFamily=reconcileOfferAccounts(family,next);
    await store.saveOfferDetails({offer:next,family:nextFamily,expectedRevision:offer.revision,expectedFamilyRevision:family.revision,expectedApplication:app,taskTokenHash:task.tokenHash,auditEvents:[audit(next,'offer.details_saved',actor,{revision:next.revision,packetHash:next.packetHash,guardianCount:next.signers.length})]});
    return childContext({...child,offer:next,signer:next.signers.find(person=>person.id===child.signer.id)},task);
@@ -182,7 +192,6 @@ export function createOfferRoutes(c) {
    const {children,actor,task}=await verified(event),body=parseBody(event),child=children.find(x=>x.offer.id===body.offerId);
    if(!child)throw failure(404,'OFFER_UNAVAILABLE','This child offer is not available to you.');const {offer,signer,signed,app}=child;
    if(signed)return {...summary(offer),alreadySigned:true};
-   if(offer.signers.some(person=>!offerSignerContactAllowed(offer,app,person)))throw failure(409,'SIGNER_REVIEW_REQUIRED','A required guardian cannot be contacted. Email enrolment@ffe.org.au to confirm the signing arrangement.');
    if(task.primary)validateOfferDetails(offer.details,offer.details,{primaryEmail:actor.email,confirmed:true});
    if(offer.correction?.status==='open')throw failure(409,'OFFER_REVIEW_REQUIRED','The College is reviewing a correction request. Signing will be available after it is resolved.');
    if(body.packetHash!==offer.packetHash || !['reviewAcknowledged','conditionsAcknowledged','termsAcknowledged','electronicConsent'].every(k=>body[k]===true))throw failure(422,'ACCEPTANCE_REQUIRED','Read the offer and confirm every signing declaration.');
@@ -192,7 +201,7 @@ export function createOfferRoutes(c) {
    try{
      const artifact=await drive.storeOfferSignature({offerId:offer.id,signerId:signer.id,signatureId,data});files.push(artifact);
      const signature={id:signatureId,signerId:signer.id,signerName:signer.name,signerEmail:actor.email,verifiedAt:actor.verifiedAt,signedAt:iso(),packetHash:offer.packetHash,contractHash:offer.contractHash,fileId:artifact.id,imageSha256:pdfHash(data),networkFingerprint:networkFingerprint(event),reviewAcknowledged:true,conditionsAcknowledged:true,termsAcknowledged:true,electronicConsent:true};
-     const signatures=[...offer.signatures,signature],next={...offer,signatures,revision:offer.revision+1,status:signatures.length===offer.signers.length?'signed_conditional':'awaiting_signatures',updatedAt:iso()};
+     const signatures=[...offer.signatures,signature],next={...offer,signatures,revision:offer.revision+1,status:requiredOfferSigners(offer).every(person=>signatures.some(s=>s.signerId===person.id))?'signed_conditional':'awaiting_signatures',updatedAt:iso()};
      const images=new Map([[signatureId,data]]);
      for(const prior of offer.signatures)images.set(prior.id,await drive.readOfferSignature({offerId:offer.id,signerId:prior.signerId,signatureId:prior.id,fileId:prior.fileId,sha256:prior.imageSha256}));
      const pdf=await renderOfferRecordPdf(next,images);
@@ -212,16 +221,16 @@ export function createOfferRoutes(c) {
        if(!permitted)continue;
        const raw=random();account.tokenHash=hash(raw);const pending={...account,familyId:family.id,status:'active',childOpenedAt:{}};tasks.push(pending);messages.push(invitation(pending,raw,family));
      }
-     if(next.status==='signed_conditional')for(const recipient of nextFamily.accounts.filter(a=>a.children.some(c=>c.offerId===next.id))){
+     if(next.status==='signed_conditional')for(const recipient of nextFamily.accounts.filter(a=>a.children.some(c=>c.offerId===next.id)&&offerSignerContactAllowed(next,app,next.signers.find(s=>s.id===a.children.find(c=>c.offerId===next.id).signerId)))){
        messages.push(emailOutbox({to:recipient.email,...offerCompletionEmail({name:recipient.name,child:offer.packet,hasAttachment:true}),_offerRecord:next.acceptanceRecord,tags:{workflow:'enrolment_offer',message_type:'offer_complete',record_id:offer.id},_tracking:{kind:'offer_family_receipt',familyId:family.id,taskTokenHash:recipient.tokenHash,offerId:offer.id}},clock()));
      }
      await store.signOffer({offer:next,family:nextFamily,expectedFamilyRevision:family.revision,tasks,applications:[...applications.values()],expectedRevision:offer.revision,expectedApplication:app,taskTokenHash:task.tokenHash,signature,outboxEvents:messages,auditEvents:[audit(offer,'offer.signed',actor,{signerId:signer.id,packetHash:offer.packetHash}),...(next.status==='signed_conditional'?[audit(offer,'offer.completed',actor,{packetHash:offer.packetHash})]:[])]});committed=true;await dispatchOutbox(20);return summary(next);
    }catch(error){if(!committed)for(const f of files)await drive.deleteArtifact(f).catch(()=>console.error('Offer artifact cleanup failed'));throw error;}
  }
- function staffSummary(offer){return {...summary(offer),correction:offer.correction||null,correctionHistory:offer.correctionHistory||[]};}
+ function staffSummary(offer){return {...summary(offer),signingArrangement:offer.signingArrangement||null,correction:offer.correction||null,correctionHistory:offer.correctionHistory||[]};}
  async function list(event) {
    await requireStaffSession(event);const families=await store.listOfferFamilies(),states=await store.listEmailOutboxStates();
-   return {families:await Promise.all(families.map(async f=>({familyId:f.id,createdAt:f.createdAt,children:await Promise.all(f.offerIds.map(async id=>staffSummary(await store.getOffer(id)))),recipients:await Promise.all(f.accounts.map(async a=>{const t=a.tokenHash?await store.getOfferTask(a.tokenHash):null,state=states.find(x=>x.recordId===a.tokenHash && x.messageType==='offer_family_invitation');return {recipientId:a.id,name:a.name,email:a.email,primary:a.primary,requestReady:Boolean(a.tokenHash),deliveryStatus:!a.tokenHash?'awaiting_primary':state?.state || t?.deliveryStatus || 'unavailable',deliveryAt:t?.deliveryAt||'',portalOpenedAt:t?.portalOpenedAt||'',childOpenedAt:t?.childOpenedAt||{}};}))})))};
+   return {families:await Promise.all(families.map(async f=>({familyId:f.id,createdAt:f.createdAt,children:await Promise.all(f.offerIds.map(async id=>staffSummary(await store.getOffer(id)))),recipients:await Promise.all(f.accounts.map(async a=>{const t=a.tokenHash?await store.getOfferTask(a.tokenHash):null,state=states.find(x=>x.recordId===a.tokenHash && x.messageType==='offer_family_invitation');const contactAllowed=(await Promise.all(a.children.map(async c=>{const o=await store.getOffer(c.offerId),app=o&&await store.getApplication(o.applicationId);return o&&offerSignerContactAllowed(o,app,o.signers.find(s=>s.id===c.signerId));}))).every(Boolean);return {recipientId:a.id,name:a.name,email:a.email,primary:a.primary,requestReady:Boolean(a.tokenHash),deliveryStatus:!a.tokenHash&&!contactAllowed?'contact_restricted':!a.tokenHash?'awaiting_primary':state?.state || t?.deliveryStatus || 'unavailable',deliveryAt:t?.deliveryAt||'',portalOpenedAt:t?.portalOpenedAt||'',childOpenedAt:t?.childOpenedAt||{}};}))})))};
  }
  async function resolveCorrection(event) {
    const actor=await requireStaffSession(event,['admin','admissions']),body=parseBody(event,8000),offer=await store.getOffer(text(body.offerId)),note=text(body.note,2000);

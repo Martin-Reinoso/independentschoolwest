@@ -1,5 +1,12 @@
 # Option 1 acceptance design review
 
+## Contact restrictions and signing arrangements
+
+The user approved main-carer signing without lifting another guardian's contact
+restriction. Completion depends on the explicitly recorded per-child signing arrangement.
+See [the current decision and validation map](SIGNING-ARRANGEMENTS-2026-11-08.md).
+
+
 ## Personalised offer email — 8 November 2026
 
 The approved congratulations opening names the selected children using their structured

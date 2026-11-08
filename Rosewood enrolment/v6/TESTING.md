@@ -1,5 +1,15 @@
 # V6 Testing
 
+## Offer signing arrangements — 8 November 2026
+
+The main carer can receive/sign an offer while another required guardian has a contact
+restriction. Default completion still requires all listed guardians; staff can record
+an approved main-carer-only arrangement per child before issue. Restricted guardians
+are not contacted and source Applications remain unchanged. EOI 2026.32 / Application
+2026.33 pin this interface; agreement 2026.5 remains approved. See
+[behaviour, compatibility and validation](post-offer/SIGNING-ARRANGEMENTS-2026-11-08.md).
+
+
 ## Current acceptance workflow
 
 Families accept the provisional offer and terms now; financial choices come later.

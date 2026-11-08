@@ -1,5 +1,6 @@
 import {createOfferPdf, pdfHash} from './offer-pdf.mjs';
 import {offerContentHash} from './offer-content-hash.mjs';
+import {requiredOfferSigners} from './offer-details.mjs';
 import {policyFigureBytes} from './offer-policy-assets.mjs';
 
 export const OFFER_RECORD_FILE_NAME='Rosewood-signed-acceptance.pdf';
@@ -9,13 +10,13 @@ const invalid=()=>Object.assign(new Error('The acceptance evidence does not matc
 // Receives only the immutable offer and an explicitly keyed set of its signature images.
 // No access links, email addresses, phone numbers, IPs or provider/storage IDs are printed.
 export async function renderOfferRecordPdf(offer, signatureImages) {
-  const p=offer.packet,s=p.schedule;
-  if(!Array.isArray(offer.signers) || !offer.signers.length || offer.signers.length>6 || new Set(offer.signers.map(s=>s.id)).size!==offer.signers.length || offerContentHash(offer.signers.map(({name})=>({name})))!==offerContentHash(p.signers) || !['awaiting_signatures','signed_conditional'].includes(offer.status))throw invalid();
+  const p=offer.packet,s=p.schedule,required=requiredOfferSigners(offer);
+  if(!Array.isArray(offer.signers) || !offer.signers.length || offer.signers.length>6 || new Set(offer.signers.map(s=>s.id)).size!==offer.signers.length || offerContentHash(required.map(({name})=>({name})))!==offerContentHash(p.signers) || !['awaiting_signatures','signed_conditional'].includes(offer.status))throw invalid();
   if(!offer.signatures?.length || offerContentHash(p)!==offer.packetHash || offerContentHash(p.contract)!==offer.contractHash || new Set(offer.signatures.map(s=>s.signerId)).size!==offer.signatures.length)throw invalid();
-  const complete=offer.signers.every(signer=>offer.signatures.some(s=>s.signerId===signer.id));
+  const complete=required.length>0&&required.every(signer=>offer.signatures.some(s=>s.signerId===signer.id));
   if(complete!==(offer.status==='signed_conditional'))throw invalid();
   for(const signed of offer.signatures){
-    const signer=offer.signers.find(s=>s.id===signed.signerId),image=signatureImages.get(signed.id);
+    const signer=required.find(s=>s.id===signed.signerId),image=signatureImages.get(signed.id);
     if(!signer || signer.name!==signed.signerName || signed.packetHash!==offer.packetHash || signed.contractHash!==offer.contractHash || !Buffer.isBuffer(image) || pdfHash(image)!==signed.imageSha256 || !['reviewAcknowledged','conditionsAcknowledged','termsAcknowledged','electronicConsent'].every(key=>signed[key]===true))throw invalid();
   }
   const doc=await createOfferPdf({title:'Rosewood College - signed provisional offer acceptance',timestamp:offer.updatedAt});
@@ -30,11 +31,12 @@ export async function renderOfferRecordPdf(offer, signatureImages) {
   if(s.acceptBy)dates.push(`Accept by: ${date(s.acceptBy)}`);
   if(s.conditionsBy)dates.push(`Commencement conditions deadline: ${date(s.conditionsBy)}`);
   doc.paragraph(dates.join('\n'));
+  if(p.signingArrangement)doc.paragraph(p.signingArrangement);
   doc.heading('Electronic signatures');
   doc.paragraph(p.contract.acceptanceDeclaration);
   doc.paragraph(p.contract.termsDeclaration);
   doc.paragraph(p.contract.declaration);
-  for(const signer of offer.signers){
+  for(const signer of required){
     const signed=offer.signatures.find(s=>s.signerId===signer.id);
     await doc.signatureEntry(signer.name,signed?signatureImages.get(signed.id):null,signed?`Signed electronically on ${date(signed.signedAt)}. Identity verified by email code. Accepted the offer and terms and consented to electronic signing.`:'Awaiting signature.');
   }

@@ -30,9 +30,9 @@ test('unknown and mismatched invites do not disclose a family or send a code',as
 test('OTP replay and incorrect session scope are rejected',async()=>{
  const h=harness();await h.issue();const l=await h.login();assert.equal((await h.call('/v6/offers/verify-code',{invite:l.invite,challengeId:l.challengeId,code:l.code},'')).status,401);assert.equal((await h.call('/v6/offers/context',undefined,'staff')).status,401);
 });
-test('contact withdrawal blocks existing sessions and new issue',async()=>{
+test('contact withdrawal blocks that guardian without blocking the main carer',async()=>{
  const h=harness();await h.issue();const l=await h.login();h.apps.get('app-synthetic').signerControls[0].contactPermission=false;assert.equal((await h.child(l.session)).status,409);
- const other=harness();other.apps.get('app-synthetic').signerControls[1].contactPermission=false;assert.equal((await other.issue()).result.status,409);assert.equal(other.outbox.length,0);
+ const other=harness();other.apps.get('app-synthetic').signerControls[1].contactPermission=false;assert.equal((await other.issue()).result.httpStatus,200);assert.equal(other.outbox.length,1);assert.equal(other.outbox[0].payload.to,'alex@example.test');
 });
 test('missing declarations and stale packet cannot create a signature file',async()=>{
  const h=harness();await h.issue();const l=await h.login();const c=await h.child(l.session);const bad=await h.call('/v6/offers/sign',{offerId:c.offerId,packetHash:'wrong',signatureDataUrl:drawing},l.session);assert.equal(bad.status,422);assert.equal(h.artifacts.length,0);
@@ -210,12 +210,10 @@ test('guardian removal, email changes, forged identities, missing authority and 
  assert.equal([...h.offers.values()][0].revision,1);assert.equal(h.outbox.length,1);
 });
 
-test('a saved no-contact choice blocks signing and requests without waiving the required guardian',async()=>{
+test('a saved no-contact choice suppresses requests but permits the main carer to sign',async()=>{
  const h=harness();await h.issue();const l=await h.login(),c=await h.child(l.session),details=structuredClone(c.details);details.guardians[1].contactPermission=false;
- const saved=await h.call('/v6/offers/details',detailsRequest(c,details),l.session);assert.equal(saved.required,2);assert.equal(saved.reviewRequired,true);assert.match(saved.signingHoldReason,/contact restrictions/);
- assert.equal((await h.call('/v6/offers/sign',acceptance(saved),l.session)).status,409);assert.equal(h.tasks.size,1);assert.equal(h.outbox.length,1);
- details.guardians[1].contactPermission=true;const restored=await h.call('/v6/offers/details',detailsRequest(saved,details),l.session);assert.equal(restored.reviewRequired,false);
- assert.equal((await h.call('/v6/offers/sign',acceptance(restored),l.session)).status,'awaiting_signatures');
+ const saved=await h.call('/v6/offers/details',detailsRequest(c,details),l.session);assert.equal(saved.required,2);assert.equal(saved.reviewRequired,false);assert.match(saved.signingArrangementNotice,/contact restriction/);
+ assert.equal((await h.call('/v6/offers/sign',acceptance(saved),l.session)).status,'awaiting_signatures');assert.equal(h.tasks.size,1);assert.equal(h.outbox.length,2);assert.ok(h.outbox.every(e=>e.payload.to==='alex@example.test'));
 });
 
 test('an already authorised application relationship is retained without requiring a parent label',async()=>{
