@@ -40,5 +40,25 @@ contracts and all 61 historical form hashes are unchanged. No record migration.
 
 Fictional staff and both-guardian browser checks cover 1440/390/320px, no deadline or
 financial inputs, unchanged Applications and signed-PDF bytes. External requests are
-intercepted; no real family is contacted. Final regression and production verification
-will be recorded below after release.
+intercepted; no real family is contacted. All 286 regression tests and the locked deployment build pass. The signed PDF was
+text-checked and visually inspected: the issue date remains, with no acceptance or
+commencement-condition deadline. Registration wording and later financial choices remain.
+
+## Verified production release
+
+Runtime `83b3d02` deployed through PR #61 / merge
+`c1a47bb0dd8f7cedf75a131b20ebe2c96f2a51a2`. Both CI checks passed. CloudFormation changed
+only Lambda code and the approved hash. Stack UPDATE_COMPLETE, Lambda Active/Successful;
+exact code checksum verified, all 39 resources retained, other configuration unchanged.
+Offers remain enabled with the 2026.5 hash above. No production offer records existed
+before or after this release; no real family was selected, modified or emailed.
+
+GitHub Pages built the merge commit. All 45 public frontend/policy assets match the
+tested hashes. The live canary at `2026-11-08T03:36:36.380Z` passed all five checks.
+All nine alarms are OK, both schedules enabled, protected tables and confirmed
+notification subscriptions preserved; three unauthenticated GET routes still return 401.
+
+Private baseline/rollback and verification evidence:
+`~/.local/share/ffe-private-runtime/offer-no-deadlines-20261108`.
+Refresh the staff portal to discard cached date inputs. Stale clients receive a reload
+message instead of issuing an offer with silently discarded dates.

@@ -1,5 +1,9 @@
 # Provisional acceptance now; financial choices later
 
+The financial-choice correction remains in force. The later
+[deadline-removal correction](NO-OFFER-DEADLINES-2026-11-08.md) supersedes this record’s
+required-date statements, agreement hash and current version numbers.
+
 ## User correction
 
 On 8 November 2026 the user clarified that families are only accepting the provisional
