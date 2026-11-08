@@ -17,7 +17,7 @@ const sitemap = fs.readFileSync(path.join(repoRoot, "sitemap.xml"), "utf8");
 assert.match(schedule, /<title>2027 Fee Schedule \| Rosewood College<\/title>/);
 assert.match(schedule, /rel="canonical" href="https:\/\/ffe\.org\.au\/pages\/rosewood-fee-schedule\.html"/);
 assert.doesNotMatch(schedule, /noindex/);
-assert.match(schedule, /\$1,000[\s\S]+reduction from tuition for every student/);
+assert.match(schedule, /\$1,000[\s\S]+founding-year tuition reduction for every Prep to Grade 5 student enrolled in 2027/);
 assert.doesNotMatch(schedule, /Each reduction builds on the one before it/);
 assert.doesNotMatch(schedule, /class="section discount-order"/);
 assert.doesNotMatch(schedule, /Second child · Option B for siblings · annual payment/);

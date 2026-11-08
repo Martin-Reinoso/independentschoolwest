@@ -276,7 +276,10 @@ test("staff family communications require an exact multi-recipient preview befor
 
 test("the family browser accepts the current immutable Application release", async () => {
   const source = await readFile(new URL("../../../../pages/rosewood-enrolment-v6.js", import.meta.url), "utf8");
-  assert.match(source, /SUPPORTED_APPLICATION_FORM_VERSIONS[\s\S]*rosewood-application-2026\.28/);
+  const {FORM_DEFINITIONS} = await import('../form-definitions.mjs');
+  const declaration = source.match(/const SUPPORTED_APPLICATION_FORM_VERSIONS = new Set\((\[[^;]+\])\);/);
+  const supported = new Set(JSON.parse(declaration[1]));
+  for (const version of Object.keys(FORM_DEFINITIONS.application)) assert.ok(supported.has(version), `Family browser must open ${version}`);
 });
 
 test("V6.14 applies the approved family feedback without weakening verification or saved-draft safety", async () => {
@@ -343,7 +346,7 @@ test("guardian signing renders the complete server-provided application review",
   assert.match(source, /value="\$\{melbourneDate\(\)\}"/);
   assert.doesNotMatch(source, /new Date\(\)\.toISOString\(\)\.slice\(0, 10\)/);
   assert.match(await readFile(new URL("../../../../pages/rosewood-enrolment-v6.js", import.meta.url), "utf8"), /rosewood-application-2026\.21/);
-  assert.match(await readFile(new URL("../../../../pages/rosewood-enrolment-v6.html", import.meta.url), "utf8"), /rosewood-enrolment-v6\.js\?v=39/);
+  assert.match(await readFile(new URL("../../../../pages/rosewood-enrolment-v6.html", import.meta.url), "utf8"), /rosewood-enrolment-v6\.js\?v=40/);
   assert.match(html, /rosewood-application-sign-v6\.css\?v=2/);
   assert.match(html, /rosewood-application-sign-v6\.js\?v=6/);
   assert.match(css, /\.application-review-section/);

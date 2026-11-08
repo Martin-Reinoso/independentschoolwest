@@ -1,5 +1,7 @@
 # V6 Form And Data Evolution
 
+Current wording clarification: [founding-year tuition reduction](post-offer/FOUNDING-YEAR-WORDING-2026-11-08.md). Agreement 2026.6; EOI 2026.35 / Application 2026.36 preserve all question contracts.
+
 ## Offer signing arrangements — 8 November 2026
 
 The main carer can receive/sign an offer while another required guardian has a contact

@@ -195,7 +195,7 @@ assert.match(html, /Student Resource Levy included in annual fees supports books
 assert.match(html, /Option A keeps the bond lower\. Option B uses a larger refundable bond to unlock an ongoing tuition reduction/);
 assert.match(html, /update this estimate instantly/);
 assert.match(html, /the 5% tuition reduction applies immediately/);
-assert.match(html, /\$1,000 Foundation Year reduction/);
+assert.match(html, /\$1,000 founding-year tuition reduction for 2027/);
 assert.match(html, /From the fifth child onwards, tuition is fully reduced/);
 assert.match(html, /id="v2-large-family-count" type="number" min="5" max="20"/);
 assert.doesNotMatch(html, /Both options are equally valid/);
