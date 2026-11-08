@@ -52,4 +52,27 @@ The signed PDF was text-checked and visually inspected: no recorded bond choice,
 or payment/refund period appears; the deferral notice is present. The frozen-lockfile
 production build and static/public-data checks pass.
 
-Production publication is pending final regression/CI and reviewed deployment verification.
+## Verified production release
+
+PR #59 passed both GitHub checks and merged as `c21bea73b67ff2112f50720a9dbc1936edd2f75d`.
+Runtime source `4e25cd7` is deployed; CloudFormation changed only Lambda code and the
+approved agreement hash. Stack UPDATE_COMPLETE, Lambda Active/Successful, exact code
+checksum verified, all 39 physical resources retained and other configuration unchanged.
+Offers remain enabled with the version 2026.4 hash above.
+
+All 283 regression tests passed after updating the obsolete draft-status assertion and
+having the canary derive its marker from the current contract ID. The production bundle
+was rebuilt with the locked dependencies. GitHub Pages built the merge commit; all 45
+published frontend/policy files match the tested hashes. The live canary at
+`2026-11-08T02:48:21.511Z` passed all five checks. All nine alarms are OK; the one-minute
+worker and ten-minute canary remain enabled; protected tables and notification
+subscriptions are unchanged. Three unauthenticated GET routes still reject access.
+
+No production offer records existed before or after the update. No real family was
+selected, changed or emailed. Tests used fictional in-memory stores/providers and
+intercepted all external requests. The isolated cloud test stack remains inactive.
+Private rollback and verification evidence is in
+`~/.local/share/ffe-private-runtime/offer-payment-later-20261108`.
+
+Refresh the staff portal before preparing an offer. A browser retaining the old fields
+will receive a reload message rather than silently recording a financial choice.
