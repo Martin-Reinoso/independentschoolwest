@@ -1,3 +1,4 @@
+import {requiredOfferSigners} from './offer-details.mjs';
 import crypto from 'node:crypto';
 import { activeInvitationAccess } from './invitation-access.mjs';
 import { offerTaskAccess, offerAcceptanceOpen } from './offer-workflow.mjs';
@@ -68,7 +69,7 @@ export function createFamilyPortal({ store, env, clock, requireSession, parseBod
           accessible = (await offerTaskAccess(store, task, clock())).find(child => child.offer.id === candidate.id);
           if (accessible) {
             const o = accessible.offer;
-            offer = { offerId: o.id, status: o.status, signed: o.signatures.length, required: o.signers.length, alreadySigned: Boolean(accessible.signed), reviewRequired: o.correction?.status === 'open' || o.signers.some(person => !offerSignerContactAllowed(o, app, person)) };
+            offer = { offerId: o.id, status: o.status, signed: o.signatures.length, required: requiredOfferSigners(o).length, alreadySigned: Boolean(accessible.signed), reviewRequired: o.correction?.status === 'open' };
             accessible.task = task;
           } else if (canUseApplication && candidate.status === 'withdrawn') {
             unavailableStage = ['offer_withdrawn', 'Offer withdrawn — contact the College'];
