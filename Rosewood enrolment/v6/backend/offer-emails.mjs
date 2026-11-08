@@ -21,16 +21,29 @@ function render({ subject, name, paragraphs, children = [], link, linkLabel }) {
 export function offerInvitationEmail({ name, primary, children, link }) {
   if (!children?.length || children.some(child => !child.studentName || !child.entryYear || !child.entryLevel)) throw new Error("Offer email requires its authorised child list.");
   const plural = children.length > 1;
-  return render({
-    subject: primary ? "Your Rosewood College provisional enrolment offer" : "Rosewood College — your signature is requested",
-    name, children, link, linkLabel: "Open your enrolment portal",
-    paragraphs: primary ? [
-      `Congratulations! We are delighted to offer ${offeredNames(children)} ${plural ? "places" : "a place"} at Rosewood College.`,
-      `Attached is your family's personalised provisional offer letter from our Founding Principal, Dr Anne-Marie Irwin. It sets out ${plural ? "the offers" : "the offer"} listed below.`,
+  if (primary) {
+    const names = offeredNames(children);
+    const subject = `Your provisional ${plural ? "offers" : "offer"} of enrolment at Rosewood College`;
+    const opening = `Congratulations! We are delighted to offer ${names} ${plural ? "provisional places at Rosewood College:" : `a provisional place at Rosewood College for ${children[0].entryLevel} in ${children[0].entryYear}.`}`;
+    const paragraphs = [
+      "Attached is a letter from our Founding Principal, Dr Anne-Marie Irwin, setting out " + (plural ? "these offers." : "the offer."),
       OFFER_CONTRACT.introduction.text,
-      `Use the link below to access your family portal and select ${plural ? "each child" : "your child"} to check the details, review the Terms and Conditions of Enrolment and digitally sign acceptance. You do not need to upload any documents.`,
-      "Where another parent or guardian is required to sign and may be contacted, they will receive their own email after you have signed for all children included in their request. A guardian with a contact restriction will not be emailed; the College will confirm any remaining signing arrangement. Acceptance is complete once all required guardians have signed."
-    ] : [
+      plural ? "To accept, open your family portal below and select each child to review and sign separately." : `To accept, open your family portal below, select ${names} and follow the steps to review and sign.`
+    ];
+    const linkLabel = `Accept your ${plural ? "offers" : "offer"} in the family portal`;
+    const signing = `If another parent or guardian needs to sign, we’ll contact them separately where permitted. ${plural ? "Each child’s acceptance" : "Acceptance"} is complete once all required signatures are received.`;
+    const welcome = "We look forward to welcoming your family to the Rosewood community.";
+    const greeting = `Dear ${name},`;
+    return {
+      subject,
+      text: [greeting, opening, ...(plural ? [children.map(childLabel).join("\n")] : []), ...paragraphs, `${linkLabel}:\n${link}`, "Please do not forward this private link.", signing, welcome, "Warm regards,\nRosewood College\nenrolment@ffe.org.au"].join("\n\n"),
+      html: `<p>${escape(greeting)}</p><p>${escape(opening)}</p>${plural ? `<ul>${children.map(child => `<li>${escape(childLabel(child))}</li>`).join("")}</ul>` : ""}${paragraphs.map(p => `<p>${escape(p)}</p>`).join("")}<p><a href="${escape(link)}">${escape(linkLabel)}</a></p><p>Please do not forward this private link.</p><p>${escape(signing)}</p><p>${escape(welcome)}</p><p>Warm regards,<br>Rosewood College<br><a href="mailto:enrolment@ffe.org.au">enrolment@ffe.org.au</a></p>`
+    };
+  }
+  return render({
+    subject: "Rosewood College — your signature is requested",
+    name, children, link, linkLabel: "Open your enrolment portal",
+    paragraphs: [
       `The first parent or guardian has signed acceptance of ${plural ? "the provisional offers" : "the provisional offer"} listed below. Your signature is now requested.`,
       "Use your private link to verify your email, review the submitted details and terms, and sign. Acceptance is complete once all required guardians have signed.",
       OFFER_CONTRACT.introduction.text

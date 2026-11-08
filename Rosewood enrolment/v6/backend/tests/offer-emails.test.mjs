@@ -12,28 +12,35 @@ const link = "https://example.test/portal?invite=synthetic";
 test("initial message names every offered child, identifies the principal's attachment and preserves provisional status", () => {
   for (const children of [[child], [child, sibling]]) {
     const email = offerInvitationEmail({ name: "Alex Synthetic", primary: true, children, link });
-    for (const item of children) assert.ok(email.text.includes(`${item.studentName} — ${item.entryLevel}, ${item.entryYear}`));
+    for (const item of children) {
+      assert.ok(email.text.includes(item.entryLevel)); assert.ok(email.text.includes(item.entryYear));
+      if(children.length>1) assert.ok(email.text.includes(`${item.studentName} — ${item.entryLevel}, ${item.entryYear}`));
+    }
     assert.match(email.text, /Dr Anne-Marie Irwin/);
     assert.ok(email.text.includes(OFFER_CONTRACT.introduction.text));
-    assert.match(email.text, /after you have signed for all children included in their request/);
-    assert.match(email.text, /Acceptance is complete once all required guardians have signed/);
+    assert.match(email.text, /contact them separately where permitted/);
+    assert.doesNotMatch(email.text, /personalised|upload any documents|contact restriction/);
+    assert.ok(email.text.indexOf("To accept") < email.text.indexOf(link));
+    assert.ok(email.text.indexOf(link) < email.text.indexOf("If another parent"));
+    assert.equal(email.subject, `Your provisional ${children.length>1 ? "offers" : "offer"} of enrolment at Rosewood College`);
+    assert.match(email.text, /is complete once all required signatures are received/);
     assert.equal(email.text.split(link).length - 1, 1);
     assert.equal(email.html.split(link).length - 1, 1);
     assert.ok(!email.subject.includes(child.studentName));
-    assert.match(email.text, children.length === 1 ? /offer Avery a place/ : /offer Avery and Jordan places/);
-    assert.match(email.text, children.length === 1 ? /select your child/ : /select each child/);
+    assert.match(email.text, children.length === 1 ? /offer Avery a provisional place/ : /offer Avery and Jordan provisional places/);
+    assert.match(email.text, children.length === 1 ? /select Avery/ : /select each child/);
   }
 });
 
 test("opening joins three given names, preserves compound names and falls back to a stored full name", () => {
   const third = { ...child, studentName: "Mary Rose Synthetic", studentFirstName: "Mary Rose" };
   const email = offerInvitationEmail({ name: "Alex", primary: true, children: [child, sibling, third], link });
-  const opening = "Congratulations! We are delighted to offer Avery, Jordan and Mary Rose places at Rosewood College.";
+  const opening = "Congratulations! We are delighted to offer Avery, Jordan and Mary Rose provisional places at Rosewood College:";
   assert.ok(email.text.includes(opening));
   assert.ok(email.html.includes(`<p>${opening}</p>`));
   for (const first of [undefined, " "]) {
     const legacy = offerInvitationEmail({ name: "Alex", primary: true, children: [{ ...third, studentFirstName: first }], link });
-    assert.match(legacy.text, /offer Mary Rose Synthetic a place/);
+    assert.match(legacy.text, /offer Mary Rose Synthetic a provisional place/);
   }
 });
 

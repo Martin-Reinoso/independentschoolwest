@@ -55,13 +55,13 @@ test('reviewed and queued family openings use only selected structured first nam
   const before=structuredClone([...h.apps]);
   const {prepared,result}=await h.issue(names.slice(0,count).map((_,i)=>`app-name-${i}`));
   assert.equal(result.httpStatus,200);
-  const opening=`Congratulations! We are delighted to offer ${count===1?'Mary Rose':count===2?'Mary Rose and Anne-Marie':'Mary Rose, Anne-Marie and Zoë'} ${count===1?'a place':'places'} at Rosewood College.`;
+  const opening=`Congratulations! We are delighted to offer ${count===1?'Mary Rose':count===2?'Mary Rose and Anne-Marie':'Mary Rose, Anne-Marie and Zoë'} ${count===1?'a provisional place at Rosewood College for Foundation in 2027.':'provisional places at Rosewood College:'}`;
   const preview=prepared.messages.find(m=>m.primary),queued=h.outbox.find(m=>m.payload.tags?.message_type==='offer_family_invitation').payload;
   for(const email of [preview,queued]){
    assert.ok(email.text.includes(opening));assert.ok(email.html.includes(`<p>${opening}</p>`));
    assert.doesNotMatch(email.text,/Avery/);
    if(count<3)assert.doesNotMatch(email.text,/Zoë/);
-   for(const name of names.slice(0,count))assert.ok(email.text.includes(`${name} Middle Synthetic — Foundation, 2027`));
+   if(count>1)for(const name of names.slice(0,count))assert.ok(email.text.includes(`${name} Middle Synthetic — Foundation, 2027`));
   }
   assert.deepEqual([...h.apps],before);
   assert.deepEqual([...h.families.values()][0].accounts[0].children.map(c=>c.studentFirstName),names.slice(0,count));
