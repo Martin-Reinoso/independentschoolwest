@@ -3,7 +3,7 @@ import {OFFER_CONTRACT} from './offer-contract.mjs';
 import {embedOfferFonts,validateOfferSignature,pdfHash,OFFER_PDF_MAX_BYTES} from './offer-pdf.mjs';
 import {offerLetterLogo} from './offer-letter-assets.mjs';
 
-export const OFFER_LETTER_VERSION='rosewood-provisional-offer-2026.3-review';
+export const OFFER_LETTER_VERSION='rosewood-provisional-offer-2026.4';
 const fail=(code,message)=>Object.assign(new Error(message),{status:422,code});
 export function letterContent({date,parents,children,meetingConfirmed=false,includeGathering=false,testCopy=false}){
  if(!/^20\d{2}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date))||new Date(date).toISOString().slice(0,10)!==date)throw fail('LETTER_DATE_REQUIRED','Select a valid letter date.');
@@ -20,7 +20,7 @@ export function letterContent({date,parents,children,meetingConfirmed=false,incl
   acceptanceHeading:`Accepting your ${plural?'offers':'offer'}`,
   acceptance:`Please use the private portal link in your email to review the terms and digitally accept the provisional offer for ${plural?'each child':'your child'}. Acceptance is complete once all required parents or guardians have signed.`,
   gatheringHeading:'January family gathering',gathering:includeGathering?'We warmly invite your family to join our Founding 2027 Families on Sunday 17 January 2027, to meet other families and spend time getting to know one another. We will share further details and attendance arrangements once finalised.':'',
-  closing:'Thank you for your confidence in our vision. We would be honoured to welcome your family as founding members of Rosewood and to shape our school community together.',
+  closing:'We would be delighted to welcome your family as founding members of Rosewood College and look forward to building a wonderful school community together.',
   salutation:'Warm regards,',principalName:'Dr Anne-Marie Irwin',principalRole:'Founding Principal',schoolName:'Rosewood College'};
  letter.paragraphs=[letter.greeting,letter.opening,letter.offerSentence,...letter.children.map(c=>`${c.studentName} - ${c.entryLevel}, ${c.entryYear}`),letter.noticeHeading,letter.notice,letter.acceptanceHeading,letter.acceptance,...(letter.gathering?[letter.gatheringHeading,letter.gathering]:[]),letter.closing,letter.salutation,`${letter.principalName}\n${letter.principalRole}\n${letter.schoolName}`];
  return letter;
