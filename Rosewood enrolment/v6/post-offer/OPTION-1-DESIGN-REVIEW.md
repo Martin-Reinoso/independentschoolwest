@@ -1,5 +1,12 @@
 # Option 1 acceptance design review
 
+## Personalised offer email — 8 November 2026
+
+The approved congratulations opening names the selected children using their structured
+first names, with singular/plural grammar. Full names/year/level remain listed below;
+later instructions and secondary messages are unchanged. See the
+[email decision and validation map](PERSONALISED-OFFER-EMAIL-2026-11-08.md).
+
 ## Current acceptance workflow
 
 Families accept the provisional offer and terms now; financial choices come later.

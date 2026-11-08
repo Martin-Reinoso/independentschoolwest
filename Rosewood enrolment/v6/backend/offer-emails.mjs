@@ -2,6 +2,11 @@ import { OFFER_CONTRACT } from "./offer-contract.mjs";
 
 const escape = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const childLabel = child => `${child.studentName} — ${child.entryLevel}, ${child.entryYear}`;
+// Preserve compound given names. Older saved invitations may have only a full name.
+const offeredNames = children => {
+  const names = children.map(child => child.studentFirstName?.trim() || child.studentName);
+  return names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+};
 
 function render({ subject, name, paragraphs, children = [], link, linkLabel }) {
   const greeting = `Dear ${name},`;
@@ -20,7 +25,7 @@ export function offerInvitationEmail({ name, primary, children, link }) {
     subject: primary ? "Your Rosewood College provisional enrolment offer" : "Rosewood College — your signature is requested",
     name, children, link, linkLabel: "Open your enrolment portal",
     paragraphs: primary ? [
-      `Congratulations! We are delighted to offer ${plural ? "places for your children" : "a place for your child"} at Rosewood College.`,
+      `Congratulations! We are delighted to offer ${offeredNames(children)} ${plural ? "places" : "a place"} at Rosewood College.`,
       `Attached is your family's personalised provisional offer letter from our Founding Principal, Dr Anne-Marie Irwin. It sets out ${plural ? "the offers" : "the offer"} listed below.`,
       OFFER_CONTRACT.introduction.text,
       `Use the link below to access your family portal and select ${plural ? "each child" : "your child"} to check the details, review the Terms and Conditions of Enrolment and digitally sign acceptance. You do not need to upload any documents.`,

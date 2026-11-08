@@ -99,7 +99,7 @@ export function createOfferRoutes(c) {
        let account=accounts.find(a=>a.email===signer.email);
        if(account && account.name.toLocaleLowerCase()!==signer.name.toLocaleLowerCase())throw failure(409,'SIGNER_REVIEW_REQUIRED','The same email has different guardian names. Review the signing arrangement.');
        if(!account){account={id:`recipient-${accounts.length+1}`,name:signer.name,email:signer.email,primary:signer.email===primaryEmail,children:[]};accounts.push(account);}
-       account.children.push({applicationId:child.applicationId,signerId:signer.id,studentName:child.packet.studentName,entryYear:child.packet.entryYear,entryLevel:child.packet.entryLevel});
+       account.children.push({applicationId:child.applicationId,signerId:signer.id,studentName:child.packet.studentName,studentFirstName:child.details.student.first,entryYear:child.packet.entryYear,entryLevel:child.packet.entryLevel});
      }
    }
    if(accounts.length>8 || !accounts.some(a=>a.primary && a.children.length===prepared.length))throw failure(409,'SIGNER_REVIEW_REQUIRED','The primary recipient must be authorised for every selected child.');
@@ -130,7 +130,7 @@ export function createOfferRoutes(c) {
    const previous=await Promise.all(p.apps.map(a=>store.getOfferByApplication(a.id)));
    if(previous.some(o=>o && (o.status!=='withdrawn'||o.signatures.length)))throw failure(409,'OFFER_EXISTS','A selected child already has an active or signed offer.');
    const offers=p.prepared.map((x,i)=>({id:`offer-${crypto.randomUUID()}`,familyId,applicationId:x.applicationId,operationId:op,packet:x.packet,details:x.details,issuedPacketHash:x.packetHash,packetHash:x.packetHash,contractHash:hash(OFFER_CONTRACT),applicationRevisionHash:x.applicationRevisionHash,signatureControlRevision:x.signatureControlRevision,signers:x.signers,signatures:[],status:'awaiting_signatures',revision:1,createdAt:iso(),createdBy:actor.email,previousOfferId:previous[i]?.id||''}));
-   const accounts=p.accounts.map(a=>({...a,tokenHash:'',children:a.children.map(c=>({offerId:offers.find(o=>o.applicationId===c.applicationId).id,signerId:c.signerId,studentName:c.studentName,entryYear:c.entryYear,entryLevel:c.entryLevel}))}));
+   const accounts=p.accounts.map(a=>({...a,tokenHash:'',children:a.children.map(c=>({offerId:offers.find(o=>o.applicationId===c.applicationId).id,signerId:c.signerId,studentName:c.studentName,studentFirstName:c.studentFirstName,entryYear:c.entryYear,entryLevel:c.entryLevel}))}));
    const tasks=accounts.filter(a=>a.primary).map(a=>{const raw=random();a.tokenHash=hash(raw);return {...a,raw,familyId,status:'active'};});
    const family={id:familyId,invitationId:p.apps[0].invitationId,packetHash:p.packetHash,offerIds:offers.map(o=>o.id),accounts,letter:p.letter,letterHash:p.pdf.sha256,createdAt:iso(),createdBy:actor.email,revision:1};
    const files=[];
