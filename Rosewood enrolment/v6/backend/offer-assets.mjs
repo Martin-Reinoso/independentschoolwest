@@ -1,9 +1,9 @@
 // Current offer release assets; prior releases remain pinned in form-definitions.mjs.
 export const OFFER_ASSET_HASHES = {
   "pages/rosewood-family-portal.js": "e877a7b9540c10a6b7e3cb0e2bab3934db2f2bce2977ecfa1e7ace21a6cfd1fe",
-  "pages/rosewood-enrolment-offer-terms-v1.js": "641a6328d6f4e4295845f5bdb9f88033adff4c3cf08a01869f22c392e01af0c7",
+  "pages/rosewood-enrolment-offer-terms-v1.js": "17bbb0a97c682a4ad8d73c6293a09467bb273bdb3ebf1cabb5329e0b09e6e0bd",
   "pages/rosewood-enrolment-offer-v1.css": "cb43ffc066e434daab0724b15a477dce5b9cf87a530937224f3b4c014518c672",
-  "pages/rosewood-enrolment-offer-v1.html": "e9c5fa3e8b6c521d668eb4af04bc89b302e84718098a181d3dac272f1a521b6a",
+  "pages/rosewood-enrolment-offer-v1.html": "7d063e3ed4cec666b015e8b1512d908407345a98632138a75bb4d71853c91f7f",
   "pages/rosewood-enrolment-offer-v1.js": "0dd282d72fafd82b7cbe450ba9076fdccded1f88803c19dab8f8231f96ddb935",
   "pages/rosewood-enrolment-offers-admin-v1.html": "afd7fdd53d5e9dfa6215dc0171f26e5b57b14e07e67f2d85b20870dfdd37ad52",
   "pages/rosewood-enrolment-offers-admin-v1.js": "79c4af93912efc79ab762b48e2b3221ef7fb54d10c8783286de1b87ed6ac6283",
