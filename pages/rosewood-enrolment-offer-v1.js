@@ -26,7 +26,12 @@
   if(!response.ok){if(response.status===401&&token){clearSession();show('access');}throw Error(value.message||'Unable to complete this request. Please try again.');}
   if(token&&(path.startsWith('/v6/offers/')||path.startsWith('/v6/family/'))){expiresAt=Math.min(Date.now()+5400000,absoluteExpiresAt);saveSession();}return value;
  }
- async function busy(button,action){button.disabled=true;try{await action();}catch(error){notice(error.message);}finally{button.disabled=false;}}
+ async function busy(button,action){
+  const signing=button.id==='submit-signature',label=button.textContent;
+  button.disabled=true;
+  if(signing){button.textContent=preview?'Preparing preview…':'Submitting…';button.setAttribute('aria-busy','true');$('signature-saving').textContent=preview?'Preparing your acceptance preview—please wait.':'Submitting your acceptance—please wait and keep this page open.';$('signature-saving').hidden=false;}
+  try{await action();}catch(error){notice(error.message);}finally{button.disabled=false;if(signing){button.textContent=label;button.removeAttribute('aria-busy');$('signature-saving').hidden=true;}}
+ }
  function clearSignature(){ink.clearRect(0,0,canvas.width,canvas.height);hasSignature=false;drawing=false;signf.elements.declared.checked=false;$('signature-feedback').textContent='No signature entered.';}
  function changed(){cf.elements.agreed.checked=false;gf.elements.confirmed.checked=false;clearSignature();$('save-state').textContent='Changes not yet saved';}
  function capture(){if(!context?.editable)return;for(const key of ['first','middle','last','preferred'])context.details.student[key]=sf.elements[key].value.trim();gf.querySelectorAll('[data-field]').forEach(input=>{context.details.guardians[Number(input.dataset.guardian)][input.dataset.field]=input.dataset.field==='contactPermission'?(input.value===''?undefined:input.value==='true'):input.value.trim();});}
