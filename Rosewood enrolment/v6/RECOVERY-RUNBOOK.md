@@ -479,3 +479,12 @@ review. Pending additional recipients show Waiting for primary guardian acceptan
 have no usable link/task until the primary has accepted their selected children. Failed
 sends use existing outbox retries; do not reissue the family to retry email. Review family
 revision conflicts by reopening the child; duplicate completed signatures remain idempotent.
+
+## Offer verified but family record unavailable
+
+See [portal access recovery](post-offer/PORTAL-ACCESS-RECOVERY-2026-11-08.md).
+A successful offer OTP does not require the historic Application invitation index.
+If that index is absent, use the active offer task’s explicit child graph, preserving
+contact and expiry checks; do not recreate old invitation tokens or issue a duplicate
+offer. After a loading failure, retain the verified session and retry the family view.
+Never make an already-consumed OTP reusable.

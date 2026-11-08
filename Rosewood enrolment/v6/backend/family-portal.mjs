@@ -42,20 +42,25 @@ export async function validatePortalAnchor({ store, session, now }) {
 export function createFamilyPortal({ store, env, clock, requireSession, parseBody }) {
   async function resolve(event) {
     const actor = await requireSession(event, ['application_family', 'enrolment_offer']);
-    let invitationId = actor.invitationId, primary = actor.scope === 'application_family';
+    let invitationId = actor.invitationId, primary = actor.scope === 'application_family', verifiedChildren = [];
     if (!primary) {
       if (env.ENROLMENT_OFFERS_ENABLED !== 'true') throw fail();
       const task = await store.getOfferTask(actor.taskTokenHash);
       const family = task && await store.getOfferFamily(task.familyId);
-      if (!task || task.email !== actor.email || task.familyId !== actor.familyId || !family || !(await offerTaskAccess(store, task, clock())).length) throw fail();
+      if (!task || task.email !== actor.email || task.familyId !== actor.familyId || !family) throw fail();
+      verifiedChildren = (await offerTaskAccess(store, task, clock())).filter(child => family.offerIds.includes(child.offer.id) && child.app?.invitationId === family.invitationId);
+      if (!verifiedChildren.length) throw fail();
       invitationId = family.invitationId; primary = task.primary === true;
     }
     const invitation = await store.getInvitationById(invitationId);
-    if (!invitation || invitation.id !== invitationId) throw fail();
-    const canUseApplications = primary && activeInvitationAccess(invitation, clock()) && invitation.recipientEmail === actor.email;
+    if ((invitation && invitation.id !== invitationId) || (!invitation && actor.scope !== 'enrolment_offer')) throw fail();
+    // Old Application invitation indexes may have expired. The current offer task is
+    // independent authority for its explicit children, never for Application access.
+    const canUseApplications = Boolean(invitation && primary && activeInvitationAccess(invitation, clock()) && invitation.recipientEmail === actor.email);
+    const applicationIds = invitation ? ids(invitation) : verifiedChildren.map(child => child.app.id);
     if (actor.scope === 'application_family' && !canUseApplications) throw fail();
     const rows = [];
-    for (const applicationId of ids(invitation)) {
+    for (const applicationId of applicationIds) {
       const app = await store.getApplication(applicationId);
       if (!app || app.invitationId !== invitationId) continue;
       const canUseApplication = canUseApplications && portalApplicationAllowed(app, actor.email);
