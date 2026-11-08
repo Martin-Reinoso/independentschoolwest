@@ -1,5 +1,13 @@
 # V6 Product and Backend Decisions
 
+## Current offer activation — 8 November 2026
+
+The user approved the final terms and real offers are enabled. The exact contract hash,
+no-email activation and passing regression/live checks are recorded in
+[activation evidence](post-offer/OFFER-ACTIVATION-2026-11-08.md). Historical candidate
+and pending-approval statements below do not describe the current release.
+
+
 ## 8 November 2026 conditional agreement candidate
 
 The user requested online terms and digital signatures, not a Word agreement or signed policy uploads. They explicitly retained both bond options and requested one full term of withdrawal notice, with hardship exceptions and legal review. The user also requested one staff-triggered congratulatory email per family with the personalised provisional-offer letter attached, a portal child selector, staff delivery/access/signature tracking, no acceptance-stage document uploads and succinct terms. The candidate implements that family flow, with separate verified requests for other required guardians. The proposed flow is one conditional agreement and one acceptance process; commencement confirmation does not require another signature unless material terms change. Payment/refund provisions and current source-policy verification remain review items. This is not a production release or governing-authority approval. See [implementation notes](POST-OFFER-IMPLEMENTATION-2026-11-08.md).

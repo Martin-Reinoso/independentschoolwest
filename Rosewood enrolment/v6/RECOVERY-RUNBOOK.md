@@ -1,5 +1,13 @@
 # V6 Recovery Runbook
 
+## Current offer activation — 8 November 2026
+
+The user approved the final terms and real offers are enabled. The exact contract hash,
+no-email activation and passing regression/live checks are recorded in
+[activation evidence](post-offer/OFFER-ACTIVATION-2026-11-08.md). Historical candidate
+and pending-approval statements below do not describe the current release.
+
+
 ## Conditional offers candidate recovery
 
 Not deployed. A resend rotates one recipient’s family task with an available unsigned child offer and invalidates the previous link/challenges/sessions through task revalidation. Never rewrite an accepted packet or original Application. Unsigned withdrawal preserves evidence; signed agreements need a separate reviewed process. Clear only the approved-contract hash to stop new issuance while retaining access; disabling the entire feature also stops family access. Restore family records, letter artifacts, offer associations, tasks, immutable packets/signatures, audit and outbox together into isolated tables. See [implementation notes](POST-OFFER-IMPLEMENTATION-2026-11-08.md).

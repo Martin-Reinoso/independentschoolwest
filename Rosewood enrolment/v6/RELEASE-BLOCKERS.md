@@ -1,14 +1,16 @@
 # V6 Release Blockers
 
-## Production release checkpoint
+## Production activation checkpoint
 
-The acceptance implementation is now deployed to AWS and GitHub Pages through PR #56,
-with real offer issuance **off** and content approval blank. EOI `2026.29` / Application `2026.30`
-are live; no production family was selected or emailed. Actual isolated integration,
-14 delivered test messages, signed PDF checks, retry/recovery and 283 tests pass.
+The acceptance implementation is deployed to AWS and GitHub Pages through PR #56.
+On 8 November 2026 the user approved the final terms and real offer issuance was
+**enabled** with the exact approved contract hash. EOI `2026.29` / Application `2026.30`
+remain live. No production family was selected or emailed during activation. The 283
+regression tests and live manual/scheduled canaries passed.
+See [exact approval and activation evidence](post-offer/OFFER-ACTIVATION-2026-11-08.md).
 See [current release and operating evidence](post-offer/PRODUCTION-RELEASE-2026-11-08.md).
 Earlier local-only, inactive-runtime and pending-Google statements below are historical.
-Final substantive agreement adoption and deliberate real-family issuance remain separate.
+The user’s final-terms approval is recorded; staff still review and explicitly send each family offer.
 
 
 ## 8 November 2026 offer candidate

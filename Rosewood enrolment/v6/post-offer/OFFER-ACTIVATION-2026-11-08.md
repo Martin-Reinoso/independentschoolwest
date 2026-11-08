@@ -34,8 +34,30 @@ records, enqueue messages or authorise a production write-path test.
 
 ## Verification
 
-Activation checks are in progress. Record final stack, health, canary, regression,
-resource-preservation and no-email evidence here before declaring completion.
+Activation completed and verified at `2026-11-08T00:35:04Z` (11:35 Melbourne).
+CloudFormation change set `enable-approved-offers-20261108` changed only the two
+reviewed Lambda environment values. Stack `UPDATE_COMPLETE`; Lambda `Active` and
+last update `Successful`. All 39 physical resources, runtime code checksum, template,
+other parameters/environment and the configuration-secret version are unchanged.
+
+- Live `/v6/health` returns `conditionalOffers:true`, EOI `2026.29`, Application `2026.30`.
+- All 283 backend regression tests passed again (zero failures/skips).
+- Static references and the public-data scan passed; no runtime rebuild was necessary
+  because the exact deployed ZIP and contract match the already-tested release.
+- The production schedule check at `00:35:08.606Z` and explicit manual check at
+  `00:35:11.446Z` each passed all five canary checks, including enabled-offer health.
+- All nine alarms are OK; the one-minute worker and ten-minute canary are enabled.
+- Record/audit deletion protection and point-in-time recovery are enabled; both
+  security-email subscriptions and the SES feedback Lambda subscription are confirmed.
+- Three unauthenticated GET checks (offer, staff-offer and family context) returned 401.
+- The private principal signature checksum and SES production sending readiness passed.
+- Production has zero offer records and zero offer email events following activation.
+  No family was selected or contacted, no production write-path test was performed,
+  and the separate synthetic stack remains inactive.
+
+Private baseline, reviewed change set and verification evidence are retained in
+`~/.local/share/ffe-private-runtime/offer-activation-20261108`. This record supersedes
+historical issuance-off/draft-approval checkpoints; no further terms approval is pending.
 
 ## Stop new issuance
 
