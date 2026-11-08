@@ -1,12 +1,12 @@
 // Generated from post-offer/agreement-draft.json. Run scripts/generate-offer-content.mjs; do not edit.
 // Issue requires approval of this exact content hash. Draft status is not approval.
 export const OFFER_CONTRACT = {
-  "id": "rosewood-provisional-enrolment-agreement-2026.3-review",
-  "status": "draft",
+  "id": "rosewood-provisional-enrolment-agreement-2026.4",
+  "status": "approved",
   "preparedOn": "2026-11-08",
   "title": "Terms and Conditions of Enrolment",
   "operator": "Families for Education Ltd",
-  "notice": "Draft for review. Not approved for issue or signature. The offer schedule, current policy versions and approval record must be completed before use.",
+  "notice": "Approved for provisional-offer acceptance. Bond and payment choices are made separately at a later stage.",
   "sections": [
     {
       "id": "1",
@@ -26,8 +26,8 @@ export const OFFER_CONTRACT = {
         "2.2 Parents must provide accurate information and relevant existing reports or assessments reasonably needed to plan the Student’s education, health and safety. Requests will be explained and limited to information relevant to that purpose; further assessment requirements will be discussed with the family.",
         "2.3 Where English-language support is needed, the College will discuss assessment, support and participation arrangements with the family. These terms do not impose an automatic English-proficiency exclusion or cancellation rule.",
         "2.4 Rosewood is working towards opening in 2027. Opening and commencement remain subject to VRQA registration, applicable registration requirements and written confirmation of commencement from the College. Acceptance of this agreement does not itself confirm that the Student may commence.",
-        "2.5 No tuition, levy, bond or withdrawal charge becomes payable before those commencement conditions are confirmed as satisfied. The issued offer schedule will specify the acceptance deadline, conditions deadline and payment period after written confirmation.",
-        "2.6 If the commencement conditions are not met by the stated deadline, either party may end this agreement in writing without a withdrawal charge. Any money paid under it must be returned within the refund period stated in the offer schedule. Extending that deadline requires express written agreement."
+        "2.5 No tuition, levy, bond or withdrawal charge becomes payable before those commencement conditions are confirmed as satisfied. The issued offer schedule specifies the acceptance and conditions deadlines. Families will choose their bond option and payment arrangements separately at a later stage; accepting this provisional offer does not record those choices or request payment.",
+        "2.6 If the commencement conditions are not met by the stated deadline, either party may end this agreement in writing without a withdrawal charge. Any money paid under it must be returned. Any applicable refund arrangements will be provided with the later payment arrangements. Extending that deadline requires express written agreement."
       ]
     },
     {
@@ -49,7 +49,7 @@ export const OFFER_CONTRACT = {
         "4.5 If an amount remains unpaid 60 days after its due date, the College may commence a formal arrears review after written reminders and an opportunity to discuss the account. The College will consider disputed amounts, hardship and payment arrangements. Any proposed suspension or termination must follow clause 12; it is not automatic.",
         "4.6 Absence because of illness, approved leave or suspension does not automatically reduce tuition fees. Parents may request a remission or hardship review. Applicable consumer rights, any agreed refund and adjustments required by law remain unaffected.",
         "4.7 For an optional activity outside the Student Resource Levy with separately disclosed recurring charges, six weeks’ written notice is required to discontinue it only where that condition was disclosed before joining. A charge for shorter notice must reflect the unserved notice period, be lawful and not exceed six weeks’ activity fees; recoverable savings, hardship and exceptional circumstances will be considered. This clause does not create additional charges for levy-covered activities.",
-        "4.8 The refundable bond is separate from annual fees. Option A is $2,000 once per family, payable when the first child enrols, with no bond-related tuition reduction or further sibling bond. Option B is $10,000 in the first year, giving the first child a 5% tuition reduction each year at Rosewood up to Year 12. A family with two or more children may choose a second $10,000 bond, making $20,000 in total and giving every child a 5% tuition reduction. $20,000 is the maximum family bond, regardless of the number of children. The selected option and any existing bond credit must be recorded.",
+        "4.8 The refundable bond is separate from annual fees. Option A is $2,000 once per family, payable when the first child enrols, with no bond-related tuition reduction or further sibling bond. Option B is $10,000 in the first year, giving the first child a 5% tuition reduction each year at Rosewood up to Year 12. A family with two or more children may choose a second $10,000 bond, making $20,000 in total and giving every child a 5% tuition reduction. $20,000 is the maximum family bond, regardless of the number of children. Families will select their bond option at a later stage, when any existing bond credit will also be confirmed. No bond option is selected by accepting this provisional offer.",
         "4.9 Option A is refunded when the last family member leaves Rosewood. Under Option B, the first $10,000 is refunded when the first child leaves; the second $10,000, if paid, is refunded when the last child leaves. Clause 2 applies if the commencement conditions are not met.",
         "4.10 For children attending at the same time, the sibling tuition reductions are 0% for the first child, 15% for the second, 30% for the third, 45% for the fourth and 100% for the fifth and subsequent children. The $910 levy remains payable for each child. The $1,000 Foundation Year reduction applies first, followed by sibling, bond and annual-payment reductions in that order, with each percentage reduction rounded to the nearest cent. The family’s payment plan, bond choice and applicable reductions determine the final total."
       ]
@@ -168,12 +168,7 @@ export const OFFER_CONTRACT = {
     "Authorised College offer issuer",
     "Required signers or documented exception",
     "Fee Schedule year version and approval",
-    "Tuition and levies after discounts",
-    "Selected bond and any existing family bond credit",
-    "Higher-bond discount calculation if selected",
-    "Payment dates and arrangements",
-    "Conditions before commencement",
-    "Bond refund timing and pre-commencement withdrawal treatment"
+    "Conditions before commencement"
   ],
   "policyTitles": [
     "Parent Code of Conduct Policy",
@@ -9322,5 +9317,6 @@ export const OFFER_CONTRACT = {
     "text": "Rosewood College is preparing to welcome its first students in 2027, subject to registration approval from the Victorian Registration and Qualifications Authority (VRQA). We will provide written confirmation of the commencement date and final enrolment arrangements once these are confirmed."
   },
   "acceptanceDeclaration": "I / We accept the provisional offer of a place for my / our child at Rosewood College.",
-  "termsDeclaration": "I agree to the Terms and Conditions of Enrolment."
+  "termsDeclaration": "I agree to the Terms and Conditions of Enrolment.",
+  "paymentArrangementsNotice": "Bond and payment options will be chosen separately at a later stage. No payment is requested when accepting this provisional offer."
 };

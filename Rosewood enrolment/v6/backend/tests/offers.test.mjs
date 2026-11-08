@@ -7,7 +7,7 @@ import {makeOfferPacket} from '../offer-workflow.mjs';
 import {DynamoStore} from '../dynamo-store.mjs';
 const hash=s=>crypto.createHash('sha256').update(typeof s==='string'?s:JSON.stringify(s)).digest('hex');
 const now=Date.parse('2026-11-08T00:00:00Z');
-const schedule={acceptBy:'2026-12-01T00:00:00Z',conditionsBy:'2027-01-20T00:00:00Z',feeSchedule:'Synthetic approved 2027 fee schedule: tuition $5,990, levy $910; no advance payment before conditions are met.',paymentDays:14,refundDays:30,bondOption:'standard',bondCredit:0};
+const schedule={acceptBy:'2026-12-01T00:00:00Z',conditionsBy:'2027-01-20T00:00:00Z'};
 import {application,harness,drawing} from './helpers/offer-harness.mjs';
 export {harness} from './helpers/offer-harness.mjs';
 test('offer issue is disabled by default and exact content approval is required',async()=>{
@@ -43,15 +43,20 @@ test('late acceptance is rejected while completed evidence remains readable',asy
 test('database conflict cleans up unreferenced signature image',async()=>{
  const h=harness({store:{signOffer:async()=>{throw Object.assign(Error('Conflict'),{status:409});}}});await h.issue();const l=await h.login();const c=await h.child(l.session);const result=await h.call('/v6/offers/sign',{offerId:c.offerId,packetHash:c.packetHash,reviewAcknowledged:true,conditionsAcknowledged:true,termsAcknowledged:true,electronicConsent:true,signatureDataUrl:drawing},l.session);assert.equal(result.status,409);assert.equal(h.removed.length,3);assert.equal([...h.offers.values()][0].signatures.length,0);
 });
-test('offer generation rejects missing entry year and absent financial schedule',()=>{
- const app=application();delete app.values.entry_year;assert.throws(()=>makeOfferPacket(app,schedule,now));assert.throws(()=>makeOfferPacket(application(),{...schedule,feeSchedule:''},now));
+test('offer acceptance needs entry details and dates but no financial selection',()=>{
+ const app=application();delete app.values.entry_year;assert.throws(()=>makeOfferPacket(app,schedule,now));
+ for(const key of ['acceptBy','conditionsBy'])assert.throws(()=>makeOfferPacket(application(),{...schedule,[key]:''},now));
+ const prepared=makeOfferPacket(application(),schedule,now);
+ assert.deepEqual(prepared.packet.schedule,{...schedule,financialArrangements:'deferred'});
+ assert.match(prepared.packet.contract.paymentArrangementsNotice,/chosen separately at a later stage/);
 });
-test('bond selection accepts published family amounts and rejects excessive or mismatched credit',()=>{
- for(const [bondOption,bondAmount] of [['standard',2000],['higher',10000],['higher',20000]]){
-  const result=makeOfferPacket(application(),{...schedule,bondOption,bondAmount,bondCredit:bondAmount},now);
-  assert.equal(result.packet.schedule.bondAmount,bondAmount);
+test('stale financial selections are rejected before an offer or email is created',async()=>{
+ const h=harness();
+ for(const key of ['feeSchedule','paymentDays','refundDays','bondOption','bondAmount','bondCredit']){
+  const response=await h.call('/v6/staff/offers/preview',{applicationIds:['app-synthetic'],schedule:{...schedule,[key]:'stale'}});
+  assert.equal(response.status,422);assert.equal(response.error,'PAYMENT_CHOICES_DEFERRED');
  }
- for(const patch of [{bondOption:'higher',bondAmount:30000},{bondOption:'standard',bondAmount:10000},{bondOption:'higher',bondAmount:10000,bondCredit:20000},{bondAmount:2000,bondCredit:2000.01}])assert.throws(()=>makeOfferPacket(application(),{...schedule,...patch},now));
+ assert.equal(h.offers.size,0);assert.equal(h.outbox.length,0);
 });
 test('a delivery worker failure after signature commit cannot delete committed signature evidence',async()=>{
  const h=harness();await h.issue();const l=await h.login();const c=await h.child(l.session);
@@ -95,7 +100,7 @@ test('family grouping cannot be inferred from matching emails and duplicate shar
  const same=harness();same.apps.get('app-synthetic').signerControls[1].currentEmail='alex@example.test';assert.equal((await same.issue()).result.status,409);
 });
 test('changed letter date contact controls or fee content invalidates reviewed issue',async()=>{
- for(const change of ['date','contact','fees']){const h=harness();const {payload}=await h.issue();payload.operationId+='new';if(change==='date')payload.letterDate='2026-11-09';if(change==='fees')payload.schedule={...payload.schedule,feeSchedule:payload.schedule.feeSchedule+' Changed.'};if(change==='contact')h.apps.get('app-synthetic').signatureControlRevision++;const result=await h.call('/v6/staff/offers/issue',payload);assert.equal(result.status,409);assert.equal(h.outbox.length,1);}
+ for(const change of ['date','contact','deadline']){const h=harness();const {payload}=await h.issue();payload.operationId+='new';if(change==='date')payload.letterDate='2026-11-09';if(change==='deadline')payload.schedule={...payload.schedule,acceptBy:'2026-12-02T00:00:00Z'};if(change==='contact')h.apps.get('app-synthetic').signatureControlRevision++;const result=await h.call('/v6/staff/offers/issue',payload);assert.equal(result.status,409);assert.equal(h.outbox.length,1);}
 });
 test('real portal verification and child access are tracked separately from email delivery',async()=>{
  const h=harness();await h.issue();let view=await h.call('/v6/staff/offers');assert.equal(view.families[0].recipients[0].portalOpenedAt,'');const l=await h.login();view=await h.call('/v6/staff/offers');assert.ok(view.families[0].recipients[0].portalOpenedAt);assert.deepEqual(view.families[0].recipients[0].childOpenedAt,{});const c=await h.child(l.session);view=await h.call('/v6/staff/offers');assert.ok(view.families[0].recipients[0].childOpenedAt[c.offerId]);assert.equal(view.families[0].recipients[0].deliveryStatus,'unavailable');assert.ok(!JSON.stringify(view).includes('taskTokenHash'));

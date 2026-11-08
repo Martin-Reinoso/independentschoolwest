@@ -56,13 +56,13 @@ test("family supplied names cannot inject HTML into an offer email", () => {
   assert.match(email.html, /&lt;img/);
 });
 
-test("browser previews and backend use the same fourteen-section review content", () => {
+test("browser previews and backend use the same approved fourteen-section content", () => {
   const context = { window: {} };
   vm.runInNewContext(readFileSync(new URL("../../../../pages/rosewood-enrolment-offer-terms-v1.js", import.meta.url), "utf8"), context);
   vm.runInNewContext(readFileSync(new URL("../../../../pages/rosewood-enrolment-acceptance-terms-review.js", import.meta.url), "utf8"), context);
   assert.deepEqual(JSON.parse(JSON.stringify(context.window.ROSEWOOD_ACCEPTANCE_TERMS_REVIEW)), OFFER_CONTRACT);
   assert.equal(OFFER_CONTRACT.sections.length, 14);
-  assert.equal(OFFER_CONTRACT.status, "draft");
+  assert.equal(OFFER_CONTRACT.status, "approved");
   assert.ok(OFFER_CONTRACT.sections[3].paragraphs.some(p => p.includes("$20,000 is the maximum family bond")));
   assert.doesNotMatch(JSON.stringify(OFFER_CONTRACT.sections), /\$10,000 per child/);
 });

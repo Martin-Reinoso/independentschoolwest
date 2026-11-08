@@ -35,9 +35,14 @@ export async function renderOfferRecordPdf(offer, signatureImages) {
     const signed=offer.signatures.find(s=>s.signerId===signer.id);
     await doc.signatureEntry(signer.name,signed?signatureImages.get(signed.id):null,signed?`Signed electronically on ${date(signed.signedAt)}. Identity verified by email code. Accepted the offer and terms and consented to electronic signing.`:'Awaiting signature.');
   }
-  doc.newPage();doc.heading('Offer schedule');
+  doc.newPage();
+  if(s.financialArrangements==='deferred'){
+    doc.paragraph(p.contract.paymentArrangementsNotice);
+  }else{
+    doc.heading('Offer schedule');
   doc.paragraph(s.feeSchedule);
   doc.paragraph(`Refundable family bond: $${Number(s.bondAmount||(s.bondOption==='higher'?10000:2000)).toLocaleString('en-AU')}. Existing bond credit: $${Number(s.bondCredit||0).toLocaleString('en-AU')}.\nPayment after confirmation: ${s.paymentDays} days. Refund period if commencement conditions fail: ${s.refundDays} days.`);
+  }
   doc.heading('Terms and Conditions of Enrolment',{size:17});
   doc.paragraph(p.contract.introduction.text);
   for(const section of p.contract.sections){doc.heading(`${section.id}. ${section.title}`);for(const text of section.paragraphs)doc.paragraph(text);}

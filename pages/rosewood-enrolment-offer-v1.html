@@ -39,7 +39,7 @@
 <button id="add-guardian" class="button button-secondary" type="button">+ Add parent/guardian</button><p class="group-note">Add any legal parent or guardian missing from the application details.</p><p id="guardian-change-status" role="status"></p>
 <label class="declaration"><input name="confirmed" type="checkbox" required><span>I have checked these details and included all legal parents or guardians for this child. There are no further guardians to add.</span></label><div class="step-actions"><button class="button button-secondary" type="button" data-back="student">Back</button><button class="button button-primary" type="submit">Continue to conditions</button></div></form></section>
 <section id="conditions" hidden><h2>Conditions of enrolment</h2><p id="agreement-for"></p>
-<div class="offer-facts"><h3>Your offer at a glance</h3><dl><dt>Offer status</dt><dd>Provisional offer of enrolment</dd><dt>Place offered</dt><dd id="conditions-place"></dd><dt>Commencement</dt><dd>Subject to registration and written confirmation from the College.</dd></dl></div>
+<div class="offer-facts"><h3>Your offer at a glance</h3><dl><dt>Offer status</dt><dd>Provisional offer of enrolment</dd><dt>Place offered</dt><dd id="conditions-place"></dd><dt>Commencement</dt><dd>Subject to registration and written confirmation from the College.</dd><dt>Accept by</dt><dd id="conditions-accept-by"></dd><dt>Commencement conditions deadline</dt><dd id="conditions-deadline"></dd></dl></div><p id="payment-arrangements-note"></p>
 <form id="conditions-form"><label class="declaration"><input name="agreed" type="checkbox" required><span>I agree to the Terms and Conditions of Enrolment.</span></label>
 <div class="step-actions"><button class="button button-primary" type="submit">Continue to signature</button></div>
 <div class="terms-heading"><h3>Terms and Conditions of Enrolment</h3><div class="terms-tools"><button id="enlarge-terms" class="text-action" type="button" aria-pressed="false">Enlarge text</button><button id="print-terms" class="text-action" type="button">Print</button></div></div>
@@ -53,8 +53,8 @@
 </main></div>
 
 <dialog id="session-dialog" aria-labelledby="session-title"><h2 id="session-title">Your secure session</h2><p id="session-message"></p><button id="session-continue" class="button button-primary" type="button">Continue my session</button><button id="session-signin" class="button button-secondary" type="button">Sign in again</button></dialog>
-<script src="rosewood-enrolment-offer-terms-v1.js"></script>
+<script src="rosewood-enrolment-offer-terms-v1.js?v=2"></script>
 <script src="rosewood-enrolment-offer-policy-reader.js"></script>
 <script src="rosewood-family-portal.js?v=1"></script>
-<script src="rosewood-enrolment-offer-v1.js?v=4"></script>
+<script src="rosewood-enrolment-offer-v1.js?v=5"></script>
 </body></html>

@@ -5,7 +5,7 @@ import {OFFER_CONTRACT} from '../../offer-contract.mjs';
 import {offerContentHash} from '../../offer-content-hash.mjs';
 const hash=s=>crypto.createHash('sha256').update(typeof s==='string'?s:JSON.stringify(s)).digest('hex');
 const now=Date.parse('2026-11-08T00:00:00Z');
-export const schedule={acceptBy:'2026-12-01T00:00:00Z',conditionsBy:'2027-01-20T00:00:00Z',feeSchedule:'Synthetic approved 2027 fee schedule: tuition $5,990, levy $910; no advance payment before conditions are met.',paymentDays:14,refundDays:30,bondOption:'standard',bondCredit:0};
+export const schedule={acceptBy:'2026-12-01T00:00:00Z',conditionsBy:'2027-01-20T00:00:00Z'};
 export const drawing='data:image/png;base64,'+readFileSync(new URL('../fixtures/synthetic-offer-signature.png',import.meta.url)).toString('base64');
 export function application(){return {id:'app-synthetic',status:'submitted',revisionHash:'frozen-original',signatureControlRevision:1,guardianCount:2,invitationId:'family-synthetic',recipientEmail:'alex@example.test',values:{student_first:'Avery',student_last:'Synthetic',app_guardian_0_first:'Alex',app_guardian_0_last:'Synthetic',app_guardian_0_mobile:'0400 000 001',app_guardian_0_relationship:'Parent',app_guardian_1_first:'Taylor',app_guardian_1_last:'Synthetic',app_guardian_1_mobile:'0400 000 002',app_guardian_1_relationship:'Parent',entry_year:'2027',entry_level:'Foundation'},signerControls:[{guardianId:'g1',guardianIndex:0,name:'Alex Synthetic',currentEmail:'alex@example.test',contactPermission:true},{guardianId:'g2',guardianIndex:1,name:'Taylor Synthetic',currentEmail:'taylor@example.test',contactPermission:true}]};}
 export function harness(overrides={}) {
