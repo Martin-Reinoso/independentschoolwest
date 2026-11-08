@@ -1,14 +1,14 @@
 # Rosewood Enrolment V6
 
-## Current correction: financial choices are made later
+## Current acceptance workflow
 
-The user clarified that this stage is acceptance only. The six financial-choice inputs
-have been removed from staff preparation, new offer packets and the signed PDF schedule.
-Bond/payment choices are deferred; the published fee terms remain available. Required
-offer dates are now visible before family signing. Agreement 2026.4 is approved and
-active; current assets are EOI 2026.30 / Application 2026.31. See the
-[verified correction and release evidence](post-offer/PAYMENT-CHOICES-LATER-2026-11-08.md).
-This supersedes earlier requirements to select financial arrangements before issue.
+Families accept the provisional offer and terms now; financial choices come later.
+Staff do not enter acceptance or registration-condition deadlines, fee schedules,
+bond selections/credits, or payment/refund periods. New offers have no automatic
+acceptance expiry; registration and written commencement confirmation remain conditions.
+Agreement 2026.5 is active; current assets are EOI 2026.31 / Application 2026.32.
+See [current release and verification](post-offer/NO-OFFER-DEADLINES-2026-11-08.md).
+Older financial/deadline requirements below are historical and superseded.
 
 
 ## Production activation checkpoint
