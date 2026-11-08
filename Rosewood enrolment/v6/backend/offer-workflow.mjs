@@ -36,13 +36,19 @@ export function makeOfferPacket(app, input, now=Date.now()) {
   if (entryYear !== '2027') throw failure(409,'OFFER_YEAR_UNSUPPORTED','This opening-year offer is for 2027 only. Prepare a separately reviewed offer for another entry year.');
   const financialFields=['feeSchedule','paymentDays','refundDays','bondOption','bondAmount','bondCredit'];
   if(financialFields.some(key=>Object.hasOwn(input,key)))throw failure(422,'PAYMENT_CHOICES_DEFERRED','Bond and payment choices are made later. Reload the staff portal to prepare this provisional offer without financial selections.');
-  const schedule={acceptBy:text(input.acceptBy,40),conditionsBy:text(input.conditionsBy,40),financialArrangements:'deferred'};
-  for (const key of ['acceptBy','conditionsBy']) if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(schedule[key]) || !Number.isFinite(Date.parse(schedule[key])) || Date.parse(schedule[key]) <= now) throw failure(422,'DATES_REQUIRED','Provide future offer and registration-condition deadlines.');
-  if (Date.parse(schedule.conditionsBy)<Date.parse(schedule.acceptBy)) throw failure(422,'INVALID_DATES','The conditions deadline cannot precede the acceptance deadline.');
+  if(['acceptBy','conditionsBy'].some(key=>Object.hasOwn(input,key)))throw failure(422,'OFFER_DEADLINES_REMOVED','Offer deadlines are no longer required. Reload the staff portal to prepare this provisional offer without deadline dates.');
+  const schedule={expiryPolicy:'none',financialArrangements:'deferred'};
   const details=initialOfferDetails(app,signers);
   signers=signers.map(signer=>({...signer,name:personName(details.guardians.find(person=>person.id===signer.id))}));
   const packet=packetWithDetails({contract:OFFER_CONTRACT, studentName, entryYear, entryLevel, signers:signers.map(({name})=>({name})), schedule},details);
   return {packet, details, packetHash:checksum(packet), signers, applicationId:app.id, applicationRevisionHash:app.revisionHash, signatureControlRevision:Number(app.signatureControlRevision || 0)};
+}
+
+// Existing issued deadlines remain authoritative; only explicitly deadline-free new offers stay open.
+export function offerAcceptanceOpen(offer, now) {
+  const schedule=offer?.packet?.schedule;
+  if(schedule?.acceptBy)return Number.isFinite(Date.parse(schedule.acceptBy)) && Date.parse(schedule.acceptBy)>now;
+  return schedule?.expiryPolicy==='none';
 }
 
 // A family is an explicit invitation relationship, never an inferred name/email match.
@@ -55,7 +61,7 @@ export async function offerTaskAccess(store, task, now, {all=false}={}) {
     const signer=offer?.signers.find(s=>s.id===child.signerId && s.email===task.email);
     const permitted=offer && offerSignerContactAllowed(offer,app,signer);
     const signed=offer?.signatures.find(s=>s.signerId===child.signerId);
-    if(!offer || offer.familyId!==task.familyId || !['awaiting_signatures','signed_conditional'].includes(offer.status) || !signer || !permitted || (!signed && Date.parse(offer.packet.schedule.acceptBy)<=now)) {
+    if(!offer || offer.familyId!==task.familyId || !['awaiting_signatures','signed_conditional'].includes(offer.status) || !signer || !permitted || (!signed && !offerAcceptanceOpen(offer,now))) {
       if(all)return [];continue;
     }
     result.push({offer,app,signer,signed});
@@ -200,7 +206,7 @@ export function createOfferRoutes(c) {
      const nextFamily={...family,revision:family.revision+1,accounts:family.accounts.map(a=>({...a}))};
      for(const account of nextFamily.accounts.filter(a=>!a.primary&&!a.tokenHash)){
        const selected=account.children.map(c=>familyOffers.find(o=>o.id===c.offerId));
-       if(!selected.every(o=>o?.status==='awaiting_signatures'&&o.correction?.status!=='open'&&o.signatures.some(s=>s.signerEmail===primary.email)&&Date.parse(o.packet.schedule.acceptBy)>clock()))continue;
+       if(!selected.every(o=>o?.status==='awaiting_signatures'&&o.correction?.status!=='open'&&o.signatures.some(s=>s.signerEmail===primary.email)&&offerAcceptanceOpen(o,clock())))continue;
        let permitted=true;
        for(const o of selected){const source=await store.getApplication(o.applicationId);applications.set(source.id,source);const assigned=account.children.find(c=>c.offerId===o.id);const candidate=o.signers.find(s=>s.id===assigned.signerId);if(!offerSignerContactAllowed(o,source,candidate)||candidate.email!==account.email)permitted=false;}
        if(!permitted)continue;

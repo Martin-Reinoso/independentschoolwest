@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { activeInvitationAccess } from './invitation-access.mjs';
-import { offerTaskAccess } from './offer-workflow.mjs';
+import { offerTaskAccess, offerAcceptanceOpen } from './offer-workflow.mjs';
 import { offerSignerContactAllowed } from './offer-details.mjs';
 
 const fail = (code = 'FAMILY_ACCESS_DENIED') => Object.assign(new Error('This family record is not available through your verified access. Open your private email link or contact the College.'), { status: code === 'SESSION_EXPIRED' ? 401 : 403, code });
@@ -72,7 +72,7 @@ export function createFamilyPortal({ store, env, clock, requireSession, parseBod
             accessible.task = task;
           } else if (canUseApplication && candidate.status === 'withdrawn') {
             unavailableStage = ['offer_withdrawn', 'Offer withdrawn — contact the College'];
-          } else if (canUseApplication && candidate.status === 'awaiting_signatures' && Date.parse(candidate.packet.schedule.acceptBy) <= clock()) {
+          } else if (canUseApplication && candidate.status === 'awaiting_signatures' && !offerAcceptanceOpen(candidate, clock())) {
             unavailableStage = ['offer_deadline_passed', 'Offer acceptance deadline passed — contact the College'];
           }
         }

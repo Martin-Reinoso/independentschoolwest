@@ -50,13 +50,13 @@ test('both staff surfaces prepare acceptance without financial-choice inputs',()
  const root=new URL('../../../../pages/',import.meta.url);
  for(const [file,attribute] of [['rosewood-enrolment-offers-admin-v1.html','id'],['rosewood-enrolment-admin-v6.html','data-offer-id']]){
   const html=readFileSync(new URL(file,root),'utf8');for(const control of ['letter-date','letter-meeting-confirmed','letter-gathering'])assert.ok(html.includes(`${attribute}="${control}"`),`${file}: ${control}`);
-  for(const control of ['fee-schedule','bond','bond-amount','credit','payment-days','refund-days'])assert.equal(html.includes(`${attribute}="${control}"`),false);
+  for(const control of ['fee-schedule','bond','bond-amount','credit','payment-days','refund-days','accept-by','conditions-by'])assert.equal(html.includes(`${attribute}="${control}"`),false);
   assert.match(html,/Bond and payment options will be chosen separately/);
  }
 });
 
 test('backdating a letter cannot restore a gathering invitation after its date',async()=>{
  const h=harness(),now=Date.parse('2027-01-17T01:00:00Z');h.setTime(now);for(const session of h.sessions.values()){session.expiresAt=now+600000;session.absoluteExpiresAt=now+600000;}
- const result=await h.call('/v6/staff/offers/preview',{applicationIds:['app-synthetic'],letterDate:'2026-11-08',letterOptions:{includeGathering:true},schedule:{...schedule,acceptBy:'2027-02-01T00:00:00Z',conditionsBy:'2027-03-01T00:00:00Z'}});
+ const result=await h.call('/v6/staff/offers/preview',{applicationIds:['app-synthetic'],letterDate:'2026-11-08',letterOptions:{includeGathering:true},schedule});
  assert.equal(result.status,422);assert.equal(result.error,'GATHERING_DATE_PASSED');assert.equal(h.letters.size,0);assert.equal(h.outbox.length,0);
 });

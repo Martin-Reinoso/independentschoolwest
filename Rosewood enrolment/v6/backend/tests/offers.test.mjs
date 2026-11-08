@@ -3,11 +3,11 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import {createService} from '../service.mjs';
 import {OFFER_CONTRACT} from '../offer-contract.mjs';
-import {makeOfferPacket} from '../offer-workflow.mjs';
+import {makeOfferPacket,offerAcceptanceOpen} from '../offer-workflow.mjs';
 import {DynamoStore} from '../dynamo-store.mjs';
 const hash=s=>crypto.createHash('sha256').update(typeof s==='string'?s:JSON.stringify(s)).digest('hex');
 const now=Date.parse('2026-11-08T00:00:00Z');
-const schedule={acceptBy:'2026-12-01T00:00:00Z',conditionsBy:'2027-01-20T00:00:00Z'};
+const schedule={};
 import {application,harness,drawing} from './helpers/offer-harness.mjs';
 export {harness} from './helpers/offer-harness.mjs';
 test('offer issue is disabled by default and exact content approval is required',async()=>{
@@ -37,17 +37,17 @@ test('contact withdrawal blocks existing sessions and new issue',async()=>{
 test('missing declarations and stale packet cannot create a signature file',async()=>{
  const h=harness();await h.issue();const l=await h.login();const c=await h.child(l.session);const bad=await h.call('/v6/offers/sign',{offerId:c.offerId,packetHash:'wrong',signatureDataUrl:drawing},l.session);assert.equal(bad.status,422);assert.equal(h.artifacts.length,0);
 });
-test('late acceptance is rejected while completed evidence remains readable',async()=>{
- const h=harness();await h.issue();h.setTime(Date.parse('2026-12-02T00:00:00Z'));const out=h.outbox[0].payload;const invite=new URL(out.text.match(/https:\/\/\S+/)[0]).searchParams.get('invite');await h.call('/v6/offers/request-code',{invite,email:'alex@example.test'},'');assert.equal(h.mail.length,0);
+test('legacy offer deadlines still block late acceptance',async()=>{
+ const h=harness();await h.issue();const legacy=[...h.offers.values()][0];delete legacy.packet.schedule.expiryPolicy;legacy.packet.schedule.acceptBy='2026-12-01T00:00:00Z';h.setTime(Date.parse('2026-12-02T00:00:00Z'));const out=h.outbox[0].payload;const invite=new URL(out.text.match(/https:\/\/\S+/)[0]).searchParams.get('invite');await h.call('/v6/offers/request-code',{invite,email:'alex@example.test'},'');assert.equal(h.mail.length,0);
 });
 test('database conflict cleans up unreferenced signature image',async()=>{
  const h=harness({store:{signOffer:async()=>{throw Object.assign(Error('Conflict'),{status:409});}}});await h.issue();const l=await h.login();const c=await h.child(l.session);const result=await h.call('/v6/offers/sign',{offerId:c.offerId,packetHash:c.packetHash,reviewAcknowledged:true,conditionsAcknowledged:true,termsAcknowledged:true,electronicConsent:true,signatureDataUrl:drawing},l.session);assert.equal(result.status,409);assert.equal(h.removed.length,3);assert.equal([...h.offers.values()][0].signatures.length,0);
 });
-test('offer acceptance needs entry details and dates but no financial selection',()=>{
+test('offer acceptance needs entry details but no deadline or financial selection',()=>{
  const app=application();delete app.values.entry_year;assert.throws(()=>makeOfferPacket(app,schedule,now));
  for(const key of ['acceptBy','conditionsBy'])assert.throws(()=>makeOfferPacket(application(),{...schedule,[key]:''},now));
  const prepared=makeOfferPacket(application(),schedule,now);
- assert.deepEqual(prepared.packet.schedule,{...schedule,financialArrangements:'deferred'});
+ assert.deepEqual(prepared.packet.schedule,{expiryPolicy:'none',financialArrangements:'deferred'});
  assert.match(prepared.packet.contract.paymentArrangementsNotice,/chosen separately at a later stage/);
 });
 test('stale financial selections are rejected before an offer or email is created',async()=>{
@@ -72,7 +72,7 @@ test('a delivery worker failure after signature commit cannot delete committed s
 test('resend invalidates old verified session and preserves the exact agreement',async()=>{
  const h=harness();await h.issue();const l=await h.login();const original=[...h.offers.values()][0];const resent=await h.call('/v6/staff/offers/resend',{familyId:original.familyId,recipientId:'recipient-1',confirmation:'Resend family invitation'});assert.equal(resent.resent,true);assert.equal((await h.child(l.session)).status,409);assert.equal([...h.offers.values()][0].packetHash,original.packetHash);assert.equal(h.outbox.length,2);
 });
-test('completed signature remains readable after offer deadline with fresh OTP',async()=>{
+test('completed signature remains readable later with fresh OTP',async()=>{
  const h=harness();await h.issue();let l=await h.login();const c=await h.child(l.session);await h.call('/v6/offers/sign',{offerId:c.offerId,packetHash:c.packetHash,reviewAcknowledged:true,conditionsAcknowledged:true,termsAcknowledged:true,electronicConsent:true,signatureDataUrl:drawing},l.session);h.setTime(Date.parse('2026-12-02T00:00:00Z'));l=await h.login();const reopened=await h.child(l.session);assert.equal(reopened.alreadySigned,true);assert.equal(reopened.packetHash,c.packetHash);
 });
 test('signed offer cannot be withdrawn through unsigned-offer control',async()=>{
@@ -99,8 +99,8 @@ test('family grouping cannot be inferred from matching emails and duplicate shar
  const h=harness();sibling(h,{family:'unrelated-family'});assert.equal((await h.issue(['app-synthetic','app-sibling'])).result.status,409);assert.equal(h.outbox.length,0);
  const same=harness();same.apps.get('app-synthetic').signerControls[1].currentEmail='alex@example.test';assert.equal((await same.issue()).result.status,409);
 });
-test('changed letter date contact controls or fee content invalidates reviewed issue',async()=>{
- for(const change of ['date','contact','deadline']){const h=harness();const {payload}=await h.issue();payload.operationId+='new';if(change==='date')payload.letterDate='2026-11-09';if(change==='deadline')payload.schedule={...payload.schedule,acceptBy:'2026-12-02T00:00:00Z'};if(change==='contact')h.apps.get('app-synthetic').signatureControlRevision++;const result=await h.call('/v6/staff/offers/issue',payload);assert.equal(result.status,409);assert.equal(h.outbox.length,1);}
+test('changed letter date contact controls or wording invalidates reviewed issue',async()=>{
+ for(const change of ['date','contact','wording']){const h=harness();const {payload}=await h.issue();payload.operationId+='new';if(change==='date')payload.letterDate='2026-11-09';if(change==='wording')payload.letterOptions={meetingConfirmed:true};if(change==='contact')h.apps.get('app-synthetic').signatureControlRevision++;const result=await h.call('/v6/staff/offers/issue',payload);assert.equal(result.status,409);assert.equal(h.outbox.length,1);}
 });
 test('real portal verification and child access are tracked separately from email delivery',async()=>{
  const h=harness();await h.issue();let view=await h.call('/v6/staff/offers');assert.equal(view.families[0].recipients[0].portalOpenedAt,'');const l=await h.login();view=await h.call('/v6/staff/offers');assert.ok(view.families[0].recipients[0].portalOpenedAt);assert.deepEqual(view.families[0].recipients[0].childOpenedAt,{});const c=await h.child(l.session);view=await h.call('/v6/staff/offers');assert.ok(view.families[0].recipients[0].childOpenedAt[c.offerId]);assert.equal(view.families[0].recipients[0].deliveryStatus,'unavailable');assert.ok(!JSON.stringify(view).includes('taskTokenHash'));
@@ -252,4 +252,26 @@ test('offer access sends provisional-offer OTP wording in both email formats',as
   assert.match(body,/10 minutes/);
   assert.doesNotMatch(body,/Application for Enrolment/);
  }
+});
+
+test('deadline-free offers remain open for both guardians while OTP sessions still expire',async()=>{
+ const h=harness();await h.issue();const original=structuredClone([...h.apps]);h.setTime(Date.parse('2027-02-01T00:00:00Z'));
+ let login=await h.login();let child=await h.child(login.session);
+ assert.equal(child.packet.schedule.expiryPolicy,'none');
+ let response=await h.call('/v6/offers/sign',acceptance(child),login.session);assert.equal(response.status,'awaiting_signatures');
+ login=await h.login(1);child=await h.child(login.session);response=await h.call('/v6/offers/sign',acceptance(child),login.session);assert.equal(response.status,'signed_conditional');
+ assert.deepEqual([...h.apps],original);
+});
+test('only explicit no-expiry offers bypass a deadline, and stored legacy deadlines win',()=>{
+ const offer=schedule=>({packet:{schedule}});
+ assert.equal(offerAcceptanceOpen(offer({expiryPolicy:'none'}),now),true);
+ for(const schedule of [{},{acceptBy:'bad'},{expiryPolicy:'none',acceptBy:'bad'},{expiryPolicy:'none',acceptBy:'2026-01-01T00:00:00Z'}])assert.equal(offerAcceptanceOpen(offer(schedule),now),false);
+ assert.equal(offerAcceptanceOpen(offer({acceptBy:'2027-01-01T00:00:00Z'}),now),true);
+});
+test('stale date fields are rejected without writing or sending',async()=>{
+ const h=harness();for(const key of ['acceptBy','conditionsBy']){
+  const response=await h.call('/v6/staff/offers/preview',{applicationIds:['app-synthetic'],schedule:{[key]:'2027-01-01T00:00:00Z'}});
+  assert.equal(response.status,422);assert.equal(response.error,'OFFER_DEADLINES_REMOVED');
+ }
+ assert.equal(h.offers.size,0);assert.equal(h.outbox.length,0);assert.equal(h.letters.size,0);
 });
