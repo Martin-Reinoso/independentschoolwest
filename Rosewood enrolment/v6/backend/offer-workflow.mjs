@@ -27,11 +27,18 @@ export function offerSigners(app) {
   });
 }
 
-export function makeOfferPacket(app, input, now=Date.now(), arrangement={}) {
+// College-approved placement is separate from the family's frozen Application answers.
+export function offerEntry(app, placement=null) {
+  if (placement == null) return {entryYear:text(app.values?.entry_year,4),entryLevel:text(app.values?.entry_level,60)};
+  if (placement.applicationId!==app.id || placement.entryYear!==app.values?.entry_year || !['Foundation','Year 1','Year 2','Year 3','Year 4','Year 5','Year 6'].includes(placement.entryLevel) || !placement.recordedBy || !Number.isFinite(Date.parse(placement.recordedAt))) throw failure(409,'OFFER_PLACEMENT_INVALID','Review the offered year level before preparing this offer.');
+  return {entryYear:placement.entryYear,entryLevel:placement.entryLevel};
+}
+
+export function makeOfferPacket(app, input, now=Date.now(), arrangement={}, placement=null) {
   if (!app || app.status !== 'submitted') throw failure(409,'APPLICATION_NOT_COMPLETE','A completed application is required before an offer can be prepared.');
   let signers=offerSigners(app);
   const studentName=[app.values?.student_first,app.values?.student_last].filter(Boolean).join(' ');
-  const entryYear=text(app.values?.entry_year,4), entryLevel=text(app.values?.entry_level,60);
+  const {entryYear,entryLevel}=offerEntry(app,placement);
   if (!studentName || !/^20\d{2}$/.test(entryYear) || !entryLevel) throw failure(409,'ENTRY_DETAILS_REQUIRED','Confirm the student and entry details before preparing an offer.');
   if (entryYear !== '2027') throw failure(409,'OFFER_YEAR_UNSUPPORTED','This opening-year offer is for 2027 only. Prepare a separately reviewed offer for another entry year.');
   const financialFields=['feeSchedule','paymentDays','refundDays','bondOption','bondAmount','bondCredit'];
@@ -48,7 +55,7 @@ export function makeOfferPacket(app, input, now=Date.now(), arrangement={}) {
   const details=initialOfferDetails(app,signers);
   signers=signers.map(signer=>({...signer,name:personName(details.guardians.find(person=>person.id===signer.id))}));
   const packet=packetWithDetails({contract:OFFER_CONTRACT, studentName, entryYear, entryLevel, signers:signers.map(({name})=>({name})), schedule, ...(mode==='primary_only'?{signingArrangement:'The College has approved the main carer alone to sign for the guardians listed when this offer was issued. Any newly added guardian must also sign.'}:{})},details);
-  return {packet, details, signingArrangement, packetHash:checksum(packet), signers, applicationId:app.id, applicationRevisionHash:app.revisionHash, signatureControlRevision:Number(app.signatureControlRevision || 0)};
+  return {packet, details, signingArrangement, offerPlacement:placement, packetHash:checksum(packet), signers, applicationId:app.id, applicationRevisionHash:app.revisionHash, signatureControlRevision:Number(app.signatureControlRevision || 0)};
 }
 
 // Existing issued deadlines remain authoritative; only explicitly deadline-free new offers stay open.
@@ -97,7 +104,8 @@ export function createOfferRoutes(c) {
    if(!apps[0]?.invitationId || apps.some(a=>!a || a.invitationId!==apps[0].invitationId))throw failure(409,'FAMILY_MISMATCH','Select children linked to the same family invitation.');
    const arrangements=body.signingArrangements||{};
    if(typeof arrangements!=='object'||Array.isArray(arrangements)||Object.keys(arrangements).some(id=>!ids.includes(id)))throw failure(422,'SIGNING_ARRANGEMENT_REQUIRED','Review the signing arrangements for the selected children.');
-   const prepared=apps.map(a=>makeOfferPacket(a,body.schedule||{},clock(),arrangements[a.id]||{}));
+   const placements=await Promise.all(apps.map(a=>store.getOfferPlacement(a.id)));
+   const prepared=apps.map((a,i)=>makeOfferPacket(a,body.schedule||{},clock(),arrangements[a.id]||{},placements[i]));
    const primaryEmail=email(apps[0].recipientEmail);
    if(!primaryEmail || apps.some(a=>email(a.recipientEmail)!==primaryEmail))throw failure(409,'PRIMARY_REVIEW_REQUIRED','Review the primary family email before preparing the offer.');
    const accounts=[];
@@ -147,7 +155,7 @@ export function createOfferRoutes(c) {
    try {
      const attachment=await drive.storeOfferLetter({familyId,data:p.pdf.bytes,sha256:p.pdf.sha256});files.push(attachment);family.letterFileId=attachment.id;
      for(const o of offers){const file=await drive.storeOfferSnapshot({offerId:o.id,revision:1,snapshot:{packet:o.packet,packetHash:o.packetHash,familyId,letterHash:family.letterHash,createdAt:o.createdAt,createdBy:o.createdBy}});files.push(file);o.snapshotFileId=file.id;}
-     await store.issueOfferFamily({family,offers,tasks:tasks.map(({raw,...t})=>t),applications:p.apps,outboxEvents:tasks.map(t=>invitation(t,t.raw,family)),auditEvents:[audit(family,'offer.family_issued',actor,{children:offers.length,recipients:tasks.length,letterHash:family.letterHash}),...offers.filter(o=>o.signingArrangement.mode==='primary_only').map(o=>audit(o,'offer.signing_arrangement_approved',actor,{mode:o.signingArrangement.mode,reason:o.signingArrangement.reason,primaryGuardianId:o.signingArrangement.primaryGuardianId,excludedGuardianIds:o.signingArrangement.excludedGuardianIds}))]});
+     await store.issueOfferFamily({family,offers,tasks:tasks.map(({raw,...t})=>t),applications:p.apps,placements:p.prepared.map(x=>({applicationId:x.applicationId,placement:x.offerPlacement})),outboxEvents:tasks.map(t=>invitation(t,t.raw,family)),auditEvents:[audit(family,'offer.family_issued',actor,{children:offers.length,recipients:tasks.length,letterHash:family.letterHash}),...offers.filter(o=>o.signingArrangement.mode==='primary_only').map(o=>audit(o,'offer.signing_arrangement_approved',actor,{mode:o.signingArrangement.mode,reason:o.signingArrangement.reason,primaryGuardianId:o.signingArrangement.primaryGuardianId,excludedGuardianIds:o.signingArrangement.excludedGuardianIds}))]});
    }catch(error){for(const file of files)await drive.deleteArtifact(file).catch(()=>console.error('Offer artifact cleanup failed'));throw error;}
    await dispatchOutbox(20);return {familyId,children:offers.map(summary)};
  }
@@ -258,7 +266,7 @@ export function createOfferRoutes(c) {
    await store.recordAudit(audit(child.offer,'offer.record_downloaded',actor));
    return {fileName:OFFER_RECORD_FILE_NAME,contentType:'application/pdf',base64:bytes.toString('base64'),sha256:ref.sha256};
  }
- async function candidates(event){await requireStaffSession(event,['admin','admissions']);const records=await store.scanEntities(['application']);const groups=new Map();for(const r of records){const app=r.data;if(app.status!=='submitted'||!app.invitationId)continue;const group=groups.get(app.invitationId)||{familyId:app.invitationId,email:app.recipientEmail,children:[]};group.children.push({applicationId:app.id,studentName:[app.values?.student_first,app.values?.student_last].filter(Boolean).join(' '),entryYear:app.values?.entry_year||'',entryLevel:app.values?.entry_level||''});groups.set(app.invitationId,group);}return {families:[...groups.values()]};}
+ async function candidates(event){await requireStaffSession(event,['admin','admissions']);const records=await store.scanEntities(['application','offer_placement']);const placements=new Map(records.filter(r=>r.entity==='offer_placement').map(r=>[r.data.applicationId,r.data]));const groups=new Map();for(const r of records){if(r.entity!=='application')continue;const app=r.data;if(app.status!=='submitted'||!app.invitationId)continue;const group=groups.get(app.invitationId)||{familyId:app.invitationId,email:app.recipientEmail,children:[]};group.children.push({applicationId:app.id,studentName:[app.values?.student_first,app.values?.student_last].filter(Boolean).join(' '),...offerEntry(app,placements.get(app.id))});groups.set(app.invitationId,group);}return {families:[...groups.values()]};}
  async function resend(event) {
    const actor=await requireStaffSession(event,['admin','admissions']);enabled();const b=parseBody(event,10000),family=await store.getOfferFamily(text(b.familyId)),a=family?.accounts.find(x=>x.id===b.recipientId);
    if(!a || b.confirmation!=='Resend family invitation')throw failure(422,'RESEND_REVIEW_REQUIRED','Review the family recipient before resending.');

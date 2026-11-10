@@ -34,15 +34,18 @@ export class DynamoStore {
 
   getEoi(id) { return this.get(`EOI#${id}`); }
   getOffer(id) { return this.get(`OFFER#${id}`); }
+  getOfferPlacement(id) { return this.get(`OFFER_PLACEMENT#${id}`); }
   getOfferTask(tokenHash) { return this.get(`OFFER_TASK#${tokenHash}`); }
   async getOfferByApplication(id) { const link = await this.get(`OFFER_APPLICATION#${id}`); return link ? this.getOffer(link.offerId) : null; }
   async listOffers() { return (await this.scanEntities(['enrolment_offer'])).map(item => item.data); }
 
   getOfferFamily(id) { return this.get(`OFFER_FAMILY#${id}`); }
   async listOfferFamilies() { return (await this.scanEntities(['offer_family'])).map(x=>x.data); }
-  async issueOfferFamily({family,offers,tasks,applications,outboxEvents=[],auditEvents=[]}) {
+  async issueOfferFamily({family,offers,tasks,applications,placements=[],outboxEvents=[],auditEvents=[]}) {
+    if(placements.length!==applications.length || applications.some(a=>placements.filter(p=>p.applicationId===a.id).length!==1))throw new Error('Each Application requires a reviewed offer placement state.');
     const put=(PK,entity,data,SK='META')=>({Put:{TableName:this.tableName,Item:{...this.key(PK,SK),entity,data},ConditionExpression:'attribute_not_exists(PK)'}});
-    const actions=[...applications.map(a=>this.offerApplicationCondition(a)),put(`OFFER_FAMILY#${family.id}`,'offer_family',family)];
+    const placementChecks=placements.map(({applicationId,placement})=>({ConditionCheck:{TableName:this.tableName,Key:this.key(`OFFER_PLACEMENT#${applicationId}`),...(placement==null?{ConditionExpression:'attribute_not_exists(PK)'}:{ConditionExpression:'#d = :placement',ExpressionAttributeNames:{'#d':'data'},ExpressionAttributeValues:{':placement':placement}})}}));
+    const actions=[...applications.map(a=>this.offerApplicationCondition(a)),...placementChecks,put(`OFFER_FAMILY#${family.id}`,'offer_family',family)];
     for(const offer of offers){
       actions.push(put(`OFFER#${offer.id}`,'enrolment_offer',offer),put(`OFFER#${offer.id}`,'offer_issued_snapshot',{packet:offer.packet,packetHash:offer.packetHash,createdAt:offer.createdAt,createdBy:offer.createdBy},'ISSUED'));
       const link=put(`OFFER_APPLICATION#${offer.applicationId}`,'offer_application_link',{offerId:offer.id});
