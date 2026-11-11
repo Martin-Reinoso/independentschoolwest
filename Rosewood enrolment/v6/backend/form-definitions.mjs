@@ -15,8 +15,8 @@ import {
 } from "./schema.mjs";
 
 export const CURRENT_FORM_VERSIONS = Object.freeze({
-  eoi: "rosewood-eoi-2026.36",
-  application: "rosewood-application-2026.37"
+  eoi: "rosewood-eoi-2026.37",
+  application: "rosewood-application-2026.38"
 });
 
 const LEGACY_SCHEMA_VERSION = "rosewood-v6-2026-08-05";
@@ -1270,19 +1270,38 @@ const v37FrontendAssetHashes = Object.freeze({ ...v36FrontendAssetHashes,
   "pages/rosewood-enrolment-v6.js": "900e7d9de521cf0823d37875b376e862b1b463bd52bae784e00c654d74f4d3a9"
 });
 const eoi2026v36 = complete({
-  workflow: "eoi", formVersion: CURRENT_FORM_VERSIONS.eoi, schemaVersion: SCHEMA_VERSION, releasedAt: "2026-11-08",
+  workflow: "eoi", formVersion: "rosewood-eoi-2026.36", schemaVersion: SCHEMA_VERSION, releasedAt: "2026-11-08",
   source: { frontend: "pages/rosewood-enrolment-v6.html?workflow=eoi", frontendRelease: "v6-js41-offer-acceptance-notifications", frontendAssetHashes: v37FrontendAssetHashes, validator: "schema.mjs#validateEoi" },
   contract: eoi2026v35.contract
 });
 const application2026v37 = complete({
-  workflow: "application", formVersion: CURRENT_FORM_VERSIONS.application, schemaVersion: SCHEMA_VERSION, releasedAt: "2026-11-08",
+  workflow: "application", formVersion: "rosewood-application-2026.37", schemaVersion: SCHEMA_VERSION, releasedAt: "2026-11-08",
   source: { frontend: "pages/rosewood-enrolment-v6.html?workflow=application", frontendRelease: "v6-js41-offer-acceptance-notifications", frontendAssetHashes: v37FrontendAssetHashes, validator: "schema.mjs#validateApplicationForSubmission" },
   contract: application2026v36.contract
 });
 
+const v38FrontendAssetHashes = Object.freeze({ ...v37FrontendAssetHashes,
+  "pages/rosewood-enrolment-admin-v6.html": "e190ae873541fda57f4deea483f0ad4bc756098921dc2d365c018e689f7d262d",
+  "pages/rosewood-enrolment-offers-admin-v1.html": "bc8321e01af457568ab34684ab90b8ea40f3e3c4ffb02167f2138fc45bd43ef6",
+  "pages/rosewood-enrolment-offers-admin-v1.js": "0f5adcbf64877d102df4a1dda9be8b17ae6fd0b9fd9b037f79c022775728e067",
+  "pages/rosewood-enrolment-offer-v1.css": "80d214e3832dec047e50f04f609a8ce3fd3d15d1ff6728f7278dc884642b3924",
+  "pages/rosewood-enrolment-v6.html": "40e6a10598e7e6ed0b02b1dea897ab439ed7c79e43b39260df646e8ea3d54f78",
+  "pages/rosewood-enrolment-v6.js": "affe6e5e40b7dcb4bacff4e2413634640a867549398a95e446de50baf3afcaab"
+});
+const eoi2026v37 = complete({
+  workflow: "eoi", formVersion: CURRENT_FORM_VERSIONS.eoi, schemaVersion: SCHEMA_VERSION, releasedAt: "2026-11-11",
+  source: { frontend: "pages/rosewood-enrolment-v6.html?workflow=eoi", frontendRelease: "v6-js42-staff-offer-workspace", frontendAssetHashes: v38FrontendAssetHashes, validator: "schema.mjs#validateEoi" },
+  contract: eoi2026v36.contract
+});
+const application2026v38 = complete({
+  workflow: "application", formVersion: CURRENT_FORM_VERSIONS.application, schemaVersion: SCHEMA_VERSION, releasedAt: "2026-11-11",
+  source: { frontend: "pages/rosewood-enrolment-v6.html?workflow=application", frontendRelease: "v6-js42-staff-offer-workspace", frontendAssetHashes: v38FrontendAssetHashes, validator: "schema.mjs#validateApplicationForSubmission" },
+  contract: application2026v37.contract
+});
+
 export const FORM_DEFINITIONS = freeze({
-  eoi: { [eoi2026v1.formVersion]: eoi2026v1, [eoi2026v2.formVersion]: eoi2026v2, [eoi2026v3.formVersion]: eoi2026v3, [eoi2026v4.formVersion]: eoi2026v4, [eoi2026v5.formVersion]: eoi2026v5, [eoi2026v6.formVersion]: eoi2026v6, [eoi2026v7.formVersion]: eoi2026v7, [eoi2026v8.formVersion]: eoi2026v8, [eoi2026v9.formVersion]: eoi2026v9, [eoi2026v10.formVersion]: eoi2026v10, [eoi2026v11.formVersion]: eoi2026v11, [eoi2026v12.formVersion]: eoi2026v12, [eoi2026v13.formVersion]: eoi2026v13, [eoi2026v14.formVersion]: eoi2026v14, [eoi2026v15.formVersion]: eoi2026v15, [eoi2026v16.formVersion]: eoi2026v16, [eoi2026v17.formVersion]: eoi2026v17, [eoi2026v18.formVersion]: eoi2026v18, [eoi2026v19.formVersion]: eoi2026v19, [eoi2026v20.formVersion]: eoi2026v20, [eoi2026v21.formVersion]: eoi2026v21, [eoi2026v22.formVersion]: eoi2026v22, [eoi2026v23.formVersion]: eoi2026v23, [eoi2026v24.formVersion]: eoi2026v24, [eoi2026v25.formVersion]: eoi2026v25, [eoi2026v26.formVersion]: eoi2026v26, [eoi2026v27.formVersion]: eoi2026v27, [eoi2026v28.formVersion]: eoi2026v28, [eoi2026v29.formVersion]: eoi2026v29, [eoi2026v30.formVersion]: eoi2026v30, [eoi2026v31.formVersion]: eoi2026v31, [eoi2026v32.formVersion]: eoi2026v32, [eoi2026v33.formVersion]: eoi2026v33, [eoi2026v34.formVersion]: eoi2026v34, [eoi2026v35.formVersion]: eoi2026v35, [eoi2026v36.formVersion]: eoi2026v36 },
-  application: { [application2026v1.formVersion]: application2026v1, [application2026v2.formVersion]: application2026v2, [application2026v3.formVersion]: application2026v3, [application2026v4.formVersion]: application2026v4, [application2026v5.formVersion]: application2026v5, [application2026v6.formVersion]: application2026v6, [application2026v7.formVersion]: application2026v7, [application2026v8.formVersion]: application2026v8, [application2026v9.formVersion]: application2026v9, [application2026v10.formVersion]: application2026v10, [application2026v11.formVersion]: application2026v11, [application2026v12.formVersion]: application2026v12, [application2026v13.formVersion]: application2026v13, [application2026v14.formVersion]: application2026v14, [application2026v15.formVersion]: application2026v15, [application2026v16.formVersion]: application2026v16, [application2026v17.formVersion]: application2026v17, [application2026v18.formVersion]: application2026v18, [application2026v19.formVersion]: application2026v19, [application2026v20.formVersion]: application2026v20, [application2026v21.formVersion]: application2026v21, [application2026v22.formVersion]: application2026v22, [application2026v23.formVersion]: application2026v23, [application2026v24.formVersion]: application2026v24, [application2026v25.formVersion]: application2026v25, [application2026v26.formVersion]: application2026v26, [application2026v27.formVersion]: application2026v27, [application2026v28.formVersion]: application2026v28, [application2026v29.formVersion]: application2026v29, [application2026v30.formVersion]: application2026v30, [application2026v31.formVersion]: application2026v31, [application2026v32.formVersion]: application2026v32, [application2026v33.formVersion]: application2026v33, [application2026v34.formVersion]: application2026v34, [application2026v35.formVersion]: application2026v35, [application2026v36.formVersion]: application2026v36, [application2026v37.formVersion]: application2026v37 }
+  eoi: { [eoi2026v1.formVersion]: eoi2026v1, [eoi2026v2.formVersion]: eoi2026v2, [eoi2026v3.formVersion]: eoi2026v3, [eoi2026v4.formVersion]: eoi2026v4, [eoi2026v5.formVersion]: eoi2026v5, [eoi2026v6.formVersion]: eoi2026v6, [eoi2026v7.formVersion]: eoi2026v7, [eoi2026v8.formVersion]: eoi2026v8, [eoi2026v9.formVersion]: eoi2026v9, [eoi2026v10.formVersion]: eoi2026v10, [eoi2026v11.formVersion]: eoi2026v11, [eoi2026v12.formVersion]: eoi2026v12, [eoi2026v13.formVersion]: eoi2026v13, [eoi2026v14.formVersion]: eoi2026v14, [eoi2026v15.formVersion]: eoi2026v15, [eoi2026v16.formVersion]: eoi2026v16, [eoi2026v17.formVersion]: eoi2026v17, [eoi2026v18.formVersion]: eoi2026v18, [eoi2026v19.formVersion]: eoi2026v19, [eoi2026v20.formVersion]: eoi2026v20, [eoi2026v21.formVersion]: eoi2026v21, [eoi2026v22.formVersion]: eoi2026v22, [eoi2026v23.formVersion]: eoi2026v23, [eoi2026v24.formVersion]: eoi2026v24, [eoi2026v25.formVersion]: eoi2026v25, [eoi2026v26.formVersion]: eoi2026v26, [eoi2026v27.formVersion]: eoi2026v27, [eoi2026v28.formVersion]: eoi2026v28, [eoi2026v29.formVersion]: eoi2026v29, [eoi2026v30.formVersion]: eoi2026v30, [eoi2026v31.formVersion]: eoi2026v31, [eoi2026v32.formVersion]: eoi2026v32, [eoi2026v33.formVersion]: eoi2026v33, [eoi2026v34.formVersion]: eoi2026v34, [eoi2026v35.formVersion]: eoi2026v35, [eoi2026v36.formVersion]: eoi2026v36, [eoi2026v37.formVersion]: eoi2026v37 },
+  application: { [application2026v1.formVersion]: application2026v1, [application2026v2.formVersion]: application2026v2, [application2026v3.formVersion]: application2026v3, [application2026v4.formVersion]: application2026v4, [application2026v5.formVersion]: application2026v5, [application2026v6.formVersion]: application2026v6, [application2026v7.formVersion]: application2026v7, [application2026v8.formVersion]: application2026v8, [application2026v9.formVersion]: application2026v9, [application2026v10.formVersion]: application2026v10, [application2026v11.formVersion]: application2026v11, [application2026v12.formVersion]: application2026v12, [application2026v13.formVersion]: application2026v13, [application2026v14.formVersion]: application2026v14, [application2026v15.formVersion]: application2026v15, [application2026v16.formVersion]: application2026v16, [application2026v17.formVersion]: application2026v17, [application2026v18.formVersion]: application2026v18, [application2026v19.formVersion]: application2026v19, [application2026v20.formVersion]: application2026v20, [application2026v21.formVersion]: application2026v21, [application2026v22.formVersion]: application2026v22, [application2026v23.formVersion]: application2026v23, [application2026v24.formVersion]: application2026v24, [application2026v25.formVersion]: application2026v25, [application2026v26.formVersion]: application2026v26, [application2026v27.formVersion]: application2026v27, [application2026v28.formVersion]: application2026v28, [application2026v29.formVersion]: application2026v29, [application2026v30.formVersion]: application2026v30, [application2026v31.formVersion]: application2026v31, [application2026v32.formVersion]: application2026v32, [application2026v33.formVersion]: application2026v33, [application2026v34.formVersion]: application2026v34, [application2026v35.formVersion]: application2026v35, [application2026v36.formVersion]: application2026v36, [application2026v37.formVersion]: application2026v37, [application2026v38.formVersion]: application2026v38 }
 });
 
 export function getFormDefinition(workflow, formVersion = CURRENT_FORM_VERSIONS[workflow]) {
