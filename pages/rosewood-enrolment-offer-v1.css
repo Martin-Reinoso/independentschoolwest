@@ -84,3 +84,12 @@
 }
 
 .offer-family.no-environment-ribbon .offer-content { scroll-margin-top: 96px; }
+
+/* Staff offer preparation stays ahead of the searchable sent-offer history. */
+.offer-staff :is(#prepare,[data-offer-id="prepare"]) { margin-top: 1.5rem; padding-top: 0; border-top: 0; }
+.offer-staff .offer-history { margin-top: 2rem; }
+.offer-staff .offer-child-status { color: var(--ink-soft); font-size: .88rem; margin: -.3rem 0 1rem; }
+.offer-staff .offer-progress { padding: .8rem 1rem; border-left: 3px solid var(--green); background: var(--green-soft); line-height: 1.5; }
+.offer-staff .offer-progress-error { border-color: #852420; background: #fbe7e4; color: #852420; }
+.offer-staff button[aria-busy="true"]::before { content: ''; display: inline-block; width: 1em; height: 1em; margin-right: .6rem; vertical-align: -.15em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .offer-staff button[aria-busy="true"]::before { animation: none; } }
